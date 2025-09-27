@@ -60,20 +60,20 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyBQ5_qHjNniJm2EG_8AwCXvvptMu3mtLQ4',
-    appId: '1:468473644377:ios:7686922e87701012267848',
+    appId: '1:468473644377:ios:74b38d611f8f509f267848',
     messagingSenderId: '468473644377',
     projectId: 'ai-nutrition-assistant-e2346',
     storageBucket: 'ai-nutrition-assistant-e2346.firebasestorage.app',
-    iosBundleId: 'com.ainios.myapp',
+    iosBundleId: 'com.ainaios.app',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyBQ5_qHjNniJm2EG_8AwCXvvptMu3mtLQ4',
-    appId: '1:468473644377:ios:f4d65ac6e7d52171267848',
+    appId: '1:468473644377:ios:22694a8f827f6fa3267848',
     messagingSenderId: '468473644377',
     projectId: 'ai-nutrition-assistant-e2346',
     storageBucket: 'ai-nutrition-assistant-e2346.firebasestorage.app',
-    iosBundleId: 'com.ainmacos.app',
+    iosBundleId: 'com.ainamacos.app',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
@@ -85,4 +85,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'ai-nutrition-assistant-e2346.firebasestorage.app',
     measurementId: 'G-2WNBSDWFJF',
   );
+
 }
