@@ -1,0 +1,1 @@
+ C:\\NutritionAssistant\\AI-Nutrition-Assistant\\.dart_tool\\flutter_build\\18c613f362412f75b97c3f9d85b569d0\\native_assets.json: 
