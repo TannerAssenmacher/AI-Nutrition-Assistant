@@ -31,6 +31,7 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+**/build/
 
 # Symbolication related
 app.*.symbols
@@ -69,3 +70,11 @@ app.*.map.json
 **/*.g.dart
 **/*.freezed.dart
 **/*.gr.dart
+
+# Large binary files and build outputs
+*.apk
+*.aab
+*.ipa
+*.dSYM.zip
+*.app
+*.exe
