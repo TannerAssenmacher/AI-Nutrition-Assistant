@@ -18,7 +18,7 @@ final firestoreProvider = AutoDisposeProvider<FirebaseFirestore>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef FirestoreRef = AutoDisposeProviderRef<FirebaseFirestore>;
-String _$firestoreFoodLogHash() => r'42454d2c7c9095e542cf15751cf5351d00dff732';
+String _$firestoreFoodLogHash() => r'a21fdf2660c9821fa6a485644fb98de9230f3b98';
 
 /// Copied from Dart SDK
 class _SystemHash {
