@@ -1,3 +1,8 @@
+import 'package:json_annotation/json_annotation.dart';
+
+part 'food_item.g.dart';
+
+@JsonSerializable()
 class FoodItem {
   final String id;
   final String name;
@@ -6,6 +11,8 @@ class FoodItem {
   final double carbs;
   final double fat;
   final DateTime consumedAt;
+  final double servingSize;
+  final String unit;
 
   const FoodItem({
     required this.id,
@@ -15,8 +22,15 @@ class FoodItem {
     required this.carbs,
     required this.fat,
     required this.consumedAt,
+    this.servingSize = 1.0,
+    this.unit = 'serving',
   });
 
+  // JSON serialization methods
+  factory FoodItem.fromJson(Map<String, dynamic> json) => _$FoodItemFromJson(json);
+  Map<String, dynamic> toJson() => _$FoodItemToJson(this);
+
+  // CopyWith method for easy updates
   FoodItem copyWith({
     String? id,
     String? name,
@@ -25,6 +39,8 @@ class FoodItem {
     double? carbs,
     double? fat,
     DateTime? consumedAt,
+    double? servingSize,
+    String? unit,
   }) {
     return FoodItem(
       id: id ?? this.id,
@@ -34,29 +50,22 @@ class FoodItem {
       carbs: carbs ?? this.carbs,
       fat: fat ?? this.fat,
       consumedAt: consumedAt ?? this.consumedAt,
+      servingSize: servingSize ?? this.servingSize,
+      unit: unit ?? this.unit,
     );
   }
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other is FoodItem &&
-        other.id == id &&
-        other.name == name &&
-        other.calories == calories &&
-        other.protein == protein &&
-        other.carbs == carbs &&
-        other.fat == fat &&
-        other.consumedAt == consumedAt;
+    return other is FoodItem && other.id == id;
   }
 
   @override
-  int get hashCode {
-    return Object.hash(id, name, calories, protein, carbs, fat, consumedAt);
-  }
+  int get hashCode => id.hashCode;
 
   @override
   String toString() {
-    return 'FoodItem(id: $id, name: $name, calories: $calories, protein: $protein, carbs: $carbs, fat: $fat, consumedAt: $consumedAt)';
+    return 'FoodItem(id: $id, name: $name, calories: $calories, protein: $protein, carbs: $carbs, fat: $fat)';
   }
 }

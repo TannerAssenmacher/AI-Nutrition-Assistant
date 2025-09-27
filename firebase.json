@@ -1,0 +1,25 @@
+{
+    "flutter": {
+        "platforms": {
+            "android": {
+                "default": {
+                    "projectId": "ai-nutrition-assistant-e2346",
+                    "appId": "1:468473644377:android:0da8f2de23872a8f267848",
+                    "fileOutput": "android/app/google-services.json"
+                }
+            },
+            "dart": {
+                "lib/firebase_options.dart": {
+                    "projectId": "ai-nutrition-assistant-e2346",
+                    "configurations": {
+                        "android": "1:468473644377:android:0da8f2de23872a8f267848",
+                        "ios": "1:468473644377:ios:7686922e87701012267848",
+                        "macos": "1:468473644377:ios:f4d65ac6e7d52171267848",
+                        "web": "1:468473644377:web:13d28a9e81135191267848",
+                        "windows": "1:468473644377:web:c92d26cd4e74b40c267848"
+                    }
+                }
+            }
+        }
+    }
+}

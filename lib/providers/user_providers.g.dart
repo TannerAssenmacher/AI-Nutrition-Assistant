@@ -13,10 +13,9 @@ String _$isProfileCompleteHash() => r'293a5a07c420de1c5fbb9d65057caa249b4c875c';
 final isProfileCompleteProvider = AutoDisposeProvider<bool>.internal(
   isProfileComplete,
   name: r'isProfileCompleteProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$isProfileCompleteHash,
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$isProfileCompleteHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
@@ -31,10 +30,9 @@ String _$remainingCaloriesHash() => r'96637543aa3e981770d0054b8c33a9985181bae0';
 final remainingCaloriesProvider = AutoDisposeProvider<int>.internal(
   remainingCalories,
   name: r'remainingCaloriesProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$remainingCaloriesHash,
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$remainingCaloriesHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
@@ -49,15 +47,14 @@ String _$userProfileNotifierHash() =>
 @ProviderFor(UserProfileNotifier)
 final userProfileNotifierProvider =
     AutoDisposeNotifierProvider<UserProfileNotifier, UserProfile?>.internal(
-      UserProfileNotifier.new,
-      name: r'userProfileNotifierProvider',
-      debugGetCreateSourceHash:
-          const bool.fromEnvironment('dart.vm.product')
-              ? null
-              : _$userProfileNotifierHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
+  UserProfileNotifier.new,
+  name: r'userProfileNotifierProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$userProfileNotifierHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
 
 typedef _$UserProfileNotifier = AutoDisposeNotifier<UserProfile?>;
 // ignore_for_file: type=lint

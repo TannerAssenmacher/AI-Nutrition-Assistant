@@ -1,3 +1,8 @@
+import 'package:json_annotation/json_annotation.dart';
+
+part 'user_profile.g.dart';
+
+@JsonSerializable()
 class UserProfile {
   final String id;
   final String name;
@@ -5,8 +10,10 @@ class UserProfile {
   final double weight; // in kg
   final double height; // in cm
   final String activityLevel; // sedentary, lightly_active, moderately_active, very_active
-  final String goal; // lose_weight, maintain_weight, gain_weight
   final int dailyCalorieGoal;
+  final Map<String, double> macroGoals;
+  final DateTime createdAt;
+  final DateTime updatedAt;
 
   const UserProfile({
     required this.id,
@@ -15,10 +22,17 @@ class UserProfile {
     required this.weight,
     required this.height,
     required this.activityLevel,
-    required this.goal,
     required this.dailyCalorieGoal,
+    required this.macroGoals,
+    required this.createdAt,
+    required this.updatedAt,
   });
 
+  // JSON serialization methods
+  factory UserProfile.fromJson(Map<String, dynamic> json) => _$UserProfileFromJson(json);
+  Map<String, dynamic> toJson() => _$UserProfileToJson(this);
+
+  // CopyWith method for easy updates
   UserProfile copyWith({
     String? id,
     String? name,
@@ -26,8 +40,10 @@ class UserProfile {
     double? weight,
     double? height,
     String? activityLevel,
-    String? goal,
     int? dailyCalorieGoal,
+    Map<String, double>? macroGoals,
+    DateTime? createdAt,
+    DateTime? updatedAt,
   }) {
     return UserProfile(
       id: id ?? this.id,
@@ -36,29 +52,19 @@ class UserProfile {
       weight: weight ?? this.weight,
       height: height ?? this.height,
       activityLevel: activityLevel ?? this.activityLevel,
-      goal: goal ?? this.goal,
       dailyCalorieGoal: dailyCalorieGoal ?? this.dailyCalorieGoal,
+      macroGoals: macroGoals ?? this.macroGoals,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
-
-  double get bmi => weight / ((height / 100) * (height / 100));
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other is UserProfile &&
-        other.id == id &&
-        other.name == name &&
-        other.age == age &&
-        other.weight == weight &&
-        other.height == height &&
-        other.activityLevel == activityLevel &&
-        other.goal == goal &&
-        other.dailyCalorieGoal == dailyCalorieGoal;
+    return other is UserProfile && other.id == id;
   }
 
   @override
-  int get hashCode {
-    return Object.hash(id, name, age, weight, height, activityLevel, goal, dailyCalorieGoal);
-  }
+  int get hashCode => id.hashCode;
 }
