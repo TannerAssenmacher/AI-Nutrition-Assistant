@@ -1,19 +1,47 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'firebase_options.dart';
+
+/// Print all documents from known top-level collections.
+Future<void> printAllData() async {
+  final db = FirebaseFirestore.instance;
+
+  // List your root collections here
+  const rootCollections = ['Users', 'Food'];
+
+  for (final collName in rootCollections) {
+    try {
+      final snap = await db.collection(collName).get();
+      if (snap.docs.isEmpty) {
+        print('📂 $collName: (no documents)');
+        continue;
+      }
+      print('📂 $collName:');
+      for (final doc in snap.docs) {
+        print('  📄 $collName/${doc.id}: ${doc.data()}');
+      }
+    } catch (e) {
+      print('Error reading $collName: $e');
+    }
+  }
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Print all Firestore data once at startup
+  await printAllData();
+
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -21,7 +49,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.orange),
       ),
-      home: MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const MyHomePage(title: 'Flutter Demo Home Page'),
     );
   }
 }
@@ -55,7 +83,7 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            const Text('text here'),
+            const Text('Button has been clicked this many times:'),
             Text(
               '$_counter',
               style: Theme.of(context).textTheme.headlineMedium,
@@ -67,7 +95,7 @@ class _MyHomePageState extends State<MyHomePage> {
         onPressed: _incrementCounter,
         tooltip: 'Increment',
         child: const Icon(Icons.add),
-      ), 
+      ),
     );
   }
 }
