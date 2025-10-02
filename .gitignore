@@ -53,6 +53,13 @@ app.*.map.json
 /ios/Flutter/Generated.xcconfig
 /ios/Runner/GeneratedPluginRegistrant.*
 
+# macOS related
+/macos/Flutter/GeneratedPluginRegistrant.swift
+
+# Windows related
+/windows/flutter/generated_plugin*
+/windows/flutter/ephemeral/
+
 # Web related
 /web/
 
@@ -61,7 +68,6 @@ app.*.map.json
 /ios/Runner/GoogleService-Info.plist
 /ios/firebase_app_id_file.json
 /macos/firebase_app_id_file.json
-/lib/firebase_options.dart
 
 # Environment files
 .env
