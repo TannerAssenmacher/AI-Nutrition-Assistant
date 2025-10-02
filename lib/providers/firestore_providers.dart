@@ -5,7 +5,7 @@ import '../models/food_item.dart';
 part 'firestore_providers.g.dart';
 
 @riverpod
-FirebaseFirestore firestore(FirestoreRef ref) {
+FirebaseFirestore firestore(Ref ref) {
   return FirebaseFirestore.instance;
 }
 

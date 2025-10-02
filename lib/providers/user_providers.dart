@@ -1,5 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../models/user_profile.dart';
+import 'food_providers.dart';
 
 part 'user_providers.g.dart';
 
@@ -39,15 +40,19 @@ class UserProfileNotifier extends _$UserProfileNotifier {
 
 // Computed provider to check if user has completed profile
 @riverpod
-bool isProfileComplete(IsProfileCompleteRef ref) {
-  final profile = ref.watch(userProfileNotifierProvider);
-  return profile != null;
+bool isProfileComplete(Ref ref) {
+  final profile = ref.watch(userProfileProvider);
+  return profile != null && 
+         profile.name.isNotEmpty && 
+         profile.age > 0 && 
+         profile.weight > 0 && 
+         profile.height > 0;
 }
 
 // Computed provider for remaining calories
 @riverpod
-int remainingCalories(RemainingCaloriesRef ref) {
-  final profile = ref.watch(userProfileNotifierProvider);
+int remainingCalories(Ref ref) {
+  final profile = ref.watch(userProfileProvider);
   // We'll need to import the food providers to calculate consumed calories
   // For now, returning a placeholder
   if (profile == null) return 0;

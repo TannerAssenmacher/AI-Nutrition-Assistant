@@ -32,7 +32,7 @@ class FoodLog extends _$FoodLog {
 
 // Computed provider for total daily calories
 @riverpod
-int totalDailyCalories(TotalDailyCaloriesRef ref) {
+int totalDailyCalories(Ref ref) {
   final foodLog = ref.watch(foodLogProvider);
   final today = DateTime.now();
   
@@ -46,7 +46,7 @@ int totalDailyCalories(TotalDailyCaloriesRef ref) {
 
 // Computed provider for total daily macros
 @riverpod
-Map<String, double> totalDailyMacros(TotalDailyMacrosRef ref) {
+Map<String, double> totalDailyMacros(Ref ref) {
   final foodLog = ref.watch(foodLogProvider);
   final today = DateTime.now();
   
@@ -74,7 +74,7 @@ Map<String, double> totalDailyMacros(TotalDailyMacrosRef ref) {
 
 // Example async provider for fetching food suggestions
 @riverpod
-Future<List<String>> foodSuggestions(FoodSuggestionsRef ref) async {
+Future<List<String>> foodSuggestions(Ref ref) async {
   // Simulate API call
   await Future.delayed(const Duration(seconds: 1));
   
