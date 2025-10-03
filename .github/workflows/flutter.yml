@@ -1,6 +1,5 @@
 name: Flutter CI/CD
 
-# Run this workflow when code is pushed or PR is opened against main
 on:
   push:
     branches: [ main ]
@@ -9,44 +8,41 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest   # The runner machine (Linux VM in GitHub Actions)
+    runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout the repository code
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Step 2: Install Flutter SDK
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.35.4'   # Match your local Flutter version
 
-      # Step 3: Install Dart/Flutter dependencies
       - name: Install dependencies
         run: flutter pub get
 
-      # Step 4: Analyze Dart/Flutter code for errors & warnings
+      # Generate JSON serialization and other code
+      - name: Run build_runner
+        run: flutter pub run build_runner build --delete-conflicting-outputs
+
       - name: Analyze project
         run: flutter analyze || true
 
-      # Step 5: Run automated tests
       - name: Run tests
         run: flutter test
 
-      # Step 6: Build an Android APK (release mode)
       - name: Build APK
         run: flutter build apk --release
 
   deploy-firebase:
     runs-on: ubuntu-latest
-    needs: build   # Only run if build job succeeds
+    needs: build
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Deploy Firebase (Firestore rules, Hosting, Storage, Functions, etc.)
       - name: Deploy to Firebase
         uses: w9jds/firebase-action@v2.2.0
         with:
