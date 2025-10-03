@@ -40,11 +40,13 @@ jobs:
     needs: build
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install Firebase CLI
+      run: curl -sL https://firebase.tools | bash
 
     - name: Deploy to Firebase
-      uses: w9jds/firebase-action@v2.2.0
-      with:
-        args: deploy --project ai-nutrition-assistant-e2346 --debug
+      run: firebase deploy --project ai-nutrition-assistant-e2346 --debug
       env:
         FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
