@@ -1,6 +1,12 @@
-class User
-{
-  final String id;
+
+import 'package:json_annotation/json_annotation.dart';
+
+part 'user.g.dart';
+
+@JsonSerializable(explicitToJson: true)
+class User {
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  late String id;
   final String firstname;
   final String lastname;
   final String email;
@@ -13,9 +19,12 @@ class User
   final String dietaryGoal;
   final MealProfile mealProfile;
   final Map<String, MealPlan> mealPlans;
+  final int dailyCalorieGoal;
+  final Map<String, double> macroGoals;
+  final DateTime createdAt;
+  final DateTime updatedAt;
 
   User({
-    required this.id,
     required this.firstname,
     required this.lastname,
     required this.email,
@@ -28,59 +37,63 @@ class User
     required this.dietaryGoal,
     required this.mealProfile,
     required this.mealPlans,
+    required this.dailyCalorieGoal,
+    required this.macroGoals,
+    required this.createdAt,
+    required this.updatedAt,
   });
 
-  factory User.fromJson(Map<String, dynamic> json, String id)
-  {
-    // Ensure nested objects are typed maps before parsing
-    final profileRaw = Map<String, dynamic>.from(
-      (json['meal_profile'] ?? const {})['profile'] ?? const {},
-    );
-
-    final mealPlansRaw = Map<String, dynamic>.from(
-    json['meal_plans'] ?? const {},
-    );
-
-    return User(
-      id: id,
-      firstname: json['firstname'] ?? '',
-      lastname: json['lastname'] ?? '',
-      email: json['email'] ?? '',
-      password: json['password'] ?? '',
-      age: json['age'] ?? 0,
-      sex: json['sex'] ?? '',
-      height: (json['height'] ?? 0).toDouble(),
-      weight: (json['weight'] ?? 0).toDouble(),
-      activityLevel: json['activity_level'] ?? '',
-      dietaryGoal: json['dietary_goal'] ?? '',
-      mealProfile: MealProfile.fromJson(profileRaw),
-      mealPlans: mealPlansRaw.map<String, MealPlan>((key, value) {
-      final item = MealPlan.fromJson(Map<String, dynamic>.from(value ?? {}));
-      return MapEntry(key, item);
-      }),
-    );
+  factory User.fromJson(Map<String, dynamic> json, String id) {
+    final user = _$UserFromJson(json);
+    user.id = id;
+    return user;
   }
 
+  Map<String, dynamic> toJson() => _$UserToJson(this);
 
-  Map<String, dynamic> toJson() {
-    return {
-      'firstname': firstname,
-      'lastname': lastname,
-      'email': email,
-      'password': password,
-      'age': age,
-      'sex': sex,
-      'height': height,
-      'weight': weight,
-      'activity_level': activityLevel,
-      'dietary_goal': dietaryGoal,
-      'meal_profile': {'profile': mealProfile.toJson()},
-      'meal_plans':
-      mealPlans.map((key, value) => MapEntry(key, value.toJson())),
-    };
+  User copyWith({
+    String? id,
+    String? firstname,
+    String? lastname,
+    String? email,
+    String? password,
+    int? age,
+    String? sex,
+    double? height,
+    double? weight,
+    String? activityLevel,
+    String? dietaryGoal,
+    MealProfile? mealProfile,
+    Map<String, MealPlan>? mealPlans,
+    int? dailyCalorieGoal,
+    Map<String, double>? macroGoals,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    final user = User(
+      firstname: firstname ?? this.firstname,
+      lastname: lastname ?? this.lastname,
+      email: email ?? this.email,
+      password: password ?? this.password,
+      age: age ?? this.age,
+      sex: sex ?? this.sex,
+      height: height ?? this.height,
+      weight: weight ?? this.weight,
+      activityLevel: activityLevel ?? this.activityLevel,
+      dietaryGoal: dietaryGoal ?? this.dietaryGoal,
+      mealProfile: mealProfile ?? this.mealProfile,
+      mealPlans: mealPlans ?? this.mealPlans,
+      dailyCalorieGoal: dailyCalorieGoal ?? this.dailyCalorieGoal,
+      macroGoals: macroGoals ?? this.macroGoals,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+    user.id = id ?? this.id;
+    return user;
   }
 }
 
+@JsonSerializable(explicitToJson: true)
 class MealProfile {
   final List<String> dietaryHabits;
   final List<String> allergies;
@@ -92,46 +105,26 @@ class MealProfile {
     required this.preferences,
   });
 
-  factory MealProfile.fromJson(Map<String, dynamic> json) {
-    return MealProfile(
-      dietaryHabits: List<String>.from(json['dietary_habits'] ?? const []),
-      allergies: List<String>.from(json['allergies'] ?? const []),
-      preferences: Preferences.fromJson(
-      Map<String, dynamic>.from(json['preferences'] ?? const {}),
-      ),
-    );
-  }
+  factory MealProfile.fromJson(Map<String, dynamic> json) =>
+      _$MealProfileFromJson(json);
 
-  Map<String, dynamic> toJson() {
-    return {
-      'dietary_habits': dietaryHabits,
-      'allergies': allergies,
-      'preferences': preferences.toJson(),
-    };
-  }
+  Map<String, dynamic> toJson() => _$MealProfileToJson(this);
 }
 
+@JsonSerializable()
 class Preferences {
   final List<String> likes; // food ids
   final List<String> dislikes; // food ids
 
   Preferences({required this.likes, required this.dislikes});
 
-  factory Preferences.fromJson(Map<String, dynamic> json) {
-    return Preferences(
-      likes: List<String>.from(json['likes'] ?? []),
-      dislikes: List<String>.from(json['dislikes'] ?? []),
-    );
-  }
+  factory Preferences.fromJson(Map<String, dynamic> json) =>
+      _$PreferencesFromJson(json);
 
-  Map<String, dynamic> toJson() {
-    return {
-      'likes': likes,
-      'dislikes': dislikes,
-    };
-  }
+  Map<String, dynamic> toJson() => _$PreferencesToJson(this);
 }
 
+@JsonSerializable(explicitToJson: true)
 class MealPlan {
   final String planName;
   final DateTime startDate;
@@ -145,34 +138,13 @@ class MealPlan {
     required this.mealPlanItems,
   });
 
-  factory MealPlan.fromJson(Map<String, dynamic> json) {
-    final itemsRaw = Map<String, dynamic>.from(
-      json['meal_plan_items'] ?? const {},
-    );
-    return MealPlan(
-      planName: json['plan_name'] ?? '',
-      startDate: DateTime.parse(json['start_date']),
-      endDate: DateTime.parse(json['end_date']),
-      mealPlanItems: itemsRaw.map<String, MealPlanItem>((key, value) {
-        final item = MealPlanItem.fromJson(
-          Map<String, dynamic>.from(value ?? const {}),
-        );
-        return MapEntry(key, item);
-      }),
-    );
-  }
+  factory MealPlan.fromJson(Map<String, dynamic> json) =>
+      _$MealPlanFromJson(json);
 
-  Map<String, dynamic> toJson() {
-    return {
-      'plan_name': planName,
-      'start_date': startDate.toIso8601String(),
-      'end_date': endDate.toIso8601String(),
-      'meal_plan_items':
-      mealPlanItems.map((key, value) => MapEntry(key, value.toJson())),
-    };
-  }
+  Map<String, dynamic> toJson() => _$MealPlanToJson(this);
 }
 
+@JsonSerializable()
 class MealPlanItem {
   final String mealType;
   final String foodId;
@@ -186,21 +158,8 @@ class MealPlanItem {
     required this.portionSize,
   });
 
-  factory MealPlanItem.fromJson(Map<String, dynamic> json) {
-    return MealPlanItem(
-      mealType: json['meal_type'] ?? '',
-      foodId: json['food_id'] ?? '',
-      description: json['description'] ?? '',
-      portionSize: json['portion_size'] ?? '',
-    );
-  }
+  factory MealPlanItem.fromJson(Map<String, dynamic> json) =>
+      _$MealPlanItemFromJson(json);
 
-  Map<String, dynamic> toJson() {
-    return {
-      'meal_type': mealType,
-      'food_id': foodId,
-      'description': description,
-      'portion_size': portionSize,
-    };
-  }
+  Map<String, dynamic> toJson() => _$MealPlanItemToJson(this);
 }

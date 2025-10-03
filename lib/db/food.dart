@@ -1,17 +1,26 @@
+
+import 'package:json_annotation/json_annotation.dart';
+
+part 'food.g.dart';
+
+@JsonSerializable(explicitToJson: true)
 class Food {
-  final String id;
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  late String id; // unique identifier
   final String name;
-  final String category;
+  final String category; // Fruit,Vegi,Protein,Dairy,Grain,Other
   final int caloriesPer100g;
   final double proteinPer100g;
   final double carbsPer100g;
   final double fatPer100g;
   final double fiberPer100g;
   final Micronutrients micronutrients;
-  final String source;
+  final String source; // source of data
+  final DateTime consumedAt; // time eaten by user
+  final double servingSize;
+  final int servingCount;
 
   Food({
-    required this.id,
     required this.name,
     required this.category,
     required this.caloriesPer100g,
@@ -21,38 +30,54 @@ class Food {
     required this.fiberPer100g,
     required this.micronutrients,
     required this.source,
+    required this.consumedAt,
+    this.servingSize = 1.0,
+    this.servingCount = 1,
   });
 
   factory Food.fromJson(Map<String, dynamic> json, String id) {
-    return Food(
-      id: id,
-      name: json['name'] ?? '',
-      category: json['category'] ?? '',
-      caloriesPer100g: json['calories_per_100g'] ?? 0,
-      proteinPer100g: (json['protein_per_100g'] ?? 0).toDouble(),
-      carbsPer100g: (json['carbs_per_100g'] ?? 0).toDouble(),
-      fatPer100g: (json['fat_per_100g'] ?? 0).toDouble(),
-      fiberPer100g: (json['fiber_per_100g'] ?? 0).toDouble(),
-      micronutrients: Micronutrients.fromJson(json['micronutrients'] ?? {}),
-      source: json['source'] ?? '',
-    );
+    final food = _$FoodFromJson(json);
+    food.id = id;
+    return food;
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'name': name,
-      'category': category,
-      'calories_per_100g': caloriesPer100g,
-      'protein_per_100g': proteinPer100g,
-      'carbs_per_100g': carbsPer100g,
-      'fat_per_100g': fatPer100g,
-      'fiber_per_100g': fiberPer100g,
-      'micronutrients': micronutrients.toJson(),
-      'source': source,
-    };
+  Map<String, dynamic> toJson() => _$FoodToJson(this);
+
+  Food copyWith({
+    String? id,
+    String? name,
+    String? category,
+    int? caloriesPer100g,
+    double? proteinPer100g,
+    double? carbsPer100g,
+    double? fatPer100g,
+    double? fiberPer100g,
+    Micronutrients? micronutrients,
+    String? source,
+    DateTime? consumedAt,
+    double? servingSize,
+    int? servingCount,
+  }) {
+    final food = Food(
+      name: name ?? this.name,
+      category: category ?? this.category,
+      caloriesPer100g: caloriesPer100g ?? this.caloriesPer100g,
+      proteinPer100g: proteinPer100g ?? this.proteinPer100g,
+      carbsPer100g: carbsPer100g ?? this.carbsPer100g,
+      fatPer100g: fatPer100g ?? this.fatPer100g,
+      fiberPer100g: fiberPer100g ?? this.fiberPer100g,
+      micronutrients: micronutrients ?? this.micronutrients,
+      source: source ?? this.source,
+      consumedAt: consumedAt ?? this.consumedAt,
+      servingSize: servingSize ?? this.servingSize,
+      servingCount: servingCount ?? this.servingCount,
+    );
+    food.id = id ?? this.id;
+    return food;
   }
 }
 
+@JsonSerializable()
 class Micronutrients {
   final double calciumMg;
   final double ironMg;
@@ -66,21 +91,8 @@ class Micronutrients {
     required this.vitaminCMg,
   });
 
-  factory Micronutrients.fromJson(Map<String, dynamic> json) {
-    return Micronutrients(
-      calciumMg: (json['calcium_mg'] ?? 0).toDouble(),
-      ironMg: (json['iron_mg'] ?? 0).toDouble(),
-      vitaminAMcg: (json['vitamin_a_mcg'] ?? 0).toDouble(),
-      vitaminCMg: (json['vitamin_c_mg'] ?? 0).toDouble(),
-    );
-  }
+  factory Micronutrients.fromJson(Map<String, dynamic> json) =>
+      _$MicronutrientsFromJson(json);
 
-  Map<String, dynamic> toJson() {
-    return {
-      'calcium_mg': calciumMg,
-      'iron_mg': ironMg,
-      'vitamin_a_mcg': vitaminAMcg,
-      'vitamin_c_mg': vitaminCMg,
-    };
-  }
+  Map<String, dynamic> toJson() => _$MicronutrientsToJson(this);
 }

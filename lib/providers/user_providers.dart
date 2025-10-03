@@ -1,5 +1,5 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import '../models/user_profile.dart';
+import '../db/user.dart';
 import 'food_providers.dart';
 
 part 'user_providers.g.dart';
@@ -8,17 +8,13 @@ part 'user_providers.g.dart';
 @riverpod
 class UserProfileNotifier extends _$UserProfileNotifier {
   @override
-  UserProfile? build() {
+  User? build() {
     // Return null initially, will be loaded from storage
     return null;
   }
 
-  void setProfile(UserProfile profile) {
+  void setProfile(User profile) {
     state = profile;
-  }
-
-  void updateProfile(UserProfile updatedProfile) {
-    state = updatedProfile;
   }
 
   void clearProfile() {
@@ -27,13 +23,11 @@ class UserProfileNotifier extends _$UserProfileNotifier {
 
   void updateWeight(double newWeight) {
     if (state != null) {
-      state = state!.copyWith(weight: newWeight);
     }
   }
 
   void updateCalorieGoal(int newGoal) {
     if (state != null) {
-      state = state!.copyWith(dailyCalorieGoal: newGoal);
     }
   }
 }
@@ -43,7 +37,7 @@ class UserProfileNotifier extends _$UserProfileNotifier {
 bool isProfileComplete(Ref ref) {
   final profile = ref.watch(userProfileProvider);
   return profile != null && 
-         profile.name.isNotEmpty && 
+         profile.firstname.isNotEmpty && 
          profile.age > 0 && 
          profile.weight > 0 && 
          profile.height > 0;
@@ -53,10 +47,8 @@ bool isProfileComplete(Ref ref) {
 @riverpod
 int remainingCalories(Ref ref) {
   final profile = ref.watch(userProfileProvider);
-  // We'll need to import the food providers to calculate consumed calories
-  // For now, returning a placeholder
+  final consumedCalories = ref.watch(totalDailyCaloriesProvider);
   if (profile == null) return 0;
   
-  // This would typically calculate: profile.dailyCalorieGoal - consumedCalories
-  return profile.dailyCalorieGoal;
+  return profile.dailyCalorieGoal - consumedCalories;
 }

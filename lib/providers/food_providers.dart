@@ -1,5 +1,5 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import '../models/food_item.dart';
+import '../db/food.dart';
 
 part 'food_providers.g.dart';
 
@@ -7,11 +7,11 @@ part 'food_providers.g.dart';
 @riverpod
 class FoodLog extends _$FoodLog {
   @override
-  List<FoodItem> build() {
+  List<Food> build() {
     return [];
   }
 
-  void addFoodItem(FoodItem item) {
+  void addFoodItem(Food item) {
     state = [...state, item];
   }
 
@@ -23,7 +23,7 @@ class FoodLog extends _$FoodLog {
     state = [];
   }
 
-  void updateFoodItem(FoodItem updatedItem) {
+  void updateFoodItem(Food updatedItem) {
     state = state.map((item) {
       return item.id == updatedItem.id ? updatedItem : item;
     }).toList();
@@ -41,7 +41,7 @@ int totalDailyCalories(Ref ref) {
           item.consumedAt.year == today.year &&
           item.consumedAt.month == today.month &&
           item.consumedAt.day == today.day)
-      .fold(0, (total, item) => total + item.calories);
+      .fold(0, (total, item) => total + (item.caloriesPer100g / 100 * item.servingSize).round());
 }
 
 // Computed provider for total daily macros
@@ -60,9 +60,9 @@ Map<String, double> totalDailyMacros(Ref ref) {
   double totalFat = 0;
 
   for (final item in todaysFoods) {
-    totalProtein += item.protein;
-    totalCarbs += item.carbs;
-    totalFat += item.fat;
+    totalProtein += (item.proteinPer100g / 100 * item.servingSize);
+    totalCarbs += (item.carbsPer100g / 100 * item.servingSize);
+    totalFat += (item.fatPer100g / 100 * item.servingSize);
   }
 
   return {

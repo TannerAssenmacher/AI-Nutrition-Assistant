@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/food_providers.dart';
 import '../providers/user_providers.dart';
-import '../models/food_item.dart';
+import '../db/food.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -167,7 +167,7 @@ class HomeScreen extends ConsumerWidget {
                     child: Icon(Icons.restaurant, color: Colors.green[600]),
                   ),
                   title: Text(food.name),
-                  subtitle: Text('${food.calories} calories'),
+                  subtitle: Text('${food.caloriesPer100g} calories'),
                   trailing: IconButton(
                     icon: const Icon(Icons.delete, color: Colors.red),
                     onPressed: () {
@@ -201,15 +201,25 @@ class HomeScreen extends ConsumerWidget {
           TextButton(
             onPressed: () {
               // Example: Add a sample food item
-              final sampleFood = FoodItem(
-                id: DateTime.now().millisecondsSinceEpoch.toString(),
+              final sampleFood = Food(
                 name: 'Sample Apple',
-                calories: 80,
-                protein: 0.4,
-                carbs: 21.0,
-                fat: 0.2,
+                category: "Fruit",
+                caloriesPer100g: 200,
+                proteinPer100g: 2.5,
+                carbsPer100g: 10.0,
+                fatPer100g: 0.5,
+                fiberPer100g: 1.0,
+                micronutrients: Micronutrients(
+                  calciumMg: 100,
+                  ironMg: 0.5,
+                  vitaminAMcg: 100,
+                  vitaminCMg: 50,
+                ),
+                source: 'Sample Source',
                 consumedAt: DateTime.now(),
+                servingSize: 100
               );
+              sampleFood.id = DateTime.now().millisecondsSinceEpoch.toString();
               ref.read(foodLogProvider.notifier).addFoodItem(sampleFood);
               Navigator.of(context).pop();
             },
