@@ -1,14 +1,15 @@
-
 import 'package:json_annotation/json_annotation.dart';
+import 'package:uuid/uuid.dart';
 
 part 'food.g.dart';
 
 @JsonSerializable(explicitToJson: true)
 class Food {
   @JsonKey(includeFromJson: false, includeToJson: false)
-  late String id; // unique identifier
+  final String id; // unique identifier
+
   final String name;
-  final String category; // Fruit,Vegi,Protein,Dairy,Grain,Other
+  final String category; // Fruit, Vegi, Protein, Dairy, Grain, Other
   final int caloriesPer100g;
   final double proteinPer100g;
   final double carbsPer100g;
@@ -21,6 +22,7 @@ class Food {
   final int servingCount;
 
   Food({
+    String? id,
     required this.name,
     required this.category,
     required this.caloriesPer100g,
@@ -33,12 +35,26 @@ class Food {
     required this.consumedAt,
     this.servingSize = 1.0,
     this.servingCount = 1,
-  });
+  }) : id = id ?? const Uuid().v4(); // generate once if not passed
 
+  /// Firestore factory (injects doc ID)
   factory Food.fromJson(Map<String, dynamic> json, String id) {
     final food = _$FoodFromJson(json);
-    food.id = id;
-    return food;
+    return Food(
+      id: id,
+      name: food.name,
+      category: food.category,
+      caloriesPer100g: food.caloriesPer100g,
+      proteinPer100g: food.proteinPer100g,
+      carbsPer100g: food.carbsPer100g,
+      fatPer100g: food.fatPer100g,
+      fiberPer100g: food.fiberPer100g,
+      micronutrients: food.micronutrients,
+      source: food.source,
+      consumedAt: food.consumedAt,
+      servingSize: food.servingSize,
+      servingCount: food.servingCount,
+    );
   }
 
   Map<String, dynamic> toJson() => _$FoodToJson(this);
@@ -58,7 +74,8 @@ class Food {
     double? servingSize,
     int? servingCount,
   }) {
-    final food = Food(
+    return Food(
+      id: id ?? this.id,
       name: name ?? this.name,
       category: category ?? this.category,
       caloriesPer100g: caloriesPer100g ?? this.caloriesPer100g,
@@ -72,8 +89,6 @@ class Food {
       servingSize: servingSize ?? this.servingSize,
       servingCount: servingCount ?? this.servingCount,
     );
-    food.id = id ?? this.id;
-    return food;
   }
 }
 

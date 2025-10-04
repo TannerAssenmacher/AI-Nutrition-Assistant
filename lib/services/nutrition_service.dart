@@ -26,7 +26,6 @@ class NutritionService {
         consumedAt: DateTime.now(),
         servingSize: 150
       );
-    food1.id = '1';
 
     final food2 = Food(
         name: 'Banana',
@@ -46,7 +45,6 @@ class NutritionService {
         consumedAt: DateTime.now(),
         servingSize: 118
       );
-    food2.id = '2';
 
     final food3 = Food(
         name: 'Chicken Breast',
@@ -66,7 +64,6 @@ class NutritionService {
         consumedAt: DateTime.now(),
         servingSize: 100
       );
-    food3.id = '3';
 
     final allFoods = [food1, food2, food3];
     

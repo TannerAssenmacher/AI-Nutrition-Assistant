@@ -219,7 +219,6 @@ class HomeScreen extends ConsumerWidget {
                 consumedAt: DateTime.now(),
                 servingSize: 100
               );
-              sampleFood.id = DateTime.now().millisecondsSinceEpoch.toString();
               ref.read(foodLogProvider.notifier).addFoodItem(sampleFood);
               Navigator.of(context).pop();
             },

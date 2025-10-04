@@ -14,7 +14,7 @@ class FirestoreHelper {
   // ---------------------------------------------------------------------------
 
   /// Create a new user. Fails if the document already exists.
-  static Future<void> createUser(User user) async {
+  static Future<void> createUser(AppUser user) async {
     final docRef = _db.collection(usersCollection).doc(user.id);
     final snap = await docRef.get();
     if (snap.exists) {
@@ -26,7 +26,7 @@ class FirestoreHelper {
   }
 
   /// Update an existing user. Fails if the document does not exist.
-  static Future<void> updateUser(User user) async {
+  static Future<void> updateUser(AppUser user) async {
     final docRef = _db.collection(usersCollection).doc(user.id);
     final snap = await docRef.get();
     if (!snap.exists) {
@@ -38,11 +38,11 @@ class FirestoreHelper {
   }
 
   /// Read user by ID.
-  static Future<User?> getUser(String userId) async {
+  static Future<AppUser?> getUser(String userId) async {
     try {
       final doc = await _db.collection(usersCollection).doc(userId).get();
       if (!doc.exists || doc.data() == null) return null;
-      return User.fromJson(doc.data()!, doc.id);
+      return AppUser.fromJson(doc.data()!, doc.id);
     } catch (e) {
       // ignore: avoid_print
       print('❌ Error fetching user: $e');
@@ -58,11 +58,11 @@ class FirestoreHelper {
   }
 
   /// Get all users.
-  static Future<List<User>> getAllUsers() async {
+  static Future<List<AppUser>> getAllUsers() async {
     try {
       final snapshot = await _db.collection(usersCollection).get();
       return snapshot.docs
-          .map((d) => User.fromJson(d.data(), d.id))
+          .map((d) => AppUser.fromJson(d.data(), d.id))
           .toList();
     } catch (e) {
       // ignore: avoid_print

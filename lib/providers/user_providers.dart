@@ -8,12 +8,12 @@ part 'user_providers.g.dart';
 @riverpod
 class UserProfileNotifier extends _$UserProfileNotifier {
   @override
-  User? build() {
+  AppUser? build() {
     // Return null initially, will be loaded from storage
     return null;
   }
 
-  void setProfile(User profile) {
+  void setProfile(AppUser profile) {
     state = profile;
   }
 

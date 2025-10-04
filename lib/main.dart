@@ -4,30 +4,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 import 'screens/home_screen.dart';
-
-/// Print all documents from known top-level collections.
-Future<void> printAllData() async {
-  final db = FirebaseFirestore.instance;
-
-  // List your root collections here
-  const rootCollections = ['Users', 'Food'];
-
-  for (final collName in rootCollections) {
-    try {
-      final snap = await db.collection(collName).get();
-      if (snap.docs.isEmpty) {
-        print('📂 $collName: (no documents)');
-        continue;
-      }
-      print('📂 $collName:');
-      for (final doc in snap.docs) {
-        print('  📄 $collName/${doc.id}: ${doc.data()}');
-      }
-    } catch (e) {
-      print('Error reading $collName: $e');
-    }
-  }
-}
+import 'db/user.dart';
+import 'db/food.dart';
+import 'db/firestore_helper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,8 +14,63 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  // Layout for successful addition of new user
+  //==========================================
+  // final user = AppUser(
+  //   firstname: "Alice",
+  //   lastname: "Smith",
+  //   email: "asmith3@yahoo.com",
+  //   password: "password123",
+  //   age: 25,
+  //   sex: "female",
+  //   height: 165,
+  //   weight: 130,
+  //   activityLevel: "moderate",
+  //   dietaryGoal: "maintain weight",
+  //   mealProfile: MealProfile(
+  //     dietaryHabits: ["vegetarian"],
+  //     allergies: ["nuts"],
+  //     preferences: Preferences(
+  //       likes:  ["cheescake", "salad"],
+  //       dislikes: ["broccoli"]
+  //     ),
+  //   ),
+  //   mealPlans: {},
+  //   dailyCalorieGoal: 2000,
+  //   macroGoals: {"protein": 20.0, "carbs": 50.0, "fats": 30.0},
+  //   createdAt: DateTime.now(),
+  //   updatedAt: DateTime.now(),
+  // );
+
   // Print all Firestore data once at startup
-  await printAllData();
+  // await FirestoreHelper.createUser(user);
+
+
+  // Example of successful addition of new food item
+  //==========================================
+  // final beefSirloin = Food(
+  //   name: "Beef Sirloin (Grilled)",
+  //   category: "Protein",
+  //   caloriesPer100g: 271,
+  //   proteinPer100g: 25.0,
+  //   carbsPer100g: 0.0,
+  //   fatPer100g: 19.0,
+  //   fiberPer100g: 0.0,
+  //   micronutrients: Micronutrients(
+  //     calciumMg: 18,
+  //     ironMg: 2.6,
+  //     vitaminAMcg: 0,
+  //     vitaminCMg: 0,
+  //   ),
+  //   source: "USDA",
+  //   consumedAt: DateTime.now(),
+  //   servingSize: 85.0, // grams (~3 oz cooked steak)
+  //   servingCount: 1,
+  // );
+  //
+  // await FirebaseFirestore.instance.collection("Food").doc(beefSirloin.id).set(beefSirloin.toJson());
+
+  await FirestoreHelper.printAllData();
   
   runApp(
     const ProviderScope(

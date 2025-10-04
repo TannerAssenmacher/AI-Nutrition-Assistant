@@ -5,8 +5,8 @@ import 'package:nutrition_assistant/db/user.dart';
 import 'package:nutrition_assistant/db/food.dart';
 
 // Mock data for tests
-User get mockUser {
-  final user = User(
+AppUser get mockUser {
+  final user = AppUser(
     firstname: 'John',
     lastname: 'Doe',
     email: 'jd@gmail.com',
@@ -42,7 +42,6 @@ User get mockUser {
     createdAt: DateTime.now(),
     updatedAt: DateTime.now(),
   );
-  user.id = 'user_123';
   return user;
 }
 
@@ -65,7 +64,6 @@ Food get mockFood {
     ),
     source: 'USDA',
   );
-  food.id = 'food_123';
   return food;
 }
 
