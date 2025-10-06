@@ -7,6 +7,7 @@ import 'screens/home_screen.dart';
 import 'db/user.dart';
 import 'db/food.dart';
 import 'db/firestore_helper.dart';
+import 'screens/login_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -90,8 +91,12 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const HomeScreen(),
-      debugShowCheckedModeBanner: false,
+        debugShowCheckedModeBanner: false,
+        initialRoute: '/login',
+        routes: {
+          '/login': (context) => const LoginPage(),
+          '/home': (context) => const HomeScreen(),
+        },
     );
   }
 }
