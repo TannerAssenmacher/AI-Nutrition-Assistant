@@ -1,67 +1,67 @@
 {
-    "project_info": {
-        "project_number": "468473644377",
-        "project_id": "ai-nutrition-assistant-e2346",
-        "storage_bucket": "ai-nutrition-assistant-e2346.firebasestorage.app"
-    },
-    "client": [
-        {
-            "client_info": {
-                "mobilesdk_app_id": "1:468473644377:android:0dbe0075c4972c47267848",
-                "android_client_info": {
-                    "package_name": "com.example.ai_nutrition_assistant"
-                }
-            },
-            "oauth_client": [],
-            "api_key": [
-                {
-                    "current_key": "AIzaSyApkkrZLPl_j7zK3WdzFXVGSSjUtG_Itcg"
-                }
-            ],
-            "services": {
-                "appinvite_service": {
-                    "other_platform_oauth_client": []
-                }
-            }
-        },
-        {
-            "client_info": {
-                "mobilesdk_app_id": "1:468473644377:android:6ef8c3e8538c09aa267848",
-                "android_client_info": {
-                    "package_name": "com.example.ainutrition"
-                }
-            },
-            "oauth_client": [],
-            "api_key": [
-                {
-                    "current_key": "AIzaSyApkkrZLPl_j7zK3WdzFXVGSSjUtG_Itcg"
-                }
-            ],
-            "services": {
-                "appinvite_service": {
-                    "other_platform_oauth_client": []
-                }
-            }
-        },
-        {
-            "client_info": {
-                "mobilesdk_app_id": "1:468473644377:android:0da8f2de23872a8f267848",
-                "android_client_info": {
-                    "package_name": "com.example.myapp"
-                }
-            },
-            "oauth_client": [],
-            "api_key": [
-                {
-                    "current_key": "AIzaSyApkkrZLPl_j7zK3WdzFXVGSSjUtG_Itcg"
-                }
-            ],
-            "services": {
-                "appinvite_service": {
-                    "other_platform_oauth_client": []
-                }
-            }
+  "project_info": {
+    "project_number": "468473644377",
+    "project_id": "ai-nutrition-assistant-e2346",
+    "storage_bucket": "ai-nutrition-assistant-e2346.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:468473644377:android:0dbe0075c4972c47267848",
+        "android_client_info": {
+          "package_name": "com.example.ai_nutrition_assistant"
         }
-    ],
-    "configuration_version": "1"
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyApkkrZLPl_j7zK3WdzFXVGSSjUtG_Itcg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:468473644377:android:6ef8c3e8538c09aa267848",
+        "android_client_info": {
+          "package_name": "com.example.ainutrition"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyApkkrZLPl_j7zK3WdzFXVGSSjUtG_Itcg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:468473644377:android:0da8f2de23872a8f267848",
+        "android_client_info": {
+          "package_name": "com.example.myapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyApkkrZLPl_j7zK3WdzFXVGSSjUtG_Itcg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
 }

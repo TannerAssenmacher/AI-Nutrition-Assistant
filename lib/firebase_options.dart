@@ -85,4 +85,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'ai-nutrition-assistant-e2346.firebasestorage.app',
     measurementId: 'G-2WNBSDWFJF',
   );
+
 }
