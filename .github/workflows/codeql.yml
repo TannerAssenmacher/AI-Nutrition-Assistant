@@ -35,7 +35,12 @@ jobs:
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
       with:
-        languages: ${{ matrix.language }}
+        languages: swift
+        paths: |
+          macos/
+        paths-ignore: |
+          macos/Flutter/
+          ios/
 
     - name: Install dependencies
       run: flutter pub get
