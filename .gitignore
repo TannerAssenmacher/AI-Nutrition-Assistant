@@ -87,3 +87,7 @@ app.*.map.json
 *.dSYM.zip
 *.app
 *.exe
+
+# Xcode stuff for iPhone
+/ios/Runner.xcodeproj/xcshareddata/
+/ios/Flutter/
