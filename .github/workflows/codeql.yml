@@ -40,16 +40,18 @@ jobs:
     - name: Install dependencies
       run: flutter pub get
 
-    - name: Update CocoaPods repo
+    - name: Clean Pod Cache & Update Repos
       run: |
         sudo gem install cocoapods --no-document
         pod repo update
+        rm -rf ios/Pods macos/Pods ios/Podfile.lock macos/Podfile.lock
+        pod cache clean --all
+        cd macos && pod install --repo-update && cd ..
 
     - name: Build Flutter macOS target
       run: |
         flutter pub get
         flutter build macos
-
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
