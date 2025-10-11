@@ -15,45 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyApkkrZLPl_j7zK3WdzFXVGSSjUtG_Itcg"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:468473644377:android:6ef8c3e8538c09aa267848",
-        "android_client_info": {
-          "package_name": "com.example.ainutrition"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyApkkrZLPl_j7zK3WdzFXVGSSjUtG_Itcg"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:468473644377:android:0da8f2de23872a8f267848",
-        "android_client_info": {
-          "package_name": "com.example.myapp"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyApkkrZLPl_j7zK3WdzFXVGSSjUtG_Itcg"
+          "current_key": "AIzaSyChT0MjO6rRvq2BJzQOksGJ6l9yMlnRjGY"
         }
       ],
       "services": {
