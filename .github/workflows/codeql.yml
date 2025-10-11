@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [ 'swift' ] # needed for macOS/iOS targets
+        language: [ 'javascript' ]
 
     steps:
     - name: Checkout repository
@@ -35,7 +35,7 @@ jobs:
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
       with:
-        languages: swift
+        languages: javascript
         source-root: macos
 
     - name: Install dependencies
