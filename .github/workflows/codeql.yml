@@ -36,11 +36,7 @@ jobs:
       uses: github/codeql-action/init@v3
       with:
         languages: swift
-        paths: |
-          macos/
-        paths-ignore: |
-          macos/Flutter/
-          ios/
+        source-root: macos
 
     - name: Install dependencies
       run: flutter pub get
