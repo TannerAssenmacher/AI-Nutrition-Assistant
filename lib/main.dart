@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
@@ -13,6 +14,13 @@ import 'screens/forgot_password_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load the .env before Firebase
+  await dotenv.load(fileName: ".env");
+
+  // Print one variable to confirm
+  print("✅ Loaded GOOGLE_API_KEY_ANDROID: ${dotenv.env['GOOGLE_API_KEY_ANDROID']}");
+
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
