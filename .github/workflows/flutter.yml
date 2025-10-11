@@ -17,6 +17,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Create .env file from GitHub Secrets
+        run: |
+          echo "GOOGLE_API_KEY_ANDROID=${{ secrets.GOOGLE_API_KEY_ANDROID }}" >> .env
+          echo "GOOGLE_API_KEY_IOS=${{ secrets.GOOGLE_API_KEY_IOS }}" >> .env
+          echo "GOOGLE_API_KEY_WEB=${{ secrets.GOOGLE_API_KEY_WEB }}" >> .env
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -37,6 +43,10 @@ jobs:
 
       - name: Build APK
         run: flutter build apk --release
+
+      - name: Clean up secrets file
+        if: always()
+        run: rm -f .env
 
   deploy-firebase:
     runs-on: ubuntu-latest
