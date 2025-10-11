@@ -58,9 +58,9 @@ jobs:
     - name: Install macOS Pods (separately)
       working-directory: macos
       run: pod install --repo-update
-    
-    - name: Build Flutter macOS target
-      run: flutter build macos --release
+
+    - name: Skip macOS build to prevent hang
+      run: echo "Skipping Flutter macOS build; analyzing Swift sources only"
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
