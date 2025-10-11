@@ -9,6 +9,7 @@ import 'db/food.dart';
 import 'db/firestore_helper.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
+import 'screens/forgot_password_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -97,6 +98,7 @@ class MyApp extends StatelessWidget {
         routes: {
           '/login': (context) => const LoginPage(),
           '/register': (context) => const RegisterPage(),
+          '/forgot': (context) => const ForgotPasswordPage(),
           '/home': (context) => const HomeScreen(),
         },
     );

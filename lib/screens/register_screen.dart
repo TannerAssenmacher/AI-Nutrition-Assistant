@@ -134,12 +134,21 @@ class _RegisterPageState extends State<RegisterPage> {
       // 🔹 3. Save to Firestore
       await FirebaseFirestore.instance.collection('Users').doc(uid).set(user.toJson());
 
+      // 🔹 4. Send email verification
+      await authResult.user?.sendEmailVerification();
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Account created successfully!')),
+          const SnackBar(
+            content: Text('Verification email sent! Please check your inbox.'),
+            duration: Duration(seconds: 5),
+          ),
         );
-        Navigator.pushReplacementNamed(context, '/home');
+
+        // After signup, direct back to login so user verifies first
+        Navigator.pushReplacementNamed(context, '/login');
       }
+
     } on FirebaseAuthException catch (e) {
       // 🔹 Log detailed FirebaseAuth error to console
       print('🔥 FirebaseAuthException: ${e.code} → ${e.message}');

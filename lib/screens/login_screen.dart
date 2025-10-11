@@ -24,17 +24,93 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
+      final result = await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
-      // Once logged in, navigate to main app page
+
+      final user = result.user;
+
+      if (user != null && !user.emailVerified) {
+        // 🔹 Email not verified — show dialog
+        await _showEmailVerificationDialog(user);
+        await FirebaseAuth.instance.signOut(); // prevent access until verified
+        return;
+      }
+
+      // 🔹 Verified user → navigate to home
       if (mounted) Navigator.pushReplacementNamed(context, '/home');
     } on FirebaseAuthException catch (e) {
       setState(() => _error = e.message);
     } finally {
       setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _showEmailVerificationDialog(User user) async {
+    bool isVerified = user.emailVerified;
+    bool stopChecking = false;
+
+    // 🔹 Periodically check if the user verifies their email
+    Future<void> checkVerificationStatus() async {
+      while (!stopChecking && !isVerified) {
+        await Future.delayed(const Duration(seconds: 4));
+        await user.reload();
+        final refreshed = FirebaseAuth.instance.currentUser;
+        if (refreshed != null && refreshed.emailVerified) {
+          isVerified = true;
+          stopChecking = true;
+          if (mounted) {
+            Navigator.pop(context); // Close the dialog
+            Navigator.pushReplacementNamed(context, '/home');
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Email verified! Welcome back!')),
+            );
+          }
+          break;
+        }
+      }
+    }
+
+    // 🔹 Start checking in the background
+    checkVerificationStatus();
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: const Text('Verify Your Email'),
+            content: const Text(
+              'We sent a verification email to your inbox. '
+                  'Once you verify it, this screen will automatically continue.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () async {
+                  await user.sendEmailVerification();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Verification email sent again!')),
+                  );
+                },
+                child: const Text('Resend Email'),
+              ),
+              TextButton(
+                onPressed: () {
+                  stopChecking = true;
+                  Navigator.pop(context);
+                },
+                child: const Text('Cancel'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    // Stop checking if the dialog is closed manually
+    stopChecking = true;
   }
 
   @override
@@ -135,6 +211,13 @@ class _LoginPageState extends State<LoginPage> {
                 onPressed: () => Navigator.pushNamed(context, '/register'),
                 child: const Text("Don't have an account? Register here"),
               ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pushNamed(context, '/forgot');
+                },
+                child: const Text('Forgot Password?'),
+              ),
+
             ],
           ),
         ),
