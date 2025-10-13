@@ -11,6 +11,7 @@ import 'db/firestore_helper.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/forgot_password_screen.dart';
+import 'screens/profile_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -107,6 +108,7 @@ class MyApp extends StatelessWidget {
           '/login': (context) => const LoginPage(),
           '/register': (context) => const RegisterPage(),
           '/forgot': (context) => const ForgotPasswordPage(),
+          '/profile': (context) => const ProfileScreen(),
           '/home': (context) => const HomeScreen(),
         },
     );
