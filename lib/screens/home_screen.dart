@@ -1,9 +1,14 @@
+import 'dart:io';
+
+import 'package:camera/camera.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+
+import '../db/food.dart';
 import '../providers/food_providers.dart';
 import '../providers/user_providers.dart';
-import '../db/food.dart';
+import 'camera_capture_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -202,12 +207,57 @@ class HomeScreen extends ConsumerWidget {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddFoodDialog(context, ref),
-        backgroundColor: Colors.green[600],
-        child: const Icon(Icons.add, color: Colors.white),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            heroTag: 'cameraFab',
+            onPressed: () => _openCamera(context),
+            backgroundColor: Colors.green[700],
+            child: const Icon(Icons.camera_alt, color: Colors.white),
+          ),
+          const SizedBox(height: 12),
+          FloatingActionButton(
+            heroTag: 'addFoodFab',
+            onPressed: () => _showAddFoodDialog(context, ref),
+            backgroundColor: Colors.green[600],
+            child: const Icon(Icons.add, color: Colors.white),
+          ),
+        ],
       ),
     );
+  }
+
+  Future<void> _openCamera(BuildContext context) async {
+    try {
+      final capturedFile = await Navigator.of(context).push<XFile?>(
+        MaterialPageRoute<XFile?>(
+          builder: (_) => const CameraCaptureScreen(),
+        ),
+      );
+
+      if (capturedFile == null) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Meal photo captured.')),
+      );
+
+      try {
+        final file = File(capturedFile.path);
+        if (await file.exists()) {
+          await file.delete();
+        }
+      } catch (_) {
+        // Ignore cleanup failures; nothing sensitive is stored long term.
+      }
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Camera unavailable: $error')),
+      );
+    }
   }
 
   void _showAddFoodDialog(BuildContext context, WidgetRef ref) {
