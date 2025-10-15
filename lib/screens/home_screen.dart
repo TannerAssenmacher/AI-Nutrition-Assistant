@@ -1,9 +1,14 @@
+import 'dart:io';
+
+import 'package:camera/camera.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+
+import '../db/food.dart';
 import '../providers/food_providers.dart';
 import '../providers/user_providers.dart';
-import '../db/food.dart';
+import 'camera_capture_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -70,17 +75,17 @@ class HomeScreen extends ConsumerWidget {
                       Text(
                         'Goal: ${userProfile.dailyCalorieGoal} calories',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey[600],
-                        ),
+                              color: Colors.grey[600],
+                            ),
                       ),
                     ],
                   ],
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Macros Summary Card
             Card(
               child: Padding(
@@ -98,7 +103,8 @@ class HomeScreen extends ConsumerWidget {
                       children: [
                         _MacroColumn(
                           label: 'Protein',
-                          value: '${dailyMacros['protein']?.toStringAsFixed(1)}g',
+                          value:
+                              '${dailyMacros['protein']?.toStringAsFixed(1)}g',
                           color: Colors.red[300]!,
                         ),
                         _MacroColumn(
@@ -117,9 +123,9 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Food Suggestions
             Text(
               'Food Suggestions',
@@ -166,9 +172,9 @@ class HomeScreen extends ConsumerWidget {
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (error, stack) => Text('Error: $error'),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Today's Food Log
             Text(
               'Today\'s Food Log',
@@ -179,35 +185,83 @@ class HomeScreen extends ConsumerWidget {
               const Card(
                 child: Padding(
                   padding: EdgeInsets.all(16.0),
-                  child: Text('No food logged today. Start by adding some food!'),
+                  child:
+                      Text('No food logged today. Start by adding some food!'),
                 ),
               )
             else
               ...foodLog.map((food) => Card(
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: Colors.green[100],
-                    child: Icon(Icons.restaurant, color: Colors.green[600]),
-                  ),
-                  title: Text(food.name),
-                  subtitle: Text('${food.caloriesPer100g} calories'),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () {
-                      ref.read(foodLogProvider.notifier).removeFoodItem(food.id);
-                    },
-                  ),
-                ),
-              )),
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: Colors.green[100],
+                        child: Icon(Icons.restaurant, color: Colors.green[600]),
+                      ),
+                      title: Text(food.name),
+                      subtitle: Text('${food.caloriesPer100g} calories'),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () {
+                          ref
+                              .read(foodLogProvider.notifier)
+                              .removeFoodItem(food.id);
+                        },
+                      ),
+                    ),
+                  )),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddFoodDialog(context, ref),
-        backgroundColor: Colors.green[600],
-        child: const Icon(Icons.add, color: Colors.white),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            heroTag: 'cameraFab',
+            onPressed: () => _openCamera(context),
+            backgroundColor: Colors.green[700],
+            child: const Icon(Icons.camera_alt, color: Colors.white),
+          ),
+          const SizedBox(height: 12),
+          FloatingActionButton(
+            heroTag: 'addFoodFab',
+            onPressed: () => _showAddFoodDialog(context, ref),
+            backgroundColor: Colors.green[600],
+            child: const Icon(Icons.add, color: Colors.white),
+          ),
+        ],
       ),
     );
+  }
+
+  Future<void> _openCamera(BuildContext context) async {
+    try {
+      final capturedFile = await Navigator.of(context).push<XFile?>(
+        MaterialPageRoute<XFile?>(
+          builder: (_) => const CameraCaptureScreen(),
+        ),
+      );
+
+      if (capturedFile == null) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Meal photo captured.')),
+      );
+
+      try {
+        final file = File(capturedFile.path);
+        if (await file.exists()) {
+          await file.delete();
+        }
+      } catch (_) {
+        // Ignore cleanup failures; nothing sensitive is stored long term.
+      }
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Camera unavailable: $error')),
+      );
+    }
   }
 
   void _showAddFoodDialog(BuildContext context, WidgetRef ref) {
@@ -225,23 +279,22 @@ class HomeScreen extends ConsumerWidget {
             onPressed: () {
               // Example: Add a sample food item
               final sampleFood = Food(
-                name: 'Sample Apple',
-                category: "Fruit",
-                caloriesPer100g: 200,
-                proteinPer100g: 2.5,
-                carbsPer100g: 10.0,
-                fatPer100g: 0.5,
-                fiberPer100g: 1.0,
-                micronutrients: Micronutrients(
-                  calciumMg: 100,
-                  ironMg: 0.5,
-                  vitaminAMcg: 100,
-                  vitaminCMg: 50,
-                ),
-                source: 'Sample Source',
-                consumedAt: DateTime.now(),
-                servingSize: 100
-              );
+                  name: 'Sample Apple',
+                  category: "Fruit",
+                  caloriesPer100g: 200,
+                  proteinPer100g: 2.5,
+                  carbsPer100g: 10.0,
+                  fatPer100g: 0.5,
+                  fiberPer100g: 1.0,
+                  micronutrients: Micronutrients(
+                    calciumMg: 100,
+                    ironMg: 0.5,
+                    vitaminAMcg: 100,
+                    vitaminCMg: 50,
+                  ),
+                  source: 'Sample Source',
+                  consumedAt: DateTime.now(),
+                  servingSize: 100);
               ref.read(foodLogProvider.notifier).addFoodItem(sampleFood);
               Navigator.of(context).pop();
             },
