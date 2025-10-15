@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class LoginPage extends StatefulWidget {
@@ -32,13 +33,11 @@ class _LoginPageState extends State<LoginPage> {
       final user = result.user;
 
       if (user != null && !user.emailVerified) {
-        // 🔹 Email not verified — show dialog
         await _showEmailVerificationDialog(user);
         await FirebaseAuth.instance.signOut(); // prevent access until verified
         return;
       }
 
-      // 🔹 Verified user → navigate to home
       if (mounted) Navigator.pushReplacementNamed(context, '/home');
     } on FirebaseAuthException catch (e) {
       setState(() => _error = e.message);
@@ -51,7 +50,6 @@ class _LoginPageState extends State<LoginPage> {
     bool isVerified = user.emailVerified;
     bool stopChecking = false;
 
-    // 🔹 Periodically check if the user verifies their email
     Future<void> checkVerificationStatus() async {
       while (!stopChecking && !isVerified) {
         await Future.delayed(const Duration(seconds: 4));
@@ -61,7 +59,7 @@ class _LoginPageState extends State<LoginPage> {
           isVerified = true;
           stopChecking = true;
           if (mounted) {
-            Navigator.pop(context); // Close the dialog
+            Navigator.pop(context);
             Navigator.pushReplacementNamed(context, '/home');
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Email verified! Welcome back!')),
@@ -72,7 +70,6 @@ class _LoginPageState extends State<LoginPage> {
       }
     }
 
-    // 🔹 Start checking in the background
     checkVerificationStatus();
 
     await showDialog(
@@ -109,7 +106,6 @@ class _LoginPageState extends State<LoginPage> {
       ),
     );
 
-    // Stop checking if the dialog is closed manually
     stopChecking = true;
   }
 
@@ -120,105 +116,116 @@ class _LoginPageState extends State<LoginPage> {
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 60),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text(
-                'AI Nutrition Assistant',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.green,
+          child: RawKeyboardListener(
+            focusNode: FocusNode(),
+            autofocus: true,
+            onKey: (event) {
+              if (event.isKeyPressed(LogicalKeyboardKey.enter) ||
+                  event.isKeyPressed(LogicalKeyboardKey.numpadEnter)) {
+                _login();
+              }
+            },
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text(
+                  'AI Nutrition Assistant',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 30),
-
-              Card(
-                elevation: 5,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
-                child: Padding(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      children: [
-                        TextFormField(
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          decoration: const InputDecoration(
-                            labelText: 'Email',
-                            prefixIcon: Icon(Icons.email),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter your email';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 20),
-                        TextFormField(
-                          controller: _passwordController,
-                          obscureText: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Password',
-                            prefixIcon: Icon(Icons.lock),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.length < 6) {
-                              return 'Password must be at least 6 characters';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 25),
-
-                        if (_error != null)
-                          Text(
-                            _error!,
-                            style: const TextStyle(
-                                color: Colors.red, fontWeight: FontWeight.w500),
-                          ),
-
-                        const SizedBox(height: 25),
-                        _isLoading
-                            ? const CircularProgressIndicator()
-                            : ElevatedButton(
-                          onPressed: _login,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                const SizedBox(height: 30),
+                Card(
+                  elevation: 5,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Padding(
+                    padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        children: [
+                          TextFormField(
+                            controller: _emailController,
+                            keyboardType: TextInputType.emailAddress,
+                            decoration: const InputDecoration(
+                              labelText: 'Email',
+                              prefixIcon: Icon(Icons.email),
                             ),
-                            minimumSize: const Size(double.infinity, 50),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter your email';
+                              }
+                              return null;
+                            },
                           ),
-                          child: const Text(
-                            'Login',
-                            style: TextStyle(
-                                fontSize: 18, color: Colors.white),
+                          const SizedBox(height: 20),
+                          TextFormField(
+                            controller: _passwordController,
+                            obscureText: true,
+                            decoration: const InputDecoration(
+                              labelText: 'Password',
+                              prefixIcon: Icon(Icons.lock),
+                            ),
+                            onFieldSubmitted: (_) => _login(),
+                            validator: (value) {
+                              if (value == null || value.length < 6) {
+                                return 'Password must be at least 6 characters';
+                              }
+                              return null;
+                            },
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 25),
+                          if (_error != null)
+                            Text(
+                              _error!,
+                              style: const TextStyle(
+                                color: Colors.red,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          const SizedBox(height: 25),
+                          _isLoading
+                              ? const CircularProgressIndicator()
+                              : ElevatedButton(
+                            onPressed: _login,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              minimumSize: const Size(double.infinity, 50),
+                            ),
+                            child: const Text(
+                              'Login',
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-
-              const SizedBox(height: 20),
-              TextButton(
-                onPressed: () => Navigator.pushNamed(context, '/register'),
-                child: const Text("Don't have an account? Register here"),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pushNamed(context, '/forgot');
-                },
-                child: const Text('Forgot Password?'),
-              ),
-
-            ],
+                const SizedBox(height: 20),
+                TextButton(
+                  onPressed: () => Navigator.pushNamed(context, '/register'),
+                  child: const Text("Don't have an account? Register here"),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/forgot');
+                  },
+                  child: const Text('Forgot Password?'),
+                ),
+              ],
+            ),
           ),
         ),
       ),

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../db/user.dart';
+import '../widgets/macro_slider.dart';
+import 'package:intl/intl.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -19,7 +21,7 @@ class _RegisterPageState extends State<RegisterPage> {
   final _passwordController = TextEditingController();
   final _firstnameController = TextEditingController();
   final _lastnameController = TextEditingController();
-  final _ageController = TextEditingController();
+  final _dobController = TextEditingController();
   final _heightController = TextEditingController();
   final _weightController = TextEditingController();
   final _dailyCaloriesController = TextEditingController();
@@ -34,6 +36,7 @@ class _RegisterPageState extends State<RegisterPage> {
   List<String> _allergies = [];
 
   bool _isLoading = false;
+  bool _submitted = false; // ✅ Tracks if Create Account was pressed
 
   // Default macronutrient goals
   double _protein = 20.0;
@@ -74,14 +77,39 @@ class _RegisterPageState extends State<RegisterPage> {
     });
   }
 
+  Future<void> _selectDate() async {
+    DateTime now = DateTime.now();
+    DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime(now.year - 18, now.month, now.day),
+      firstDate: DateTime(1900),
+      lastDate: now,
+    );
+
+    if (pickedDate != null) {
+      String formatted = DateFormat('MM/dd/yyyy').format(pickedDate);
+      setState(() {
+        _dobController.text = formatted;
+      });
+    }
+  }
+
   Future<void> _registerUser() async {
+    setState(() => _submitted = true); // ✅ trigger validation display
+
     if (!_formKey.currentState!.validate()) return;
+
+    if (_dietaryHabits.isEmpty || _allergies.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Please select at least one dietary habit and one allergy')),
+      );
+      return;
+    }
 
     if (_sex == null ||
         _activityLevel == null ||
-        _dietaryGoal == null ||
-        _dietaryHabits.isEmpty ||
-        _allergies.isEmpty) {
+        _dietaryGoal == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please complete all dropdowns and selections')),
       );
@@ -91,7 +119,6 @@ class _RegisterPageState extends State<RegisterPage> {
     setState(() => _isLoading = true);
 
     try {
-      // 🔹 1. Create Firebase Auth user
       final authResult = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
@@ -100,13 +127,12 @@ class _RegisterPageState extends State<RegisterPage> {
       final uid = authResult.user?.uid;
       if (uid == null) throw Exception('User ID not found after registration');
 
-      // 🔹 2. Build MealProfile + AppUser
       final mealProfile = MealProfile(
         dietaryHabits: _dietaryHabits,
         allergies: _allergies,
         preferences: Preferences(
-          likes: _likesController.text.split(',').map((e) => e.trim()).toList(),
-          dislikes: _dislikesController.text.split(',').map((e) => e.trim()).toList(),
+          likes: _likesController.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList(),
+          dislikes: _dislikesController.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList(),
         ),
       );
 
@@ -114,8 +140,8 @@ class _RegisterPageState extends State<RegisterPage> {
         firstname: _firstnameController.text.trim(),
         lastname: _lastnameController.text.trim(),
         email: _emailController.text.trim(),
-        password: _passwordController.text.trim(), // TODO: hash later
-        age: int.parse(_ageController.text),
+        password: _passwordController.text.trim(),
+        age: 0,
         sex: _sex!,
         height: double.parse(_heightController.text),
         weight: double.parse(_weightController.text),
@@ -131,10 +157,10 @@ class _RegisterPageState extends State<RegisterPage> {
         },
       );
 
-      // 🔹 3. Save to Firestore
-      await FirebaseFirestore.instance.collection('Users').doc(uid).set(user.toJson());
+      final userJson = user.toJson();
+      userJson['dateOfBirth'] = _dobController.text;
 
-      // 🔹 4. Send email verification
+      await FirebaseFirestore.instance.collection('Users').doc(uid).set(userJson);
       await authResult.user?.sendEmailVerification();
 
       if (mounted) {
@@ -145,28 +171,12 @@ class _RegisterPageState extends State<RegisterPage> {
           ),
         );
 
-        // After signup, direct back to login so user verifies first
         Navigator.pushReplacementNamed(context, '/login');
       }
-
-    } on FirebaseAuthException catch (e) {
-      // 🔹 Log detailed FirebaseAuth error to console
-      print('🔥 FirebaseAuthException: ${e.code} → ${e.message}');
+    } catch (e) {
+      print('🔥 Error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Auth Error: ${e.message ?? e.code}')),
-      );
-    } on FirebaseException catch (e) {
-      // 🔹 Log detailed Firestore error to console
-      print('🔥 FirebaseException: ${e.code} → ${e.message}');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Database Error: ${e.message ?? e.code}')),
-      );
-    } catch (e, stack) {
-      // 🔹 Log all other unexpected errors
-      print('🔥 Unexpected error: $e');
-      print('🔍 Stack trace:\n$stack');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unexpected Error: $e')),
+        SnackBar(content: Text('Error: $e')),
       );
     } finally {
       setState(() => _isLoading = false);
@@ -178,85 +188,122 @@ class _RegisterPageState extends State<RegisterPage> {
     return Scaffold(
       appBar: AppBar(title: const Text('Create Account')),
       body: SafeArea(
-        child: SingleChildScrollView(
+        child: Scrollbar(
           controller: _scrollController,
-          padding: const EdgeInsets.all(20),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildTextField(_firstnameController, 'First Name'),
-                _buildTextField(_lastnameController, 'Last Name'),
-                _buildTextField(_emailController, 'Email',
-                    keyboardType: TextInputType.emailAddress),
-                _buildTextField(_passwordController, 'Password', obscure: true),
-                _buildTextField(_ageController, 'Age',
-                    keyboardType: TextInputType.number),
-                _dropdownField('Sex', _sexOptions, (val) => _sex = val),
-                _buildTextField(_heightController, 'Height (inches)',
-                    keyboardType: TextInputType.number),
-                _buildTextField(_weightController, 'Weight (lbs)',
-                    keyboardType: TextInputType.number),
-                _dropdownField('Activity Level', _activityLevels,
-                        (val) => _activityLevel = val),
-                _dropdownField('Dietary Goal', _dietGoals,
-                        (val) => _dietaryGoal = val),
-                _buildTextField(_dailyCaloriesController, 'Daily Calorie Goal',
-                    keyboardType: TextInputType.number),
-
-                const SizedBox(height: 20),
-                const Text('Macronutrient Goals (% of calories)',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 5),
-
-                // Default macro fields (editable)
-                Row(
-                  children: [
-                    Expanded(
-                      child: _macroField('Protein', _protein, (val) {
-                        setState(() => _protein = val);
-                      }),
+          thumbVisibility: true,
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                children: [
+                  Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        minWidth: 250,
+                        maxWidth: 500,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _buildTextField(_firstnameController, 'First Name'),
+                          _buildTextField(_lastnameController, 'Last Name'),
+                          _buildTextField(_emailController, 'Email',
+                              keyboardType: TextInputType.emailAddress),
+                          _buildTextField(_passwordController, 'Password', obscure: true),
+                          GestureDetector(
+                            onTap: _selectDate,
+                            child: AbsorbPointer(
+                              child: _buildTextField(
+                                _dobController,
+                                'Date of Birth (MM/DD/YYYY)',
+                                keyboardType: TextInputType.datetime,
+                              ),
+                            ),
+                          ),
+                          _dropdownField('Sex', _sexOptions, (val) => _sex = val),
+                          _buildTextField(_heightController, 'Height (inches)',
+                              keyboardType: TextInputType.number),
+                          _buildTextField(_weightController, 'Weight (lbs)',
+                              keyboardType: TextInputType.number),
+                          _dropdownField('Activity Level', _activityLevels,
+                                  (val) => _activityLevel = val),
+                          _dropdownField('Dietary Goal', _dietGoals,
+                                  (val) => _dietaryGoal = val),
+                          _buildTextField(_dailyCaloriesController, 'Daily Calorie Goal',
+                              keyboardType: TextInputType.number),
+                          const SizedBox(height: 20),
+                          const Text(
+                            'Macronutrient Goals (% of calories)',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 10),
+                          MacroSlider(
+                            protein: _protein,
+                            carbs: _carbs,
+                            fats: _fats,
+                            onChanged: (p, c, f) {
+                              setState(() {
+                                _protein = p;
+                                _carbs = c;
+                                _fats = f;
+                              });
+                            },
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _macroField('Carbs', _carbs, (val) {
-                        setState(() => _carbs = val);
-                      }),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _macroField('Fats', _fats, (val) {
-                        setState(() => _fats = val);
-                      }),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 20),
-                _multiSelectField(
-                    'Dietary Habits', _dietaryHabitOptions, _dietaryHabits),
-                _multiSelectField('Allergies', _allergyOptions, _allergies),
-                _buildTextField(_likesController,
-                    'Food Likes (comma-separated, e.g. "chicken, rice")'),
-                _buildTextField(_dislikesController,
-                    'Food Dislikes (comma-separated, e.g. "broccoli, tofu")'),
-
-                const SizedBox(height: 30),
-                _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : ElevatedButton(
-                  onPressed: _registerUser,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    padding: const EdgeInsets.all(15),
                   ),
-                  child: const Text(
-                    'Create Account',
-                    style: TextStyle(color: Colors.white, fontSize: 18),
+                  const SizedBox(height: 25),
+                  _centeredMultiSelectField(
+                      'Dietary Habits', _dietaryHabitOptions, _dietaryHabits, isRequired: true),
+                  const SizedBox(height: 24),
+                  _centeredMultiSelectField(
+                      'Allergies', _allergyOptions, _allergies, isRequired: true),
+                  const SizedBox(height: 24),
+                  Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        minWidth: 250,
+                        maxWidth: 500,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _buildOptionalTextField(_likesController,
+                              'Food Likes (comma-separated, e.g. "chicken, rice")'),
+                          _buildOptionalTextField(_dislikesController,
+                              'Food Dislikes (comma-separated, e.g. "broccoli, tofu")'),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 30),
+                  Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        minWidth: 200,
+                        maxWidth: 350,
+                      ),
+                      child: _isLoading
+                          ? const Center(child: CircularProgressIndicator())
+                          : ElevatedButton(
+                        onPressed: _registerUser,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          padding: const EdgeInsets.all(15),
+                        ),
+                        child: const Text(
+                          'Create Account',
+                          style:
+                          TextStyle(color: Colors.white, fontSize: 18),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -264,7 +311,7 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  // --- UI helper widgets ---
+  // --- UI helpers ---
 
   Widget _buildTextField(TextEditingController c, String label,
       {TextInputType? keyboardType, bool obscure = false}) {
@@ -284,24 +331,16 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  Widget _macroField(String label, double value, Function(double) onChanged) {
-    return TextFormField(
-      initialValue: value.toString(),
-      keyboardType: TextInputType.number,
-      decoration: InputDecoration(
-        labelText: '$label (%)',
-        border: const OutlineInputBorder(),
+  Widget _buildOptionalTextField(TextEditingController c, String label) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: TextFormField(
+        controller: c,
+        decoration: InputDecoration(
+          labelText: label,
+          border: const OutlineInputBorder(),
+        ),
       ),
-      onChanged: (v) {
-        final val = double.tryParse(v);
-        if (val != null) onChanged(val);
-      },
-      validator: (val) {
-        if (val == null || val.isEmpty) return 'Required';
-        final n = double.tryParse(val);
-        if (n == null || n < 0 || n > 100) return '0–100 only';
-        return null;
-      },
     );
   }
 
@@ -325,17 +364,25 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  Widget _multiSelectField(
-      String label, List<String> options, List<String> selected) {
+  Widget _centeredMultiSelectField(String label, List<String> options,
+      List<String> selected, {bool isRequired = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(label,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          Text(
+            label,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+            ),
+          ),
+          const SizedBox(height: 6),
           Wrap(
+            alignment: WrapAlignment.center,
             spacing: 8,
+            runSpacing: 6,
             children: options.map((option) {
               final isSelected = selected.contains(option);
               return FilterChip(
@@ -346,6 +393,14 @@ class _RegisterPageState extends State<RegisterPage> {
               );
             }).toList(),
           ),
+          if (_submitted && isRequired && selected.isEmpty)
+            const Padding(
+              padding: EdgeInsets.only(top: 8.0),
+              child: Text(
+                'Please select at least one option',
+                style: TextStyle(color: Colors.red, fontSize: 13),
+              ),
+            ),
         ],
       ),
     );

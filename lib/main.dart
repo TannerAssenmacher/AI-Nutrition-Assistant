@@ -149,7 +149,7 @@ class MyApp extends StatelessWidget {
         '/login': (context) => const LoginPage(),
         '/register': (context) => const RegisterPage(),
         '/forgot': (context) => const ForgotPasswordPage(),
-        '/profile': (context) => const ProfileScreen(),
+        '/profile': (context) => const ProfilePage(),
         '/home': (context) => const HomeScreen(),
         '/chat': (context) => const ChatScreen(),
       },
