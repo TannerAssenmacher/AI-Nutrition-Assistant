@@ -215,6 +215,16 @@ class HomeScreen extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
+          // Add Chat FAB
+          FloatingActionButton(
+            heroTag: 'chatFab',
+            onPressed: () {
+              Navigator.pushNamed(context, '/chat');
+            },
+            backgroundColor: Colors.blue[600],
+            child: const Icon(Icons.chat, color: Colors.white),
+          ),
+          const SizedBox(height: 12),
           FloatingActionButton(
             heroTag: 'cameraFab',
             onPressed: () => _openCamera(context),
