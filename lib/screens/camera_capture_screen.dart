@@ -149,14 +149,16 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Unable to capture photo. Please try again.')),
+        const SnackBar(
+            content: Text('Unable to capture photo. Please try again.')),
       );
     } catch (_) {
       if (!mounted) {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Unable to capture photo. Please try again.')),
+        const SnackBar(
+            content: Text('Unable to capture photo. Please try again.')),
       );
     } finally {
       if (!mounted) {

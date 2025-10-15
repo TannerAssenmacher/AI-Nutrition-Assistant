@@ -75,17 +75,17 @@ class HomeScreen extends ConsumerWidget {
                       Text(
                         'Goal: ${userProfile.dailyCalorieGoal} calories',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey[600],
-                        ),
+                              color: Colors.grey[600],
+                            ),
                       ),
                     ],
                   ],
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Macros Summary Card
             Card(
               child: Padding(
@@ -103,7 +103,8 @@ class HomeScreen extends ConsumerWidget {
                       children: [
                         _MacroColumn(
                           label: 'Protein',
-                          value: '${dailyMacros['protein']?.toStringAsFixed(1)}g',
+                          value:
+                              '${dailyMacros['protein']?.toStringAsFixed(1)}g',
                           color: Colors.red[300]!,
                         ),
                         _MacroColumn(
@@ -122,9 +123,9 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Food Suggestions
             Text(
               'Food Suggestions',
@@ -171,9 +172,9 @@ class HomeScreen extends ConsumerWidget {
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (error, stack) => Text('Error: $error'),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Today's Food Log
             Text(
               'Today\'s Food Log',
@@ -184,26 +185,29 @@ class HomeScreen extends ConsumerWidget {
               const Card(
                 child: Padding(
                   padding: EdgeInsets.all(16.0),
-                  child: Text('No food logged today. Start by adding some food!'),
+                  child:
+                      Text('No food logged today. Start by adding some food!'),
                 ),
               )
             else
               ...foodLog.map((food) => Card(
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: Colors.green[100],
-                    child: Icon(Icons.restaurant, color: Colors.green[600]),
-                  ),
-                  title: Text(food.name),
-                  subtitle: Text('${food.caloriesPer100g} calories'),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () {
-                      ref.read(foodLogProvider.notifier).removeFoodItem(food.id);
-                    },
-                  ),
-                ),
-              )),
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: Colors.green[100],
+                        child: Icon(Icons.restaurant, color: Colors.green[600]),
+                      ),
+                      title: Text(food.name),
+                      subtitle: Text('${food.caloriesPer100g} calories'),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () {
+                          ref
+                              .read(foodLogProvider.notifier)
+                              .removeFoodItem(food.id);
+                        },
+                      ),
+                    ),
+                  )),
           ],
         ),
       ),
@@ -275,23 +279,22 @@ class HomeScreen extends ConsumerWidget {
             onPressed: () {
               // Example: Add a sample food item
               final sampleFood = Food(
-                name: 'Sample Apple',
-                category: "Fruit",
-                caloriesPer100g: 200,
-                proteinPer100g: 2.5,
-                carbsPer100g: 10.0,
-                fatPer100g: 0.5,
-                fiberPer100g: 1.0,
-                micronutrients: Micronutrients(
-                  calciumMg: 100,
-                  ironMg: 0.5,
-                  vitaminAMcg: 100,
-                  vitaminCMg: 50,
-                ),
-                source: 'Sample Source',
-                consumedAt: DateTime.now(),
-                servingSize: 100
-              );
+                  name: 'Sample Apple',
+                  category: "Fruit",
+                  caloriesPer100g: 200,
+                  proteinPer100g: 2.5,
+                  carbsPer100g: 10.0,
+                  fatPer100g: 0.5,
+                  fiberPer100g: 1.0,
+                  micronutrients: Micronutrients(
+                    calciumMg: 100,
+                    ironMg: 0.5,
+                    vitaminAMcg: 100,
+                    vitaminCMg: 50,
+                  ),
+                  source: 'Sample Source',
+                  consumedAt: DateTime.now(),
+                  servingSize: 100);
               ref.read(foodLogProvider.notifier).addFoodItem(sampleFood);
               Navigator.of(context).pop();
             },
