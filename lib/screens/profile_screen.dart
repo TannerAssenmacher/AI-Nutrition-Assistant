@@ -18,6 +18,7 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _isLoading = true;
   bool _isSaving = false;
   bool _submitted = false;
+  bool _isDeleting = false;
 
   // Controllers
   final _heightController = TextEditingController();
@@ -105,10 +106,8 @@ class _ProfilePageState extends State<ProfilePage> {
           _allergies =
               (mp['allergies'] as List).map((e) => e.toString()).toList();
           final prefs = Map<String, dynamic>.from(mp['preferences']);
-          _likesController.text =
-              (prefs['likes'] as List).join(', ');
-          _dislikesController.text =
-              (prefs['dislikes'] as List).join(', ');
+          _likesController.text = (prefs['likes'] as List).join(', ');
+          _dislikesController.text = (prefs['dislikes'] as List).join(', ');
         }
       });
     } catch (e) {
@@ -163,6 +162,81 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  Future<void> _confirmDeleteAccount() async {
+    final passwordController = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Account Deletion'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'To permanently delete your account, please enter your password to confirm.',
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: passwordController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Password',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () {
+              Navigator.pop(context, true);
+            },
+            child: const Text('Delete Account'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await _deleteAccount(passwordController.text.trim());
+    }
+  }
+
+  Future<void> _deleteAccount(String password) async {
+    setState(() => _isDeleting = true);
+    try {
+      final credential = EmailAuthProvider.credential(
+        email: user!.email!,
+        password: password,
+      );
+
+      await user!.reauthenticateWithCredential(credential);
+      await _firestore.collection('Users').doc(user!.uid).delete();
+      await user!.delete();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Account deleted successfully.'),
+        ));
+        Navigator.pushReplacementNamed(context, '/login');
+      }
+    } on FirebaseAuthException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Authentication failed: ${e.message}')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to delete account: $e')),
+      );
+    } finally {
+      setState(() => _isDeleting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -182,7 +256,6 @@ class _ProfilePageState extends State<ProfilePage> {
               key: _formKey,
               child: Column(
                 children: [
-                  // Read-only info
                   Center(
                     child: ConstrainedBox(
                       constraints:
@@ -242,9 +315,9 @@ class _ProfilePageState extends State<ProfilePage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          _editableField(_likesController,
+                          _optionalField(_likesController,
                               'Food Likes (comma-separated, e.g. "chicken, rice")'),
-                          _editableField(_dislikesController,
+                          _optionalField(_dislikesController,
                               'Food Dislikes (comma-separated, e.g. "broccoli, tofu")'),
                         ],
                       ),
@@ -268,6 +341,28 @@ class _ProfilePageState extends State<ProfilePage> {
                           style: TextStyle(
                               color: Colors.white, fontSize: 18),
                         ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Center(
+                    child: ConstrainedBox(
+                      constraints:
+                      const BoxConstraints(minWidth: 200, maxWidth: 350),
+                      child: _isDeleting
+                          ? const Center(child: CircularProgressIndicator())
+                          : OutlinedButton.icon(
+                        icon: const Icon(Icons.delete_forever,
+                            color: Colors.red),
+                        label: const Text(
+                          'Delete Account',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Colors.red),
+                          padding: const EdgeInsets.all(15),
+                        ),
+                        onPressed: _confirmDeleteAccount,
                       ),
                     ),
                   ),
@@ -304,8 +399,7 @@ class _ProfilePageState extends State<ProfilePage> {
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: TextFormField(
         controller: controller,
-        keyboardType:
-        isNumber ? TextInputType.number : TextInputType.text,
+        keyboardType: isNumber ? TextInputType.number : TextInputType.text,
         decoration: InputDecoration(
           labelText: label,
           border: const OutlineInputBorder(),
@@ -314,6 +408,19 @@ class _ProfilePageState extends State<ProfilePage> {
           if (val == null || val.isEmpty) return 'This field is required';
           return null;
         },
+      ),
+    );
+  }
+
+  Widget _optionalField(TextEditingController controller, String label) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: TextFormField(
+        controller: controller,
+        decoration: InputDecoration(
+          labelText: label,
+          border: const OutlineInputBorder(),
+        ),
       ),
     );
   }

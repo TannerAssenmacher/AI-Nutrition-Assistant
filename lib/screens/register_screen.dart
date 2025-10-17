@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // ✅ For input formatters
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../db/user.dart';
@@ -36,7 +37,7 @@ class _RegisterPageState extends State<RegisterPage> {
   List<String> _allergies = [];
 
   bool _isLoading = false;
-  bool _submitted = false; // ✅ Tracks if Create Account was pressed
+  bool _submitted = false;
 
   // Default macronutrient goals
   double _protein = 20.0;
@@ -77,25 +78,26 @@ class _RegisterPageState extends State<RegisterPage> {
     });
   }
 
-  Future<void> _selectDate() async {
-    DateTime now = DateTime.now();
-    DateTime? pickedDate = await showDatePicker(
-      context: context,
-      initialDate: DateTime(now.year - 18, now.month, now.day),
-      firstDate: DateTime(1900),
-      lastDate: now,
-    );
+  /// ✅ Validates that a date string MM/DD/YYYY is a real valid date
+  bool _isValidDate(String input) {
+    final regex = RegExp(r'^(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/(19|20)\d{2}$');
+    if (!regex.hasMatch(input)) return false;
 
-    if (pickedDate != null) {
-      String formatted = DateFormat('MM/dd/yyyy').format(pickedDate);
-      setState(() {
-        _dobController.text = formatted;
-      });
+    try {
+      final parts = input.split('/');
+      final month = int.parse(parts[0]);
+      final day = int.parse(parts[1]);
+      final year = int.parse(parts[2]);
+      final date = DateTime(year, month, day);
+      // Check if DateTime parsed correctly (e.g., Feb 30 should fail)
+      return date.month == month && date.day == day && date.year == year && year <= DateTime.now().year;
+    } catch (_) {
+      return false;
     }
   }
 
   Future<void> _registerUser() async {
-    setState(() => _submitted = true); // ✅ trigger validation display
+    setState(() => _submitted = true);
 
     if (!_formKey.currentState!.validate()) return;
 
@@ -107,9 +109,7 @@ class _RegisterPageState extends State<RegisterPage> {
       return;
     }
 
-    if (_sex == null ||
-        _activityLevel == null ||
-        _dietaryGoal == null) {
+    if (_sex == null || _activityLevel == null || _dietaryGoal == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please complete all dropdowns and selections')),
       );
@@ -150,11 +150,7 @@ class _RegisterPageState extends State<RegisterPage> {
         mealProfile: mealProfile,
         mealPlans: {},
         dailyCalorieGoal: int.parse(_dailyCaloriesController.text),
-        macroGoals: {
-          'protein': _protein,
-          'carbs': _carbs,
-          'fats': _fats,
-        },
+        macroGoals: {'protein': _protein, 'carbs': _carbs, 'fats': _fats},
       );
 
       final userJson = user.toJson();
@@ -170,14 +166,11 @@ class _RegisterPageState extends State<RegisterPage> {
             duration: Duration(seconds: 5),
           ),
         );
-
         Navigator.pushReplacementNamed(context, '/login');
       }
     } catch (e) {
       print('🔥 Error: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
       setState(() => _isLoading = false);
     }
@@ -200,10 +193,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 children: [
                   Center(
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(
-                        minWidth: 250,
-                        maxWidth: 500,
-                      ),
+                      constraints: const BoxConstraints(minWidth: 250, maxWidth: 500),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -212,16 +202,34 @@ class _RegisterPageState extends State<RegisterPage> {
                           _buildTextField(_emailController, 'Email',
                               keyboardType: TextInputType.emailAddress),
                           _buildTextField(_passwordController, 'Password', obscure: true),
-                          GestureDetector(
-                            onTap: _selectDate,
-                            child: AbsorbPointer(
-                              child: _buildTextField(
-                                _dobController,
-                                'Date of Birth (MM/DD/YYYY)',
-                                keyboardType: TextInputType.datetime,
+
+                          // ✅ Auto-formatting DOB input
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: TextFormField(
+                              controller: _dobController,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                LengthLimitingTextInputFormatter(8),
+                                _DateInputFormatter(),
+                              ],
+                              decoration: const InputDecoration(
+                                labelText: 'Date of Birth (MM/DD/YYYY)',
+                                border: OutlineInputBorder(),
                               ),
+                              validator: (val) {
+                                if (val == null || val.isEmpty) {
+                                  return 'This field is required';
+                                }
+                                if (!_isValidDate(val)) {
+                                  return 'Enter a valid date (MM/DD/YYYY)';
+                                }
+                                return null;
+                              },
                             ),
                           ),
+
                           _dropdownField('Sex', _sexOptions, (val) => _sex = val),
                           _buildTextField(_heightController, 'Height (inches)',
                               keyboardType: TextInputType.number),
@@ -264,10 +272,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   const SizedBox(height: 24),
                   Center(
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(
-                        minWidth: 250,
-                        maxWidth: 500,
-                      ),
+                      constraints: const BoxConstraints(minWidth: 250, maxWidth: 500),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -282,10 +287,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   const SizedBox(height: 30),
                   Center(
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(
-                        minWidth: 200,
-                        maxWidth: 350,
-                      ),
+                      constraints: const BoxConstraints(minWidth: 200, maxWidth: 350),
                       child: _isLoading
                           ? const Center(child: CircularProgressIndicator())
                           : ElevatedButton(
@@ -296,8 +298,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                         child: const Text(
                           'Create Account',
-                          style:
-                          TextStyle(color: Colors.white, fontSize: 18),
+                          style: TextStyle(color: Colors.white, fontSize: 18),
                         ),
                       ),
                     ),
@@ -312,7 +313,6 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   // --- UI helpers ---
-
   Widget _buildTextField(TextEditingController c, String label,
       {TextInputType? keyboardType, bool obscure = false}) {
     return Padding(
@@ -325,8 +325,7 @@ class _RegisterPageState extends State<RegisterPage> {
           labelText: label,
           border: const OutlineInputBorder(),
         ),
-        validator: (val) =>
-        val == null || val.isEmpty ? 'This field is required' : null,
+        validator: (val) => val == null || val.isEmpty ? 'This field is required' : null,
       ),
     );
   }
@@ -358,8 +357,7 @@ class _RegisterPageState extends State<RegisterPage> {
         items: options
             .map((e) => DropdownMenuItem(value: e, child: Text(e)))
             .toList(),
-        validator: (val) =>
-        val == null || val.isEmpty ? 'Please select an option' : null,
+        validator: (val) => val == null || val.isEmpty ? 'Please select an option' : null,
       ),
     );
   }
@@ -371,13 +369,8 @@ class _RegisterPageState extends State<RegisterPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
-            ),
-          ),
+          Text(label,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
           const SizedBox(height: 6),
           Wrap(
             alignment: WrapAlignment.center,
@@ -396,13 +389,32 @@ class _RegisterPageState extends State<RegisterPage> {
           if (_submitted && isRequired && selected.isEmpty)
             const Padding(
               padding: EdgeInsets.only(top: 8.0),
-              child: Text(
-                'Please select at least one option',
-                style: TextStyle(color: Colors.red, fontSize: 13),
-              ),
+              child: Text('Please select at least one option',
+                  style: TextStyle(color: Colors.red, fontSize: 13)),
             ),
         ],
       ),
+    );
+  }
+}
+
+/// ✅ Custom InputFormatter for auto-slash MM/DD/YYYY
+class _DateInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+      TextEditingValue oldValue, TextEditingValue newValue) {
+    var digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+    final buffer = StringBuffer();
+
+    for (int i = 0; i < digits.length; i++) {
+      buffer.write(digits[i]);
+      if (i == 1 || i == 3) buffer.write('/');
+    }
+
+    final formatted = buffer.toString();
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
     );
   }
 }
