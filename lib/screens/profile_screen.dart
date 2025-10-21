@@ -35,7 +35,7 @@ class _ProfilePageState extends State<ProfilePage> {
   String? _activityLevel;
   String? _dietaryGoal;
   List<String> _dietaryHabits = [];
-  List<String> _allergies = [];
+  List<String> _health = [];
 
   // Macros
   double _protein = 0;
@@ -50,22 +50,56 @@ class _ProfilePageState extends State<ProfilePage> {
     'Very Active'
   ];
   final _dietGoals = ['Lose Weight', 'Maintain Weight', 'Gain Muscle'];
+  
+  //edamam api options for diet labels
   final _dietaryHabitOptions = [
-    'Vegetarian',
-    'Vegan',
-    'Pescatarian',
-    'Keto',
-    'Paleo',
-    'None'
+    'balanced', 
+    'high-fiber', 
+    'high-protein', 
+    'low-carb', 
+    'low-fat', 
+    'low-sodium',
+    'none'
   ];
-  final _allergyOptions = [
-    'Peanuts',
-    'Tree Nuts',
-    'Dairy',
-    'Gluten',
-    'Shellfish',
-    'Soy',
-    'Eggs',
+
+  //edamam api option for health labels
+  final _healthOptions = [
+   'alcohol-cocktail' , 
+   'alcohol-free', 
+   'celery-free', 
+   'crustacean-free', 
+   'dairy-free', 
+   'DASH', 
+   'egg-free', 
+   'fish-free', 
+   'fodmap-free', 
+   'gluten-free', 
+   'immuno-supportive', 
+   'keto-friendly', 
+   'kidney-friendly', 
+   'kosher', 
+   'low-fat-abs', 
+   'low-potassium', 
+   'low-sugar', 
+   'lupine-free', 
+   'Mediterranean', 
+   'mollusk-free', 
+   'mustard-free', 
+   'no-oil-added', 
+   'paleo', 
+   'peanut-free', 
+   'pescatarian', 
+   'pork-free', 
+   'red-meat-free', 
+   'sesame-free', 
+   'shellfish-free',
+    'soy-free', 
+    'sugar-conscious',
+    'sulfite-free', 
+    'tree-nut-free', 
+    'vegan', 
+    'vegetarian', 
+    'wheat-free',
     'None'
   ];
 
@@ -102,7 +136,7 @@ class _ProfilePageState extends State<ProfilePage> {
           final mp = Map<String, dynamic>.from(data['mealProfile']);
           _dietaryHabits =
               (mp['dietaryHabits'] as List).map((e) => e.toString()).toList();
-          _allergies =
+          _health =
               (mp['allergies'] as List).map((e) => e.toString()).toList();
           final prefs = Map<String, dynamic>.from(mp['preferences']);
           _likesController.text =
@@ -123,7 +157,7 @@ class _ProfilePageState extends State<ProfilePage> {
       _submitted = true;
     });
     if (!_formKey.currentState!.validate()) return;
-    if (_dietaryHabits.isEmpty || _allergies.isEmpty) {
+    if (_dietaryHabits.isEmpty || _health.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content:
           Text('Please select at least one dietary habit and one allergy.')));
@@ -145,7 +179,7 @@ class _ProfilePageState extends State<ProfilePage> {
           'fats': _fats,
         },
         'mealProfile.dietaryHabits': _dietaryHabits,
-        'mealProfile.allergies': _allergies,
+        'mealProfile.allergies': _health,
         'mealProfile.preferences.likes':
         _likesController.text.split(',').map((e) => e.trim()).toList(),
         'mealProfile.preferences.dislikes':
@@ -233,7 +267,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       'Dietary Habits', _dietaryHabitOptions, _dietaryHabits),
                   const SizedBox(height: 24),
                   _centeredMultiSelectField(
-                      'Allergies', _allergyOptions, _allergies),
+                      'Health Restrictions', _healthOptions, _health),
                   const SizedBox(height: 24),
                   Center(
                     child: ConstrainedBox(

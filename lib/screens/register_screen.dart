@@ -33,7 +33,7 @@ class _RegisterPageState extends State<RegisterPage> {
   String? _activityLevel;
   String? _dietaryGoal;
   List<String> _dietaryHabits = [];
-  List<String> _allergies = [];
+  List<String> _health = [];
 
   bool _isLoading = false;
   bool _submitted = false; // ✅ Tracks if Create Account was pressed
@@ -52,22 +52,57 @@ class _RegisterPageState extends State<RegisterPage> {
     'Very Active'
   ];
   final _dietGoals = ['Lose Weight', 'Maintain Weight', 'Gain Muscle'];
+ 
+ 
+//edamam api options for diet labels
   final _dietaryHabitOptions = [
-    'Vegetarian',
-    'Vegan',
-    'Pescatarian',
-    'Keto',
-    'Paleo',
-    'None'
+    'balanced', 
+    'high-fiber', 
+    'high-protein', 
+    'low-carb', 
+    'low-fat', 
+    'low-sodium',
+    'none'
   ];
-  final _allergyOptions = [
-    'Peanuts',
-    'Tree Nuts',
-    'Dairy',
-    'Gluten',
-    'Shellfish',
-    'Soy',
-    'Eggs',
+
+  //edamam api option for health labels
+  final _healthOptions = [
+   'alcohol-cocktail' , 
+   'alcohol-free', 
+   'celery-free', 
+   'crustacean-free', 
+   'dairy-free', 
+   'DASH', 
+   'egg-free', 
+   'fish-free', 
+   'fodmap-free', 
+   'gluten-free', 
+   'immuno-supportive', 
+   'keto-friendly', 
+   'kidney-friendly', 
+   'kosher', 
+   'low-fat-abs', 
+   'low-potassium', 
+   'low-sugar', 
+   'lupine-free', 
+   'Mediterranean', 
+   'mollusk-free', 
+   'mustard-free', 
+   'no-oil-added', 
+   'paleo', 
+   'peanut-free', 
+   'pescatarian', 
+   'pork-free', 
+   'red-meat-free', 
+   'sesame-free', 
+   'shellfish-free',
+    'soy-free', 
+    'sugar-conscious',
+    'sulfite-free', 
+    'tree-nut-free', 
+    'vegan', 
+    'vegetarian', 
+    'wheat-free',
     'None'
   ];
 
@@ -99,7 +134,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
     if (!_formKey.currentState!.validate()) return;
 
-    if (_dietaryHabits.isEmpty || _allergies.isEmpty) {
+    if (_dietaryHabits.isEmpty || _health.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content: Text('Please select at least one dietary habit and one allergy')),
@@ -129,7 +164,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
       final mealProfile = MealProfile(
         dietaryHabits: _dietaryHabits,
-        allergies: _allergies,
+        healthRestrictions: _health,
         preferences: Preferences(
           likes: _likesController.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList(),
           dislikes: _dislikesController.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList(),
@@ -260,7 +295,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       'Dietary Habits', _dietaryHabitOptions, _dietaryHabits, isRequired: true),
                   const SizedBox(height: 24),
                   _centeredMultiSelectField(
-                      'Allergies', _allergyOptions, _allergies, isRequired: true),
+                      'Health Restrictions', _healthOptions, _health, isRequired: true),
                   const SizedBox(height: 24),
                   Center(
                     child: ConstrainedBox(
