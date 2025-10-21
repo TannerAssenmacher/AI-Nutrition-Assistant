@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // ✅ For input formatters
+import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../db/user.dart';
@@ -80,7 +80,8 @@ class _RegisterPageState extends State<RegisterPage> {
 
   /// ✅ Validates that a date string MM/DD/YYYY is a real valid date
   bool _isValidDate(String input) {
-    final regex = RegExp(r'^(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/(19|20)\d{2}$');
+    final regex =
+    RegExp(r'^(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/(19|20)\d{2}$');
     if (!regex.hasMatch(input)) return false;
 
     try {
@@ -89,8 +90,10 @@ class _RegisterPageState extends State<RegisterPage> {
       final day = int.parse(parts[1]);
       final year = int.parse(parts[2]);
       final date = DateTime(year, month, day);
-      // Check if DateTime parsed correctly (e.g., Feb 30 should fail)
-      return date.month == month && date.day == day && date.year == year && year <= DateTime.now().year;
+      return date.month == month &&
+          date.day == day &&
+          date.year == year &&
+          year <= DateTime.now().year;
     } catch (_) {
       return false;
     }
@@ -102,24 +105,23 @@ class _RegisterPageState extends State<RegisterPage> {
     if (!_formKey.currentState!.validate()) return;
 
     if (_dietaryHabits.isEmpty || _allergies.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Please select at least one dietary habit and one allergy')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content:
+          Text('Please select at least one dietary habit and one allergy')));
       return;
     }
 
     if (_sex == null || _activityLevel == null || _dietaryGoal == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please complete all dropdowns and selections')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Please complete all dropdowns and selections')));
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      final authResult = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      final authResult =
+      await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
@@ -131,8 +133,16 @@ class _RegisterPageState extends State<RegisterPage> {
         dietaryHabits: _dietaryHabits,
         allergies: _allergies,
         preferences: Preferences(
-          likes: _likesController.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList(),
-          dislikes: _dislikesController.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList(),
+          likes: _likesController.text
+              .split(',')
+              .map((e) => e.trim())
+              .where((e) => e.isNotEmpty)
+              .toList(),
+          dislikes: _dislikesController.text
+              .split(',')
+              .map((e) => e.trim())
+              .where((e) => e.isNotEmpty)
+              .toList(),
         ),
       );
 
@@ -156,21 +166,23 @@ class _RegisterPageState extends State<RegisterPage> {
       final userJson = user.toJson();
       userJson['dateOfBirth'] = _dobController.text;
 
-      await FirebaseFirestore.instance.collection('Users').doc(uid).set(userJson);
+      await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(uid)
+          .set(userJson);
       await authResult.user?.sendEmailVerification();
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Verification email sent! Please check your inbox.'),
-            duration: Duration(seconds: 5),
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Verification email sent! Please check your inbox.'),
+          duration: Duration(seconds: 5),
+        ));
         Navigator.pushReplacementNamed(context, '/login');
       }
     } catch (e) {
       print('🔥 Error: $e');
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
       setState(() => _isLoading = false);
     }
@@ -193,7 +205,8 @@ class _RegisterPageState extends State<RegisterPage> {
                 children: [
                   Center(
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(minWidth: 250, maxWidth: 500),
+                      constraints:
+                      const BoxConstraints(minWidth: 250, maxWidth: 500),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -201,9 +214,10 @@ class _RegisterPageState extends State<RegisterPage> {
                           _buildTextField(_lastnameController, 'Last Name'),
                           _buildTextField(_emailController, 'Email',
                               keyboardType: TextInputType.emailAddress),
-                          _buildTextField(_passwordController, 'Password', obscure: true),
+                          _buildTextField(_passwordController, 'Password',
+                              obscure: true),
 
-                          // ✅ Auto-formatting DOB input
+                          // ✅ Final fixed Date of Birth field
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 8),
                             child: TextFormField(
@@ -211,12 +225,30 @@ class _RegisterPageState extends State<RegisterPage> {
                               keyboardType: TextInputType.number,
                               inputFormatters: [
                                 FilteringTextInputFormatter.digitsOnly,
-                                LengthLimitingTextInputFormatter(8),
-                                _DateInputFormatter(),
+                                _DOBFormatter(),
                               ],
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'Date of Birth (MM/DD/YYYY)',
-                                border: OutlineInputBorder(),
+                                border: const OutlineInputBorder(),
+                                suffixIcon: IconButton(
+                                  icon: const Icon(Icons.calendar_today),
+                                  onPressed: () async {
+                                    DateTime now = DateTime.now();
+                                    DateTime? pickedDate =
+                                    await showDatePicker(
+                                      context: context,
+                                      initialDate: DateTime(
+                                          now.year - 18, now.month, now.day),
+                                      firstDate: DateTime(1900),
+                                      lastDate: now,
+                                    );
+                                    if (pickedDate != null) {
+                                      _dobController.text =
+                                          DateFormat('MM/dd/yyyy')
+                                              .format(pickedDate);
+                                    }
+                                  },
+                                ),
                               ),
                               validator: (val) {
                                 if (val == null || val.isEmpty) {
@@ -239,7 +271,8 @@ class _RegisterPageState extends State<RegisterPage> {
                                   (val) => _activityLevel = val),
                           _dropdownField('Dietary Goal', _dietGoals,
                                   (val) => _dietaryGoal = val),
-                          _buildTextField(_dailyCaloriesController, 'Daily Calorie Goal',
+                          _buildTextField(_dailyCaloriesController,
+                              'Daily Calorie Goal',
                               keyboardType: TextInputType.number),
                           const SizedBox(height: 20),
                           const Text(
@@ -264,15 +297,18 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                   ),
                   const SizedBox(height: 25),
-                  _centeredMultiSelectField(
-                      'Dietary Habits', _dietaryHabitOptions, _dietaryHabits, isRequired: true),
+                  _centeredMultiSelectField('Dietary Habits',
+                      _dietaryHabitOptions, _dietaryHabits,
+                      isRequired: true),
                   const SizedBox(height: 24),
                   _centeredMultiSelectField(
-                      'Allergies', _allergyOptions, _allergies, isRequired: true),
+                      'Allergies', _allergyOptions, _allergies,
+                      isRequired: true),
                   const SizedBox(height: 24),
                   Center(
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(minWidth: 250, maxWidth: 500),
+                      constraints:
+                      const BoxConstraints(minWidth: 250, maxWidth: 500),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -287,7 +323,8 @@ class _RegisterPageState extends State<RegisterPage> {
                   const SizedBox(height: 30),
                   Center(
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(minWidth: 200, maxWidth: 350),
+                      constraints:
+                      const BoxConstraints(minWidth: 200, maxWidth: 350),
                       child: _isLoading
                           ? const Center(child: CircularProgressIndicator())
                           : ElevatedButton(
@@ -298,7 +335,8 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                         child: const Text(
                           'Create Account',
-                          style: TextStyle(color: Colors.white, fontSize: 18),
+                          style: TextStyle(
+                              color: Colors.white, fontSize: 18),
                         ),
                       ),
                     ),
@@ -325,7 +363,8 @@ class _RegisterPageState extends State<RegisterPage> {
           labelText: label,
           border: const OutlineInputBorder(),
         ),
-        validator: (val) => val == null || val.isEmpty ? 'This field is required' : null,
+        validator: (val) =>
+        val == null || val.isEmpty ? 'This field is required' : null,
       ),
     );
   }
@@ -357,7 +396,8 @@ class _RegisterPageState extends State<RegisterPage> {
         items: options
             .map((e) => DropdownMenuItem(value: e, child: Text(e)))
             .toList(),
-        validator: (val) => val == null || val.isEmpty ? 'Please select an option' : null,
+        validator: (val) =>
+        val == null || val.isEmpty ? 'Please select an option' : null,
       ),
     );
   }
@@ -370,7 +410,8 @@ class _RegisterPageState extends State<RegisterPage> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(label,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+              style:
+              const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
           const SizedBox(height: 6),
           Wrap(
             alignment: WrapAlignment.center,
@@ -398,20 +439,26 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 }
 
-/// ✅ Custom InputFormatter for auto-slash MM/DD/YYYY
-class _DateInputFormatter extends TextInputFormatter {
+/// ✅ Final DOB formatter — keeps / consistent, allows backspace, and limits to MM/DD/YYYY
+class _DOBFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(
       TextEditingValue oldValue, TextEditingValue newValue) {
-    var digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
-    final buffer = StringBuffer();
+    String digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
 
+    // ✅ Cap at 8 digits (MMDDYYYY)
+    if (digits.length > 8) digits = digits.substring(0, 8);
+
+    final buffer = StringBuffer();
     for (int i = 0; i < digits.length; i++) {
       buffer.write(digits[i]);
-      if (i == 1 || i == 3) buffer.write('/');
+      // Add slashes after month and day
+      if ((i == 1 || i == 3) && i != digits.length - 1) {
+        buffer.write('/');
+      }
     }
 
-    final formatted = buffer.toString();
+    String formatted = buffer.toString();
     return TextEditingValue(
       text: formatted,
       selection: TextSelection.collapsed(offset: formatted.length),
