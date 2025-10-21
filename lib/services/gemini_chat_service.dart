@@ -1,12 +1,16 @@
 import 'dart:io';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:nutrition_assistant/db/user.dart';
 import 'package:nutrition_assistant/providers/user_providers.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../providers/food_providers.dart';
 import '../services/nutrition_service.dart';
+import '../db/firestore_helper.dart';
 import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 part 'gemini_chat_service.g.dart';
 
@@ -173,19 +177,30 @@ class GeminiChatService extends _$GeminiChatService {
     //fetch with dietary and health restrictions, likes and dislikes
     Future<void> _fetchRecipes(String mealType, String cuisineType) async {
       try {
-   
-        final appUser = ref.read(userProfileProvider);
 
-        // user profile == null then notify them!
-        if (appUser == null) {
-          state = [
-            ...state,
-            ChatMessage(
-              content:
-                  "I couldn’t find your profile. Please log in or set up your nutrition preferences before generating recipes.",
-              isUser: false,
-            ),
-          ];
+        final user = FirebaseAuth.instance.currentUser;
+        AppUser? appUser; //make null
+
+        if (user != null) {
+          print('Current user ID: ${user.uid}');
+        
+          appUser = await FirestoreHelper.getUser(user.uid);
+
+          // user profile == null then notify them!
+          if (appUser == null) {
+            state = [
+              ...state,
+              ChatMessage(
+                content:
+                    "I couldn’t find your profile. Please log in or set up your nutrition preferences before generating recipes.",
+                isUser: false,
+              ),
+            ];
+            return;
+          }
+        }
+        else{ //no authentication found!
+          print('❌ No authenticated Firebase user found.');
           return;
         }
 
@@ -242,10 +257,16 @@ class GeminiChatService extends _$GeminiChatService {
           'https://api.edamam.com/api/recipes/v2?${params.join('&')}',
         );
       
-        final response = await HttpClient().getUrl(uri).then((req) => req.close());
-        final body = await response.transform(SystemEncoding().decoder).join();
-        final json = jsonDecode(body);
+        //final response = await HttpClient().getUrl(uri).then((req) => req.close());
+        //print('✅ Got response from Edamam (status: ${response.statusCode})');
 
+        final response = await http.get(uri);
+        print('Response status: ${response.statusCode}');
+        print('Response body: ${response.body}');
+       
+       final json = jsonDecode(response.body);
+        //final body = await response.transform(utf8.decoder).join();       
+        //final json = jsonDecode(body);
         final hits = (json['hits'] as List?) ?? []; //recipes that are returned from the call
 
         if (hits.isEmpty) {
@@ -282,6 +303,7 @@ class GeminiChatService extends _$GeminiChatService {
             isUser: false,
           ),
         ];
+        
       }
     }
 
