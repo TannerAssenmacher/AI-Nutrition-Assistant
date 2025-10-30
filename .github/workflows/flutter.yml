@@ -26,20 +26,32 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.35.4'   # Match your local Flutter version
+          flutter-version: '3.35.4'
 
       - name: Install dependencies
         run: flutter pub get
 
-      # Generate JSON serialization and other code
       - name: Run build_runner
         run: flutter pub run build_runner build --delete-conflicting-outputs
 
       - name: Analyze project
         run: flutter analyze || true
 
-      - name: Run tests
-        run: flutter test
+      # Start Firebase Emulator locally for tests
+      - name: Install Firebase CLI
+        run: curl -sL https://firebase.tools | bash
+
+      - name: Start Firebase Emulator (Firestore only)
+        run: |
+          firebase emulators:start --only firestore --project demo-test --import= --export-on-exit= --debug &
+          EMULATOR_PID=$!
+          # Wait for emulator to boot
+          until nc -z localhost 8080; do sleep 1; done
+          echo "Firestore emulator is up!"
+          # Run tests while emulator is active
+          flutter test
+          # Stop emulator when tests finish
+          kill $EMULATOR_PID
 
       - name: Build APK
         run: flutter build apk --release
@@ -53,13 +65,13 @@ jobs:
     needs: build
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Install Firebase CLI
-      run: curl -sL https://firebase.tools | bash
+      - name: Install Firebase CLI
+        run: curl -sL https://firebase.tools | bash
 
-    - name: Deploy to Firebase
-      run: firebase deploy --project ai-nutrition-assistant-e2346 --debug
-      env:
-        FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+      - name: Deploy to Firebase
+        run: firebase deploy --project ai-nutrition-assistant-e2346 --debug
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
