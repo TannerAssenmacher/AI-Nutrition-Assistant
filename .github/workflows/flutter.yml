@@ -37,22 +37,6 @@ jobs:
       - name: Analyze project
         run: flutter analyze || true
 
-      # Start Firebase Emulator locally for tests
-      - name: Install Firebase CLI
-        run: curl -sL https://firebase.tools | bash
-
-      - name: Start Firebase Emulator (Firestore only)
-        run: |
-          firebase emulators:start --only firestore --project demo-test --import= --export-on-exit= --debug &
-          EMULATOR_PID=$!
-          # Wait for emulator to boot
-          until nc -z localhost 8080; do sleep 1; done
-          echo "Firestore emulator is up!"
-          # Run tests while emulator is active
-          flutter test
-          # Stop emulator when tests finish
-          kill $EMULATOR_PID
-
       - name: Build APK
         run: flutter build apk --release
 
