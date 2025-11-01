@@ -37,6 +37,9 @@ jobs:
       - name: Analyze project
         run: flutter analyze || true
 
+      - name: Run unit and widget tests
+        run: flutter test --no-pub --coverage
+
       - name: Build APK
         run: flutter build apk --release
 
