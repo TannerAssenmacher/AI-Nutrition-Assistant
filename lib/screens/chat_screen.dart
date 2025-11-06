@@ -13,6 +13,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
+  bool _showRecipePicker = false;
+
   @override
   void dispose() {
     _messageController.dispose();
@@ -37,7 +39,27 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _messageController.clear();
     ref.read(geminiChatServiceProvider.notifier).sendMessage(message);
 
-    // Scroll to bottom after sending message
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+  }
+
+  void _promptRecipeType() {
+    // Bot says the prompt, then show quick buttons
+    ref.read(geminiChatServiceProvider.notifier).promptForRecipeType();
+    setState(() {
+      _showRecipePicker = true;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+  }
+
+  void _onRecipeTypeSelected(String type) {
+    setState(() => _showRecipePicker = false);
+
+    final prompt =
+        "Suggest 3 healthy $type recipes tailored to my goals and today's food log. "
+        "Include ingredients, approximate calories per serving, and simple steps.";
+
+    ref.read(geminiChatServiceProvider.notifier).sendMessage(prompt);
+
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
   }
 
@@ -56,6 +78,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             tooltip: 'Clear Chat',
             onPressed: () {
               ref.read(geminiChatServiceProvider.notifier).clearChat();
+              setState(() => _showRecipePicker = false);
             },
           ),
         ],
@@ -104,7 +127,37 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   ),
           ),
 
-          // Message input
+          // Quick meal-type picker
+          if (_showRecipePicker)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              color: Colors.grey[100],
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  ElevatedButton(
+                    onPressed: () => _onRecipeTypeSelected('Breakfast'),
+                    child: const Text('Breakfast'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => _onRecipeTypeSelected('Lunch'),
+                    child: const Text('Lunch'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => _onRecipeTypeSelected('Dinner'),
+                    child: const Text('Dinner'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => _onRecipeTypeSelected('Snack'),
+                    child: const Text('Snack'),
+                  ),
+                ],
+              ),
+            ),
+
+          // Message input + Generate Recipes button
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -113,33 +166,46 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 top: BorderSide(color: Colors.grey[300]!),
               ),
             ),
-            child: Row(
+            child: Column(
               children: [
-                Expanded(
-                  child: TextField(
-                    controller: _messageController,
-                    decoration: InputDecoration(
-                      hintText:
-                          'Ask about nutrition, calories, meal planning...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                    ),
-                    maxLines: null,
-                    textInputAction: TextInputAction.send,
-                    onSubmitted: (_) => _sendMessage(),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    onPressed: _promptRecipeType,
+                    icon: const Icon(Icons.restaurant_menu),
+                    label: const Text('Generate Recipes'),
                   ),
                 ),
-                const SizedBox(width: 8),
-                FloatingActionButton(
-                  onPressed: _sendMessage,
-                  backgroundColor: Colors.green[600],
-                  mini: true,
-                  child: const Icon(Icons.send, color: Colors.white),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _messageController,
+                        decoration: InputDecoration(
+                          hintText:
+                              'Ask about nutrition, calories, meal planning...',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                        ),
+                        maxLines: null,
+                        textInputAction: TextInputAction.send,
+                        onSubmitted: (_) => _sendMessage(),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    FloatingActionButton(
+                      onPressed: _sendMessage,
+                      backgroundColor: Colors.green[600],
+                      mini: true,
+                      child: const Icon(Icons.send, color: Colors.white),
+                    ),
+                  ],
                 ),
               ],
             ),
