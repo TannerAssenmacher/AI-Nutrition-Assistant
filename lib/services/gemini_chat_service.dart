@@ -4,7 +4,7 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../providers/food_providers.dart';
-import '../services/nutrition_service.dart';
+//import '../services/nutrition_service.dart';
 
 part 'gemini_chat_service.g.dart';
 

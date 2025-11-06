@@ -33,6 +33,7 @@ dependencies:
   cupertino_icons: ^1.0.6
   flutter_dotenv: ^6.0.0
   intl: ^0.18.1
+  email_validator: ^2.1.17
   
   # Riverpod for state management
   flutter_riverpod: ^3.0.1
