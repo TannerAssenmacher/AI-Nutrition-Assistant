@@ -78,6 +78,17 @@ class GeminiChatService extends _$GeminiChatService {
     }
   }
 
+  // Add this: have the bot speak without hitting the API
+  void promptForRecipeType() {
+    state = [
+      ...state,
+      ChatMessage(
+        content: "What kind of meal would you like me to find recipes for?",
+        isUser: false,
+      ),
+    ];
+  }
+
   // Analyze food photo
   Future<void> analyzeFoodPhoto(String imagePath) async {
     try {
