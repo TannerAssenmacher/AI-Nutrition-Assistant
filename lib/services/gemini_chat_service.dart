@@ -89,7 +89,7 @@ class GeminiChatService extends _$GeminiChatService {
         ...state,
         ChatMessage(
           content: '''
-          Great choice! 🌎 What cuisine are you in the mood for?
+          Great choice! What cuisine are you in the mood for?
 
           Options:
           American, Asian, British, Caribbean, Central Europe, Chinese, Eastern Europe, French, Greek, Indian, Italian, Japanese, Korean, Kosher, Mediterranean, Mexican, Middle Eastern, Nordic, South American, South East Asian, or **None**
