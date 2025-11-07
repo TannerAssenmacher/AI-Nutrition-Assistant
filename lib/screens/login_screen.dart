@@ -14,9 +14,38 @@ class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _showValidationErrors = false;
   String? _error;
 
+  // Listener that clears the top-level Firebase error as soon as the user types
+  void _clearErrorOnType() {
+    if (_error != null) setState(() => _error = null);
+    if (_showValidationErrors) _formKey.currentState?.validate();
+  }
+
+
+  @override
+  void initState() {
+    super.initState();
+    // Attach listeners so the error message disappears immediately on typing
+    _emailController.addListener(_clearErrorOnType);
+    _passwordController.addListener(_clearErrorOnType);
+  }
+
+  @override
+  void dispose() {
+    _emailController.removeListener(_clearErrorOnType);
+    _passwordController.removeListener(_clearErrorOnType);
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
   Future<void> _login() async {
+    setState(() {
+      _showValidationErrors = true; // start showing field errors
+    });
+
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
@@ -34,7 +63,7 @@ class _LoginPageState extends State<LoginPage> {
 
       if (user != null && !user.emailVerified) {
         await _showEmailVerificationDialog(user);
-        await FirebaseAuth.instance.signOut(); // prevent access until verified
+        await FirebaseAuth.instance.signOut();
         return;
       }
 
@@ -42,7 +71,7 @@ class _LoginPageState extends State<LoginPage> {
     } on FirebaseAuthException catch (e) {
       setState(() => _error = e.message);
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -143,8 +172,7 @@ class _LoginPageState extends State<LoginPage> {
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Padding(
-                    padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
                     child: Form(
                       key: _formKey,
                       child: Column(
@@ -162,6 +190,7 @@ class _LoginPageState extends State<LoginPage> {
                               }
                               return null;
                             },
+                            onTap: _clearErrorOnType,
                           ),
                           const SizedBox(height: 20),
                           TextFormField(
@@ -173,11 +202,14 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                             onFieldSubmitted: (_) => _login(),
                             validator: (value) {
-                              if (value == null || value.length < 6) {
-                                return 'Password must be at least 6 characters';
+                              if (!_showValidationErrors) return null;
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter your password';
                               }
                               return null;
                             },
+
+                            onTap: _clearErrorOnType,
                           ),
                           const SizedBox(height: 25),
                           if (_error != null)
