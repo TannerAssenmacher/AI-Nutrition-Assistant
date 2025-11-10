@@ -76,8 +76,7 @@ class _RegisterPageState extends State<RegisterPage> {
     'Vegan',
     'Pescatarian',
     'Keto',
-    'Paleo',
-    'None'
+    'Paleo'
   ];
   final _allergyOptions = [
     'Peanuts',
@@ -86,8 +85,7 @@ class _RegisterPageState extends State<RegisterPage> {
     'Gluten',
     'Shellfish',
     'Soy',
-    'Eggs',
-    'None'
+    'Eggs'
   ];
 
   void _markTouchedOnType(TextEditingController c) {
@@ -190,18 +188,6 @@ class _RegisterPageState extends State<RegisterPage> {
     setState(() => _submitted = true);
     if (!_formKey.currentState!.validate()) return;
 
-    if (_dietaryHabits.isEmpty || _allergies.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Please select at least one dietary habit and one allergy')));
-      return;
-    }
-
-    if (_sex == null || _activityLevel == null || _dietaryGoal == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Please complete all dropdowns and selections')));
-      return;
-    }
-
     setState(() => _isLoading = true);
     try {
       final authResult = await FirebaseAuth.instance.createUserWithEmailAndPassword(
@@ -229,20 +215,21 @@ class _RegisterPageState extends State<RegisterPage> {
         ),
       );
 
+      // Safely handle all optional fields
       final user = await AppUser.create(
         firstname: _firstnameController.text.trim(),
         lastname: _lastnameController.text.trim(),
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
         age: 0,
-        sex: _sex!,
-        height: double.parse(_heightController.text),
-        weight: double.parse(_weightController.text),
-        activityLevel: _activityLevel!,
-        dietaryGoal: _dietaryGoal!,
+        sex: _sex ?? '', // empty string if not selected
+        height: double.tryParse(_heightController.text) ?? 0.0,
+        weight: double.tryParse(_weightController.text) ?? 0.0,
+        activityLevel: _activityLevel ?? '',
+        dietaryGoal: _dietaryGoal ?? '',
         mealProfile: mealProfile,
         mealPlans: {},
-        dailyCalorieGoal: int.parse(_dailyCaloriesController.text),
+        dailyCalorieGoal: int.tryParse(_dailyCaloriesController.text) ?? 0,
         macroGoals: {'protein': _protein, 'carbs': _carbs, 'fats': _fats},
       );
 
@@ -334,13 +321,16 @@ class _RegisterPageState extends State<RegisterPage> {
         centerTitle: true,
       ),
       body: SafeArea(
-        child: PageView(
-          controller: _pageController,
-          physics: const NeverScrollableScrollPhysics(),
-          children: [
-            _buildPage1(),
-            _buildPage2(),
-          ],
+        child: Form(
+          key: _formKey,
+          child: PageView(
+            controller: _pageController,
+            physics: const NeverScrollableScrollPhysics(),
+            children: [
+              _buildPage1(),
+              _buildPage2(),
+            ],
+          ),
         ),
       ),
     );
@@ -350,8 +340,6 @@ class _RegisterPageState extends State<RegisterPage> {
   Widget _buildPage1() {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
-      child: Form(
-        key: _formKey,
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(minWidth: 250, maxWidth: 500),
@@ -377,7 +365,6 @@ class _RegisterPageState extends State<RegisterPage> {
             ),
           ),
         ),
-      ),
     );
   }
 
@@ -395,17 +382,15 @@ class _RegisterPageState extends State<RegisterPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _buildDOBField(),
-                _dropdownField('Sex', _sexOptions, (val) => _sex = val),
-                _buildTextField(_heightController, 'Height (inches)',
+                _buildDOBField(isRequired: false),
+                _dropdownField('Sex', _sexOptions, (val) => _sex = val, isRequired: false),
+                _buildOptionalTextField(_heightController, 'Height (inches)',
                     keyboardType: TextInputType.number),
-                _buildTextField(_weightController, 'Weight (lbs)',
+                _buildOptionalTextField(_weightController, 'Weight (lbs)',
                     keyboardType: TextInputType.number),
-                _dropdownField('Activity Level', _activityLevels,
-                        (val) => _activityLevel = val),
-                _dropdownField('Dietary Goal', _dietGoals,
-                        (val) => _dietaryGoal = val),
-                _buildTextField(_dailyCaloriesController, 'Daily Calorie Goal',
+                _dropdownField('Activity Level', _activityLevels, (val) => _activityLevel = val, isRequired: false),
+                _dropdownField('Dietary Goal', _dietGoals, (val) => _dietaryGoal = val, isRequired: false),
+                _buildOptionalTextField(_dailyCaloriesController, 'Daily Calorie Goal',
                     keyboardType: TextInputType.number),
                 const SizedBox(height: 20),
                 const Text('Macronutrient Goals (% of calories)',
@@ -453,7 +438,15 @@ class _RegisterPageState extends State<RegisterPage> {
                     _isLoading
                         ? const CircularProgressIndicator()
                         : ElevatedButton(
-                      onPressed: _registerUser,
+                        onPressed: () {
+                          // Mark form as submitted once the user tries to submit
+                          setState(() => _submitted = true);
+
+                          // Trigger validation for all fields
+                          if (_formKey.currentState!.validate()) {
+                            _registerUser();
+                          }
+                        },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green,
                         padding: const EdgeInsets.all(15),
@@ -530,24 +523,33 @@ class _RegisterPageState extends State<RegisterPage> {
         ),
 
         validator: (val) {
-          if (val == null || val.isEmpty) {
+          // Only show 'required' message after pressing Next
+          if ((val == null || val.isEmpty) && _submitted) {
             return 'This field is required';
           }
           if (label.toLowerCase().contains('email') &&
+              val != null &&
+              val.isNotEmpty &&
               !EmailValidator.validate(val)) {
             return 'Enter a valid email address';
           }
           return null;
         },
+
       ),
     );
   }
 
-  Widget _buildOptionalTextField(TextEditingController c, String label) {
+  Widget _buildOptionalTextField(
+      TextEditingController c,
+      String label, {
+        TextInputType? keyboardType,
+      }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: TextFormField(
         controller: c,
+        keyboardType: keyboardType,
         decoration: InputDecoration(
           labelText: label,
           border: const OutlineInputBorder(),
@@ -557,7 +559,11 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   Widget _dropdownField(
-      String label, List<String> options, void Function(String?) onChanged) {
+      String label,
+      List<String> options,
+      void Function(String?) onChanged, {
+        bool isRequired = true,
+      }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: DropdownButtonFormField<String>(
@@ -570,11 +576,16 @@ class _RegisterPageState extends State<RegisterPage> {
         items: options
             .map((e) => DropdownMenuItem(value: e, child: Text(e)))
             .toList(),
-        validator: (val) =>
-        val == null || val.isEmpty ? 'Please select an option' : null,
+
+        // Skip validation if not required or if we're on page 2
+        validator: (val) {
+          if (!isRequired || _currentPage == 1) return null;
+          return (val == null || val.isEmpty) ? 'Please select an option' : null;
+        },
       ),
     );
   }
+
 
   Widget _centeredMultiSelectField(String label, List<String> options,
       List<String> selected,
@@ -601,18 +612,12 @@ class _RegisterPageState extends State<RegisterPage> {
               );
             }).toList(),
           ),
-          if (_submitted && isRequired && selected.isEmpty)
-            const Padding(
-              padding: EdgeInsets.only(top: 8.0),
-              child: Text('Please select at least one option',
-                  style: TextStyle(color: Colors.red, fontSize: 13)),
-            ),
         ],
       ),
     );
   }
 
-  Widget _buildDOBField() {
+  Widget _buildDOBField({bool isRequired = true}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: TextFormField(
@@ -643,6 +648,9 @@ class _RegisterPageState extends State<RegisterPage> {
           ),
         ),
         validator: (val) {
+          // 👇 Skip validation if not required
+          if (!isRequired) return null;
+
           if (val == null || val.isEmpty) {
             return 'This field is required';
           }
@@ -656,7 +664,7 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 }
 
-class _DOBFormatter extends TextInputFormatter {
+  class _DOBFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(
       TextEditingValue oldValue, TextEditingValue newValue) {
