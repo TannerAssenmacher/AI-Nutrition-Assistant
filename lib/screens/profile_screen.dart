@@ -101,7 +101,7 @@ class _ProfilePageState extends State<ProfilePage> {
     'vegan', 
     'vegetarian', 
     'wheat-free',
-    'None'
+    'none'
   ];
 
   @override
