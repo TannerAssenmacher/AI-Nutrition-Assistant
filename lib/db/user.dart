@@ -162,7 +162,7 @@ class AppUser {
 @JsonSerializable(explicitToJson: true)
 class MealProfile {
   final List<String> dietaryHabits;
-  final List<String> allergies;
+  final List<String> healthRestrictions;
   final Preferences preferences;
   final Map<String, double> macroGoals; // {protein: g, carbs: g, fat: g}
   final int dailyCalorieGoal;
@@ -170,7 +170,7 @@ class MealProfile {
 
   MealProfile({
     required this.dietaryHabits,
-    required this.allergies,
+    required this.healthRestrictions,
     required this.preferences,
     required this.macroGoals,
     required this.dailyCalorieGoal,
@@ -244,7 +244,7 @@ extension MealProfileCopy on MealProfile {
   }) {
     return MealProfile(
       dietaryHabits: dietaryHabits ?? this.dietaryHabits,
-      allergies: allergies ?? this.allergies,
+      healthRestrictions: allergies ?? this.healthRestrictions,
       preferences: preferences ?? this.preferences,
       macroGoals: macroGoals ?? this.macroGoals,
       dailyCalorieGoal: dailyCalorieGoal ?? this.dailyCalorieGoal,

@@ -16,7 +16,7 @@ AppUser get mockUser {
     activityLevel: 'lightly_active',
     mealProfile: MealProfile(
       dietaryHabits: ['vegetarian'],
-      allergies: ['peanuts'],
+      healthRestrictions: ['peanuts'],
       preferences: Preferences(likes: ['food_1'], dislikes: ['food_2']),
       macroGoals: {'protein': 150, 'carbs': 300, 'fat': 70},
       dailyCalorieGoal: 2500,

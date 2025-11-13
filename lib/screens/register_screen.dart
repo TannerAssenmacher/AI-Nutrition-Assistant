@@ -70,8 +70,8 @@ class _RegisterPageState extends State<RegisterPage> {
   final _sexOptions = ['Male', 'Female'];
   final _activityLevels = ['Sedentary', 'Lightly Active', 'Moderately Active', 'Very Active'];
   final _dietGoals = ['Lose Weight', 'Maintain Weight', 'Gain Muscle'];
-  final _dietaryHabitOptions = ['Vegetarian', 'Vegan', 'Pescatarian', 'Keto', 'Paleo'];
-  final _allergyOptions = ['Peanuts', 'Tree Nuts', 'Dairy', 'Gluten', 'Shellfish', 'Soy', 'Eggs'];
+  final _dietaryHabitOptions = ['balanced', 'high-fiber', 'high-protein', 'low-carb', 'low-fat', 'low-sodium', 'none'];
+  final _healthOptions = ['alcohol-cocktail', 'alcohol-free', 'celery-free', 'crustacean-free', 'dairy-free', 'DASH', 'egg-free', 'fish-free', 'fodmap-free', 'gluten-free', 'immuno-supportive', 'keto-friendly', 'kidney-friendly', 'kosher', 'low-fat-abs', 'low-potassium', 'low-sugar', 'lupine-free', 'Mediterranean', 'mollusk-free', 'mustard-free', 'no-oil-added', 'paleo', 'peanut-free', 'pescatarian', 'pork-free', 'red-meat-free', 'sesame-free', 'shellfish-free', 'soy-free', 'sugar-conscious', 'sulfite-free', 'tree-nut-free', 'vegan', 'vegetarian', 'wheat-free', 'None'];
 
   @override
   void initState() {
@@ -251,7 +251,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
       final mealProfile = MealProfile(
         dietaryHabits: _dietaryHabits,
-        allergies: _allergies,
+        healthRestrictions: _healthOptions,
         preferences: Preferences(
           likes: _likesController.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList(),
           dislikes: _dislikesController.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList(),
@@ -387,7 +387,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 const SizedBox(height: 25),
                 _centeredMultiSelectField('Dietary Habits', _dietaryHabitOptions, _dietaryHabits),
                 const SizedBox(height: 24),
-                _centeredMultiSelectField('Allergies', _allergyOptions, _allergies),
+                _centeredMultiSelectField('Allergies', _healthOptions, _allergies),
                 const SizedBox(height: 24),
                 _textFieldOptional(_likesController, 'Food Likes (comma-separated)'),
                 _textFieldOptional(_dislikesController, 'Food Dislikes (comma-separated)'),
