@@ -108,11 +108,6 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _saveProfile() async {
     setState(() => _submitted = true);
     if (!_formKey.currentState!.validate()) return;
-    if (_dietaryHabits.isEmpty || _health.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Please select at least one dietary habit and one restriction.')));
-      return;
-    }
 
     setState(() => _isSaving = true);
 
@@ -134,6 +129,7 @@ class _ProfilePageState extends State<ProfilePage> {
         _likesController.text.split(',').map((e) => e.trim()).toList(),
         'mealProfile.preferences.dislikes':
         _dislikesController.text.split(',').map((e) => e.trim()).toList(),
+        'updatedAt': FieldValue.serverTimestamp(),
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -370,10 +366,6 @@ class _ProfilePageState extends State<ProfilePage> {
           labelText: label,
           border: const OutlineInputBorder(),
         ),
-        validator: (val) {
-          if (val == null || val.isEmpty) return 'This field is required';
-          return null;
-        },
       ),
     );
   }
@@ -403,8 +395,7 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
         value: validValue,
         onChanged: onChanged,
-        items: options.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-        validator: (val) => val == null || val.isEmpty ? 'Please select an option' : null,
+        items: options.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList()
       ),
     );
   }
@@ -433,14 +424,6 @@ class _ProfilePageState extends State<ProfilePage> {
               );
             }).toList(),
           ),
-          if (_submitted && selected.isEmpty)
-            const Padding(
-              padding: EdgeInsets.only(top: 8.0),
-              child: Text(
-                'Please select at least one option',
-                style: TextStyle(color: Colors.red, fontSize: 13),
-              ),
-            ),
         ],
       ),
     );
