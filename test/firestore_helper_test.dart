@@ -21,7 +21,7 @@ AppUser get mockUser {
     macroGoals: {'protein': 150, 'carbs': 300, 'fat': 70},
     mealProfile: MealProfile(
       dietaryHabits: ['vegetarian'],
-      allergies: ['peanuts'],
+      healthRestrictions: ['peanuts'],
       preferences: Preferences(likes: ['food_1'], dislikes: ['food_2']),
     ),
     mealPlans: {

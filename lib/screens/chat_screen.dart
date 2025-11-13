@@ -1,3 +1,4 @@
+import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/gemini_chat_service.dart';
@@ -14,6 +15,35 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
 
   bool _showRecipePicker = false;
+
+  String? _selectedMealType;
+  bool _showCuisinePicker = false;
+  bool _showConfirmationButtons = false;
+
+
+  final List<String> _cuisineTypes = [
+    'American',
+    'Asian',
+    'British',
+    'Caribbean',
+    'Central Europe',
+    'Chinese',
+    'Eastern Europe',
+    'French',
+    'Greek',
+    'Indian',
+    'Italian',
+    'Japanese',
+    'Korean',
+    'Kosher',
+    'Mediterranean',
+    'Mexican',
+    'Middle Eastern',
+    'Nordic',
+    'South American',
+    'South East Asian',
+    'None',
+  ];
 
   @override
   void dispose() {
@@ -51,22 +81,43 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
   }
 
-  void _onRecipeTypeSelected(String type) {
-    setState(() => _showRecipePicker = false);
+ void _onRecipeTypeSelected(String type) {
+  setState(() {
+    _selectedMealType = type;
+    _showRecipePicker = false;
+    _showCuisinePicker = true; // cuisines
+  });
 
-    final prompt =
-        "Suggest 3 healthy $type recipes tailored to my goals and today's food log. "
-        "Include ingredients, approximate calories per serving, and simple steps.";
+  WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+}
 
-    ref.read(geminiChatServiceProvider.notifier).sendMessage(prompt);
 
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
-  }
+void _onCuisineSelected(String cuisine) {
+  setState(() => _showCuisinePicker = false);
+
+  final meal = _selectedMealType ?? 'Meal';
+
+  ref
+      .read(geminiChatServiceProvider.notifier)
+      .handleMealTypeSelection(meal, cuisine); //send info to the backend
+
+  WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+}
+
 
   @override
   Widget build(BuildContext context) {
     final chatMessages = ref.watch(geminiChatServiceProvider);
-
+  
+    //user confirmation
+    if (chatMessages.isNotEmpty &&
+          chatMessages.last.content.contains("Is this correct?") &&
+          !_showConfirmationButtons) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          setState(() => _showConfirmationButtons = true);
+        });
+    }
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Nutrition Assistant Chat'),
@@ -156,6 +207,113 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 ],
               ),
             ),
+          //cuisine type picker
+         if (_showCuisinePicker)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: Colors.grey[100],
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Select a cuisine type for your $_selectedMealType:',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _cuisineTypes.map((cuisine) {
+                      return ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green[600],
+                          foregroundColor: Colors.white,
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                        ),
+                        onPressed: () => _onCuisineSelected(cuisine),
+                        child: Text(
+                          cuisine,
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            ),
+
+           //confirmation on user diet and health restrictions
+            if (_showConfirmationButtons)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                color: Colors.grey[100],
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'Is this information correct?',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            // ✅ user confirms info is correct
+                            setState(() => _showConfirmationButtons = false);
+                            ref
+                                .read(geminiChatServiceProvider.notifier)
+                                .confirmMealProfile(true);
+                            WidgetsBinding.instance
+                                .addPostFrameCallback((_) => _scrollToBottom());
+                          },
+                          icon: const Icon(Icons.check),
+                          label: const Text('Yes'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green[600],
+                            foregroundColor: Colors.white,
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            // ❌ user says info is incorrect
+                            setState(() => _showConfirmationButtons = false);
+                            ref
+                                .read(geminiChatServiceProvider.notifier)
+                                .confirmMealProfile(false);
+                            WidgetsBinding.instance
+                                .addPostFrameCallback((_) => _scrollToBottom());
+                          },
+                          icon: const Icon(Icons.close),
+                          label: const Text('No'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red[600],
+                            foregroundColor: Colors.white,
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
 
           // Message input + Generate Recipes button
           Container(

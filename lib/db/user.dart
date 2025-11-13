@@ -181,12 +181,12 @@ class AppUser {
 @JsonSerializable(explicitToJson: true)
 class MealProfile {
   final List<String> dietaryHabits;
-  final List<String> allergies;
+  final List<String> healthRestrictions;
   final Preferences preferences;
 
   MealProfile({
     required this.dietaryHabits,
-    required this.allergies,
+    required this.healthRestrictions,
     required this.preferences,
   });
 

@@ -20,8 +20,6 @@ void main() async {
   try {
     // Load the .env before Firebase
     await dotenv.load(fileName: ".env");
-    print(
-        "✅ Loaded GOOGLE_API_KEY_ANDROID: ${dotenv.env['GOOGLE_API_KEY_ANDROID']}");
 
     // Initialize Firebase with better error handling
     await _initializeFirebase();
