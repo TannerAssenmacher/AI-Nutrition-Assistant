@@ -427,6 +427,8 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _dropdownField(String label, List<String> options, String? value,
       void Function(String?) onChanged) {
+    final validValue = options.contains(value) ? value : null;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: DropdownButtonFormField<String>(
@@ -434,7 +436,7 @@ class _ProfilePageState extends State<ProfilePage> {
           labelText: label,
           border: const OutlineInputBorder(),
         ),
-        value: value,
+        value: validValue, // ✅ ensure it's valid
         onChanged: onChanged,
         items: options
             .map((e) => DropdownMenuItem(value: e, child: Text(e)))
@@ -444,6 +446,7 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
     );
   }
+
 
   Widget _centeredMultiSelectField(
       String label, List<String> options, List<String> selected) {

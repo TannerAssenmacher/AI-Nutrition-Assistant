@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -33,7 +34,8 @@ class _RegisterPageState extends State<RegisterPage> {
   final _likesController = TextEditingController();
   final _dislikesController = TextEditingController();
 
-  final Map<String, FocusNode> _focusNodes = {};
+  // Focus + touched tracking
+  final Map<TextEditingController, FocusNode> _focusMap = {};
   final Map<TextEditingController, bool> _fieldTouched = {};
 
   // Dropdowns / selections
@@ -45,65 +47,38 @@ class _RegisterPageState extends State<RegisterPage> {
 
   bool _isLoading = false;
   bool _submitted = false;
+
+  String? _emailError; // live email duplication / format error
+  String? _passwordError; // firebase weak-password, etc.
+
+  // Password live rules
   bool _passwordTouched = false;
-
-  String? _emailError;
-  String? _passwordError;
-
-  // Password rule tracking
   bool _hasMinLength = false;
   bool _hasUppercase = false;
   bool _hasNumber = false;
   bool _hasSpecial = false;
 
+  // Email debounce
+  Timer? _emailDebounce;
 
-  // Default macronutrient goals
+  // Macros
   double _protein = 20.0;
   double _carbs = 50.0;
   double _fats = 30.0;
 
   // Dropdown options
   final _sexOptions = ['Male', 'Female'];
-  final _activityLevels = [
-    'Sedentary',
-    'Lightly Active',
-    'Moderately Active',
-    'Very Active'
-  ];
+  final _activityLevels = ['Sedentary', 'Lightly Active', 'Moderately Active', 'Very Active'];
   final _dietGoals = ['Lose Weight', 'Maintain Weight', 'Gain Muscle'];
-  final _dietaryHabitOptions = [
-    'Vegetarian',
-    'Vegan',
-    'Pescatarian',
-    'Keto',
-    'Paleo'
-  ];
-  final _allergyOptions = [
-    'Peanuts',
-    'Tree Nuts',
-    'Dairy',
-    'Gluten',
-    'Shellfish',
-    'Soy',
-    'Eggs'
-  ];
-
-  void _markTouchedOnType(TextEditingController c) {
-    c.addListener(() {
-      if (_fieldTouched[c] != true) {
-        setState(() => _fieldTouched[c] = true);
-      } else {
-        // still setState so error hides as soon as user types
-        setState(() {});
-      }
-    });
-  }
+  final _dietaryHabitOptions = ['Vegetarian', 'Vegan', 'Pescatarian', 'Keto', 'Paleo'];
+  final _allergyOptions = ['Peanuts', 'Tree Nuts', 'Dairy', 'Gluten', 'Shellfish', 'Soy', 'Eggs'];
 
   @override
   void initState() {
     super.initState();
 
-    for (var controller in [
+    // Init focus + touched
+    for (final c in [
       _firstnameController,
       _lastnameController,
       _emailController,
@@ -116,27 +91,28 @@ class _RegisterPageState extends State<RegisterPage> {
       _dislikesController,
     ]) {
       final node = FocusNode();
-      _focusNodes[controller.hashCode.toString()] = node;
-      _fieldTouched[controller] = false;
+      _focusMap[c] = node;
+      _fieldTouched[c] = false;
 
       node.addListener(() {
-        // When user clicks into the field, hide error right away
         if (node.hasFocus) {
-          setState(() {
-            _fieldTouched[controller] = true;
-          });
+          setState(() => _fieldTouched[c] = true); // hide "required" on focus
         } else {
-          // When focus leaves, trigger validation again
-          _formKey.currentState?.validate();
+          if (_submitted) setState(() {}); // revalidate on blur if needed
+        }
+      });
+
+      // Mark touched on type; keep validators responsive
+      c.addListener(() {
+        if (_fieldTouched[c] != true) {
+          setState(() => _fieldTouched[c] = true);
+        } else {
+          if (_submitted) setState(() {});
         }
       });
     }
 
-    // keep these existing listeners:
-    _emailController.addListener(() {
-      if (_emailError != null) setState(() => _emailError = null);
-    });
-
+    // Live password rules
     _passwordController.addListener(() {
       final value = _passwordController.text;
       setState(() {
@@ -149,23 +125,79 @@ class _RegisterPageState extends State<RegisterPage> {
       });
     });
 
-    // NEW: mark required fields as touched on type so their own error hides
-    _markTouchedOnType(_firstnameController);
-    _markTouchedOnType(_lastnameController);
-    _markTouchedOnType(_emailController);
-    _markTouchedOnType(_passwordController);
-    _markTouchedOnType(_dobController);
-    _markTouchedOnType(_heightController);
-    _markTouchedOnType(_weightController);
-    _markTouchedOnType(_dailyCaloriesController);
-    // likes/dislikes are optional — you can skip them
+    // Live email duplication check (debounced)
+    _emailController.addListener(() {
+      // clear any previous msg when typing
+      if (_emailError != null) setState(() => _emailError = null);
+
+      _emailDebounce?.cancel();
+      _emailDebounce = Timer(const Duration(milliseconds: 400), () async {
+        final email = _emailController.text.trim();
+        if (email.isEmpty) {
+          if (_emailError != null) setState(() => _emailError = null);
+          return;
+        }
+        if (!EmailValidator.validate(email)) {
+          // let the validator handle "invalid format" when submitted;
+          // do not set an error here to avoid flicker while typing
+          return;
+        }
+        final inUse = await _emailAlreadyInUse(email);
+        if (!mounted) return;
+        if (inUse) {
+          setState(() => _emailError = 'This email is already registered.');
+        } else if (_emailError != null) {
+          setState(() => _emailError = null);
+        }
+      });
+    });
   }
 
+  @override
+  void dispose() {
+    _emailDebounce?.cancel();
+    for (final n in _focusMap.values) {
+      n.dispose();
+    }
+    for (final c in [
+      _firstnameController,
+      _lastnameController,
+      _emailController,
+      _passwordController,
+      _dobController,
+      _heightController,
+      _weightController,
+      _dailyCaloriesController,
+      _likesController,
+      _dislikesController,
+    ]) {
+      c.dispose();
+    }
+    super.dispose();
+  }
 
-  void _toggleMultiSelect(List<String> list, String value) {
-    setState(() {
-      list.contains(value) ? list.remove(value) : list.add(value);
-    });
+  Future<bool> _emailAlreadyInUse(String email) async {
+    // Try Auth API first
+    try {
+      final auth = FirebaseAuth.instance;
+      final methods = await (auth as dynamic).fetchSignInMethodsForEmail(email) as List?;
+      if (methods != null) return methods.isNotEmpty;
+    } catch (_) {
+      // ignore and fall back to Firestore
+    }
+
+    // Fallback: check Users collection by email (since you store email in user doc)
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('Users')
+          .where('email', isEqualTo: email)
+          .limit(1)
+          .get();
+      return snap.docs.isNotEmpty;
+    } catch (_) {
+      // If it fails, don't block typing UX—assume not in use
+      return false;
+    }
   }
 
   bool _isValidDate(String input) {
@@ -173,19 +205,32 @@ class _RegisterPageState extends State<RegisterPage> {
     if (!regex.hasMatch(input)) return false;
     try {
       final parts = input.split('/');
-      final date = DateTime(
-        int.parse(parts[2]),
-        int.parse(parts[0]),
-        int.parse(parts[1]),
-      );
+      final date = DateTime(int.parse(parts[2]), int.parse(parts[0]), int.parse(parts[1]));
       return date.isBefore(DateTime.now());
     } catch (_) {
       return false;
     }
   }
 
+  // ---- PAGE 1: Validate, then go next
+  Future<void> _validatePage1AndNext() async {
+    setState(() => _submitted = true);
+    setState(() {}); // force rebuild so validators run with _submitted=true
+
+    // If email duplication already detected via live check, block navigation
+    if (_emailError != null) return;
+
+    final validLocal = _formKey.currentState?.validate() ?? false;
+    if (!validLocal) return;
+
+    _pageController.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+    setState(() => _currentPage = 1);
+  }
+
+  // ---- REGISTER USER
   Future<void> _registerUser() async {
     setState(() => _submitted = true);
+    if (_emailError != null) return; // block if email already flagged
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
@@ -198,45 +243,46 @@ class _RegisterPageState extends State<RegisterPage> {
       final uid = authResult.user?.uid;
       if (uid == null) throw Exception('User ID not found after registration');
 
+      final parts = _dobController.text.split('/');
+      DateTime? dob;
+      if (_dobController.text.trim().isNotEmpty) {
+        dob = DateTime(int.parse(parts[2]), int.parse(parts[0]), int.parse(parts[1]));
+      }
+
       final mealProfile = MealProfile(
         dietaryHabits: _dietaryHabits,
         allergies: _allergies,
         preferences: Preferences(
-          likes: _likesController.text
-              .split(',')
-              .map((e) => e.trim())
-              .where((e) => e.isNotEmpty)
-              .toList(),
-          dislikes: _dislikesController.text
-              .split(',')
-              .map((e) => e.trim())
-              .where((e) => e.isNotEmpty)
-              .toList(),
+          likes: _likesController.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList(),
+          dislikes: _dislikesController.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList(),
         ),
+        macroGoals: {'protein': _protein, 'carbs': _carbs, 'fat': _fats},
+        dailyCalorieGoal: int.tryParse(_dailyCaloriesController.text) ?? 0,
+        dietaryGoal: _dietaryGoal ?? '',
       );
 
-      // Safely handle all optional fields
+      // AppUser with updated structure (dob optional)
       final user = await AppUser.create(
         firstname: _firstnameController.text.trim(),
         lastname: _lastnameController.text.trim(),
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
-        age: 0,
-        sex: _sex ?? '', // empty string if not selected
+        dob: dob ?? DateTime(1900, 1, 1),
+        sex: _sex ?? '',
         height: double.tryParse(_heightController.text) ?? 0.0,
         weight: double.tryParse(_weightController.text) ?? 0.0,
         activityLevel: _activityLevel ?? '',
-        dietaryGoal: _dietaryGoal ?? '',
         mealProfile: mealProfile,
-        mealPlans: {},
-        dailyCalorieGoal: int.tryParse(_dailyCaloriesController.text) ?? 0,
-        macroGoals: {'protein': _protein, 'carbs': _carbs, 'fats': _fats},
       );
 
-      final userJson = user.toJson();
-      userJson['dateOfBirth'] = _dobController.text;
+      final userData = user.toJson();
 
-      await FirebaseFirestore.instance.collection('Users').doc(uid).set(userJson);
+// If DOB is our placeholder (1900-01-01), replace it with an empty string
+      if (userData['dob'] == DateTime(1900, 1, 1).toIso8601String()) {
+        userData['dob'] = '';
+      }
+
+      await FirebaseFirestore.instance.collection('Users').doc(uid).set(userData);
       await authResult.user?.sendEmailVerification();
 
       if (mounted) {
@@ -247,72 +293,14 @@ class _RegisterPageState extends State<RegisterPage> {
         Navigator.pushReplacementNamed(context, '/login');
       }
     } catch (e) {
-      print('🔥 Error: $e');
+      debugPrint('🔥 Registration error: $e');
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  Future<void> _validateFirebaseCredentials() async {
-    // Mark form as submitted and reset all field touch states
-    setState(() {
-      _submitted = true;
-      _fieldTouched.updateAll((key, value) => false);
-    });
-
-    // Run validation — stops here if any empty or invalid fields
-    if (!_formKey.currentState!.validate()) return;
-
-    final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
-
-    // Clear any previous Firebase errors
-    setState(() {
-      _emailError = null;
-      _passwordError = null;
-    });
-
-    try {
-      // 🔍 Try creating a temp Firebase user (enforces Firebase rules)
-      final credential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(email: email, password: password);
-
-      // ✅ If successful, delete the temp user immediately
-      await credential.user?.delete();
-
-      // Move to next page
-      _pageController.nextPage(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
-      setState(() => _currentPage = 1);
-    } on FirebaseAuthException catch (e) {
-      // 🔴 Handle Firebase-specific validation errors
-      setState(() {
-        switch (e.code) {
-          case 'invalid-email':
-            _emailError = 'Please enter a valid email address.';
-            break;
-          case 'email-already-in-use':
-            _emailError = 'This email is already registered.';
-            break;
-          case 'weak-password':
-          // 👇 Don’t show Firebase’s message — just trigger local validation
-            print('Firebase weak password error: ${e.message}');
-            _passwordError = null;
-            _passwordTouched = true; // ensures local hint shows
-            break;
-          default:
-            print('Firebase Auth error: ${e.code} — ${e.message}');
-            _passwordError = null; // never display Firebase text
-            break;
-        }
-      });
-    }
-  }
-
-
+  // ---- BUILD
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -323,6 +311,7 @@ class _RegisterPageState extends State<RegisterPage> {
       body: SafeArea(
         child: Form(
           key: _formKey,
+          autovalidateMode: _submitted ? AutovalidateMode.always : AutovalidateMode.disabled,
           child: PageView(
             controller: _pageController,
             physics: const NeverScrollableScrollPhysics(),
@@ -336,39 +325,34 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  // --- PAGE 1 ---
+  // ---- PAGE 1
   Widget _buildPage1() {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minWidth: 250, maxWidth: 500),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildTextField(_firstnameController, 'First Name'),
-                _buildTextField(_lastnameController, 'Last Name'),
-                _buildTextField(_emailController, 'Email',
-                    keyboardType: TextInputType.emailAddress),
-                _buildTextField(_passwordController, 'Password', obscure: true),
-                const SizedBox(height: 30),
-                ElevatedButton(
-                  onPressed: _validateFirebaseCredentials,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    padding: const EdgeInsets.all(15),
-                  ),
-                  child: const Text('Next',
-                      style: TextStyle(color: Colors.white, fontSize: 18)),
-                ),
-              ],
-            ),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 500),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _textFieldRequired(_firstnameController, 'First Name'),
+              _textFieldRequired(_lastnameController, 'Last Name'),
+              _emailField(),          // email with LIVE duplication check
+              _passwordField(),       // single-line live hint
+              const SizedBox(height: 30),
+              ElevatedButton(
+                onPressed: _validatePage1AndNext,
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.green, padding: const EdgeInsets.all(15)),
+                child: const Text('Next', style: TextStyle(color: Colors.white, fontSize: 18)),
+              ),
+            ],
           ),
         ),
+      ),
     );
   }
 
-  // --- PAGE 2 ---
+  // ---- PAGE 2
   Widget _buildPage2() {
     return Scrollbar(
       controller: _scrollController,
@@ -378,59 +362,42 @@ class _RegisterPageState extends State<RegisterPage> {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(minWidth: 250, maxWidth: 500),
+            constraints: const BoxConstraints(maxWidth: 500),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _buildDOBField(isRequired: false),
-                _dropdownField('Sex', _sexOptions, (val) => _sex = val, isRequired: false),
-                _buildOptionalTextField(_heightController, 'Height (inches)',
-                    keyboardType: TextInputType.number),
-                _buildOptionalTextField(_weightController, 'Weight (lbs)',
-                    keyboardType: TextInputType.number),
-                _dropdownField('Activity Level', _activityLevels, (val) => _activityLevel = val, isRequired: false),
-                _dropdownField('Dietary Goal', _dietGoals, (val) => _dietaryGoal = val, isRequired: false),
-                _buildOptionalTextField(_dailyCaloriesController, 'Daily Calorie Goal',
-                    keyboardType: TextInputType.number),
+                _dobFieldOptional(), // DOB is NOT required now
+                _dropdownField('Sex', _sexOptions, (v) => _sex = v),
+                _textFieldOptional(_heightController, 'Height (inches)', keyboardType: TextInputType.number),
+                _textFieldOptional(_weightController, 'Weight (lbs)', keyboardType: TextInputType.number),
+                _dropdownField('Activity Level', _activityLevels, (v) => _activityLevel = v),
+                _dropdownField('Dietary Goal', _dietGoals, (v) => _dietaryGoal = v),
+                _textFieldOptional(_dailyCaloriesController, 'Daily Calorie Goal', keyboardType: TextInputType.number),
                 const SizedBox(height: 20),
-                const Text('Macronutrient Goals (% of calories)',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
+                const Text('Macronutrient Goals (% of calories)', style: TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 10),
                 MacroSlider(
                   protein: _protein,
                   carbs: _carbs,
                   fats: _fats,
-                  onChanged: (p, c, f) {
-                    setState(() {
-                      _protein = p;
-                      _carbs = c;
-                      _fats = f;
-                    });
-                  },
+                  onChanged: (p, c, f) => setState(() {
+                    _protein = p; _carbs = c; _fats = f;
+                  }),
                 ),
                 const SizedBox(height: 25),
-                _centeredMultiSelectField(
-                    'Dietary Habits', _dietaryHabitOptions, _dietaryHabits,
-                    isRequired: true),
+                _centeredMultiSelectField('Dietary Habits', _dietaryHabitOptions, _dietaryHabits),
                 const SizedBox(height: 24),
-                _centeredMultiSelectField(
-                    'Allergies', _allergyOptions, _allergies,
-                    isRequired: true),
+                _centeredMultiSelectField('Allergies', _allergyOptions, _allergies),
                 const SizedBox(height: 24),
-                _buildOptionalTextField(_likesController,
-                    'Food Likes (comma-separated, e.g. "chicken, rice")'),
-                _buildOptionalTextField(_dislikesController,
-                    'Food Dislikes (comma-separated, e.g. "broccoli, tofu")'),
+                _textFieldOptional(_likesController, 'Food Likes (comma-separated)'),
+                _textFieldOptional(_dislikesController, 'Food Dislikes (comma-separated)'),
                 const SizedBox(height: 30),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     TextButton(
                       onPressed: () {
-                        _pageController.previousPage(
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
-                        );
+                        _pageController.previousPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
                         setState(() => _currentPage = 0);
                       },
                       child: const Text('Back'),
@@ -438,22 +405,9 @@ class _RegisterPageState extends State<RegisterPage> {
                     _isLoading
                         ? const CircularProgressIndicator()
                         : ElevatedButton(
-                        onPressed: () {
-                          // Mark form as submitted once the user tries to submit
-                          setState(() => _submitted = true);
-
-                          // Trigger validation for all fields
-                          if (_formKey.currentState!.validate()) {
-                            _registerUser();
-                          }
-                        },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        padding: const EdgeInsets.all(15),
-                      ),
-                      child: const Text('Create Account',
-                          style: TextStyle(
-                              color: Colors.white, fontSize: 18)),
+                      onPressed: _registerUser,
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.green, padding: const EdgeInsets.all(15)),
+                      child: const Text('Create Account', style: TextStyle(color: Colors.white, fontSize: 18)),
                     ),
                   ],
                 ),
@@ -465,82 +419,121 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  // --- UI helpers ---
-  Widget _buildTextField(
+  // ---- UI helpers (Page 1 required fields)
+
+  Widget _textFieldRequired(
       TextEditingController c,
       String label, {
         TextInputType? keyboardType,
         bool obscure = false,
       }) {
-    final focusNode = _focusNodes[c.hashCode.toString()];
-
-    // Determine Firebase or password rule errors
-    String? firebaseError;
-    if (label.toLowerCase().contains('email')) firebaseError = _emailError;
-    if (label.toLowerCase().contains('password')) firebaseError = _passwordError;
-
-    String? passwordHint;
-    if (label.toLowerCase().contains('password')) {
-      final value = c.text;
-      if (value.isNotEmpty) {
-        if (value.length < 8) {
-          passwordHint = 'Password must be at least 8 characters';
-        } else if (!RegExp(r'[A-Z]').hasMatch(value)) {
-          passwordHint = 'Include at least one uppercase letter';
-        } else if (!RegExp(r'\d').hasMatch(value)) {
-          passwordHint = 'Include at least one number';
-        } else if (!RegExp(r'[!@#\$&*~]').hasMatch(value)) {
-          passwordHint = 'Include at least one special character';
-        }
-      }
-    }
-
-    final String? effectiveError = firebaseError ?? passwordHint;
+    final node = _focusMap[c];
+    final hasFocus = node?.hasFocus ?? false;
+    final showRequired = _submitted && c.text.isEmpty && !hasFocus;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: TextFormField(
         controller: c,
-        focusNode: focusNode,
+        focusNode: node,
         keyboardType: keyboardType,
         obscureText: obscure,
-
-        // 🔁 Live validation and dynamic refresh
-        onChanged: (_) {
-          if (_submitted) _formKey.currentState?.validate();
-          setState(() {}); // ensures password hints refresh live
-        },
-        onTap: () {
-          if (_submitted) _formKey.currentState?.validate();
-          setState(() {});
-        },
-
+        onChanged: (_) => setState(() {}),
+        onTap: () => setState(() {}), // hide required on focus
         decoration: InputDecoration(
           labelText: label,
           border: const OutlineInputBorder(),
-          errorText: effectiveError ??
-              ((_submitted && c.text.isEmpty) ? 'This field is required' : null),
+          errorText: showRequired ? 'This field is required' : null,
         ),
-
         validator: (val) {
-          // Only show 'required' message after pressing Next
-          if ((val == null || val.isEmpty) && _submitted) {
+          if (_submitted && (val == null || val.isEmpty)) {
             return 'This field is required';
-          }
-          if (label.toLowerCase().contains('email') &&
-              val != null &&
-              val.isNotEmpty &&
-              !EmailValidator.validate(val)) {
-            return 'Enter a valid email address';
           }
           return null;
         },
-
       ),
     );
   }
 
-  Widget _buildOptionalTextField(
+  Widget _emailField() {
+    final c = _emailController;
+    final node = _focusMap[c];
+    final hasFocus = node?.hasFocus ?? false;
+    final showRequired = _submitted && c.text.isEmpty && !hasFocus;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: TextFormField(
+        controller: c,
+        focusNode: node,
+        keyboardType: TextInputType.emailAddress,
+        onChanged: (_) => setState(() {}), // keep UI responsive
+        onTap: () => setState(() {}),      // hide required on focus
+        decoration: InputDecoration(
+          labelText: 'Email',
+          border: const OutlineInputBorder(),
+          errorText: _emailError ?? (showRequired ? 'This field is required' : null),
+        ),
+        validator: (val) {
+          if (_submitted && (val == null || val.isEmpty)) {
+            return 'This field is required';
+          }
+          if (val != null && val.isNotEmpty && !EmailValidator.validate(val)) {
+            return 'Enter a valid email address';
+          }
+          return null;
+        },
+      ),
+    );
+  }
+
+  Widget _passwordField() {
+    final c = _passwordController;
+    final node = _focusMap[c];
+    final hasFocus = node?.hasFocus ?? false;
+    final showRequired = _submitted && c.text.isEmpty && !hasFocus;
+
+    String? liveHint;
+    final value = c.text;
+    if (value.isNotEmpty) {
+      if (value.length < 8) {
+        liveHint = 'Password must be at least 8 characters';
+      } else if (!RegExp(r'[A-Z]').hasMatch(value)) {
+        liveHint = 'Include at least one uppercase letter';
+      } else if (!RegExp(r'\d').hasMatch(value)) {
+        liveHint = 'Include at least one number';
+      } else if (!RegExp(r'[!@#\$&*~]').hasMatch(value)) {
+        liveHint = 'Include at least one special character';
+      }
+    }
+
+    final effectiveError = _passwordError ?? (showRequired ? 'This field is required' : liveHint);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: TextFormField(
+        controller: c,
+        focusNode: node,
+        obscureText: true,
+        onChanged: (_) => setState(() {}),
+        onTap: () => setState(() {}),
+        decoration: InputDecoration(
+          labelText: 'Password',
+          border: const OutlineInputBorder(),
+          errorText: effectiveError,
+        ),
+        validator: (val) {
+          if (_submitted && (val == null || val.isEmpty)) {
+            return 'This field is required';
+          }
+          return null;
+        },
+      ),
+    );
+  }
+
+  // ---- Optional text field
+  Widget _textFieldOptional(
       TextEditingController c,
       String label, {
         TextInputType? keyboardType,
@@ -561,9 +554,8 @@ class _RegisterPageState extends State<RegisterPage> {
   Widget _dropdownField(
       String label,
       List<String> options,
-      void Function(String?) onChanged, {
-        bool isRequired = true,
-      }) {
+      void Function(String?) onChanged,
+      ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: DropdownButtonFormField<String>(
@@ -571,32 +563,23 @@ class _RegisterPageState extends State<RegisterPage> {
           labelText: label,
           border: const OutlineInputBorder(),
         ),
-        value: null,
         onChanged: onChanged,
-        items: options
-            .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-            .toList(),
-
-        // Skip validation if not required or if we're on page 2
-        validator: (val) {
-          if (!isRequired || _currentPage == 1) return null;
-          return (val == null || val.isEmpty) ? 'Please select an option' : null;
-        },
+        items: options.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
       ),
     );
   }
 
-
-  Widget _centeredMultiSelectField(String label, List<String> options,
+  Widget _centeredMultiSelectField(
+      String label,
+      List<String> options,
       List<String> selected,
-      {bool isRequired = false}) {
+      ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(label,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
           const SizedBox(height: 6),
           Wrap(
             alignment: WrapAlignment.center,
@@ -607,7 +590,9 @@ class _RegisterPageState extends State<RegisterPage> {
               return FilterChip(
                 label: Text(option),
                 selected: isSelected,
-                onSelected: (_) => _toggleMultiSelect(selected, option),
+                onSelected: (_) => setState(() {
+                  isSelected ? selected.remove(option) : selected.add(option);
+                }),
                 selectedColor: Colors.green[200],
               );
             }).toList(),
@@ -617,11 +602,16 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  Widget _buildDOBField({bool isRequired = true}) {
+  // ---- DOB (NOT required)
+  Widget _dobFieldOptional() {
+    final c = _dobController;
+    final node = _focusMap[c];
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: TextFormField(
-        controller: _dobController,
+        controller: c,
+        focusNode: node,
         keyboardType: TextInputType.number,
         inputFormatters: [
           FilteringTextInputFormatter.digitsOnly,
@@ -633,28 +623,23 @@ class _RegisterPageState extends State<RegisterPage> {
           suffixIcon: IconButton(
             icon: const Icon(Icons.calendar_today),
             onPressed: () async {
-              DateTime now = DateTime.now();
-              DateTime? pickedDate = await showDatePicker(
+              final now = DateTime.now();
+              final picked = await showDatePicker(
                 context: context,
                 initialDate: DateTime(now.year - 18, now.month, now.day),
                 firstDate: DateTime(1900),
                 lastDate: now,
               );
-              if (pickedDate != null) {
-                _dobController.text =
-                    DateFormat('MM/dd/yyyy').format(pickedDate);
+              if (picked != null) {
+                _dobController.text = DateFormat('MM/dd/yyyy').format(picked);
+                setState(() {});
               }
             },
           ),
         ),
         validator: (val) {
-          // 👇 Skip validation if not required
-          if (!isRequired) return null;
-
-          if (val == null || val.isEmpty) {
-            return 'This field is required';
-          }
-          if (!_isValidDate(val)) {
+          // NOT required; only validate format if non-empty
+          if (val != null && val.isNotEmpty && !_isValidDate(val)) {
             return 'Enter a valid date (MM/DD/YYYY)';
           }
           return null;
@@ -664,10 +649,9 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 }
 
-  class _DOBFormatter extends TextInputFormatter {
+class _DOBFormatter extends TextInputFormatter {
   @override
-  TextEditingValue formatEditUpdate(
-      TextEditingValue oldValue, TextEditingValue newValue) {
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
     String digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
     if (digits.length > 8) digits = digits.substring(0, 8);
     final buffer = StringBuffer();
@@ -675,12 +659,10 @@ class _RegisterPageState extends State<RegisterPage> {
       buffer.write(digits[i]);
       if ((i == 1 || i == 3) && i != digits.length - 1) buffer.write('/');
     }
-    String formatted = buffer.toString();
+    final formatted = buffer.toString();
     return TextEditingValue(
       text: formatted,
       selection: TextSelection.collapsed(offset: formatted.length),
     );
   }
 }
-
-

@@ -1,93 +1,63 @@
-import '../db/food.dart';
+import '../db/user.dart'; // Uses FoodItem model
 
 class NutritionService {
-  // Simulate API calls for food data
-  
-  Future<List<Food>> searchFoods(String query) async {
-    // Simulate network delay
+  // ---------------------------------------------------------------------------
+  // Simulated Food Search (mock API)
+  // ---------------------------------------------------------------------------
+  Future<List<FoodItem>> searchFoods(String query) async {
     await Future.delayed(const Duration(milliseconds: 800));
-    
-    // Mock data - in a real app, this would come from an API
-    final food1 = Food(
-        name: 'Apple',
-        category: 'Fruit',
-        caloriesPer100g: 52,
-        proteinPer100g: 0.3,
-        carbsPer100g: 14,
-        fatPer100g: 0.2,
-        fiberPer100g: 2.4,
-        micronutrients: Micronutrients(
-          calciumMg: 6,
-          ironMg: 0.1,
-          vitaminAMcg: 3,
-          vitaminCMg: 4.6,
-        ),
-        source: 'USDA',
-        consumedAt: DateTime.now(),
-        servingSize: 150
-      );
 
-    final food2 = Food(
-        name: 'Banana',
-        category: 'Fruit',
-        caloriesPer100g: 89,
-        proteinPer100g: 1.1,
-        carbsPer100g: 23,
-        fatPer100g: 0.3,
-        fiberPer100g: 2.6,
-        micronutrients: Micronutrients(
-          calciumMg: 5,
-          ironMg: 0.3,
-          vitaminAMcg: 3,
-          vitaminCMg: 8.7,
-        ),
-        source: 'USDA',
-        consumedAt: DateTime.now(),
-        servingSize: 118
-      );
+    // Mock data - in a real app, this would come from an API like USDA or FatSecret
+    final food1 = FoodItem(
+      name: 'Apple',
+      mass_g: 150,
+      calories_g: 78,
+      protein_g: 0.3,
+      carbs_g: 20.6,
+      fat: 0.2,
+      mealType: 'Snack',
+      consumedAt: DateTime.now(),
+    );
 
-    final food3 = Food(
-        name: 'Chicken Breast',
-        category: 'Meat',
-        caloriesPer100g: 165,
-        proteinPer100g: 31,
-        carbsPer100g: 0,
-        fatPer100g: 3.6,
-        fiberPer100g: 0,
-        micronutrients: Micronutrients(
-          calciumMg: 13,
-          ironMg: 1,
-          vitaminAMcg: 0,
-          vitaminCMg: 0,
-        ),
-        source: 'USDA',
-        consumedAt: DateTime.now(),
-        servingSize: 100
-      );
+    final food2 = FoodItem(
+      name: 'Banana',
+      mass_g: 118,
+      calories_g: 105,
+      protein_g: 1.3,
+      carbs_g: 27,
+      fat: 0.3,
+      mealType: 'Breakfast',
+      consumedAt: DateTime.now(),
+    );
+
+    final food3 = FoodItem(
+      name: 'Chicken Breast',
+      mass_g: 100,
+      calories_g: 165,
+      protein_g: 31,
+      carbs_g: 0,
+      fat: 3.6,
+      mealType: 'Lunch',
+      consumedAt: DateTime.now(),
+    );
 
     final allFoods = [food1, food2, food3];
-    
+
     if (query.isEmpty) {
       return allFoods;
     }
-    
+
     return allFoods
         .where((food) => food.name.toLowerCase().contains(query.toLowerCase()))
         .toList();
   }
-  
-  // Calculate nutritional information for a list of food items
-  Map<String, dynamic> calculateNutrition(List<Food> foods) {
+
+  // ---------------------------------------------------------------------------
+  // Calculate nutritional totals from a list of FoodItems
+  // ---------------------------------------------------------------------------
+  Map<String, dynamic> calculateNutrition(List<FoodItem> foods) {
     if (foods.isEmpty) {
-      return {
-        'totalCalories': 0,
-        'totalProtein': 0,
-        'totalCarbs': 0,
-        'totalFat': 0,
-        'proteinPercentage': 0,
-        'carbsPercentage': 0,
-        'fatPercentage': 0,
-      };
+      return _emptyNutrition();
     }
 
     double totalCalories = 0;
@@ -96,33 +66,39 @@ class NutritionService {
     double totalFat = 0;
 
     for (final food in foods) {
-      final servingRatio = food.servingSize / 100;
-      totalCalories += food.caloriesPer100g * servingRatio;
-      totalProtein += food.proteinPer100g * servingRatio;
-      totalCarbs += food.carbsPer100g * servingRatio;
-      totalFat += food.fatPer100g * servingRatio;
+      totalCalories += food.calories_g;
+      totalProtein += food.protein_g;
+      totalCarbs += food.carbs_g;
+      totalFat += food.fat;
     }
 
     if (totalCalories == 0) {
-      return {
-        'totalCalories': 0,
-        'totalProtein': 0,
-        'totalCarbs': 0,
-        'totalFat': 0,
-        'proteinPercentage': 0,
-        'carbsPercentage': 0,
-        'fatPercentage': 0,
-      };
+      return _emptyNutrition();
     }
-    
+
     return {
       'totalCalories': totalCalories.round(),
       'totalProtein': totalProtein.round(),
       'totalCarbs': totalCarbs.round(),
       'totalFat': totalFat.round(),
-      'proteinPercentage': (totalProtein * 4 / totalCalories * 100).round(),
-      'carbsPercentage': (totalCarbs * 4 / totalCalories * 100).round(),
-      'fatPercentage': (totalFat * 9 / totalCalories * 100).round(),
+      'proteinPercentage': ((totalProtein * 4 / totalCalories) * 100).round(),
+      'carbsPercentage': ((totalCarbs * 4 / totalCalories) * 100).round(),
+      'fatPercentage': ((totalFat * 9 / totalCalories) * 100).round(),
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Helper: Return empty nutrition map
+  // ---------------------------------------------------------------------------
+  Map<String, dynamic> _emptyNutrition() {
+    return {
+      'totalCalories': 0,
+      'totalProtein': 0,
+      'totalCarbs': 0,
+      'totalFat': 0,
+      'proteinPercentage': 0,
+      'carbsPercentage': 0,
+      'fatPercentage': 0,
     };
   }
 }
