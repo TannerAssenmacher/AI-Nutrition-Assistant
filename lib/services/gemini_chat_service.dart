@@ -236,7 +236,8 @@ class GeminiChatService extends _$GeminiChatService {
       print('app_key: $appKey');
  
 
-      String dishType = 'Main course';
+    
+     /* String dishType = 'Main course';
       switch (mealType.toLowerCase()) {
         case 'breakfast':
           dishType = 'Breakfast';
@@ -248,13 +249,12 @@ class GeminiChatService extends _$GeminiChatService {
         case 'snack':
           dishType = 'Snack';
           break;
-      }
+      }*/
 
       //start edamam api
       final params = <String>[
         'type=public',
         'mealType=$mealType',
-        'dishType=$dishType',
         'app_id=$appId',
         'app_key=$appKey',
       ];
@@ -320,6 +320,10 @@ class GeminiChatService extends _$GeminiChatService {
         ];
         return;
       }
+
+
+      // debugging
+      //need to account for chatbot communication with api to demonstrate better
 
       //showing top 3 recipes
       final topRecipes = hits.take(3).map((hit) {
