@@ -30,15 +30,18 @@ class GeminiChatService extends _$GeminiChatService {
   @override
   List<ChatMessage> build() {
     model = GenerativeModel(
-      model: 'gemini-2.5-flash', // Fast and free
+      model: 'gemini-2.5-flash', // Fast and efficient
       apiKey: dotenv.env['GEMINI_API_KEY']!,
       systemInstruction: Content.text('''You are a helpful nutrition assistant. 
-        Help users with meal planning, calorie counting, and nutrition advice.
-        Be encouraging and provide practical tips.'''),
+      Help users with meal planning, calorie counting, and nutrition advice. 
+      Be encouraging, concise, and provide practical guidance.'''),
     );
     return [];
   }
 
+  // ---------------------------------------------------------------------------
+  // Send Chat Message with Contextual Nutrition Info
+  // ---------------------------------------------------------------------------
   Future<void> sendMessage(String userMessage) async {
   // Add user message
   state = [...state, ChatMessage(content: userMessage, isUser: true)];
@@ -488,6 +491,9 @@ class GeminiChatService extends _$GeminiChatService {
 
   }
 
+// -----------------------------------------------------------------------------
+// ChatMessage Model
+// -----------------------------------------------------------------------------
 class ChatMessage {
   final String content;
   final bool isUser;
@@ -500,9 +506,8 @@ class ChatMessage {
   }) : timestamp = timestamp ?? DateTime.now();
 
   @override
-  String toString() {
-    return 'ChatMessage(content: $content, isUser: $isUser, timestamp: $timestamp)';
-  }
+  String toString() =>
+      'ChatMessage(content: $content, isUser: $isUser, timestamp: $timestamp)';
 
   @override
   bool operator ==(Object other) {
@@ -514,14 +519,11 @@ class ChatMessage {
   }
 
   @override
-  int get hashCode {
-    return content.hashCode ^ isUser.hashCode ^ timestamp.hashCode;
-  }
+  int get hashCode => content.hashCode ^ isUser.hashCode ^ timestamp.hashCode;
 
-  // Helper methods
-  String get formattedTime {
-    return '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}';
-  }
+  // Helpers
+  String get formattedTime =>
+      '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}';
 
   bool get isToday {
     final now = DateTime.now();

@@ -2,6 +2,7 @@
 // NOTE: I only corrected syntax, missing brackets, misplacements, and fixed widget tree structure.
 // You may still want to adjust logic or UI behavior, but this version COMPILES.
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -37,7 +38,8 @@ class _RegisterPageState extends State<RegisterPage> {
   final _likesController = TextEditingController();
   final _dislikesController = TextEditingController();
 
-  final Map<String, FocusNode> _focusNodes = {};
+  // Focus + touched tracking
+  final Map<TextEditingController, FocusNode> _focusMap = {};
   final Map<TextEditingController, bool> _fieldTouched = {};
 
   // Dropdowns / selections
@@ -49,96 +51,37 @@ class _RegisterPageState extends State<RegisterPage> {
 
   bool _isLoading = false;
   bool _submitted = false;
+
+  String? _emailError; // live email duplication / format error
+  String? _passwordError; // firebase weak-password, etc.
+
+  // Password live rules
   bool _passwordTouched = false;
-
-  String? _emailError;
-  String? _passwordError;
-
-  // Password rule tracking
   bool _hasMinLength = false;
   bool _hasUppercase = false;
   bool _hasNumber = false;
   bool _hasSpecial = false;
 
-  // Default macro goals
+  // Email debounce
+  Timer? _emailDebounce;
+
+  // Macros
   double _protein = 20.0;
   double _carbs = 50.0;
   double _fats = 30.0;
 
   final _sexOptions = ['Male', 'Female'];
-  final _activityLevels = [
-    'Sedentary',
-    'Lightly Active',
-    'Moderately Active',
-    'Very Active'
-  ];
+  final _activityLevels = ['Sedentary', 'Lightly Active', 'Moderately Active', 'Very Active'];
   final _dietGoals = ['Lose Weight', 'Maintain Weight', 'Gain Muscle'];
-
-  final _dietaryHabitOptions = [
-    'balanced',
-    'high-fiber',
-    'high-protein',
-    'low-carb',
-    'low-fat',
-    'low-sodium',
-    'none'
-  ];
-
-  final _healthOptions = [
-    'alcohol-cocktail',
-    'alcohol-free',
-    'celery-free',
-    'crustacean-free',
-    'dairy-free',
-    'DASH',
-    'egg-free',
-    'fish-free',
-    'fodmap-free',
-    'gluten-free',
-    'immuno-supportive',
-    'keto-friendly',
-    'kidney-friendly',
-    'kosher',
-    'low-fat-abs',
-    'low-potassium',
-    'low-sugar',
-    'lupine-free',
-    'Mediterranean',
-    'mollusk-free',
-    'mustard-free',
-    'no-oil-added',
-    'paleo',
-    'peanut-free',
-    'pescatarian',
-    'pork-free',
-    'red-meat-free',
-    'sesame-free',
-    'shellfish-free',
-    'soy-free',
-    'sugar-conscious',
-    'sulfite-free',
-    'tree-nut-free',
-    'vegan',
-    'vegetarian',
-    'wheat-free',
-    'None'
-  ];
-
-  void _markTouchedOnType(TextEditingController c) {
-    c.addListener(() {
-      if (_fieldTouched[c] != true) {
-        setState(() => _fieldTouched[c] = true);
-      } else {
-        setState(() {});
-      }
-    });
-  }
+  final _dietaryHabitOptions = ['balanced', 'high-fiber', 'high-protein', 'low-carb', 'low-fat', 'low-sodium'];
+  final _healthOptions = ['alcohol-cocktail', 'alcohol-free', 'celery-free', 'crustacean-free', 'dairy-free', 'DASH', 'egg-free', 'fish-free', 'fodmap-free', 'gluten-free', 'immuno-supportive', 'keto-friendly', 'kidney-friendly', 'kosher', 'low-fat-abs', 'low-potassium', 'low-sugar', 'lupine-free', 'Mediterranean', 'mollusk-free', 'mustard-free', 'no-oil-added', 'paleo', 'peanut-free', 'pescatarian', 'pork-free', 'red-meat-free', 'sesame-free', 'shellfish-free', 'soy-free', 'sugar-conscious', 'sulfite-free', 'tree-nut-free', 'vegan', 'vegetarian', 'wheat-free'];
 
   @override
   void initState() {
     super.initState();
 
-    for (var controller in [
+    // Init focus + touched
+    for (final c in [
       _firstnameController,
       _lastnameController,
       _emailController,
@@ -151,22 +94,28 @@ class _RegisterPageState extends State<RegisterPage> {
       _dislikesController,
     ]) {
       final node = FocusNode();
-      _focusNodes[controller.hashCode.toString()] = node;
-      _fieldTouched[controller] = false;
+      _focusMap[c] = node;
+      _fieldTouched[c] = false;
 
       node.addListener(() {
         if (node.hasFocus) {
-          setState(() => _fieldTouched[controller] = true);
+          setState(() => _fieldTouched[c] = true); // hide "required" on focus
         } else {
-          _formKey.currentState?.validate();
+          if (_submitted) setState(() {}); // revalidate on blur if needed
+        }
+      });
+
+      // Mark touched on type; keep validators responsive
+      c.addListener(() {
+        if (_fieldTouched[c] != true) {
+          setState(() => _fieldTouched[c] = true);
+        } else {
+          if (_submitted) setState(() {});
         }
       });
     }
 
-    _emailController.addListener(() {
-      if (_emailError != null) setState(() => _emailError = null);
-    });
-
+    // Live password rules
     _passwordController.addListener(() {
       final value = _passwordController.text;
       setState(() {
@@ -179,14 +128,68 @@ class _RegisterPageState extends State<RegisterPage> {
       });
     });
 
-    _markTouchedOnType(_firstnameController);
-    _markTouchedOnType(_lastnameController);
-    _markTouchedOnType(_emailController);
-    _markTouchedOnType(_passwordController);
-    _markTouchedOnType(_dobController);
-    _markTouchedOnType(_heightController);
-    _markTouchedOnType(_weightController);
-    _markTouchedOnType(_dailyCaloriesController);
+    // Live email duplication check (debounced)
+    _emailController.addListener(() {
+      // clear any previous msg when typing
+      if (_emailError != null) setState(() => _emailError = null);
+
+      _emailDebounce?.cancel();
+      _emailDebounce = Timer(const Duration(milliseconds: 400), () async {
+        final email = _emailController.text.trim();
+        if (email.isEmpty) {
+          if (_emailError != null) setState(() => _emailError = null);
+          return;
+        }
+        if (!EmailValidator.validate(email)) {
+          // let the validator handle "invalid format" when submitted;
+          // do not set an error here to avoid flicker while typing
+          return;
+        }
+        final inUse = await _emailAlreadyInUse(email);
+        if (!mounted) return;
+        if (inUse) {
+          setState(() => _emailError = 'This email is already registered.');
+        } else if (_emailError != null) {
+          setState(() => _emailError = null);
+        }
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _emailDebounce?.cancel();
+    for (final n in _focusMap.values) {
+      n.dispose();
+    }
+    for (final c in [
+      _firstnameController,
+      _lastnameController,
+      _emailController,
+      _passwordController,
+      _dobController,
+      _heightController,
+      _weightController,
+      _dailyCaloriesController,
+      _likesController,
+      _dislikesController,
+    ]) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<bool> _emailAlreadyInUse(String email) async {
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('Users')
+          .where('email', isEqualTo: email)
+          .limit(1)
+          .get();
+      return snap.docs.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
   }
 
   bool _isValidDate(String input) {
@@ -194,25 +197,16 @@ class _RegisterPageState extends State<RegisterPage> {
     if (!regex.hasMatch(input)) return false;
     try {
       final parts = input.split('/');
-      final date = DateTime(
-        int.parse(parts[2]),
-        int.parse(parts[0]),
-        int.parse(parts[1]),
-      );
+      final date = DateTime(int.parse(parts[2]), int.parse(parts[0]), int.parse(parts[1]));
       return date.isBefore(DateTime.now());
     } catch (_) {
       return false;
     }
   }
 
-  void _toggleMultiSelect(List<String> list, String value) {
-    setState(() {
-      list.contains(value) ? list.remove(value) : list.add(value);
-    });
-  }
-
   Future<void> _registerUser() async {
     setState(() => _submitted = true);
+    if (_emailError != null) return;
     if (!_formKey.currentState!.validate()) return;
 
     if (_dietaryHabits.isEmpty || _health.isEmpty) {
@@ -229,15 +223,25 @@ class _RegisterPageState extends State<RegisterPage> {
     }
 
     setState(() => _isLoading = true);
+
     try {
+      // 1️⃣ Create user in Firebase Auth
       final authResult = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
+      final userAuth = authResult.user;
+      if (userAuth == null) throw Exception('User creation failed — no user returned.');
+      final uid = userAuth.uid;
 
-      final uid = authResult.user?.uid;
-      if (uid == null) throw Exception('User ID not found after registration');
+      // 2️⃣ Prepare DOB (optional)
+      DateTime? dob;
+      if (_dobController.text.trim().isNotEmpty) {
+        final parts = _dobController.text.split('/');
+        dob = DateTime(int.parse(parts[2]), int.parse(parts[0]), int.parse(parts[1]));
+      }
 
+      // 3️⃣ Build MealProfile + Preferences objects
       final mealProfile = MealProfile(
         dietaryHabits: _dietaryHabits,
         healthRestrictions: _health,
@@ -253,96 +257,107 @@ class _RegisterPageState extends State<RegisterPage> {
               .where((e) => e.isNotEmpty)
               .toList(),
         ),
+        macroGoals: {'protein': _protein, 'carbs': _carbs, 'fat': _fats},
+        dailyCalorieGoal: int.tryParse(_dailyCaloriesController.text) ?? 0,
+        dietaryGoal: _dietaryGoal ?? '',
       );
 
-      final user = await AppUser.create(
+      // 4️⃣ Build your AppUser model (use UID instead of random ID)
+      final now = DateTime.now();
+      // Convert numeric fields safely — null if blank
+      final heightValue = _heightController.text.trim().isEmpty
+          ? null
+          : double.tryParse(_heightController.text);
+      final weightValue = _weightController.text.trim().isEmpty
+          ? null
+          : double.tryParse(_weightController.text);
+      final dailyCaloriesValue = _dailyCaloriesController.text.trim().isEmpty
+          ? null
+          : int.tryParse(_dailyCaloriesController.text);
+
+      // Build AppUser model
+      final appUser = AppUser(
+        id: uid,
         firstname: _firstnameController.text.trim(),
         lastname: _lastnameController.text.trim(),
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-        age: 0,
+        dob: dob ?? DateTime(1900, 1, 1),
         sex: _sex ?? '',
-        height: double.tryParse(_heightController.text) ?? 0.0,
-        weight: double.tryParse(_weightController.text) ?? 0.0,
+        height: heightValue ?? 0.0, // still required by your model constructor
+        weight: weightValue ?? 0.0,
         activityLevel: _activityLevel ?? '',
-        dietaryGoal: _dietaryGoal ?? '',
-        mealProfile: mealProfile,
-        mealPlans: {},
-        dailyCalorieGoal: int.tryParse(_dailyCaloriesController.text) ?? 0,
-        macroGoals: {'protein': _protein, 'carbs': _carbs, 'fats': _fats},
+        mealProfile: mealProfile.copyWith(
+          dailyCalorieGoal: dailyCaloriesValue ?? 0,
+        ),
+        loggedFoodItems: [],
+        createdAt: now,
+        updatedAt: now,
       );
 
-      final userJson = user.toJson();
-      userJson['dateOfBirth'] = _dobController.text;
+      // Convert to JSON
+      final userData = appUser.toJson();
 
-      await FirebaseFirestore.instance.collection('Users').doc(uid).set(userJson);
-      await authResult.user?.sendEmailVerification();
+      // Replace placeholder values with null before saving
+      if (dob == null) userData['dob'] = null;
+      if (heightValue == null) userData['height'] = null;
+      if (weightValue == null) userData['weight'] = null;
+      if (dailyCaloriesValue == null) {
+        // drill down into nested structure
+        userData['mealProfile']['dailyCalorieGoal'] = null;
+      }
 
+      // If DOB is placeholder, store as null for cleanliness
+      if (dob == null) userData['dob'] = null;
+
+      await FirebaseFirestore.instance.collection('Users').doc(uid).set(userData);
+
+      // 6️⃣ Send verification email
+      await userAuth.sendEmailVerification();
+
+      // ✅ Done
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Verification email sent! Please check your inbox.'), duration: Duration(seconds: 5)),
+          const SnackBar(
+            content: Text('Account created! Check your email for verification.'),
+            duration: Duration(seconds: 5),
+          ),
         );
         Navigator.pushReplacementNamed(context, '/login');
       }
-    } catch (e) {
-      print('🔥 Error: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
 
-  Future<void> _validateFirebaseCredentials() async {
-    setState(() {
-      _submitted = true;
-      _fieldTouched.updateAll((key, value) => false);
-    });
-
-    if (!_formKey.currentState!.validate()) return;
-
-    final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
-
-    setState(() {
-      _emailError = null;
-      _passwordError = null;
-    });
-
-    try {
-      final credential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(email: email, password: password);
-
-      await credential.user?.delete();
-
-      _pageController.nextPage(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
-
-      setState(() => _currentPage = 1);
     } on FirebaseAuthException catch (e) {
-      setState(() {
-        switch (e.code) {
-          case 'invalid-email':
-            _emailError = 'Please enter a valid email address.';
-            break;
-          case 'email-already-in-use':
-            _emailError = 'This email is already registered.';
-            break;
-          case 'weak-password':
-            _passwordError = null;
-            _passwordTouched = true;
-            break;
-          default:
-            _passwordError = null;
-            break;
-        }
-      });
+      debugPrint('🔥 Firebase Auth error: ${e.code}');
+
+      if (e.code == 'email-already-in-use') {
+        setState(() => _emailError = 'This email is already registered.');
+      } else if (e.code == 'weak-password') {
+        setState(() => _passwordError = 'Password is too weak.');
+      } else {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Auth error: ${e.message}')));
+      }
+
+      // 🔁 Rollback Firestore if Auth user created but Firestore write fails later
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null && !currentUser.emailVerified) {
+        await currentUser.delete(); // cleanup incomplete user
+      }
+
+    } catch (e) {
+      debugPrint('🔥 Registration general error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+
+      // Rollback Auth user if Firestore write failed
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null && !currentUser.emailVerified) {
+        await currentUser.delete();
+      }
+
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
+  // ---- BUILD
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -353,6 +368,7 @@ class _RegisterPageState extends State<RegisterPage> {
       body: SafeArea(
         child: Form(
           key: _formKey,
+          autovalidateMode: _submitted ? AutovalidateMode.always : AutovalidateMode.disabled,
           child: PageView(
             controller: _pageController,
             physics: const NeverScrollableScrollPhysics(),
@@ -366,26 +382,24 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
+  // ---- PAGE 1
   Widget _buildPage1() {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minWidth: 250, maxWidth: 500),
+          constraints: const BoxConstraints(maxWidth: 500),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _buildTextField(_firstnameController, 'First Name'),
-              _buildTextField(_lastnameController, 'Last Name'),
-              _buildTextField(_emailController, 'Email', keyboardType: TextInputType.emailAddress),
-              _buildTextField(_passwordController, 'Password', obscure: true),
+              _textFieldRequired(_firstnameController, 'First Name'),
+              _textFieldRequired(_lastnameController, 'Last Name'),
+              _emailField(),          // email with LIVE duplication check
+              _passwordField(),       // single-line live hint
               const SizedBox(height: 30),
               ElevatedButton(
-                onPressed: _validateFirebaseCredentials,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  padding: const EdgeInsets.all(15),
-                ),
+                onPressed: _validatePage1AndNext,
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.green, padding: const EdgeInsets.all(15)),
                 child: const Text('Next', style: TextStyle(color: Colors.white, fontSize: 18)),
               ),
             ],
@@ -395,33 +409,61 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
+  // ---- PAGE 2
   Widget _buildPage2() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minWidth: 250, maxWidth: 500),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _centeredMultiSelectField('Dietary Habits', _dietaryHabitOptions, _dietaryHabits, isRequired: true),
-              const SizedBox(height: 24),
-              _centeredMultiSelectField('Health Restrictions', _healthOptions, _health, isRequired: true),
-              const SizedBox(height: 24),
-              _buildOptionalTextField(_likesController, 'Food Likes (comma-separated)'),
-              _buildOptionalTextField(_dislikesController, 'Food Dislikes (comma-separated)'),
-              const SizedBox(height: 24),
-              _isLoading
-                  ? const CircularProgressIndicator()
-                  : ElevatedButton(
+    return Scrollbar(
+      controller: _scrollController,
+      thumbVisibility: true,
+      child: SingleChildScrollView(
+        controller: _scrollController,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 500),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _dobFieldOptional(), // DOB is NOT required now
+                _dropdownField('Sex', _sexOptions, (v) => _sex = v),
+                _textFieldOptional(_heightController, 'Height (inches)', keyboardType: TextInputType.number),
+                _textFieldOptional(_weightController, 'Weight (lbs)', keyboardType: TextInputType.number),
+                _dropdownField('Activity Level', _activityLevels, (v) => _activityLevel = v),
+                _dropdownField('Dietary Goal', _dietGoals, (v) => _dietaryGoal = v),
+                _textFieldOptional(_dailyCaloriesController, 'Daily Calorie Goal', keyboardType: TextInputType.number),
+                const SizedBox(height: 20),
+                const Text('Macronutrient Goals (% of calories)', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 10),
+                MacroSlider(
+                  protein: _protein,
+                  carbs: _carbs,
+                  fats: _fats,
+                  onChanged: (p, c, f) => setState(() {
+                    _protein = p; _carbs = c; _fats = f;
+                  }),
+                ),
+                const SizedBox(height: 25),
+                _centeredMultiSelectField('Dietary Habits', _dietaryHabitOptions, _dietaryHabits),
+                const SizedBox(height: 24),
+                _centeredMultiSelectField('Health Restrictions', _healthOptions, _health),
+                const SizedBox(height: 24),
+                _textFieldOptional(_likesController, 'Food Likes (comma-separated)'),
+                _textFieldOptional(_dislikesController, 'Food Dislikes (comma-separated)'),
+                const SizedBox(height: 30),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
                       onPressed: () {
-                        setState(() => _submitted = true);
-                        if (_formKey.currentState!.validate()) _registerUser();
+                        _pageController.previousPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+                        setState(() => _currentPage = 0);
                       },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        padding: const EdgeInsets.all(15),
-                      ),
+                      child: const Text('Back'),
+                    ),
+                    _isLoading
+                        ? const CircularProgressIndicator()
+                        : ElevatedButton(
+                      onPressed: _registerUser,
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.green, padding: const EdgeInsets.all(15)),
                       child: const Text('Create Account', style: TextStyle(color: Colors.white, fontSize: 18)),
                     ),
             ],
@@ -431,61 +473,66 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  Widget _buildTextField(
-    TextEditingController c,
-    String label, {
-    TextInputType? keyboardType,
-    bool obscure = false,
-  }) {
-    final focusNode = _focusNodes[c.hashCode.toString()];
+  // ---- UI helpers (Page 1 required fields)
 
-    String? firebaseError;
-    if (label.toLowerCase().contains('email')) firebaseError = _emailError;
-    if (label.toLowerCase().contains('password')) firebaseError = _passwordError;
-
-    String? passwordHint;
-    if (label.toLowerCase().contains('password')) {
-      final value = c.text;
-      if (value.isNotEmpty) {
-        if (value.length < 8) {
-          passwordHint = 'Password must be at least 8 characters';
-        } else if (!RegExp(r'[A-Z]').hasMatch(value)) {
-          passwordHint = 'Include at least one uppercase letter';
-        } else if (!RegExp(r'\d').hasMatch(value)) {
-          passwordHint = 'Include at least one number';
-        } else if (!RegExp(r'[!@#\\$&*~]').hasMatch(value)) {
-          passwordHint = 'Include at least one special character';
-        }
-      }
-    }
-
-    final String? effectiveError = firebaseError ?? passwordHint;
+  Widget _textFieldRequired(
+      TextEditingController c,
+      String label, {
+        TextInputType? keyboardType,
+        bool obscure = false,
+      }) {
+    final node = _focusMap[c];
+    final hasFocus = node?.hasFocus ?? false;
+    final showRequired = _submitted && c.text.isEmpty && !hasFocus;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: TextFormField(
         controller: c,
-        focusNode: focusNode,
+        focusNode: node,
         keyboardType: keyboardType,
         obscureText: obscure,
-        onChanged: (_) {
-          if (_submitted) _formKey.currentState?.validate();
-          setState(() {});
-        },
-        onTap: () {
-          if (_submitted) _formKey.currentState?.validate();
-          setState(() {});
-        },
+        onChanged: (_) => setState(() {}),
+        onTap: () => setState(() {}), // hide required on focus
         decoration: InputDecoration(
           labelText: label,
           border: const OutlineInputBorder(),
-          errorText: effectiveError ?? ((_submitted && c.text.isEmpty) ? 'This field is required' : null),
+          errorText: showRequired ? 'This field is required' : null,
         ),
         validator: (val) {
-          if ((val == null || val.isEmpty) && _submitted) {
+          if (_submitted && (val == null || val.isEmpty)) {
             return 'This field is required';
           }
-          if (label.toLowerCase().contains('email') && val != null && val.isNotEmpty && !EmailValidator.validate(val)) {
+          return null;
+        },
+      ),
+    );
+  }
+
+  Widget _emailField() {
+    final c = _emailController;
+    final node = _focusMap[c];
+    final hasFocus = node?.hasFocus ?? false;
+    final showRequired = _submitted && c.text.isEmpty && !hasFocus;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: TextFormField(
+        controller: c,
+        focusNode: node,
+        keyboardType: TextInputType.emailAddress,
+        onChanged: (_) => setState(() {}), // keep UI responsive
+        onTap: () => setState(() {}),      // hide required on focus
+        decoration: InputDecoration(
+          labelText: 'Email',
+          border: const OutlineInputBorder(),
+          errorText: _emailError ?? (showRequired ? 'This field is required' : null),
+        ),
+        validator: (val) {
+          if (_submitted && (val == null || val.isEmpty)) {
+            return 'This field is required';
+          }
+          if (val != null && val.isNotEmpty && !EmailValidator.validate(val)) {
             return 'Enter a valid email address';
           }
           return null;
@@ -494,7 +541,57 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  Widget _buildOptionalTextField(TextEditingController c, String label, {TextInputType? keyboardType}) {
+  Widget _passwordField() {
+    final c = _passwordController;
+    final node = _focusMap[c];
+    final hasFocus = node?.hasFocus ?? false;
+    final showRequired = _submitted && c.text.isEmpty && !hasFocus;
+
+    String? liveHint;
+    final value = c.text;
+    if (value.isNotEmpty) {
+      if (value.length < 8) {
+        liveHint = 'Password must be at least 8 characters';
+      } else if (!RegExp(r'[A-Z]').hasMatch(value)) {
+        liveHint = 'Include at least one uppercase letter';
+      } else if (!RegExp(r'\d').hasMatch(value)) {
+        liveHint = 'Include at least one number';
+      } else if (!RegExp(r'[!@#\$&*~]').hasMatch(value)) {
+        liveHint = 'Include at least one special character';
+      }
+    }
+
+    final effectiveError = _passwordError ?? (showRequired ? 'This field is required' : liveHint);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: TextFormField(
+        controller: c,
+        focusNode: node,
+        obscureText: true,
+        onChanged: (_) => setState(() {}),
+        onTap: () => setState(() {}),
+        decoration: InputDecoration(
+          labelText: 'Password',
+          border: const OutlineInputBorder(),
+          errorText: effectiveError,
+        ),
+        validator: (val) {
+          if (_submitted && (val == null || val.isEmpty)) {
+            return 'This field is required';
+          }
+          return null;
+        },
+      ),
+    );
+  }
+
+  // ---- Optional text field
+  Widget _textFieldOptional(
+      TextEditingController c,
+      String label, {
+        TextInputType? keyboardType,
+      }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: TextFormField(
@@ -508,12 +605,29 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
+  Widget _dropdownField(
+      String label,
+      List<String> options,
+      void Function(String?) onChanged,
+      ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: DropdownButtonFormField<String>(
+        decoration: InputDecoration(
+          labelText: label,
+          border: const OutlineInputBorder(),
+        ),
+        onChanged: onChanged,
+        items: options.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+      ),
+    );
+  }
+
   Widget _centeredMultiSelectField(
-    String label,
-    List<String> options,
-    List<String> selected, {
-    bool isRequired = false,
-  }) {
+      String label,
+      List<String> options,
+      List<String> selected,
+      ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Column(
@@ -530,12 +644,60 @@ class _RegisterPageState extends State<RegisterPage> {
               return FilterChip(
                 label: Text(option),
                 selected: isSelected,
-                onSelected: (_) => _toggleMultiSelect(selected, option),
+                onSelected: (_) => setState(() {
+                  isSelected ? selected.remove(option) : selected.add(option);
+                }),
                 selectedColor: Colors.green[200],
               );
             }).toList(),
           ),
         ],
+      ),
+    );
+  }
+
+  // ---- DOB (NOT required)
+  Widget _dobFieldOptional() {
+    final c = _dobController;
+    final node = _focusMap[c];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: TextFormField(
+        controller: c,
+        focusNode: node,
+        keyboardType: TextInputType.number,
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          _DOBFormatter(),
+        ],
+        decoration: InputDecoration(
+          labelText: 'Date of Birth (MM/DD/YYYY)',
+          border: const OutlineInputBorder(),
+          suffixIcon: IconButton(
+            icon: const Icon(Icons.calendar_today),
+            onPressed: () async {
+              final now = DateTime.now();
+              final picked = await showDatePicker(
+                context: context,
+                initialDate: DateTime(now.year - 18, now.month, now.day),
+                firstDate: DateTime(1900),
+                lastDate: now,
+              );
+              if (picked != null) {
+                _dobController.text = DateFormat('MM/dd/yyyy').format(picked);
+                setState(() {});
+              }
+            },
+          ),
+        ),
+        validator: (val) {
+          // NOT required; only validate format if non-empty
+          if (val != null && val.isNotEmpty && !_isValidDate(val)) {
+            return 'Enter a valid date (MM/DD/YYYY)';
+          }
+          return null;
+        },
       ),
     );
   }
@@ -552,8 +714,7 @@ class _DOBFormatter extends TextInputFormatter {
       buffer.write(digits[i]);
       if ((i == 1 || i == 3) && i != digits.length - 1) buffer.write('/');
     }
-
-    String formatted = buffer.toString();
+    final formatted = buffer.toString();
     return TextEditingValue(
       text: formatted,
       selection: TextSelection.collapsed(offset: formatted.length),

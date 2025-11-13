@@ -1,13 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'user.dart';
-import 'food.dart';
 
 class FirestoreHelper {
   static FirebaseFirestore _db = FirebaseFirestore.instance;
   static void useDb(FirebaseFirestore db) => _db = db;
 
   static const String usersCollection = 'Users';
-  static const String foodCollection  = 'Food';
 
   // ---------------------------------------------------------------------------
   // USER CRUD
@@ -78,93 +76,109 @@ class FirestoreHelper {
   }
 
   // ---------------------------------------------------------------------------
-  // FOOD CRUD
+  // LOGGED FOOD ITEMS (inside AppUser)
   // ---------------------------------------------------------------------------
 
-  /// Create a new food item. Fails if the document already exists.
-  static Future<void> createFood(Food food) async {
-    final docRef = _db.collection(foodCollection).doc(food.id);
-    final snap = await docRef.get();
-    if (snap.exists) {
-      throw StateError('Food ${food.id} already exists.');
-    }
-    await docRef.set(food.toJson());
-    // ignore: avoid_print
-    print('✅ Created food ${food.id}.');
-  }
-
-  /// Update an existing food item. Fails if the document does not exist.
-  static Future<void> updateFood(Food food) async {
-    final docRef = _db.collection(foodCollection).doc(food.id);
-    final snap = await docRef.get();
-    if (!snap.exists) {
-      throw StateError('Food ${food.id} does not exist.');
-    }
-    await docRef.update(food.toJson());
-    // ignore: avoid_print
-    print('✅ Updated food ${food.id}.');
-  }
-
-  /// Read food by ID.
-  static Future<Food?> getFood(String foodId) async {
+  /// Add a food item to a user's logged list.
+  static Future<void> addFoodToUser(String userId, FoodItem foodItem) async {
     try {
-      final doc = await _db.collection(foodCollection).doc(foodId).get();
-      if (!doc.exists || doc.data() == null) return null;
-      return Food.fromJson(doc.data()!, doc.id);
+      final userDoc = _db.collection(usersCollection).doc(userId);
+      final snap = await userDoc.get();
+
+      if (!snap.exists || snap.data() == null) {
+        throw StateError('User $userId does not exist.');
+      }
+
+      final user = AppUser.fromJson(snap.data()!, snap.id);
+      final updatedList = [...user.loggedFoodItems, foodItem];
+      final updatedUser = user.copyWith(
+        loggedFoodItems: updatedList,
+        updatedAt: DateTime.now(),
+      );
+
+      await userDoc.update(updatedUser.toJson());
+      // ignore: avoid_print
+      print('🍎 Added food item "${foodItem.name}" for user $userId.');
     } catch (e) {
       // ignore: avoid_print
-      print('❌ Error fetching food: $e');
-      return null;
+      print('❌ Error adding food: $e');
     }
   }
 
-  /// Delete food by ID.
-  static Future<void> deleteFood(String foodId) async {
-    await _db.collection(foodCollection).doc(foodId).delete();
-    // ignore: avoid_print
-    print('✅ Deleted food $foodId.');
-  }
-
-  /// Get all foods.
-  static Future<List<Food>> getAllFoods() async {
+  /// Remove a food item by name and timestamp.
+  static Future<void> removeFoodFromUser(String userId, FoodItem foodItem) async {
     try {
-      final snapshot = await _db.collection(foodCollection).get();
-      return snapshot.docs
-          .map((d) => Food.fromJson(d.data(), d.id))
-          .toList();
+      final userDoc = _db.collection(usersCollection).doc(userId);
+      final snap = await userDoc.get();
+
+      if (!snap.exists || snap.data() == null) {
+        throw StateError('User $userId does not exist.');
+      }
+
+      final user = AppUser.fromJson(snap.data()!, snap.id);
+      final updatedList = user.loggedFoodItems.where((f) {
+        return !(f.name == foodItem.name &&
+            f.consumedAt == foodItem.consumedAt);
+      }).toList();
+
+      final updatedUser = user.copyWith(
+        loggedFoodItems: updatedList,
+        updatedAt: DateTime.now(),
+      );
+
+      await userDoc.update(updatedUser.toJson());
+      // ignore: avoid_print
+      print('🗑️ Removed food item "${foodItem.name}" from user $userId.');
     } catch (e) {
       // ignore: avoid_print
-      print('❌ Error fetching foods: $e');
+      print('❌ Error removing food: $e');
+    }
+  }
+
+  /// Fetch all logged foods for a user.
+  static Future<List<FoodItem>> getLoggedFoods(String userId) async {
+    try {
+      final doc = await _db.collection(usersCollection).doc(userId).get();
+      if (!doc.exists || doc.data() == null) return [];
+      final user = AppUser.fromJson(doc.data()!, doc.id);
+      return user.loggedFoodItems;
+    } catch (e) {
+      // ignore: avoid_print
+      print('❌ Error fetching logged foods: $e');
       return [];
     }
   }
 
-  /// Check if a food document exists.
-  static Future<bool> foodExists(String foodId) async {
-    final doc = await _db.collection(foodCollection).doc(foodId).get();
-    return doc.exists;
+  /// Clear all logged food items for a user.
+  static Future<void> clearLoggedFoods(String userId) async {
+    try {
+      final userDoc = _db.collection(usersCollection).doc(userId);
+      await userDoc.update({
+        'loggedFoodItems': [],
+        'updatedAt': Timestamp.fromDate(DateTime.now()),
+      });
+      // ignore: avoid_print
+      print('🧹 Cleared logged foods for user $userId.');
+    } catch (e) {
+      // ignore: avoid_print
+      print('❌ Error clearing logged foods: $e');
+    }
   }
 
   // ---------------------------------------------------------------------------
   // UTILITIES
   // ---------------------------------------------------------------------------
 
-  /// Print all data from Users and Food (basic dump).
+  /// Print all data from Users (basic dump).
   static Future<void> printAllData() async {
     try {
       // ignore: avoid_print
-      print('📦 Dumping all Firestore data...');
+      print('📦 Dumping all Firestore user data...');
 
       final usersSnap = await _db.collection(usersCollection).get();
       for (final doc in usersSnap.docs) {
         // ignore: avoid_print
         print('👤 User ${doc.id}: ${doc.data()}');
-      }
-
-      final foodsSnap = await _db.collection(foodCollection).get();
-      for (final doc in foodsSnap.docs) {
-        // ignore: avoid_print
-        print('🍎 Food ${doc.id}: ${doc.data()}');
       }
 
       // ignore: avoid_print

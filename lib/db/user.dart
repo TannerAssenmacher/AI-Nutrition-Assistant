@@ -7,22 +7,18 @@ part 'user.g.dart';
 @JsonSerializable(explicitToJson: true)
 class AppUser {
   @JsonKey(includeFromJson: false, includeToJson: false)
-  final String id; // always unique, never changed
+  final String id; // Primary key (unique, never changes)
 
   final String firstname;
   final String lastname;
-  final String email;
-  final String password; // should be hashed
-  final int age;
+  final DateTime dob;
   final String sex;
-  final double height; // in inches
-  final double weight; // in pounds
+  final double height; // inches
+  final double weight; // pounds
   final String activityLevel;
-  final String dietaryGoal;
+
   final MealProfile mealProfile;
-  final Map<String, MealPlan> mealPlans;
-  final int dailyCalorieGoal;
-  final Map<String, double> macroGoals;
+  final List<FoodItem> loggedFoodItems;
 
   @JsonKey(fromJson: _dateFromJson, toJson: _dateToJson)
   final DateTime createdAt;
@@ -34,23 +30,18 @@ class AppUser {
     String? id,
     required this.firstname,
     required this.lastname,
-    required this.email,
-    required this.password,
-    required this.age,
+    required this.dob,
     required this.sex,
     required this.height,
     required this.weight,
     required this.activityLevel,
-    required this.dietaryGoal,
     required this.mealProfile,
-    required this.mealPlans,
-    required this.dailyCalorieGoal,
-    required this.macroGoals,
+    required this.loggedFoodItems,
     required this.createdAt,
     required this.updatedAt,
-  }) : id = id ?? const Uuid().v4(); // generate once if not passed
+  }) : id = id ?? const Uuid().v4();
 
-  /// 🔹 Generate unique ID from Firestore + UUID
+  // 🔹 Generate Firestore-safe unique ID
   static Future<String> generateUniqueUserId() async {
     final usersRef = FirebaseFirestore.instance.collection('Users');
     final uuid = Uuid();
@@ -62,22 +53,16 @@ class AppUser {
     }
   }
 
-  /// 🔹 Async factory that creates a user with unique ID
+  // 🔹 Async factory for creation
   static Future<AppUser> create({
     required String firstname,
     required String lastname,
-    required String email,
-    required String password,
-    required int age,
+    required DateTime dob,
     required String sex,
     required double height,
     required double weight,
     required String activityLevel,
-    required String dietaryGoal,
     required MealProfile mealProfile,
-    required Map<String, MealPlan> mealPlans,
-    required int dailyCalorieGoal,
-    required Map<String, double> macroGoals,
   }) async {
     final id = await generateUniqueUserId();
     final now = DateTime.now();
@@ -86,73 +71,57 @@ class AppUser {
       id: id,
       firstname: firstname,
       lastname: lastname,
-      email: email,
-      password: password,
-      age: age,
+      dob: dob,
       sex: sex,
       height: height,
       weight: weight,
       activityLevel: activityLevel,
-      dietaryGoal: dietaryGoal,
       mealProfile: mealProfile,
-      mealPlans: mealPlans,
-      dailyCalorieGoal: dailyCalorieGoal,
-      macroGoals: macroGoals,
+      loggedFoodItems: [],
       createdAt: now,
       updatedAt: now,
     );
   }
 
-  /// Firestore DateTime helpers
+  // 🔹 Firestore DateTime helpers
   static DateTime _dateFromJson(dynamic date) =>
       date is Timestamp ? date.toDate() : date as DateTime;
 
   static dynamic _dateToJson(DateTime date) => Timestamp.fromDate(date);
 
-  /// JSON serialization
+  // 🔹 JSON serialization
   factory AppUser.fromJson(Map<String, dynamic> json, String id) {
     final user = _$AppUserFromJson(json);
     return AppUser(
       id: id,
       firstname: user.firstname,
       lastname: user.lastname,
-      email: user.email,
-      password: user.password,
-      age: user.age,
+      dob: user.dob,
       sex: user.sex,
       height: user.height,
       weight: user.weight,
       activityLevel: user.activityLevel,
-      dietaryGoal: user.dietaryGoal,
       mealProfile: user.mealProfile,
-      mealPlans: user.mealPlans,
-      dailyCalorieGoal: user.dailyCalorieGoal,
-      macroGoals: user.macroGoals,
+      loggedFoodItems: user.loggedFoodItems,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     );
   }
 
-
   Map<String, dynamic> toJson() => _$AppUserToJson(this);
 
-  /// Copy with updates
+  // 🔹 Copy with
   AppUser copyWith({
     String? id,
     String? firstname,
     String? lastname,
-    String? email,
-    String? password,
-    int? age,
+    DateTime? dob,
     String? sex,
     double? height,
     double? weight,
     String? activityLevel,
-    String? dietaryGoal,
     MealProfile? mealProfile,
-    Map<String, MealPlan>? mealPlans,
-    int? dailyCalorieGoal,
-    Map<String, double>? macroGoals,
+    List<FoodItem>? loggedFoodItems,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -160,42 +129,48 @@ class AppUser {
       id: id ?? this.id,
       firstname: firstname ?? this.firstname,
       lastname: lastname ?? this.lastname,
-      email: email ?? this.email,
-      password: password ?? this.password,
-      age: age ?? this.age,
+      dob: dob ?? this.dob,
       sex: sex ?? this.sex,
       height: height ?? this.height,
       weight: weight ?? this.weight,
       activityLevel: activityLevel ?? this.activityLevel,
-      dietaryGoal: dietaryGoal ?? this.dietaryGoal,
       mealProfile: mealProfile ?? this.mealProfile,
-      mealPlans: mealPlans ?? this.mealPlans,
-      dailyCalorieGoal: dailyCalorieGoal ?? this.dailyCalorieGoal,
-      macroGoals: macroGoals ?? this.macroGoals,
+      loggedFoodItems: loggedFoodItems ?? this.loggedFoodItems,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 }
 
+// -----------------------------------------------------------------------------
+// MEAL PROFILE
+// -----------------------------------------------------------------------------
 @JsonSerializable(explicitToJson: true)
 class MealProfile {
   final List<String> dietaryHabits;
   final List<String> healthRestrictions;
   final Preferences preferences;
+  final Map<String, double> macroGoals; // {protein: g, carbs: g, fat: g}
+  final int dailyCalorieGoal;
+  final String dietaryGoal;
 
   MealProfile({
     required this.dietaryHabits,
     required this.healthRestrictions,
     required this.preferences,
+    required this.macroGoals,
+    required this.dailyCalorieGoal,
+    required this.dietaryGoal,
   });
 
   factory MealProfile.fromJson(Map<String, dynamic> json) =>
       _$MealProfileFromJson(json);
-
   Map<String, dynamic> toJson() => _$MealProfileToJson(this);
 }
 
+// -----------------------------------------------------------------------------
+// PREFERENCES
+// -----------------------------------------------------------------------------
 @JsonSerializable()
 class Preferences {
   final List<String> likes;
@@ -205,51 +180,97 @@ class Preferences {
 
   factory Preferences.fromJson(Map<String, dynamic> json) =>
       _$PreferencesFromJson(json);
-
   Map<String, dynamic> toJson() => _$PreferencesToJson(this);
 }
 
-@JsonSerializable(explicitToJson: true)
-class MealPlan {
-  final String planName;
+// -----------------------------------------------------------------------------
+// FOOD ITEM
+// -----------------------------------------------------------------------------
+@JsonSerializable()
+class FoodItem {
+  final String name;
+  final double mass_g;
+  final double calories_g;
+  final double protein_g;
+  final double carbs_g;
+  final double fat;
+  final String mealType; // breakfast/lunch/etc.
 
   @JsonKey(fromJson: AppUser._dateFromJson, toJson: AppUser._dateToJson)
-  final DateTime startDate;
+  final DateTime consumedAt;
 
-  @JsonKey(fromJson: AppUser._dateFromJson, toJson: AppUser._dateToJson)
-  final DateTime endDate;
-
-  final Map<String, MealPlanItem> mealPlanItems;
-
-  MealPlan({
-    required this.planName,
-    required this.startDate,
-    required this.endDate,
-    required this.mealPlanItems,
+  FoodItem({
+    required this.name,
+    required this.mass_g,
+    required this.calories_g,
+    required this.protein_g,
+    required this.carbs_g,
+    required this.fat,
+    required this.mealType,
+    required this.consumedAt,
   });
 
-  factory MealPlan.fromJson(Map<String, dynamic> json) =>
-      _$MealPlanFromJson(json);
-
-  Map<String, dynamic> toJson() => _$MealPlanToJson(this);
+  factory FoodItem.fromJson(Map<String, dynamic> json) =>
+      _$FoodItemFromJson(json);
+  Map<String, dynamic> toJson() => _$FoodItemToJson(this);
 }
 
-@JsonSerializable()
-class MealPlanItem {
-  final String mealType;
-  final String foodId;
-  final String description;
-  final String portionSize; // in grams
+// -----------------------------------------------------------------------------
+// COPYWITH EXTENSIONS
+// -----------------------------------------------------------------------------
 
-  MealPlanItem({
-    required this.mealType,
-    required this.foodId,
-    required this.description,
-    required this.portionSize,
-  });
+extension MealProfileCopy on MealProfile {
+  MealProfile copyWith({
+    List<String>? dietaryHabits,
+    List<String>? allergies,
+    Preferences? preferences,
+    Map<String, double>? macroGoals,
+    int? dailyCalorieGoal,
+    String? dietaryGoal,
+  }) {
+    return MealProfile(
+      dietaryHabits: dietaryHabits ?? this.dietaryHabits,
+      healthRestrictions: allergies ?? this.healthRestrictions,
+      preferences: preferences ?? this.preferences,
+      macroGoals: macroGoals ?? this.macroGoals,
+      dailyCalorieGoal: dailyCalorieGoal ?? this.dailyCalorieGoal,
+      dietaryGoal: dietaryGoal ?? this.dietaryGoal,
+    );
+  }
+}
 
-  factory MealPlanItem.fromJson(Map<String, dynamic> json) =>
-      _$MealPlanItemFromJson(json);
+extension PreferencesCopy on Preferences {
+  Preferences copyWith({
+    List<String>? likes,
+    List<String>? dislikes,
+  }) {
+    return Preferences(
+      likes: likes ?? this.likes,
+      dislikes: dislikes ?? this.dislikes,
+    );
+  }
+}
 
-  Map<String, dynamic> toJson() => _$MealPlanItemToJson(this);
+extension FoodItemCopy on FoodItem {
+  FoodItem copyWith({
+    String? name,
+    double? mass_g,
+    double? calories_g,
+    double? protein_g,
+    double? carbs_g,
+    double? fat,
+    String? mealType,
+    DateTime? consumedAt,
+  }) {
+    return FoodItem(
+      name: name ?? this.name,
+      mass_g: mass_g ?? this.mass_g,
+      calories_g: calories_g ?? this.calories_g,
+      protein_g: protein_g ?? this.protein_g,
+      carbs_g: carbs_g ?? this.carbs_g,
+      fat: fat ?? this.fat,
+      mealType: mealType ?? this.mealType,
+      consumedAt: consumedAt ?? this.consumedAt,
+    );
+  }
 }
