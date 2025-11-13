@@ -43,7 +43,7 @@ class _RegisterPageState extends State<RegisterPage> {
   String? _activityLevel;
   String? _dietaryGoal;
   List<String> _dietaryHabits = [];
-  List<String> _allergies = [];
+  List<String> _health = [];
 
   bool _isLoading = false;
   bool _submitted = false;
@@ -70,8 +70,8 @@ class _RegisterPageState extends State<RegisterPage> {
   final _sexOptions = ['Male', 'Female'];
   final _activityLevels = ['Sedentary', 'Lightly Active', 'Moderately Active', 'Very Active'];
   final _dietGoals = ['Lose Weight', 'Maintain Weight', 'Gain Muscle'];
-  final _dietaryHabitOptions = ['balanced', 'high-fiber', 'high-protein', 'low-carb', 'low-fat', 'low-sodium', 'none'];
-  final _healthOptions = ['alcohol-cocktail', 'alcohol-free', 'celery-free', 'crustacean-free', 'dairy-free', 'DASH', 'egg-free', 'fish-free', 'fodmap-free', 'gluten-free', 'immuno-supportive', 'keto-friendly', 'kidney-friendly', 'kosher', 'low-fat-abs', 'low-potassium', 'low-sugar', 'lupine-free', 'Mediterranean', 'mollusk-free', 'mustard-free', 'no-oil-added', 'paleo', 'peanut-free', 'pescatarian', 'pork-free', 'red-meat-free', 'sesame-free', 'shellfish-free', 'soy-free', 'sugar-conscious', 'sulfite-free', 'tree-nut-free', 'vegan', 'vegetarian', 'wheat-free', 'None'];
+  final _dietaryHabitOptions = ['balanced', 'high-fiber', 'high-protein', 'low-carb', 'low-fat', 'low-sodium'];
+  final _healthOptions = ['alcohol-cocktail', 'alcohol-free', 'celery-free', 'crustacean-free', 'dairy-free', 'DASH', 'egg-free', 'fish-free', 'fodmap-free', 'gluten-free', 'immuno-supportive', 'keto-friendly', 'kidney-friendly', 'kosher', 'low-fat-abs', 'low-potassium', 'low-sugar', 'lupine-free', 'Mediterranean', 'mollusk-free', 'mustard-free', 'no-oil-added', 'paleo', 'peanut-free', 'pescatarian', 'pork-free', 'red-meat-free', 'sesame-free', 'shellfish-free', 'soy-free', 'sugar-conscious', 'sulfite-free', 'tree-nut-free', 'vegan', 'vegetarian', 'wheat-free'];
 
   @override
   void initState() {
@@ -177,16 +177,6 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   Future<bool> _emailAlreadyInUse(String email) async {
-    // Try Auth API first
-    try {
-      final auth = FirebaseAuth.instance;
-      final methods = await (auth as dynamic).fetchSignInMethodsForEmail(email) as List?;
-      if (methods != null) return methods.isNotEmpty;
-    } catch (_) {
-      // ignore and fall back to Firestore
-    }
-
-    // Fallback: check Users collection by email (since you store email in user doc)
     try {
       final snap = await FirebaseFirestore.instance
           .collection('Users')
@@ -195,7 +185,6 @@ class _RegisterPageState extends State<RegisterPage> {
           .get();
       return snap.docs.isNotEmpty;
     } catch (_) {
-      // If it fails, don't block typing UX—assume not in use
       return false;
     }
   }
@@ -227,74 +216,142 @@ class _RegisterPageState extends State<RegisterPage> {
     setState(() => _currentPage = 1);
   }
 
-  // ---- REGISTER USER
+  // ---- REGISTER USER (Auth + Firestore Sync)
   Future<void> _registerUser() async {
     setState(() => _submitted = true);
-    if (_emailError != null) return; // block if email already flagged
+    if (_emailError != null) return;
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
+
     try {
+      // 1️⃣ Create user in Firebase Auth
       final authResult = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
+      final userAuth = authResult.user;
+      if (userAuth == null) throw Exception('User creation failed — no user returned.');
+      final uid = userAuth.uid;
 
-      final uid = authResult.user?.uid;
-      if (uid == null) throw Exception('User ID not found after registration');
-
-      final parts = _dobController.text.split('/');
+      // 2️⃣ Prepare DOB (optional)
       DateTime? dob;
       if (_dobController.text.trim().isNotEmpty) {
+        final parts = _dobController.text.split('/');
         dob = DateTime(int.parse(parts[2]), int.parse(parts[0]), int.parse(parts[1]));
       }
 
+      // 3️⃣ Build MealProfile + Preferences objects
       final mealProfile = MealProfile(
         dietaryHabits: _dietaryHabits,
-        healthRestrictions: _healthOptions,
+        healthRestrictions: _health,
         preferences: Preferences(
-          likes: _likesController.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList(),
-          dislikes: _dislikesController.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList(),
+          likes: _likesController.text
+              .split(',')
+              .map((e) => e.trim())
+              .where((e) => e.isNotEmpty)
+              .toList(),
+          dislikes: _dislikesController.text
+              .split(',')
+              .map((e) => e.trim())
+              .where((e) => e.isNotEmpty)
+              .toList(),
         ),
         macroGoals: {'protein': _protein, 'carbs': _carbs, 'fat': _fats},
         dailyCalorieGoal: int.tryParse(_dailyCaloriesController.text) ?? 0,
         dietaryGoal: _dietaryGoal ?? '',
       );
 
-      // AppUser with updated structure (dob optional)
-      final user = await AppUser.create(
+      // 4️⃣ Build your AppUser model (use UID instead of random ID)
+      final now = DateTime.now();
+      // Convert numeric fields safely — null if blank
+      final heightValue = _heightController.text.trim().isEmpty
+          ? null
+          : double.tryParse(_heightController.text);
+      final weightValue = _weightController.text.trim().isEmpty
+          ? null
+          : double.tryParse(_weightController.text);
+      final dailyCaloriesValue = _dailyCaloriesController.text.trim().isEmpty
+          ? null
+          : int.tryParse(_dailyCaloriesController.text);
+
+      // Build AppUser model
+      final appUser = AppUser(
+        id: uid,
         firstname: _firstnameController.text.trim(),
         lastname: _lastnameController.text.trim(),
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
         dob: dob ?? DateTime(1900, 1, 1),
         sex: _sex ?? '',
-        height: double.tryParse(_heightController.text) ?? 0.0,
-        weight: double.tryParse(_weightController.text) ?? 0.0,
+        height: heightValue ?? 0.0, // still required by your model constructor
+        weight: weightValue ?? 0.0,
         activityLevel: _activityLevel ?? '',
-        mealProfile: mealProfile,
+        mealProfile: mealProfile.copyWith(
+          dailyCalorieGoal: dailyCaloriesValue ?? 0,
+        ),
+        loggedFoodItems: [],
+        createdAt: now,
+        updatedAt: now,
       );
 
-      final userData = user.toJson();
+      // Convert to JSON
+      final userData = appUser.toJson();
 
-// If DOB is our placeholder (1900-01-01), replace it with an empty string
-      if (userData['dob'] == DateTime(1900, 1, 1).toIso8601String()) {
-        userData['dob'] = '';
+      // Replace placeholder values with null before saving
+      if (dob == null) userData['dob'] = null;
+      if (heightValue == null) userData['height'] = null;
+      if (weightValue == null) userData['weight'] = null;
+      if (dailyCaloriesValue == null) {
+        // drill down into nested structure
+        userData['mealProfile']['dailyCalorieGoal'] = null;
       }
+
+      // If DOB is placeholder, store as null for cleanliness
+      if (dob == null) userData['dob'] = null;
 
       await FirebaseFirestore.instance.collection('Users').doc(uid).set(userData);
-      await authResult.user?.sendEmailVerification();
 
+      // 6️⃣ Send verification email
+      await userAuth.sendEmailVerification();
+
+      // ✅ Done
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Verification email sent! Please check your inbox.'),
-          duration: Duration(seconds: 5),
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Account created! Check your email for verification.'),
+            duration: Duration(seconds: 5),
+          ),
+        );
         Navigator.pushReplacementNamed(context, '/login');
       }
+
+    } on FirebaseAuthException catch (e) {
+      debugPrint('🔥 Firebase Auth error: ${e.code}');
+
+      if (e.code == 'email-already-in-use') {
+        setState(() => _emailError = 'This email is already registered.');
+      } else if (e.code == 'weak-password') {
+        setState(() => _passwordError = 'Password is too weak.');
+      } else {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Auth error: ${e.message}')));
+      }
+
+      // 🔁 Rollback Firestore if Auth user created but Firestore write fails later
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null && !currentUser.emailVerified) {
+        await currentUser.delete(); // cleanup incomplete user
+      }
+
     } catch (e) {
-      debugPrint('🔥 Registration error: $e');
+      debugPrint('🔥 Registration general error: $e');
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+
+      // Rollback Auth user if Firestore write failed
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null && !currentUser.emailVerified) {
+        await currentUser.delete();
+      }
+
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -387,7 +444,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 const SizedBox(height: 25),
                 _centeredMultiSelectField('Dietary Habits', _dietaryHabitOptions, _dietaryHabits),
                 const SizedBox(height: 24),
-                _centeredMultiSelectField('Allergies', _healthOptions, _allergies),
+                _centeredMultiSelectField('Health Restrictions', _healthOptions, _health),
                 const SizedBox(height: 24),
                 _textFieldOptional(_likesController, 'Food Likes (comma-separated)'),
                 _textFieldOptional(_dislikesController, 'Food Dislikes (comma-separated)'),

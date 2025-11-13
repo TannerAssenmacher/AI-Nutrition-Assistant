@@ -11,8 +11,6 @@ class AppUser {
 
   final String firstname;
   final String lastname;
-  final String email;
-  final String password; // hashed
   final DateTime dob;
   final String sex;
   final double height; // inches
@@ -32,8 +30,6 @@ class AppUser {
     String? id,
     required this.firstname,
     required this.lastname,
-    required this.email,
-    required this.password,
     required this.dob,
     required this.sex,
     required this.height,
@@ -61,8 +57,6 @@ class AppUser {
   static Future<AppUser> create({
     required String firstname,
     required String lastname,
-    required String email,
-    required String password,
     required DateTime dob,
     required String sex,
     required double height,
@@ -77,8 +71,6 @@ class AppUser {
       id: id,
       firstname: firstname,
       lastname: lastname,
-      email: email,
-      password: password,
       dob: dob,
       sex: sex,
       height: height,
@@ -104,8 +96,6 @@ class AppUser {
       id: id,
       firstname: user.firstname,
       lastname: user.lastname,
-      email: user.email,
-      password: user.password,
       dob: user.dob,
       sex: user.sex,
       height: user.height,
@@ -125,8 +115,6 @@ class AppUser {
     String? id,
     String? firstname,
     String? lastname,
-    String? email,
-    String? password,
     DateTime? dob,
     String? sex,
     double? height,
@@ -141,8 +129,6 @@ class AppUser {
       id: id ?? this.id,
       firstname: firstname ?? this.firstname,
       lastname: lastname ?? this.lastname,
-      email: email ?? this.email,
-      password: password ?? this.password,
       dob: dob ?? this.dob,
       sex: sex ?? this.sex,
       height: height ?? this.height,

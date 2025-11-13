@@ -111,10 +111,9 @@ bool isProfileComplete(Ref ref) {
 
   return profile.firstname.isNotEmpty &&
       profile.lastname.isNotEmpty &&
-      profile.email.isNotEmpty &&
       profile.height > 0 &&
       profile.weight > 0 &&
-      profile.dob.isBefore(DateTime.now()) &&
+      profile.dob != null && profile.dob!.isBefore(DateTime.now()) &&
       profile.mealProfile.dietaryGoal.isNotEmpty;
 }
 

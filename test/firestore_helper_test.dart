@@ -7,8 +7,6 @@ AppUser get mockUser {
   return AppUser(
     firstname: 'John',
     lastname: 'Doe',
-    email: 'jd@gmail.com',
-    password: 'hashed_pw',
     dob: DateTime(2000, 1, 1),
     sex: 'male',
     height: 180,
@@ -52,7 +50,6 @@ void main() {
       await FirestoreHelper.createUser(user);
       final fetched = await FirestoreHelper.getUser(user.id);
       expect(fetched, isNotNull);
-      expect(fetched!.email, user.email);
     });
 
     test('createUser throws StateError if user exists', () async {
