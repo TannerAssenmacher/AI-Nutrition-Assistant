@@ -73,7 +73,7 @@ class HomeScreen extends ConsumerWidget {
                     if (userProfile != null) ...[
                       const SizedBox(height: 4),
                       Text(
-                        'Goal: ${userProfile.dailyCalorieGoal} calories',
+                        'Goal: ${userProfile.mealProfile.dailyCalorieGoal} calories',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               color: Colors.grey[600],
                             ),
@@ -197,7 +197,7 @@ class HomeScreen extends ConsumerWidget {
                         child: Icon(Icons.restaurant, color: Colors.green[600]),
                       ),
                       title: Text(food.name),
-                      subtitle: Text('${food.caloriesPer100g} calories'),
+                      subtitle: Text('${food.calories_g} calories'),
                       trailing: IconButton(
                         icon: const Icon(Icons.delete, color: Colors.red),
                         onPressed: () {
@@ -288,23 +288,18 @@ class HomeScreen extends ConsumerWidget {
           TextButton(
             onPressed: () {
               // Example: Add a sample food item
-              final sampleFood = Food(
-                  name: 'Sample Apple',
-                  category: "Fruit",
-                  caloriesPer100g: 200,
-                  proteinPer100g: 2.5,
-                  carbsPer100g: 10.0,
-                  fatPer100g: 0.5,
-                  fiberPer100g: 1.0,
-                  micronutrients: Micronutrients(
-                    calciumMg: 100,
-                    ironMg: 0.5,
-                    vitaminAMcg: 100,
-                    vitaminCMg: 50,
-                  ),
-                  source: 'Sample Source',
-                  consumedAt: DateTime.now(),
-                  servingSize: 100);
+              final sampleFood = FoodItem(
+                id: DateTime.now().millisecondsSinceEpoch.toString(),
+                name: 'Sample Apple',
+                mass_g: 100,
+                calories_g: 2.0,   // 200 cal / 100g = 2.0 cal/g
+                protein_g: 0.025,  // 2.5 / 100
+                carbs_g: 0.10,     // 10 / 100
+                fat: 0.005,        // 0.5 / 100
+                mealType: 'snack',
+                consumedAt: DateTime.now(),
+              );
+
               ref.read(foodLogProvider.notifier).addFoodItem(sampleFood);
               Navigator.of(context).pop();
             },

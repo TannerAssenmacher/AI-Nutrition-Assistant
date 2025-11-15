@@ -49,13 +49,13 @@ class GeminiChatService extends _$GeminiChatService {
 
     // Create a simple nutrition calculation since NutritionService.calculateNutrition might not exist
     final totalCalories =
-        foodLog.fold<int>(0, (sum, food) => sum + food.caloriesPer100g);
+        foodLog.fold<int>(0, (sum, food) => sum + (food.calories_g * food.mass_g).round());
     final totalProtein =
-        foodLog.fold<double>(0, (sum, food) => sum + food.proteinPer100g);
+        foodLog.fold<double>(0, (sum, food) => sum + food.protein_g);
     final totalCarbs =
-        foodLog.fold<double>(0, (sum, food) => sum + food.carbsPer100g);
+        foodLog.fold<double>(0, (sum, food) => sum + food.carbs_g);
     final totalFat =
-        foodLog.fold<double>(0, (sum, food) => sum + food.fatPer100g);
+        foodLog.fold<double>(0, (sum, food) => sum + food.fat);
 
     final contextualPrompt = '''
     User's current nutrition data today:

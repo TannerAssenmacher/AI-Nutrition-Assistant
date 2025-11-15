@@ -78,39 +78,40 @@ class FirestoreHelper {
   }
 
   // ---------------------------------------------------------------------------
-  // FOOD CRUD
-  // ---------------------------------------------------------------------------
+// FOOD CRUD
+// ---------------------------------------------------------------------------
 
-  /// Create a new food item. Fails if the document already exists.
-  static Future<void> createFood(Food food) async {
-    final docRef = _db.collection(foodCollection).doc(food.id);
-    final snap = await docRef.get();
-    if (snap.exists) {
-      throw StateError('Food ${food.id} already exists.');
-    }
+  /// Create a new food item. Automatically generates a document ID.
+  static Future<String> createFood(FoodItem food) async {
+    final docRef = _db.collection(foodCollection).doc(); // auto-ID
     await docRef.set(food.toJson());
+
     // ignore: avoid_print
-    print('✅ Created food ${food.id}.');
+    print('✅ Created food ${docRef.id}.');
+    return docRef.id;
   }
 
-  /// Update an existing food item. Fails if the document does not exist.
-  static Future<void> updateFood(Food food) async {
+  /// Update a food item by Firestore document ID.
+  static Future<void> updateFood(FoodItem food) async {
     final docRef = _db.collection(foodCollection).doc(food.id);
     final snap = await docRef.get();
+
     if (!snap.exists) {
       throw StateError('Food ${food.id} does not exist.');
     }
+
     await docRef.update(food.toJson());
-    // ignore: avoid_print
+
     print('✅ Updated food ${food.id}.');
   }
 
-  /// Read food by ID.
-  static Future<Food?> getFood(String foodId) async {
+  /// Read food by Firestore document ID.
+  static Future<FoodItem?> getFood(String foodId) async {
     try {
       final doc = await _db.collection(foodCollection).doc(foodId).get();
       if (!doc.exists || doc.data() == null) return null;
-      return Food.fromJson(doc.data()!, doc.id);
+
+      return FoodItem.fromJson(doc.data()!);
     } catch (e) {
       // ignore: avoid_print
       print('❌ Error fetching food: $e');
@@ -121,16 +122,17 @@ class FirestoreHelper {
   /// Delete food by ID.
   static Future<void> deleteFood(String foodId) async {
     await _db.collection(foodCollection).doc(foodId).delete();
+
     // ignore: avoid_print
     print('✅ Deleted food $foodId.');
   }
 
   /// Get all foods.
-  static Future<List<Food>> getAllFoods() async {
+  static Future<List<FoodItem>> getAllFoods() async {
     try {
       final snapshot = await _db.collection(foodCollection).get();
       return snapshot.docs
-          .map((d) => Food.fromJson(d.data(), d.id))
+          .map((d) => FoodItem.fromJson(d.data()))
           .toList();
     } catch (e) {
       // ignore: avoid_print
@@ -144,6 +146,7 @@ class FirestoreHelper {
     final doc = await _db.collection(foodCollection).doc(foodId).get();
     return doc.exists;
   }
+
 
   // ---------------------------------------------------------------------------
   // UTILITIES

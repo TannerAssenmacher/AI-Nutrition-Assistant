@@ -3,68 +3,57 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:nutrition_assistant/db/firestore_helper.dart';
 import 'package:nutrition_assistant/db/user.dart';
 import 'package:nutrition_assistant/db/food.dart';
+import 'package:nutrition_assistant/db/preferences.dart';
+import 'package:nutrition_assistant/db/meal_profile.dart';
 
 // Mock data for tests
 AppUser get mockUser {
+  final now = DateTime.now();
+
+  final mealProfile = MealProfile(
+    dietaryHabits: ['vegetarian'],
+    healthRestrictions: ['peanuts'],
+    preferences: Preferences(
+      likes: ['food_1'],
+      dislikes: ['food_2'],
+    ),
+    macroGoals: {'protein': 150, 'carbs': 300, 'fat': 70},
+    dailyCalorieGoal: 2500,
+    dietaryGoal: 'muscle_gain',
+  );
+
   final user = AppUser(
     firstname: 'John',
     lastname: 'Doe',
-    email: 'jd@gmail.com',
-    password: 'hashed_pw',
-    age: 25,
+    dob: DateTime(2000, 1, 1),
     sex: 'male',
-    height: 180,
-    weight: 75,
+    height: 180, // inches
+    weight: 75,  // pounds
     activityLevel: 'lightly_active',
-    dietaryGoal: 'muscle_gain',
-    dailyCalorieGoal: 2500,
-    macroGoals: {'protein': 150, 'carbs': 300, 'fat': 70},
-    mealProfile: MealProfile(
-      dietaryHabits: ['vegetarian'],
-      healthRestrictions: ['peanuts'],
-      preferences: Preferences(likes: ['food_1'], dislikes: ['food_2']),
-    ),
-    mealPlans: {
-      'plan_1': MealPlan(
-        planName: 'Bulk Up Plan',
-        startDate: DateTime(2024, 1, 1),
-        endDate: DateTime(2024, 1, 31),
-        mealPlanItems: {
-          'item_1': MealPlanItem(
-            mealType: 'Breakfast',
-            foodId: 'food_3',
-            description: 'Oatmeal with berries',
-            portionSize: '100g',
-          ),
-        },
-      ),
-    },
-    createdAt: DateTime.now(),
-    updatedAt: DateTime.now(),
+    mealProfile: mealProfile,
+    loggedFoodItems: const [],
+    createdAt: now,
+    updatedAt: now,
   );
+
   return user;
 }
 
-Food get mockFood {
-  final food = Food(
+
+FoodItem get mockFood {
+  final now = DateTime.now();
+
+  return FoodItem(
+    id: 'food_avocado',
     name: 'Avocado',
-    category: 'fruit',
-    caloriesPer100g: 160,
-    proteinPer100g: 2,
-    carbsPer100g: 8.5,
-    fatPer100g: 14.7,
-    fiberPer100g: 6.7,
-    servingSize: 150,
-    consumedAt: DateTime.now(),
-    micronutrients: Micronutrients(
-      calciumMg: 12,
-      ironMg: 0.6,
-      vitaminAMcg: 7,
-      vitaminCMg: 10,
-    ),
-    source: 'USDA',
+    mass_g: 150,        // serving mass
+    calories_g: 1.6,    // calories per gram
+    protein_g: 0.02,    // 2g protein / 100g
+    carbs_g: 0.085,     // 8.5g carbs / 100g
+    fat: 0.147,         // 14.7g fat / 100g
+    mealType: 'snack',
+    consumedAt: now,
   );
-  return food;
 }
 
 void main() {
@@ -78,7 +67,7 @@ void main() {
       await FirestoreHelper.createUser(user);
       final fetched = await FirestoreHelper.getUser(user.id);
       expect(fetched, isNotNull);
-      expect(fetched!.email, user.email);
+      expect(fetched!.firstname, user.firstname);
     });
 
     test('createUser throws StateError if user exists', () async {
@@ -146,13 +135,25 @@ void main() {
     });
 
     test('updateFood updates an existing food item', () async {
-      var food = mockFood;
-      await FirestoreHelper.createFood(food);
-      food = food.copyWith(name: 'Ripe Avocado', caloriesPer100g: 165);
-      await FirestoreHelper.updateFood(food);
-      final fetched = await FirestoreHelper.getFood(food.id);
+      var original = mockFood;
+      await FirestoreHelper.createFood(original);
+
+      final updated = FoodItem(
+        id: original.id,
+        name: 'Ripe Avocado',
+        mass_g: original.mass_g,
+        calories_g: 1.65, // slightly different kcal/g
+        protein_g: original.protein_g,
+        carbs_g: original.carbs_g,
+        fat: original.fat,
+        mealType: original.mealType,
+        consumedAt: original.consumedAt,
+      );
+
+      await FirestoreHelper.updateFood(updated);
+      final fetched = await FirestoreHelper.getFood(original.id);
       expect(fetched!.name, 'Ripe Avocado');
-      expect(fetched.caloriesPer100g, 165);
+      expect(fetched.calories_g, 165);
     });
 
     test('updateFood throws StateError if food does not exist', () {
@@ -169,8 +170,30 @@ void main() {
     });
 
     test('getAllFoods returns a list of food items', () async {
-      final food1 = mockFood.copyWith(id: 'food1');
-      final food2 = mockFood.copyWith(id: 'food2');
+      final food1 = FoodItem(
+        id: 'food1',
+        name: 'Avocado 1',
+        mass_g: 100,
+        calories_g: 1.6,
+        protein_g: 0.02,
+        carbs_g: 0.085,
+        fat: 0.147,
+        mealType: 'snack',
+        consumedAt: DateTime.now(),
+      );
+
+      final food2 = FoodItem(
+        id: 'food2',
+        name: 'Avocado 2',
+        mass_g: 120,
+        calories_g: 1.6,
+        protein_g: 0.02,
+        carbs_g: 0.085,
+        fat: 0.147,
+        mealType: 'snack',
+        consumedAt: DateTime.now(),
+      );
+
       await FirestoreHelper.createFood(food1);
       await FirestoreHelper.createFood(food2);
       final foods = await FirestoreHelper.getAllFoods();

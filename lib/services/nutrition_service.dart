@@ -3,67 +3,46 @@ import '../db/food.dart';
 class NutritionService {
   // Simulate API calls for food data
   
-  Future<List<Food>> searchFoods(String query) async {
+  Future<List<FoodItem>> searchFoods(String query) async {
     // Simulate network delay
     await Future.delayed(const Duration(milliseconds: 800));
     
     // Mock data - in a real app, this would come from an API
-    final food1 = Food(
-        name: 'Apple',
-        category: 'Fruit',
-        caloriesPer100g: 52,
-        proteinPer100g: 0.3,
-        carbsPer100g: 14,
-        fatPer100g: 0.2,
-        fiberPer100g: 2.4,
-        micronutrients: Micronutrients(
-          calciumMg: 6,
-          ironMg: 0.1,
-          vitaminAMcg: 3,
-          vitaminCMg: 4.6,
-        ),
-        source: 'USDA',
-        consumedAt: DateTime.now(),
-        servingSize: 150
-      );
+    final food1 = FoodItem(
+      id: '1',
+      name: 'Apple',
+      mass_g: 150,                  // serving mass in grams
+      calories_g: 0.52,             // calories per gram (52 / 100)
+      protein_g: 0.003,             // 0.3 / 100
+      carbs_g: 0.14,                // 14 / 100
+      fat: 0.002,                   // 0.2 / 100
+      mealType: 'snack',
+      consumedAt: DateTime.now(),
+    );
 
-    final food2 = Food(
-        name: 'Banana',
-        category: 'Fruit',
-        caloriesPer100g: 89,
-        proteinPer100g: 1.1,
-        carbsPer100g: 23,
-        fatPer100g: 0.3,
-        fiberPer100g: 2.6,
-        micronutrients: Micronutrients(
-          calciumMg: 5,
-          ironMg: 0.3,
-          vitaminAMcg: 3,
-          vitaminCMg: 8.7,
-        ),
-        source: 'USDA',
-        consumedAt: DateTime.now(),
-        servingSize: 118
-      );
+    final food2 = FoodItem(
+      id: '2',
+      name: 'Banana',
+      mass_g: 118,
+      calories_g: 0.89,             // 89 / 100
+      protein_g: 0.011,             // 1.1 / 100
+      carbs_g: 0.23,                // 23 / 100
+      fat: 0.003,                   // 0.3 / 100
+      mealType: 'snack',
+      consumedAt: DateTime.now(),
+    );
 
-    final food3 = Food(
-        name: 'Chicken Breast',
-        category: 'Meat',
-        caloriesPer100g: 165,
-        proteinPer100g: 31,
-        carbsPer100g: 0,
-        fatPer100g: 3.6,
-        fiberPer100g: 0,
-        micronutrients: Micronutrients(
-          calciumMg: 13,
-          ironMg: 1,
-          vitaminAMcg: 0,
-          vitaminCMg: 0,
-        ),
-        source: 'USDA',
-        consumedAt: DateTime.now(),
-        servingSize: 100
-      );
+    final food3 = FoodItem(
+      id: '3',
+      name: 'Chicken Breast',
+      mass_g: 100,
+      calories_g: 1.65,             // 165 / 100
+      protein_g: 0.31,              // 31 / 100
+      carbs_g: 0.0,
+      fat: 0.036,                   // 3.6 / 100
+      mealType: 'lunch',
+      consumedAt: DateTime.now(),
+    );
 
     final allFoods = [food1, food2, food3];
     
@@ -77,7 +56,7 @@ class NutritionService {
   }
   
   // Calculate nutritional information for a list of food items
-  Map<String, dynamic> calculateNutrition(List<Food> foods) {
+  Map<String, dynamic> calculateNutrition(List<FoodItem> foods) {
     if (foods.isEmpty) {
       return {
         'totalCalories': 0,
@@ -96,11 +75,11 @@ class NutritionService {
     double totalFat = 0;
 
     for (final food in foods) {
-      final servingRatio = food.servingSize / 100;
-      totalCalories += food.caloriesPer100g * servingRatio;
-      totalProtein += food.proteinPer100g * servingRatio;
-      totalCarbs += food.carbsPer100g * servingRatio;
-      totalFat += food.fatPer100g * servingRatio;
+      // calories_g is calories per 1 gram
+      totalCalories += food.calories_g * food.mass_g;
+      totalProtein += food.protein_g * food.mass_g;
+      totalCarbs += food.carbs_g * food.mass_g;
+      totalFat += food.fat * food.mass_g;
     }
 
     if (totalCalories == 0) {
