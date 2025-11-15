@@ -7,7 +7,6 @@ class FirestoreHelper {
   static void useDb(FirebaseFirestore db) => _db = db;
 
   static const String usersCollection = 'Users';
-  static const String foodCollection  = 'Food';
 
   // ---------------------------------------------------------------------------
   // USER CRUD
@@ -168,12 +167,6 @@ class FirestoreHelper {
       for (final doc in usersSnap.docs) {
         // ignore: avoid_print
         print('👤 User ${doc.id}: ${doc.data()}');
-      }
-
-      final foodsSnap = await _db.collection(foodCollection).get();
-      for (final doc in foodsSnap.docs) {
-        // ignore: avoid_print
-        print('🍎 Food ${doc.id}: ${doc.data()}');
       }
 
       // ignore: avoid_print

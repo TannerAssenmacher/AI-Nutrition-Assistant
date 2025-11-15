@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../db/user.dart';
 import 'food_providers.dart';
@@ -54,7 +55,7 @@ int _ageFromDob(DateTime dob) {
 
 @riverpod
 bool isProfileComplete(Ref ref) {
-  final profile = ref.watch(userProfileProvider);
+  final profile = ref.watch(userProfileNotifierProvider);
 
   if (profile == null) return false;
 
@@ -69,7 +70,7 @@ bool isProfileComplete(Ref ref) {
 
 @riverpod
 int remainingCalories(Ref ref) {
-  final profile = ref.watch(userProfileProvider);
+  final profile = ref.watch(userProfileNotifierProvider);
   final consumed = ref.watch(totalDailyCaloriesProvider);
 
   if (profile == null) return 0;
