@@ -2,40 +2,57 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:nutrition_assistant/db/firestore_helper.dart';
 import 'package:nutrition_assistant/db/user.dart';
+import 'package:nutrition_assistant/db/food.dart';
+import 'package:nutrition_assistant/db/preferences.dart';
+import 'package:nutrition_assistant/db/meal_profile.dart';
 
+// Mock data for tests
 AppUser get mockUser {
-  return AppUser(
+  final now = DateTime.now();
+
+  final mealProfile = MealProfile(
+    dietaryHabits: ['vegetarian'],
+    healthRestrictions: ['peanuts'],
+    preferences: Preferences(
+      likes: ['food_1'],
+      dislikes: ['food_2'],
+    ),
+    macroGoals: {'protein': 150, 'carbs': 300, 'fat': 70},
+    dailyCalorieGoal: 2500,
+    dietaryGoal: 'muscle_gain',
+  );
+
+  final user = AppUser(
     firstname: 'John',
     lastname: 'Doe',
     dob: DateTime(2000, 1, 1),
     sex: 'male',
-    height: 180,
-    weight: 75,
+    height: 180, // inches
+    weight: 75,  // pounds
     activityLevel: 'lightly_active',
-    mealProfile: MealProfile(
-      dietaryHabits: ['vegetarian'],
-      healthRestrictions: ['peanuts'],
-      preferences: Preferences(likes: ['food_1'], dislikes: ['food_2']),
-      macroGoals: {'protein': 150, 'carbs': 300, 'fat': 70},
-      dailyCalorieGoal: 2500,
-      dietaryGoal: 'muscle_gain',
-    ),
-    loggedFoodItems: [],
-    createdAt: DateTime.now(),
-    updatedAt: DateTime.now(),
+    mealProfile: mealProfile,
+    loggedFoodItems: const [],
+    createdAt: now,
+    updatedAt: now,
   );
+
+  return user;
 }
 
-FoodItem get mockFoodItem {
+
+FoodItem get mockFood {
+  final now = DateTime.now();
+
   return FoodItem(
+    id: 'food_avocado',
     name: 'Avocado',
-    mass_g: 150,
-    calories_g: 240,
-    protein_g: 3,
-    carbs_g: 12,
-    fat: 22,
-    mealType: 'Snack',
-    consumedAt: DateTime.now(),
+    mass_g: 150,        // serving mass
+    calories_g: 1.6,    // calories per gram
+    protein_g: 0.02,    // 2g protein / 100g
+    carbs_g: 0.085,     // 8.5g carbs / 100g
+    fat: 0.147,         // 14.7g fat / 100g
+    mealType: 'snack',
+    consumedAt: now,
   );
 }
 
@@ -50,6 +67,7 @@ void main() {
       await FirestoreHelper.createUser(user);
       final fetched = await FirestoreHelper.getUser(user.id);
       expect(fetched, isNotNull);
+      expect(fetched!.firstname, user.firstname);
     });
 
     test('createUser throws StateError if user exists', () async {
@@ -96,61 +114,95 @@ void main() {
     });
   });
 
-  group('Logged Food Items', () {
-    test('addFoodToUser adds a food item to loggedFoodItems', () async {
+  group('Food CRUD (embedded)', () {
+    test('addFoodItem adds food to user', () async {
       final user = mockUser;
-      final food = mockFoodItem;
       await FirestoreHelper.createUser(user);
 
-      await FirestoreHelper.addFoodToUser(user.id, food);
+      await FirestoreHelper.addFoodItem(user.id, mockFood);
 
-      final fetched = await FirestoreHelper.getUser(user.id);
-      expect(fetched!.loggedFoodItems.length, 1);
-      expect(fetched.loggedFoodItems.first.name, 'Avocado');
+      final foods = await FirestoreHelper.getAllFoodItems(user.id);
+      expect(foods.length, 1);
+      expect(foods.first.name, mockFood.name);
     });
 
-    test('removeFoodFromUser removes the specified food item', () async {
+    test('updateFoodItem updates an existing food', () async {
       final user = mockUser;
-      final food = mockFoodItem;
       await FirestoreHelper.createUser(user);
-      await FirestoreHelper.addFoodToUser(user.id, food);
+      await FirestoreHelper.addFoodItem(user.id, mockFood);
 
-      await FirestoreHelper.removeFoodFromUser(user.id, food);
+      final updated = FoodItem(
+        id: mockFood.id,
+        name: 'Ripe Avocado',
+        mass_g: mockFood.mass_g,
+        calories_g: 2.0, // changed
+        protein_g: mockFood.protein_g,
+        carbs_g: mockFood.carbs_g,
+        fat: mockFood.fat,
+        mealType: mockFood.mealType,
+        consumedAt: mockFood.consumedAt,
+      );
 
-      final fetched = await FirestoreHelper.getUser(user.id);
-      expect(fetched!.loggedFoodItems.isEmpty, true);
+      await FirestoreHelper.updateFoodItem(user.id, updated);
+
+      final fetched = await FirestoreHelper.getFoodItem(user.id, updated.id);
+      expect(fetched!.name, 'Ripe Avocado');
+      expect(fetched.calories_g, 2.0);
     });
 
-    test('getLoggedFoods returns all logged food items for a user', () async {
+    test('deleteFoodItem removes food from user', () async {
       final user = mockUser;
-      final food1 = mockFoodItem;
-      final food2 = mockFoodItem.copyWith(name: 'Banana', calories_g: 100);
       await FirestoreHelper.createUser(user);
-      await FirestoreHelper.addFoodToUser(user.id, food1);
-      await FirestoreHelper.addFoodToUser(user.id, food2);
+      await FirestoreHelper.addFoodItem(user.id, mockFood);
 
-      final foods = await FirestoreHelper.getLoggedFoods(user.id);
+      await FirestoreHelper.deleteFoodItem(user.id, mockFood.id);
+
+      final foods = await FirestoreHelper.getAllFoodItems(user.id);
+      expect(foods.isEmpty, true);
+    });
+
+    test('getFoodItem returns null for missing food', () async {
+      final user = mockUser;
+      await FirestoreHelper.createUser(user);
+
+      final food = await FirestoreHelper.getFoodItem(user.id, 'missing');
+      expect(food, isNull);
+    });
+
+    test('getAllFoodItems returns list', () async {
+      final user = mockUser;
+      await FirestoreHelper.createUser(user);
+
+      await FirestoreHelper.addFoodItem(user.id, mockFood);
+
+      final secondFood = FoodItem(
+        id: 'food2',
+        name: 'Apple',
+        mass_g: mockFood.mass_g,
+        calories_g: mockFood.calories_g,
+        protein_g: mockFood.protein_g,
+        carbs_g: mockFood.carbs_g,
+        fat: mockFood.fat,
+        mealType: mockFood.mealType,
+        consumedAt: mockFood.consumedAt,
+      );
+
+      await FirestoreHelper.addFoodItem(user.id, secondFood);
+
+      final foods = await FirestoreHelper.getAllFoodItems(user.id);
       expect(foods.length, 2);
-      expect(foods.first.name, 'Avocado');
-      expect(foods.last.name, 'Banana');
-    });
-
-    test('clearLoggedFoods removes all logged food items', () async {
-      final user = mockUser;
-      final food = mockFoodItem;
-      await FirestoreHelper.createUser(user);
-      await FirestoreHelper.addFoodToUser(user.id, food);
-
-      await FirestoreHelper.clearLoggedFoods(user.id);
-      final fetched = await FirestoreHelper.getUser(user.id);
-      expect(fetched!.loggedFoodItems.isEmpty, true);
     });
   });
 
+
   group('Utilities', () {
-    test('printAllData completes without errors', () async {
+    test('printAllData does not throw errors', () async {
       final user = mockUser;
+      final food = mockFood;
       await FirestoreHelper.createUser(user);
+      await FirestoreHelper.addFoodItem(user.id, food);
+
+      // The function prints to console, so we just check for no exceptions.
       await expectLater(FirestoreHelper.printAllData(), completes);
     });
   });

@@ -1,10 +1,12 @@
 import 'dart:io';
+
 import 'package:camera/camera.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../db/user.dart'; // Uses AppUser, MealProfile, FoodItem
+import '../db/food.dart';
+import '../providers/food_providers.dart';
 import '../providers/user_providers.dart';
 import 'camera_capture_screen.dart';
 
@@ -13,22 +15,11 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final foodLog = ref.watch(foodLogProvider);
+    final totalCalories = ref.watch(totalDailyCaloriesProvider);
+    final dailyMacros = ref.watch(totalDailyMacrosProvider);
     final userProfile = ref.watch(userProfileProvider);
-    final foodLog = userProfile?.loggedFoodItems ?? [];
-
-    // --- Compute totals dynamically ---
-    final totalCalories = foodLog.fold<double>(0, (sum, f) => sum + f.calories_g);
-
-    final dailyMacros = {
-      'protein': foodLog.fold<double>(0, (sum, f) => sum + f.protein_g),
-      'carbs': foodLog.fold<double>(0, (sum, f) => sum + f.carbs_g),
-      'fat': foodLog.fold<double>(0, (sum, f) => sum + f.fat),
-    };
-
-    final calorieGoal = userProfile?.mealProfile.dailyCalorieGoal ?? 0;
-
-    // Example placeholder for suggestions — replace with your async provider later
-    final foodSuggestions = ['Grilled Chicken', 'Oatmeal', 'Greek Yogurt'];
+    final foodSuggestionsAsync = ref.watch(foodSuggestionsProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -63,7 +54,7 @@ class HomeScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- Calories summary ---
+            // Calorie Summary Card
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -76,17 +67,16 @@ class HomeScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '${totalCalories.toStringAsFixed(0)} kcal consumed',
+                      '$totalCalories calories consumed',
                       style: Theme.of(context).textTheme.bodyLarge,
                     ),
-                    if (calorieGoal > 0) ...[
+                    if (userProfile != null) ...[
                       const SizedBox(height: 4),
                       Text(
-                        'Goal: $calorieGoal kcal',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodyMedium
-                            ?.copyWith(color: Colors.grey[600]),
+                        'Goal: ${userProfile.mealProfile.dailyCalorieGoal} calories',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Colors.grey[600],
+                            ),
                       ),
                     ],
                   ],
@@ -96,7 +86,7 @@ class HomeScreen extends ConsumerWidget {
 
             const SizedBox(height: 16),
 
-            // --- Macronutrients summary ---
+            // Macros Summary Card
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -114,19 +104,17 @@ class HomeScreen extends ConsumerWidget {
                         _MacroColumn(
                           label: 'Protein',
                           value:
-                          '${dailyMacros['protein']?.toStringAsFixed(1) ?? '0'}g',
+                              '${dailyMacros['protein']?.toStringAsFixed(1)}g',
                           color: Colors.red[300]!,
                         ),
                         _MacroColumn(
                           label: 'Carbs',
-                          value:
-                          '${dailyMacros['carbs']?.toStringAsFixed(1) ?? '0'}g',
+                          value: '${dailyMacros['carbs']?.toStringAsFixed(1)}g',
                           color: Colors.blue[300]!,
                         ),
                         _MacroColumn(
                           label: 'Fat',
-                          value:
-                          '${dailyMacros['fat']?.toStringAsFixed(1) ?? '0'}g',
+                          value: '${dailyMacros['fat']?.toStringAsFixed(1)}g',
                           color: Colors.orange[300]!,
                         ),
                       ],
@@ -138,52 +126,56 @@ class HomeScreen extends ConsumerWidget {
 
             const SizedBox(height: 16),
 
-            // --- Food Suggestions ---
+            // Food Suggestions
             Text(
               'Food Suggestions',
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: 8),
-            SizedBox(
-              height: 120,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: foodSuggestions.length,
-                itemBuilder: (context, index) {
-                  return Container(
-                    width: 150,
-                    margin: const EdgeInsets.only(right: 8),
-                    child: Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.restaurant,
-                              color: Colors.green[600],
-                              size: 32,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              foodSuggestions[index],
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(fontSize: 12),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
+            foodSuggestionsAsync.when(
+              data: (suggestions) => SizedBox(
+                height: 120,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: suggestions.length,
+                  itemBuilder: (context, index) {
+                    return Container(
+                      width: 150,
+                      margin: const EdgeInsets.only(right: 8),
+                      child: Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.restaurant,
+                                color: Colors.green[600],
+                                size: 32,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                suggestions[index],
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(fontSize: 12),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, stack) => Text('Error: $error'),
             ),
 
             const SizedBox(height: 16),
 
-            // --- Food Log ---
+            // Today's Food Log
             Text(
               'Today\'s Food Log',
               style: Theme.of(context).textTheme.headlineSmall,
@@ -194,44 +186,41 @@ class HomeScreen extends ConsumerWidget {
                 child: Padding(
                   padding: EdgeInsets.all(16.0),
                   child:
-                  Text('No food logged today. Start by adding some food!'),
+                      Text('No food logged today. Start by adding some food!'),
                 ),
               )
             else
-              ...foodLog.map(
-                    (food) => Card(
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: Colors.green[100],
-                      child: Icon(Icons.restaurant, color: Colors.green[600]),
+              ...foodLog.map((food) => Card(
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: Colors.green[100],
+                        child: Icon(Icons.restaurant, color: Colors.green[600]),
+                      ),
+                      title: Text(food.name),
+                      subtitle: Text('${food.calories_g} calories'),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () {
+                          ref
+                              .read(foodLogProvider.notifier)
+                              .removeFoodItem(food.id);
+                        },
+                      ),
                     ),
-                    title: Text(food.name),
-                    subtitle: Text(
-                      '${food.calories_g.toStringAsFixed(0)} kcal | ${food.mass_g.toStringAsFixed(0)} g',
-                    ),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
-                      onPressed: () {
-                        ref
-                            .read(userProfileProvider.notifier)
-                            .removeFoodItem(food);
-                      },
-                    ),
-                  ),
-                ),
-              ),
+                  )),
           ],
         ),
       ),
-
-      // --- Floating Action Buttons ---
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
+          // Add Chat FAB
           FloatingActionButton(
             heroTag: 'chatFab',
-            onPressed: () => Navigator.pushNamed(context, '/chat'),
+            onPressed: () {
+              Navigator.pushNamed(context, '/chat');
+            },
             backgroundColor: Colors.blue[600],
             child: const Icon(Icons.chat, color: Colors.white),
           ),
@@ -254,7 +243,6 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  // --- Camera Handler ---
   Future<void> _openCamera(BuildContext context) async {
     try {
       final capturedFile = await Navigator.of(context).push<XFile?>(
@@ -263,7 +251,9 @@ class HomeScreen extends ConsumerWidget {
         ),
       );
 
-      if (capturedFile == null) return;
+      if (capturedFile == null) {
+        return;
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Meal photo captured.')),
@@ -271,9 +261,11 @@ class HomeScreen extends ConsumerWidget {
 
       try {
         final file = File(capturedFile.path);
-        if (await file.exists()) await file.delete();
+        if (await file.exists()) {
+          await file.delete();
+        }
       } catch (_) {
-        // Ignore cleanup errors
+        // Ignore cleanup failures; nothing sensitive is stored long term.
       }
     } catch (error) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -282,7 +274,6 @@ class HomeScreen extends ConsumerWidget {
     }
   }
 
-  // --- Add Food Dialog ---
   void _showAddFoodDialog(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
@@ -296,17 +287,20 @@ class HomeScreen extends ConsumerWidget {
           ),
           TextButton(
             onPressed: () {
+              // Example: Add a sample food item
               final sampleFood = FoodItem(
+                id: DateTime.now().millisecondsSinceEpoch.toString(),
                 name: 'Sample Apple',
-                mass_g: 150,
-                calories_g: 78,
-                protein_g: 0.3,
-                carbs_g: 20.6,
-                fat: 0.2,
-                mealType: 'Snack',
+                mass_g: 100,
+                calories_g: 2.0,   // 200 cal / 100g = 2.0 cal/g
+                protein_g: 0.025,  // 2.5 / 100
+                carbs_g: 0.10,     // 10 / 100
+                fat: 0.005,        // 0.5 / 100
+                mealType: 'snack',
                 consumedAt: DateTime.now(),
               );
-              ref.read(userProfileProvider.notifier).addFoodItem(sampleFood);
+
+              ref.read(foodLogProvider.notifier).addFoodItem(sampleFood);
               Navigator.of(context).pop();
             },
             child: const Text('Add Sample'),
@@ -317,7 +311,6 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-// --- Macro Column Component ---
 class _MacroColumn extends StatelessWidget {
   final String label;
   final String value;

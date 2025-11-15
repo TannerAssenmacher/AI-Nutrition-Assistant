@@ -1,13 +1,11 @@
-// Fixed and cleaned version of your RegisterPage code
-// NOTE: I only corrected syntax, missing brackets, misplacements, and fixed widget tree structure.
-// You may still want to adjust logic or UI behavior, but this version COMPILES.
-
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../db/user.dart';
+import '../db/meal_profile.dart';
+import '../db/preferences.dart';
 import '../widgets/macro_slider.dart';
 import 'package:intl/intl.dart';
 import 'package:email_validator/email_validator.dart';
@@ -70,6 +68,7 @@ class _RegisterPageState extends State<RegisterPage> {
   double _carbs = 50.0;
   double _fats = 30.0;
 
+  // Dropdown options
   final _sexOptions = ['Male', 'Female'];
   final _activityLevels = ['Sedentary', 'Lightly Active', 'Moderately Active', 'Very Active'];
   final _dietGoals = ['Lose Weight', 'Maintain Weight', 'Gain Muscle'];
@@ -123,7 +122,7 @@ class _RegisterPageState extends State<RegisterPage> {
         _hasMinLength = value.length >= 8;
         _hasUppercase = RegExp(r'[A-Z]').hasMatch(value);
         _hasNumber = RegExp(r'\d').hasMatch(value);
-        _hasSpecial = RegExp(r'[!@#\\$&*~]').hasMatch(value);
+        _hasSpecial = RegExp(r'[!@#\$&*~]').hasMatch(value);
         if (_passwordError != null) _passwordError = null;
       });
     });
@@ -193,7 +192,7 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   bool _isValidDate(String input) {
-    final regex = RegExp(r'^(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/(19|20)\d{2}\$');
+    final regex = RegExp(r'^(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/(19|20)\d{2}$');
     if (!regex.hasMatch(input)) return false;
     try {
       final parts = input.split('/');
@@ -204,23 +203,26 @@ class _RegisterPageState extends State<RegisterPage> {
     }
   }
 
+  // ---- PAGE 1: Validate, then go next
+  Future<void> _validatePage1AndNext() async {
+    setState(() => _submitted = true);
+    setState(() {}); // force rebuild so validators run with _submitted=true
+
+    // If email duplication already detected via live check, block navigation
+    if (_emailError != null) return;
+
+    final validLocal = _formKey.currentState?.validate() ?? false;
+    if (!validLocal) return;
+
+    _pageController.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+    setState(() => _currentPage = 1);
+  }
+
+  // ---- REGISTER USER (Auth + Firestore Sync)
   Future<void> _registerUser() async {
     setState(() => _submitted = true);
     if (_emailError != null) return;
     if (!_formKey.currentState!.validate()) return;
-
-    if (_dietaryHabits.isEmpty || _health.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select at least one dietary habit and one allergy')),
-      );
-      return;
-    }
-
-    if (_sex == null || _activityLevel == null || _dietaryGoal == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please complete all dropdowns and selections')));
-      return;
-    }
 
     setState(() => _isLoading = true);
 
@@ -466,7 +468,10 @@ class _RegisterPageState extends State<RegisterPage> {
                       style: ElevatedButton.styleFrom(backgroundColor: Colors.green, padding: const EdgeInsets.all(15)),
                       child: const Text('Create Account', style: TextStyle(color: Colors.white, fontSize: 18)),
                     ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -708,7 +713,6 @@ class _DOBFormatter extends TextInputFormatter {
   TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
     String digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
     if (digits.length > 8) digits = digits.substring(0, 8);
-
     final buffer = StringBuffer();
     for (int i = 0; i < digits.length; i++) {
       buffer.write(digits[i]);
