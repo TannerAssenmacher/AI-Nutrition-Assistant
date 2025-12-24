@@ -7,6 +7,9 @@ import '../providers/food_providers.dart';
 import '../providers/user_providers.dart';
 import 'meal_analysis_screen.dart';
 
+import '../widgets/top_bar.dart';
+import 'package:nutrition_assistant/widgets/nav_bar.dart';
+
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
@@ -19,12 +22,69 @@ class HomeScreen extends ConsumerWidget {
     final foodSuggestionsAsync = ref.watch(foodSuggestionsProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Nutrition Assistant'),
-        backgroundColor: Colors.green[600],
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
+      backgroundColor: const Color(0xFFF5EDE2),
+      body: Column(
+        children: [
+          const top_bar(),
+          Expanded(child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Today\'s Calories',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '$totalCalories calories consumed',
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+                if (userProfile != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Goal: ${userProfile.mealProfile.dailyCalorieGoal} calories',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),),
+        ],
+      ),
+
+      bottomNavigationBar: NavBar(
+        currentIndex: 3,
+        onTap: (index) {
+          switch (index) {
+            case 1:
+              Navigator.pushNamed(context, '/chat');
+              break;
+            case 2:
+              Navigator.pushNamed(context, '/history');
+              break;
+            case 3:
+              Navigator.pushNamed(context, '/home');
+              break;
+            case 4:
+              Navigator.pushNamed(context, '/camera');
+              break;
+            case 5:
+              Navigator.pushNamed(context, '/profile');
+          }
+        },
+      ),
+    );
+
+    /*return Scaffold(
+      /*appBar: AppBar(
+        title: const Text('AI Nutrition Assistant', textAlign: TextAlign.center),
+        backgroundColor: const Color(0xFF3E2F26),
+        foregroundColor: const Color(0xFFF5EDE2),
+        /*actions: [
+          /*IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Logout',
             onPressed: () async {
@@ -36,16 +96,16 @@ class HomeScreen extends ConsumerWidget {
                 );
               }
             },
-          ),
-          IconButton(
+          ),*/
+          /*IconButton(
             icon: const Icon(Icons.person),
             tooltip: 'Profile',
             onPressed: () {
               Navigator.pushNamed(context, '/profile');
             },
-          ),
-        ],
-      ),
+          ),*/
+        ],*/
+      ),*/
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -237,7 +297,7 @@ class HomeScreen extends ConsumerWidget {
           ),
         ],
       ),
-    );
+    );*/
   }
 
   Future<void> _openMealAnalyzer(BuildContext context) async {
