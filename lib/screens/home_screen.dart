@@ -1,7 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import '../db/food.dart';
 import '../providers/food_providers.dart';
 import '../providers/user_providers.dart';

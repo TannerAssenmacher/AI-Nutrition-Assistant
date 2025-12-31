@@ -15,11 +15,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
 
   bool _showRecipePicker = false;
-
   String? _selectedMealType;
   bool _showCuisinePicker = false;
   bool _showConfirmationButtons = false;
-
 
   final List<String> _cuisineTypes = [
     'American',
@@ -91,7 +89,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
 }
 
-
 void _onCuisineSelected(String cuisine) {
   setState(() => _showCuisinePicker = false);
 
@@ -104,12 +101,11 @@ void _onCuisineSelected(String cuisine) {
   WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
 }
 
-
   @override
   Widget build(BuildContext context) {
     final chatMessages = ref.watch(geminiChatServiceProvider);
   
-    //user confirmation
+    // User confirmation
     if (chatMessages.isNotEmpty &&
           chatMessages.last.content.contains("Is this correct?") &&
           !_showConfirmationButtons) {
@@ -250,7 +246,7 @@ void _onCuisineSelected(String cuisine) {
               ),
             ),
 
-           //confirmation on user diet and health restrictions
+           // confirmation for user diet and health restrictions
             if (_showConfirmationButtons)
               Container(
                 width: double.infinity,
@@ -272,7 +268,7 @@ void _onCuisineSelected(String cuisine) {
                       children: [
                         ElevatedButton.icon(
                           onPressed: () {
-                            // ✅ user confirms info is correct
+                            // user confirms info is correct
                             setState(() => _showConfirmationButtons = false);
                             ref
                                 .read(geminiChatServiceProvider.notifier)
@@ -292,7 +288,7 @@ void _onCuisineSelected(String cuisine) {
                         const SizedBox(width: 12),
                         ElevatedButton.icon(
                           onPressed: () {
-                            // ❌ user says info is incorrect
+                            // user says info is incorrect
                             setState(() => _showConfirmationButtons = false);
                             ref
                                 .read(geminiChatServiceProvider.notifier)

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+// Screen to reset password with Firebase Auth functions
+
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
 
@@ -57,7 +59,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         Navigator.pop(context);
       }
     } on FirebaseAuthException catch (e) {
-      debugPrint('🔥 Password reset error: ${e.code} → ${e.message}');
+      debugPrint('Password reset error: ${e.code} → ${e.message}');
       String msg = 'Error: ${e.message ?? e.code}';
       if (e.code == 'user-not-found') msg = 'No user found with that email.';
       setState(() => _error = msg);

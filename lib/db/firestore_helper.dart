@@ -5,7 +5,6 @@ import 'food.dart';
 class FirestoreHelper {
   static FirebaseFirestore _db = FirebaseFirestore.instance;
   static void useDb(FirebaseFirestore db) => _db = db;
-
   static const String usersCollection = 'Users';
 
   // ---------------------------------------------------------------------------
@@ -20,8 +19,7 @@ class FirestoreHelper {
       throw StateError('User ${user.id} already exists.');
     }
     await docRef.set(user.toJson());
-    // ignore: avoid_print
-    print('✅ Created user ${user.id}.');
+    print('Created user ${user.id}.');
   }
 
   /// Update an existing user. Fails if the document does not exist.
@@ -32,8 +30,7 @@ class FirestoreHelper {
       throw StateError('User ${user.id} does not exist.');
     }
     await docRef.update(user.toJson());
-    // ignore: avoid_print
-    print('✅ Updated user ${user.id}.');
+    print('Updated user ${user.id}.');
   }
 
   /// Read user by ID.
@@ -43,8 +40,7 @@ class FirestoreHelper {
       if (!doc.exists || doc.data() == null) return null;
       return AppUser.fromJson(doc.data()!, doc.id);
     } catch (e) {
-      // ignore: avoid_print
-      print('❌ Error fetching user: $e');
+      print('Error fetching user: $e');
       return null;
     }
   }
@@ -52,11 +48,10 @@ class FirestoreHelper {
   /// Delete user by ID.
   static Future<void> deleteUser(String userId) async {
     await _db.collection(usersCollection).doc(userId).delete();
-    // ignore: avoid_print
-    print('✅ Deleted user $userId.');
+    print('Deleted user $userId.');
   }
 
-  /// Get all users.
+  /// Get a list of all users.
   static Future<List<AppUser>> getAllUsers() async {
     try {
       final snapshot = await _db.collection(usersCollection).get();
@@ -64,8 +59,7 @@ class FirestoreHelper {
           .map((d) => AppUser.fromJson(d.data(), d.id))
           .toList();
     } catch (e) {
-      // ignore: avoid_print
-      print('❌ Error fetching users: $e');
+      print('Error fetching users: $e');
       return [];
     }
   }
@@ -77,13 +71,10 @@ class FirestoreHelper {
   }
 
   // ---------------------------------------------------------------------------
-// FOOD CRUD
-// ---------------------------------------------------------------------------
-
+  // FOOD CRUD
   // ---------------------------------------------------------------------------
-// FOOD CRUD (embedded inside user document)
-// ---------------------------------------------------------------------------
 
+  // Add a food item to logged foods for a user
   static Future<void> addFoodItem(String userId, FoodItem food) async {
     final docRef = _db.collection(usersCollection).doc(userId);
     final snap = await docRef.get();
@@ -94,9 +85,10 @@ class FirestoreHelper {
       'loggedFoodItems': FieldValue.arrayUnion([food.toJson()])
     });
 
-    print('🍎 Added food ${food.id} to user $userId.');
+    print('Added food ${food.id} to user $userId.');
   }
 
+  // Update existing food item for already logged meal for a user
   static Future<void> updateFoodItem(String userId, FoodItem updated) async {
     final docRef = _db.collection(usersCollection).doc(userId);
     final snap = await docRef.get();
@@ -112,9 +104,10 @@ class FirestoreHelper {
     items[index] = updated.toJson();
 
     await docRef.update({'loggedFoodItems': items});
-    print('🍎 Updated food ${updated.id} for user $userId.');
+    print('Updated food ${updated.id} for user $userId.');
   }
 
+  // Delete a food item from logged foods for a user
   static Future<void> deleteFoodItem(String userId, String foodId) async {
     final docRef = _db.collection(usersCollection).doc(userId);
     final snap = await docRef.get();
@@ -127,9 +120,10 @@ class FirestoreHelper {
     items.removeWhere((item) => item['id'] == foodId);
 
     await docRef.update({'loggedFoodItems': items});
-    print('🗑️ Deleted food $foodId from user $userId.');
+    print('Deleted food $foodId from user $userId.');
   }
 
+  // Returns a list of all logged food items for a user
   static Future<List<FoodItem>> getAllFoodItems(String userId) async {
     final doc = await _db.collection(usersCollection).doc(userId).get();
     if (!doc.exists) return [];
@@ -138,6 +132,7 @@ class FirestoreHelper {
     return items.map((e) => FoodItem.fromJson(e)).toList();
   }
 
+  // Returns a single food item in a user's logged food items
   static Future<FoodItem?> getFoodItem(String userId, String foodId) async {
     final doc = await _db.collection(usersCollection).doc(userId).get();
     if (!doc.exists) return null;
@@ -151,29 +146,23 @@ class FirestoreHelper {
     return match == null ? null : FoodItem.fromJson(match);
   }
 
-
-
   // ---------------------------------------------------------------------------
   // UTILITIES
   // ---------------------------------------------------------------------------
 
-  /// Print all data from Users and Food (basic dump).
+  // Print all data in Users database
   static Future<void> printAllData() async {
     try {
-      // ignore: avoid_print
-      print('📦 Dumping all Firestore data...');
+      print('Dumping all Firestore data...');
 
       final usersSnap = await _db.collection(usersCollection).get();
       for (final doc in usersSnap.docs) {
-        // ignore: avoid_print
-        print('👤 User ${doc.id}: ${doc.data()}');
+        print('User ${doc.id}: ${doc.data()}');
       }
 
-      // ignore: avoid_print
-      print('✅ Finished printing database.');
+      print('Finished printing database.');
     } catch (e) {
-      // ignore: avoid_print
-      print('❌ Error printing database: $e');
+      print('Error printing database: $e');
     }
   }
 }

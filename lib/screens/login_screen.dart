@@ -23,7 +23,6 @@ class _LoginPageState extends State<LoginPage> {
     if (_showValidationErrors) _formKey.currentState?.validate();
   }
 
-
   @override
   void initState() {
     super.initState();
@@ -43,7 +42,7 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _login() async {
     setState(() {
-      _showValidationErrors = true; // start showing field errors
+      _showValidationErrors = true; // show field errors when login button is pressed
     });
 
     if (!_formKey.currentState!.validate()) return;
@@ -53,6 +52,7 @@ class _LoginPageState extends State<LoginPage> {
       _error = null;
     });
 
+    // Try to sign in with input email and password
     try {
       final result = await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
@@ -61,12 +61,14 @@ class _LoginPageState extends State<LoginPage> {
 
       final user = result.user;
 
+      // Check if user's email is verified before signing in
       if (user != null && !user.emailVerified) {
         await _showEmailVerificationDialog(user);
         await FirebaseAuth.instance.signOut();
         return;
       }
 
+      // Send to home page if user credentials are valid and account is verified
       if (mounted) Navigator.pushReplacementNamed(context, '/home');
     } on FirebaseAuthException catch (e) {
       setState(() => _error = e.message);
@@ -75,6 +77,7 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  // Show message for user email verification status
   Future<void> _showEmailVerificationDialog(User user) async {
     bool isVerified = user.emailVerified;
     bool stopChecking = false;

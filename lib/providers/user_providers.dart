@@ -42,7 +42,7 @@ class UserProfileNotifier extends _$UserProfileNotifier {
   }
 }
 
-/// Helper to compute age from DOB
+// Helper to compute age from DOB
 int _ageFromDob(DateTime dob) {
   final now = DateTime.now();
   int age = now.year - dob.year;
@@ -53,6 +53,7 @@ int _ageFromDob(DateTime dob) {
   return age;
 }
 
+// Checks if user profile contains empty fields
 @riverpod
 bool isProfileComplete(Ref ref) {
   final profile = ref.watch(userProfileNotifierProvider);
@@ -68,6 +69,7 @@ bool isProfileComplete(Ref ref) {
       profile.activityLevel.isNotEmpty;
 }
 
+// Returns calories left until daily goal is met
 @riverpod
 int remainingCalories(Ref ref) {
   final profile = ref.watch(userProfileNotifierProvider);

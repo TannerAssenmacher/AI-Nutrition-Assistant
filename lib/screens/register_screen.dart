@@ -21,7 +21,6 @@ class _RegisterPageState extends State<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
   final _scrollController = ScrollController();
   final _pageController = PageController();
-
   int _currentPage = 0;
 
   // Controllers
@@ -49,7 +48,6 @@ class _RegisterPageState extends State<RegisterPage> {
 
   bool _isLoading = false;
   bool _submitted = false;
-
   String? _emailError; // live email duplication / format error
   String? _passwordError; // firebase weak-password, etc.
 
@@ -191,6 +189,7 @@ class _RegisterPageState extends State<RegisterPage> {
     }
   }
 
+  // Check if user entered valid date of birth
   bool _isValidDate(String input) {
     final regex = RegExp(r'^(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/(19|20)\d{2}$');
     if (!regex.hasMatch(input)) return false;
@@ -227,7 +226,7 @@ class _RegisterPageState extends State<RegisterPage> {
     setState(() => _isLoading = true);
 
     try {
-      // 1️⃣ Create user in Firebase Auth
+      // Create user in Firebase Auth
       final authResult = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
@@ -236,14 +235,14 @@ class _RegisterPageState extends State<RegisterPage> {
       if (userAuth == null) throw Exception('User creation failed — no user returned.');
       final uid = userAuth.uid;
 
-      // 2️⃣ Prepare DOB (optional)
+      // Prepare DOB (optional)
       DateTime? dob;
       if (_dobController.text.trim().isNotEmpty) {
         final parts = _dobController.text.split('/');
         dob = DateTime(int.parse(parts[2]), int.parse(parts[0]), int.parse(parts[1]));
       }
 
-      // 3️⃣ Build MealProfile + Preferences objects
+      // Build MealProfile + Preferences objects
       final mealProfile = MealProfile(
         dietaryHabits: _dietaryHabits,
         healthRestrictions: _health,
@@ -264,7 +263,7 @@ class _RegisterPageState extends State<RegisterPage> {
         dietaryGoal: _dietaryGoal ?? '',
       );
 
-      // 4️⃣ Build your AppUser model (use UID instead of random ID)
+      // Build your AppUser model (use UID instead of random ID)
       final now = DateTime.now();
       // Convert numeric fields safely — null if blank
       final heightValue = _heightController.text.trim().isEmpty
@@ -312,10 +311,10 @@ class _RegisterPageState extends State<RegisterPage> {
 
       await FirebaseFirestore.instance.collection('Users').doc(uid).set(userData);
 
-      // 6️⃣ Send verification email
+      // Send verification email
       await userAuth.sendEmailVerification();
 
-      // ✅ Done
+      // Done
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -327,7 +326,7 @@ class _RegisterPageState extends State<RegisterPage> {
       }
 
     } on FirebaseAuthException catch (e) {
-      debugPrint('🔥 Firebase Auth error: ${e.code}');
+      debugPrint('Firebase Auth error: ${e.code}');
 
       if (e.code == 'email-already-in-use') {
         setState(() => _emailError = 'This email is already registered.');
@@ -338,14 +337,14 @@ class _RegisterPageState extends State<RegisterPage> {
             .showSnackBar(SnackBar(content: Text('Auth error: ${e.message}')));
       }
 
-      // 🔁 Rollback Firestore if Auth user created but Firestore write fails later
+      // Rollback Firestore if Auth user created but Firestore write fails later
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser != null && !currentUser.emailVerified) {
         await currentUser.delete(); // cleanup incomplete user
       }
 
     } catch (e) {
-      debugPrint('🔥 Registration general error: $e');
+      debugPrint('Registration general error: $e');
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
 
       // Rollback Auth user if Firestore write failed
@@ -425,7 +424,7 @@ class _RegisterPageState extends State<RegisterPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _dobFieldOptional(), // DOB is NOT required now
+                _dobFieldOptional(), // DOB is NOT required
                 _dropdownField('Sex', _sexOptions, (v) => _sex = v),
                 _textFieldOptional(_heightController, 'Height (inches)', keyboardType: TextInputType.number),
                 _textFieldOptional(_weightController, 'Weight (lbs)', keyboardType: TextInputType.number),
@@ -514,6 +513,7 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
+  // Email field with valid email check and required field
   Widget _emailField() {
     final c = _emailController;
     final node = _focusMap[c];
@@ -546,6 +546,7 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
+  // Password field with live Firebase Auth requirements
   Widget _passwordField() {
     final c = _passwordController;
     final node = _focusMap[c];
@@ -708,6 +709,7 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 }
 
+// Class for DOB formatter from user input or clickable calendar
 class _DOBFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {

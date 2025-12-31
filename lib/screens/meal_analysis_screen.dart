@@ -1,9 +1,7 @@
 import 'dart:io';
-
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-
 import '../services/meal_analysis_service.dart';
 import 'camera_capture_screen.dart';
 
@@ -29,6 +27,7 @@ class _IntegratedMealCaptureFlowState extends State<IntegratedMealCaptureFlow> {
       return;
     }
 
+    // Try taking picture of meal and sending to API for analysis
     try {
       final capturedFile = await Navigator.of(context).push<XFile?>(
         MaterialPageRoute<XFile?>(
@@ -170,7 +169,7 @@ class _IntegratedMealCaptureFlowState extends State<IntegratedMealCaptureFlow> {
   }
 }
 
-/// Widget to display the meal analysis results.
+// Widget to display the meal analysis results.
 class MealAnalysisResultWidget extends StatelessWidget {
   final MealAnalysis analysis;
 

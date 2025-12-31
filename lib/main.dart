@@ -27,7 +27,7 @@ void main() async {
     // Print all Firestore data once at startup (only if needed)
     await FirestoreHelper.printAllData();
   } catch (e) {
-    print("❌ Error during initialization: $e");
+    print("Error during initialization: $e");
     // Continue with app launch even if there's an error
   }
 
@@ -45,32 +45,32 @@ Future<void> _initializeFirebase() async {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
-      print("✅ Firebase initialized for the first time");
+      print("Firebase initialized for the first time");
     } else {
       // Firebase already exists, try to get the default app
       try {
         Firebase.app(); // This will throw if no default app exists
-        print("✅ Firebase already initialized, using existing instance");
+        print("Firebase already initialized, using existing instance");
       } catch (e) {
         // If getting the app fails, try to initialize anyway
         print(
-            "⚠️ Firebase app exists but couldn't access it, reinitializing...");
+            "Firebase app exists but couldn't access it, reinitializing...");
         await Firebase.initializeApp(
           options: DefaultFirebaseOptions.currentPlatform,
         );
-        print("✅ Firebase reinitialized successfully");
+        print("Firebase reinitialized successfully");
       }
     }
   } on FirebaseException catch (e) {
     if (e.code == 'duplicate-app') {
-      print("✅ Firebase already initialized (duplicate-app error caught)");
+      print("Firebase already initialized (duplicate-app error caught)");
       // This is fine, Firebase is already working
     } else {
-      print("❌ Firebase initialization failed: ${e.message}");
+      print("Firebase initialization failed: ${e.message}");
       rethrow;
     }
   } catch (e) {
-    print("❌ Unexpected error during Firebase initialization: $e");
+    print("Unexpected error during Firebase initialization: $e");
     rethrow;
   }
 }
