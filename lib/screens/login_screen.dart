@@ -71,7 +71,8 @@ class _LoginPageState extends State<LoginPage> {
       // Send to home page if user credentials are valid and account is verified
       if (mounted) Navigator.pushReplacementNamed(context, '/home');
     } on FirebaseAuthException catch (e) {
-      setState(() => _error = e.message);
+      debugPrint('Firebase Auth error: ${e.code}');
+      setState(() => _error = 'Invalid email or password. Please try again.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
