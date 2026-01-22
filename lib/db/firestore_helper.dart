@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'user.dart';
 import 'food.dart';
+import 'meal.dart';
+import 'daily_log.dart';
 
 class FirestoreHelper {
   static FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -8,6 +10,8 @@ class FirestoreHelper {
 
   static const String usersCollection = 'Users';
   static const String foodCollection  = 'Food';
+  static const String mealsCollection = 'Meals';
+  static const String dailyLogsCollection = 'DailyLogs';
 
   // ---------------------------------------------------------------------------
   // USER CRUD
@@ -76,6 +80,17 @@ class FirestoreHelper {
     final doc = await _db.collection(usersCollection).doc(userId).get();
     return doc.exists;
   }
+  static Future<void> _updateDailyLogForDate(String email, DateTime date) async {
+  final meals = await getMealsForUserOnDate(email, date);
+
+  final logId =
+      "${date.year}-${date.month.toString().padLeft(2,'0')}-${date.day.toString().padLeft(2,'0')}";
+
+  final dailyLog =
+      DailyLog.fromMeals(id: logId, email: email, date: date, meals: meals);
+
+  await _db.collection(dailyLogsCollection).doc(logId).set(dailyLog.toMap());
+}
 
   // ---------------------------------------------------------------------------
   // FOOD CRUD
@@ -144,6 +159,42 @@ class FirestoreHelper {
     final doc = await _db.collection(foodCollection).doc(foodId).get();
     return doc.exists;
   }
+
+  // MEAL CRUD
+static Future<void> createMeal(Meal meal) async {
+  final docRef = _db.collection(mealsCollection).doc(meal.id);
+  if ((await docRef.get()).exists) {
+    throw StateError('Meal ${meal.id} already exists.');
+  }
+  await docRef.set(meal.toJson());
+}
+
+static Future<void> updateMeal(Meal meal) async {
+  final docRef = _db.collection(mealsCollection).doc(meal.id);
+  if (!(await docRef.get()).exists) {
+    throw StateError('Meal ${meal.id} does not exist.');
+  }
+  await docRef.update(meal.toJson());
+}
+
+static Future<Meal?> getMeal(String id) async {
+  final doc = await _db.collection(mealsCollection).doc(id).get();
+  if (!doc.exists || doc.data() == null) return null;
+  return Meal.fromJson(doc.data()!, doc.id);
+}
+
+static Future<void> deleteMeal(String id) async {
+  await _db.collection(mealsCollection).doc(id).delete();
+}
+
+static Future<List<Meal>> getMealsForUserOnDate(String email, DateTime date) async {
+  final snap = await _db
+      .collection(mealsCollection)
+      .where('userEmail', isEqualTo: email)
+      .where('date', isEqualTo: Timestamp.fromDate(DateTime(date.year, date.month, date.day)))
+      .get();
+  return snap.docs.map((d) => Meal.fromJson(d.data(), d.id)).toList();
+}
 
   // ---------------------------------------------------------------------------
   // UTILITIES
