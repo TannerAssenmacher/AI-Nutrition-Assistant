@@ -62,8 +62,8 @@ class _RegisterPageState extends State<RegisterPage> {
   Timer? _emailDebounce;
 
   // Macros
-  double _protein = 20.0;
-  double _carbs = 50.0;
+  double _protein = 30.0;
+  double _carbs = 40.0;
   double _fats = 30.0;
 
   // Dropdown options

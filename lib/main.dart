@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 import 'screens/home_screen.dart';
@@ -17,12 +18,21 @@ import 'screens/chat_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Initial page route if no user is logged in.
+  String initialRoute = '/login';
+
   try {
     // Load the .env before Firebase
     await dotenv.load(fileName: ".env");
 
     // Initialize Firebase with better error handling
     await _initializeFirebase();
+
+    // If Firebase restored a user session and email is verified, skip login
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null && currentUser.emailVerified) {
+      initialRoute = '/home';
+    }
 
     // Print all Firestore data once at startup (only if needed)
     await FirestoreHelper.printAllData();
@@ -32,8 +42,8 @@ void main() async {
   }
 
   runApp(
-    const ProviderScope(
-      child: MyApp(),
+    ProviderScope(
+      child: MyApp(initialRoute: initialRoute),
     ),
   );
 }
@@ -131,7 +141,9 @@ Future<void> _initializeFirebase() async {
 // await FirebaseFirestore.instance.collection("Food").doc(beefSirloin.id).set(beefSirloin.toJson());
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({super.key, required this.initialRoute});
+
+  final String initialRoute;
 
   @override
   Widget build(BuildContext context) {
@@ -142,7 +154,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       debugShowCheckedModeBanner: false,
-      initialRoute: '/login',
+      initialRoute: initialRoute,
       routes: {
         '/login': (context) => const LoginPage(),
         '/register': (context) => const RegisterPage(),
