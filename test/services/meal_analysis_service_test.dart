@@ -1,6 +1,8 @@
 /// Tests for MealAnalysisService models (AnalyzedFoodItem, MealAnalysis)
 library;
 
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nutrition_assistant/services/meal_analysis_service.dart';
 
@@ -387,6 +389,206 @@ void main() {
       expect(restored.foods.length, original.foods.length);
       expect(restored.totalCalories, original.totalCalories);
       expect(restored.totalProtein, original.totalProtein);
+    });
+  });
+
+  // ============================================================================
+  // API RESPONSE PARSING TESTS
+  // These test the patterns used by MealAnalysisService for parsing API responses
+  // ============================================================================
+  group('API Response Parsing Patterns', () {
+    // Helper to simulate _extractTextResponse behavior
+    String extractTextResponse(Map<String, dynamic> responseData) {
+      final output = responseData['output'];
+      if (output is List && output.isNotEmpty) {
+        final firstOutput = output.first;
+        final content = firstOutput is Map<String, dynamic>
+            ? firstOutput['content']
+            : null;
+
+        if (content is List) {
+          for (final item in content) {
+            if (item is Map<String, dynamic>) {
+              final text = item['text'];
+              if (text is String && text.isNotEmpty) {
+                return text;
+              }
+            }
+          }
+        }
+      }
+      throw Exception('API response missing expected text output.');
+    }
+
+    test('should extract text from valid OpenAI response structure', () {
+      final responseData = {
+        'output': [
+          {
+            'content': [
+              {'type': 'text', 'text': '{"f":[{"n":"Apple","m":150,"k":78,"p":0.5,"c":21,"a":0.3}]}'}
+            ]
+          }
+        ]
+      };
+
+      final text = extractTextResponse(responseData);
+      expect(text, '{"f":[{"n":"Apple","m":150,"k":78,"p":0.5,"c":21,"a":0.3}]}');
+    });
+
+    test('should parse extracted JSON into MealAnalysis', () {
+      final jsonText = '{"f":[{"n":"Banana","m":118,"k":105,"p":1.3,"c":27,"a":0.4}]}';
+      final parsed = MealAnalysis.fromJson(Map<String, dynamic>.from(
+        (const JsonDecoder().convert(jsonText) as Map).cast<String, dynamic>()
+      ));
+
+      expect(parsed.foods.length, 1);
+      expect(parsed.foods[0].name, 'Banana');
+      expect(parsed.foods[0].calories, 105);
+    });
+
+    test('should handle multiple food items in API response', () {
+      final jsonText = '''
+      {
+        "f": [
+          {"n": "Grilled Chicken", "m": 150, "k": 250, "p": 30, "c": 0, "a": 12},
+          {"n": "Steamed Broccoli", "m": 100, "k": 35, "p": 3, "c": 7, "a": 0.4},
+          {"n": "Brown Rice", "m": 200, "k": 220, "p": 5, "c": 45, "a": 2}
+        ]
+      }
+      ''';
+      final parsed = MealAnalysis.fromJson(Map<String, dynamic>.from(
+        (const JsonDecoder().convert(jsonText) as Map).cast<String, dynamic>()
+      ));
+
+      expect(parsed.foods.length, 3);
+      expect(parsed.totalCalories, 505);
+      expect(parsed.totalProtein, 38);
+    });
+
+    test('should throw on empty output array', () {
+      final responseData = {'output': []};
+
+      expect(() => extractTextResponse(responseData), throwsException);
+    });
+
+    test('should throw on missing output key', () {
+      final responseData = {'data': 'something'};
+
+      expect(() => extractTextResponse(responseData), throwsException);
+    });
+
+    test('should throw on null output', () {
+      final responseData = {'output': null};
+
+      expect(() => extractTextResponse(responseData), throwsException);
+    });
+
+    test('should throw on empty content array', () {
+      final responseData = {
+        'output': [
+          {'content': []}
+        ]
+      };
+
+      expect(() => extractTextResponse(responseData), throwsException);
+    });
+
+    test('should throw on missing text in content', () {
+      final responseData = {
+        'output': [
+          {
+            'content': [
+              {'type': 'image', 'url': 'http://example.com'}
+            ]
+          }
+        ]
+      };
+
+      expect(() => extractTextResponse(responseData), throwsException);
+    });
+
+    test('should throw on empty text string', () {
+      final responseData = {
+        'output': [
+          {
+            'content': [
+              {'type': 'text', 'text': ''}
+            ]
+          }
+        ]
+      };
+
+      expect(() => extractTextResponse(responseData), throwsException);
+    });
+
+    test('should find text in mixed content array', () {
+      final responseData = {
+        'output': [
+          {
+            'content': [
+              {'type': 'image', 'url': 'http://example.com'},
+              {'type': 'text', 'text': '{"f":[]}'},
+            ]
+          }
+        ]
+      };
+
+      final text = extractTextResponse(responseData);
+      expect(text, '{"f":[]}');
+    });
+
+    test('should handle real-world complex response', () {
+      final responseData = {
+        'id': 'resp_123',
+        'object': 'response',
+        'created_at': 1234567890,
+        'output': [
+          {
+            'type': 'message',
+            'role': 'assistant',
+            'content': [
+              {
+                'type': 'output_text',
+                'text': '{"f":[{"n":"Spaghetti Carbonara","m":350,"k":650,"p":25,"c":70,"a":28}]}'
+              }
+            ]
+          }
+        ],
+        'usage': {'total_tokens': 150}
+      };
+
+      final text = extractTextResponse(responseData);
+      final parsed = MealAnalysis.fromJson(Map<String, dynamic>.from(
+        (const JsonDecoder().convert(text) as Map).cast<String, dynamic>()
+      ));
+
+      expect(parsed.foods.length, 1);
+      expect(parsed.foods[0].name, 'Spaghetti Carbonara');
+      expect(parsed.foods[0].calories, 650);
+    });
+  });
+
+  // ============================================================================
+  // MEAL ANALYSIS SERVICE INSTANCE TESTS
+  // ============================================================================
+  group('MealAnalysisService Instance', () {
+    test('should create service with API key', () {
+      final service = MealAnalysisService(apiKey: 'test-api-key');
+      expect(service.apiKey, 'test-api-key');
+    });
+
+    test('should create service with empty API key', () {
+      final service = MealAnalysisService(apiKey: '');
+      expect(service.apiKey, '');
+    });
+
+    test('should create multiple independent service instances', () {
+      final service1 = MealAnalysisService(apiKey: 'key-1');
+      final service2 = MealAnalysisService(apiKey: 'key-2');
+
+      expect(service1.apiKey, 'key-1');
+      expect(service2.apiKey, 'key-2');
+      expect(service1.apiKey, isNot(equals(service2.apiKey)));
     });
   });
 }
