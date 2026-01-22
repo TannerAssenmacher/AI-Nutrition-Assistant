@@ -1,65 +1,134 @@
-import 'package:json_annotation/json_annotation.dart';
+import 'meal.dart';
 import 'food.dart';
+import 'user.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-part 'daily_log.g.dart';
-
-@JsonSerializable(explicitToJson: true)
+/// DailyLog tracks a user's food intake and nutrition totals for a single day
 class DailyLog {
+  // Date string in YYYY-MM-DD format (e.g. "2025-11-04") used as document ID
+  final String id;
+  
+  /// User's email (matches AppUser.email) - used as foreign key to Users collection
+  final String email; // Foreign key to AppUser
   final DateTime date;
-  final List<FoodItem> items;
+  final List<Food> foods; // List of foods consumed on this date
+  final List<String> mealIds;
+  final double totalCalories;
+  final double totalProtein;
+  final double totalFat;
+  final double totalCarbs;
+  final double totalFiber;
 
-  DailyLog({required this.date, required this.items});
+  DailyLog({
+    required this.id,
+    required this.email,
+    required this.date,
+    required this.foods,
+    required this.mealIds,        // add to constructor
+    required this.totalCalories,
+    required this.totalProtein,
+    required this.totalFat,
+    required this.totalCarbs,
+    required this.totalFiber,
+  });
 
-  factory DailyLog.fromFoods({
+  factory DailyLog.fromMap(Map<String, dynamic> map) {
+    return DailyLog(
+      id: map['id'] ?? '',
+      email: map['email'] ?? '',
+      date: DateTime.parse(map['date']),
+      foods: (map['foods'] as List? ?? [])
+          .map((item) => Food.fromJson(item as Map<String, dynamic>, item['id'] as String))
+          .toList(),
+      mealIds: (map['mealIds'] as List? ?? []).cast<String>(),   // add this
+      totalCalories: map['totalCalories'] ?? 0.0,
+      totalProtein: map['totalProtein'] ?? 0.0,
+      totalFat: map['totalFat'] ?? 0.0,
+      totalCarbs: map['totalCarbs'] ?? 0.0,
+      totalFiber: map['totalFiber'] ?? 0.0,
+    );
+  }
+
+  static DailyLog fromMeals({
+    required String id,
+    required String email,
     required DateTime date,
-    required List<FoodItem> foods,
+    required List<Meal> meals,
   }) {
-    final target = _normalize(date);
-    final sameDay = foods.where((f) => _isSameDay(f.consumedAt, target)).toList();
-    return DailyLog(date: target, items: sameDay);
-  }
-
-  double get totalCalories =>
-      items.fold(0, (n, f) => n + f.calories_g);
-  double get totalProtein =>
-      items.fold(0, (n, f) => n + f.protein_g);
-  double get totalCarbs =>
-      items.fold(0, (n, f) => n + f.carbs_g);
-  double get totalFat =>
-      items.fold(0, (n, f) => n + f.fat);
-
-  Map<String, List<FoodItem>> get meals {
-    final map = <String, List<FoodItem>>{};
-    for (final item in items) {
-      map.putIfAbsent(item.mealType, () => []).add(item);
+    double calories = 0, protein = 0, fat = 0, carbs = 0, fiber = 0;
+    for (final m in meals) {
+      calories += m.calories;
+      protein  += m.protein;
+      fat      += m.fat;
+      carbs    += m.carbs;
+      fiber    += m.fiber;
     }
-    return map;
+    return DailyLog(
+      id: id,
+      email: email,
+      date: date,
+      foods: const [],
+      mealIds: meals.map((m) => m.id).toList(),
+      totalCalories: calories,
+      totalProtein: protein,
+      totalFat: fat,
+      totalCarbs: carbs,
+      totalFiber: fiber,
+    );
   }
 
-  factory DailyLog.fromJson(Map<String, dynamic> json) =>
-      _$DailyLogFromJson(json);
-  Map<String, dynamic> toJson() => _$DailyLogToJson(this);
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'email': email,
+      'date': date.toIso8601String(),
+      'foods': foods.map((f) => f.toJson()).toList(),
+      'mealIds': mealIds,              // add this
+      'totalCalories': totalCalories,
+      'totalProtein': totalProtein,
+      'totalFat': totalFat,
+      'totalCarbs': totalCarbs,
+      'totalFiber': totalFiber,
+    };
+  }
 
-  static bool _isSameDay(DateTime a, DateTime b) =>
-      a.year == b.year && a.month == b.month && a.day == b.day;
+  void verifyApiKey() {
+    if (dotenv.env['USDA_API_KEY'] != null) {
+      print("USDA API Key successfully loaded.");
+    } else {
+      print("USDA API Key missing or not found.");
+    }
+  }
 
-  static DateTime _normalize(DateTime d) => DateTime(d.year, d.month, d.day);
-}
+  /// Creates a DailyLog for today for the given user
+  static DailyLog createForToday(AppUser user) {
+    final now = DateTime.now();
+    final dateStr = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+    
+    return DailyLog(
+      id: dateStr,
+      email: user.email,
+      date: now,
+      foods: [],
+      mealIds: [],
+      totalCalories: 0,
+      totalProtein: 0,
+      totalFat: 0,
+      totalCarbs: 0,
+      totalFiber: 0,
+    );
+  }
 
-/// Build logs for each day in an inclusive date range.
-List<DailyLog> buildDailyLogsInRange({
-  required List<FoodItem> foods,
-  required DateTime start,
-  required DateTime end,
-}) {
-  final startDay = DailyLog._normalize(start);
-  final endDay = DailyLog._normalize(end);
-  final days = endDay.difference(startDay).inDays;
-  return List.generate(
-    days + 1,
-    (i) => DailyLog.fromFoods(
-      date: startDay.add(Duration(days: i)),
-      foods: foods,
-    ),
-  );
+  /// Check if the daily totals are within the user's goals
+  bool isWithinGoals(AppUser user) {
+    if (totalCalories > user.dailyCalorieGoal) return false;
+    
+    final proteinGoal = user.macroGoals['protein'] ?? 0.0;
+    final fatGoal = user.macroGoals['fat'] ?? 0.0;
+    final carbsGoal = user.macroGoals['carbs'] ?? 0.0;
+    
+    return totalProtein <= proteinGoal &&
+           totalFat <= fatGoal &&
+           totalCarbs <= carbsGoal;
+  }
 }
