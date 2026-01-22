@@ -276,7 +276,8 @@ class _ProfilePageState extends State<ProfilePage> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('My Profile')),
+      backgroundColor: const Color(0xFFF5EDE2),
+      appBar: AppBar(title: const Text('My Profile'), backgroundColor: const Color(0xFF4A3A2A),),
       body: SafeArea(
         child: Scrollbar(
           thumbVisibility: true,

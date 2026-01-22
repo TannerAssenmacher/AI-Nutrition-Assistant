@@ -32,6 +32,8 @@ dependencies:
   uuid: ^4.5.1
   dropdown_search: ^6.0.2
   http: ^1.6.0
+  percent_indicator: ^4.2.5
+  carousel_slider: ^5.1.1
 
 dev_dependencies:
   flutter_test:
@@ -53,3 +55,4 @@ flutter:
 
   assets:
     - .env
+    - lib/icons/

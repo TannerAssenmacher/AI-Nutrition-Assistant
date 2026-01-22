@@ -7,7 +7,7 @@ class top_bar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: MediaQuery.of(context).size.height * 0.1,
+      height: MediaQuery.of(context).size.height * 0.5,
       width: double.infinity,
       decoration: BoxDecoration(
         color: const Color(0xFF4A3A2A),
@@ -26,11 +26,11 @@ class top_bar extends StatelessWidget {
       child: SafeArea(
         bottom: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(0, 10, 0, 0),
+          padding: const EdgeInsets.fromLTRB(0, 0, 0, 0),
           child: Center(
             child: Image.asset(
-              'lib/icons/WISERBITES_txt_only.png',
-              height: MediaQuery.of(context).size.height * 0.05,
+              'lib/icons/WISERBITES.png',
+              height: MediaQuery.of(context).size.height * 0.1,
               color: const Color(0xFFF5EDE2),
             )
             /*child: Text(
