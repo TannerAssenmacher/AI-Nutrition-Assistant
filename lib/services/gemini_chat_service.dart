@@ -3,34 +3,52 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:nutrition_assistant/db/user.dart';
-import 'package:nutrition_assistant/providers/user_providers.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../providers/food_providers.dart';
-import '../services/nutrition_service.dart';
 import '../db/firestore_helper.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 part 'gemini_chat_service.g.dart';
 
-enum ChatStage { idle, awaitingMealType, awaitingCuisine } // like a light switch, it will switch on if awaiting 
+//controlling chatflow
+enum ChatStage { idle, awaitingMealType, awaitingCuisine }
 
-// Create chatbot service
+//chatbot service
 @riverpod
 class GeminiChatService extends _$GeminiChatService {
   late final GenerativeModel model;
-
   ChatStage stage = ChatStage.idle;
 
+  //flags
   String? _pendingMealType;
   String? _pendingCuisineType;
+  final Map<String, int> _recipeOffsets = {};
+  final int _batchSize = 3;
+  final Set<String> _shownRecipeUris = {};
 
+  final nonMeals = [
+    "butter",
+    "margarine",
+    "oil",
+    "shake",
+    "smoothie",
+    "syrup",
+    "sauce",
+    "condiment",
+    "spread",
+    "drink",
+    "cream"
+  ];
 
+  //helper
+  String _key(String mealType, String cuisineType) => '$mealType|$cuisineType';
+
+  //build() initial state
   @override
   List<ChatMessage> build() {
     model = GenerativeModel(
-      model: 'gemini-2.5-flash', // Fast and free
+      model: 'gemini-2.5-flash', //fast & free
       apiKey: dotenv.env['GEMINI_API_KEY']!,
       systemInstruction: Content.text('''You are a helpful nutrition assistant. 
         Help users with meal planning, calorie counting, and nutrition advice.
@@ -39,25 +57,26 @@ class GeminiChatService extends _$GeminiChatService {
     return [];
   }
 
+  //normal chat response
   Future<void> sendMessage(String userMessage) async {
-  // Add user message
-  state = [...state, ChatMessage(content: userMessage, isUser: true)];
+    state = [
+      ...state,
+      ChatMessage(content: userMessage, isUser: true)
+    ]; //add user's message to chat
 
-  try {
-    // Get nutrition context from your existing services
-    final foodLog = ref.read(foodLogProvider);
+    try {
+      final foodLog = ref.read(foodLogProvider); //read today's food log
 
-    // Create a simple nutrition calculation since NutritionService.calculateNutrition might not exist
-    final totalCalories =
-        foodLog.fold<int>(0, (sum, food) => sum + (food.calories_g * food.mass_g).round());
-    final totalProtein =
-        foodLog.fold<double>(0, (sum, food) => sum + food.protein_g);
-    final totalCarbs =
-        foodLog.fold<double>(0, (sum, food) => sum + food.carbs_g);
-    final totalFat =
-        foodLog.fold<double>(0, (sum, food) => sum + food.fat);
+      //create a simple nutrition calculation
+      final totalCalories = foodLog.fold<int>(
+          0, (sum, food) => sum + (food.calories_g * food.mass_g).round());
+      final totalProtein =
+          foodLog.fold<double>(0, (sum, food) => sum + food.protein_g);
+      final totalCarbs =
+          foodLog.fold<double>(0, (sum, food) => sum + food.carbs_g);
+      final totalFat = foodLog.fold<double>(0, (sum, food) => sum + food.fat);
 
-    final contextualPrompt = '''
+      final contextualPrompt = '''
     User's current nutrition data today:
     - Calories: $totalCalories
     - Protein: ${totalProtein.toStringAsFixed(1)}g
@@ -69,47 +88,42 @@ class GeminiChatService extends _$GeminiChatService {
     User question: $userMessage
     ''';
 
-    final response =
-        await model.generateContent([Content.text(contextualPrompt)]);
+      final response = await model
+          .generateContent([Content.text(contextualPrompt)]); //call gemini
 
-    // Add AI response
-    state = [
-      ...state,
-      ChatMessage(
-        content: response.text ?? "I couldn't process that request.",
-        isUser: false,
-      )
-    ];
-  } catch (e) {
-    state = [
-      ...state,
-      ChatMessage(
-        content:
-            "Sorry, I'm having trouble right now. Please try again. Error: $e",
-        isUser: false,
-      )
-    ];
+      //add gemini's response
+      state = [
+        ...state,
+        ChatMessage(
+          content: response.text ?? "I couldn't process that request.",
+          isUser: false,
+        )
+      ];
+    } catch (e) {
+      state = [
+        ...state,
+        ChatMessage(
+          content:
+              "Sorry, I'm having trouble right now. Please try again. Error: $e",
+          isUser: false,
+        )
+      ];
+    }
   }
-}
 
+  //start generate recipe flow!
   //call fetchrecipes
-  Future<void> handleMealTypeSelection(String mealType, String cuisineType) async {
-   
-    state = [
-      ...state,
-      ChatMessage(
-        content: "Selected: $mealType${cuisineType != 'None' ? ' ($cuisineType)' : ''}",
-        isUser: true,
-        timestamp: DateTime.now(),
-      ),
-    ];
-
-    //call edamam api with user input
+  Future<void> handleMealTypeSelection( String mealType, String cuisineType) async {
     await _fetchRecipes(mealType, cuisineType);
   }
 
   //confirmation on user profile
   Future<void> confirmMealProfile(bool confirmed) async {
+
+    final notifier = ref.read(geminiChatServiceProvider.notifier);
+
+    notifier.addLocalUserMessage(confirmed ? "Yes" : "No");
+
     if (!confirmed) {
       // "No"
       state = [
@@ -121,7 +135,7 @@ class GeminiChatService extends _$GeminiChatService {
           timestamp: DateTime.now(),
         ),
       ];
-       // clear pending values so we don’t accidentally reuse them later
+      // clear pending values so we don’t accidentally reuse them later
       _pendingMealType = null;
       _pendingCuisineType = null;
       return;
@@ -131,127 +145,96 @@ class GeminiChatService extends _$GeminiChatService {
     state = [
       ...state,
       ChatMessage(
-        content: "Perfect! Generating your personalized recipes now...",
+        content: "Perfect! Generating your personalized recipes now.",
         isUser: false,
         timestamp: DateTime.now(),
       ),
     ];
 
-      if (_pendingMealType != null && _pendingCuisineType != null) {
-        await _fetchRecipes(_pendingMealType!, _pendingCuisineType!, fromConfirmation: true);
-        
-        //global variables no longer needed
-        _pendingMealType = null;
-        _pendingCuisineType = null;
-      }
+    if (_pendingMealType != null && _pendingCuisineType != null) {
+      await _fetchRecipes(_pendingMealType!, _pendingCuisineType!,
+          fromConfirmation: true);
+
+      //global variables no longer needed
+      _pendingMealType = null;
+      _pendingCuisineType = null;
+    }
   }
 
-
-  //fetch recipes with mealType, cuisineType 
+  //fetch recipes with mealType, cuisineType
   //fetch with dietary and health restrictions, likes and dislikes
-  Future<void> _fetchRecipes(String mealType, String cuisineType, {
-  bool fromConfirmation = false,   bool forceNewBatch = false,
-}) async {
+  Future<void> _fetchRecipes(
+    String mealType,
+    String cuisineType, {
+    bool fromConfirmation = false,
+    bool forceNewBatch = false,
+  }) async {
+
     try {
-
+      //user profile from user signed in
       final user = FirebaseAuth.instance.currentUser;
-      AppUser? appUser; //make null
+      if (user == null) return;
 
-      if (user != null) {
-        print('Current user ID: ${user.uid}');
-      
-        appUser = await FirestoreHelper.getUser(user.uid);
-
-        // user profile == null then notify them!
-        if (appUser == null) {
-          state = [
-            ...state,
-            ChatMessage(
-              content:
-                  "I couldn’t find your profile. Please log in or set up your nutrition preferences before generating recipes.",
-              isUser: false,
-            ),
-          ];
-          return;
-        }
-      }
-      else{ //no authentication found!
+      final appUser = await FirestoreHelper.getUser(user.uid);
+      if (appUser == null) {
+        state = [
+          ...state,
+          ChatMessage(
+            content:
+                "I couldn’t find your profile. Please set up your nutrition preferences before generating recipes.",
+            isUser: false,
+          ),
+        ];
         return;
       }
 
       final mealProfile = appUser.mealProfile;
       final preferences = mealProfile.preferences;
 
-      //debugging
-      print('MealProfile data:');
-      print('Dietary: ${mealProfile.dietaryHabits}');
-      print('Health: ${mealProfile.healthRestrictions}');
-     
+      final dietaryHabits = mealProfile.dietaryHabits
+          .where((h) => h.trim().isNotEmpty && h.toLowerCase() != 'none')
+          .toList();
 
-      //default to empty lists if mealprofile == null
-      final dietaryHabits = (mealProfile.dietaryHabits
-              .where((h) => h.trim().isNotEmpty && h.toLowerCase() != 'none')
-              .toList())
-          .toList();;
-
-      final healthRestrictions = (mealProfile.healthRestrictions
-              .where((r) => r.trim().isNotEmpty && r.toLowerCase() != 'none')
-              .toList())
-          .toList();;
+      final healthRestrictions = mealProfile.healthRestrictions
+          .where((r) => r.trim().isNotEmpty && r.toLowerCase() != 'none')
+          .toList();
 
       final dislikes = preferences.dislikes
-              .where((d) => d.trim().isNotEmpty && d.toLowerCase() != 'none')
-              .toList();
+          .where((d) => d.trim().isNotEmpty && d.toLowerCase() != 'none')
+          .toList();
 
-
+      //user confirmation on meal profile
       if (!fromConfirmation) {
+        _pendingMealType = mealType;
+        _pendingCuisineType = cuisineType;
+        _recipeOffsets["$mealType-$cuisineType"] =
+            0; // reset when selection changes
 
-        //need to store them since you are leaving the function
-      _pendingCuisineType = cuisineType;
-      _pendingMealType = mealType;
-
-        final summary = [
-          'Dietary habits: ${dietaryHabits.isNotEmpty ? dietaryHabits.join(", ") : "none"}',
-          'Health restrictions: ${healthRestrictions.isNotEmpty ? healthRestrictions.join(", ") : "none"}',
-          'Excluded ingredients: ${dislikes.isNotEmpty ? dislikes.join(", ") : "none"}',
-        ].join('\n');
-
-        // ask for health and diet confirmation
         state = [
           ...state,
           ChatMessage(
-            content: "Here’s what I have for you:\n$summary\n\nIs this correct?",
+            content: jsonEncode({
+              "type": "meal_profile_summary",
+              "dietary": dietaryHabits,
+              "health": healthRestrictions,
+              "dislikes": dislikes,
+              "mealType": mealType,
+              "cuisineType": cuisineType,
+            }),
             isUser: false,
             timestamp: DateTime.now(),
           ),
         ];
 
         return;
+      } else {
+        _pendingMealType = mealType;
+        _pendingCuisineType = cuisineType;
       }
 
-      final appId = dotenv.env['EDAMAM_API_ID'];
-      final appKey = dotenv.env['EDAMAM_API_KEY'];
+      final appId = dotenv.env["EDAMAM_API_ID"];
+      final appKey = dotenv.env["EDAMAM_API_KEY"];
 
-      print('app_id: $appId');
-      print('app_key: $appKey');
- 
-
-    
-     /* String dishType = 'Main course';
-      switch (mealType.toLowerCase()) {
-        case 'breakfast':
-          dishType = 'Breakfast';
-          break;
-        case 'lunch':
-        case 'dinner':
-          dishType = 'Main course';
-          break;
-        case 'snack':
-          dishType = 'Snack';
-          break;
-      }*/
-
-      //start edamam api
       final params = <String>[
         'type=public',
         'mealType=$mealType',
@@ -259,134 +242,134 @@ class GeminiChatService extends _$GeminiChatService {
         'app_key=$appKey',
       ];
 
-  
-      //adding to api call!
-
-      //add cuisine if !none && !empty
-      if (cuisineType.isNotEmpty && cuisineType.toLowerCase() != 'none') {
+      if (cuisineType.isNotEmpty && cuisineType.toLowerCase() != "none") {
         params.add('cuisineType=${Uri.encodeComponent(cuisineType)}');
       }
 
-      if (dietaryHabits.isNotEmpty) {
-        for (final diet in dietaryHabits) {
-          params.add('diet=$diet');
-        }  
-      }      
-    
-      if (healthRestrictions.isNotEmpty) {
-        for (final health in healthRestrictions) {
-          params.add('health=$health');
-        }
+      for (final d in dietaryHabits) {
+        params.add("diet=$d");
+      }
+      for (final h in healthRestrictions) {
+        params.add("health=$h");
+      }
+      for (final x in dislikes) {
+        params.add("excluded=$x");
       }
 
-      if (dislikes.isNotEmpty) {
-        for (final food in dislikes) {
-          params.add('excluded=$food');
-        }
+      if (forceNewBatch &&
+          (_recipeOffsets[_key(mealType, cuisineType)] == null)) {
+        _recipeOffsets[_key(mealType, cuisineType)] = 0;
       }
 
-      //random offset so each call gets a new slice of recipes
-      int from = DateTime.now().millisecondsSinceEpoch % 40; // 0–39 window
-      if (!forceNewBatch) from = from % 30; // keep predictable if same session
-      final to = from + 3;
-      params.add('from=$from');
-      params.add('to=$to');
+      // new code:
+      int from = _recipeOffsets[_key(mealType, cuisineType)] ?? 0;
+      int to = from + _batchSize;
+      print("from $from and to $to");
 
+      // increment for next batch
+      _recipeOffsets[_key(mealType, cuisineType)] = to;
 
-      //build uri
+      params.add("from=$from");
+      params.add("to=$to");
+
       final uri = Uri.parse(
-        'https://api.edamam.com/api/recipes/v2?${params.join('&')}',
-      );
-    
+          "https://api.edamam.com/api/recipes/v2?${params.join('&')}");
+
       final response = await http.get(uri);
-
-      //debugging
-      print('${response.statusCode}');
-      print(response.body.substring(0, response.body.length > 1500 ? 1500 : response.body.length));
-
-
-
-      final json = jsonDecode(response.body);
-      final hits = (json['hits'] as List?) ?? []; //recipes that are returned from the call
+      final jsonBody = jsonDecode(response.body);
+      final hits = (jsonBody["hits"] as List?) ?? [];
 
       if (hits.isEmpty) {
         state = [
           ...state,
           ChatMessage(
             content:
-                "I couldn’t find any recipes matching your meal profile. Try a different cuisine or meal type?",
+                "I couldn't find recipes that match your preferences. Try different options?",
             isUser: false,
-          ),
+          )
         ];
         return;
       }
 
+      final List<Map<String, dynamic>> recipeList = [];
 
-      // debugging
-      //need to account for chatbot communication with api to demonstrate better
+      final filteredHits = hits.where((hit) {
+        final recipe = hit['recipe'];
+        final uri = recipe['uri'] as String;
+        final labelLower = (recipe["label"] ?? "").toString().toLowerCase();
 
-      //showing top 3 recipes
-      final topRecipes = hits.take(3).map((hit) {
-      final recipe = hit['recipe'];
-      final label = recipe['label'] ?? 'Unknown Recipe';
-      final calories = (recipe['calories'] as num?)?.round() ?? 0;
-      final ingredients = (recipe['ingredientLines'] as List?)
-              ?.map((i) => "• $i")
-              .join('\n') ??
-          'Not available';
-      final url = recipe['url'] ?? 'No link available';
-      final cuisine = (recipe['cuisineType'] != null && recipe['cuisineType'].isNotEmpty)
-          ? recipe['cuisineType'][0].toString().toUpperCase()
-          : 'GENERAL';
+        // skip non-meals
+        if (nonMeals.any((nm) => labelLower.contains(nm))) return false;
 
-      return '''
-    🍽️  $label  (${cuisine})
-    🔥  Overall Calories: ${calories > 0 ? "$calories kcal" : "N/A"}
+        // skip already shown
+        if (_shownRecipeUris.contains(uri)) return false;
 
-    🥕  Ingredients:
-    $ingredients
+        return true;
+      }).toList();
 
-    👩‍🍳  Cooking Instructions:
-    View full recipe → $url
-    ''';
-    }).join(
-      "\n────────────────────────────────────\n\n", // nice clean divider
-    );
+      for (final hit in filteredHits.take(3)) {
+        final recipe = hit['recipe'];
+        _shownRecipeUris.add(recipe['uri'] as String);
 
+        // merge ingredientLines + ingredients[].text
+        final rawLines = recipe["ingredientLines"] ?? [];
+        final rawIng = recipe["ingredients"] ?? [];
 
-    // main bot response
-    final botResponse = '''
-    Here are a few recipes I found that fit your preferences 👇  
+        final allIngredients = [
+          ...List<String>.from(rawLines),
+          ...rawIng.map<String>((i) => (i["text"] ?? "").toString()).toList(),
+        ];
 
-    $topRecipes
+        final ingredients = allIngredients
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toSet()
+            .toList()
+            .cast<String>();
 
-    What do you think?  
-    I can show you more recipes, adjust by dietary preference, or even plan a full meal for your day! 🍽️
-    ''';
+        print('ingredients: $ingredients');
+        
+        final label = recipe["label"] ?? "Unknown Recipe";
+        final calories = (recipe["calories"] as num?)?.round() ?? 0;
+        final cuisine =
+            (recipe["cuisineType"] != null && recipe["cuisineType"].isNotEmpty)
+                ? recipe["cuisineType"][0]
+                : "General";
+        final url = recipe["url"] ?? "";
 
-    state = [
-      ...state,
-      ChatMessage(
-        content: botResponse,
-        isUser: false,
-        timestamp: DateTime.now(),
-      ),
-    ];
+        //cooking instructins from gemini
+        final instructions =
+            await _generateInstructionsWithGemini(label, ingredients, calories);
 
-      /*//choose first 3 recipes for now! - but u SHOULD CALL THE HEURISTIC ALGORITHM!
-      final topRecipes = hits.take(3).map((hit) {
-        final r = hit['recipe'];
-        return "🍴 ${r['label']}\n${r['url']}";
-      }).join("\n\n");
+        recipeList.add({
+          "label": label,
+          "cuisine": cuisine,
+          "ingredients": ingredients,
+          "calories": calories,
+          "instructions": instructions,
+          "url": url,
+        });
+      }
 
       state = [
         ...state,
         ChatMessage(
           content:
-              "Here are a few recipes that fit your profile:\n\n$topRecipes",
+              "Here are some recipes I found that match your nutrition profile!",
           isUser: false,
         ),
-      ];*/
+      ];
+
+      state = [
+        ...state,
+        ChatMessage(
+          content: jsonEncode({
+            "type": "recipe_results",
+            "recipes": recipeList,
+          }),
+          isUser: false,
+        ),
+      ];
     } catch (e) {
       state = [
         ...state,
@@ -395,98 +378,136 @@ class GeminiChatService extends _$GeminiChatService {
           isUser: false,
         ),
       ];
-
     }
   }
 
-  //more recipes
-  Future<void> fetchMoreRecipes() async {
-  if (_pendingMealType == null || _pendingCuisineType == null) {
-    state = [
-      ...state,
-      ChatMessage(
-        content: "Please select a meal and cuisine first before fetching more recipes.",
-        isUser: false,
-      ),
-    ];
-    return;
-  }
+  //instructions with gemini
+  Future<String> _generateInstructionsWithGemini(
+      String title, List<String> ingredients, int calories,
+      {int retries = 3}) async {
+    final prompt = '''
+        You are a nutrition and cooking expert.
+        ONLY output plain text numbered step-by-step cooking instructions for the recipe below.
+        Do NOT include any introductions, greetings, bold/markdown formatting, or commentary.
 
-  state = [
-    ...state,
-    ChatMessage(
-      content: "Fetching more recipes for you... 🍽️",
-      isUser: false,
-      timestamp: DateTime.now(),
-    ),
-  ];
+        Recipe name: $title
+        Estimated calories: $calories kcal
 
-  await _fetchRecipes(_pendingMealType!, _pendingCuisineType!, forceNewBatch: true);
-}
+        Ingredients:
+        ${ingredients.map((i) => "- $i").join("\n")}
 
+        Requirements:
+        - Write only numbered cooking steps
+        - Keep steps simple and beginner-friendly
+        - Maximum 10 steps
+        - Do NOT repeat ingredient list
+        - No extra commentary
+        ''';
 
-
-    // Add this: have the bot speak without hitting the API
-    void promptForRecipeType() {
-    state = [
-      ...state,
-      ChatMessage(
-        content: "What kind of meal would you like me to find recipes for?",
-        isUser: false,
-      ),
-    ];
-  }
-
-    // Analyze food photo
-    Future<void> analyzeFoodPhoto(String imagePath) async {
+    for (int attempt = 0; attempt < retries; attempt++) {
       try {
-        final imageBytes = await File(imagePath).readAsBytes();
-
-        final response = await model.generateContent([
-          Content.multi([
-            TextPart(
-              'Analyze this food image and estimate its nutritional content. Provide calories, protein, carbs, and fat estimates per serving. Be specific about portion size.',
-            ),
-            DataPart('image/jpeg', imageBytes),
-          ])
-        ]);
-
-        state = [
-          ...state,
-          ChatMessage(
-            content: response.text ?? "Couldn't analyze the image.",
-            isUser: false,
-          )
-        ];
+        final response = await model.generateContent([Content.text(prompt)]);
+        return response.text?.trim() ?? "Instructions unavailable.";
       } catch (e) {
-        state = [
-          ...state,
-          ChatMessage(
-            content: "Error analyzing image: $e",
-            isUser: false,
-          )
-        ];
+        print("Attempt ${attempt + 1} failed: $e");
+        if (attempt == retries - 1) {
+          return "Instructions unavailable right now. Please try again later.";
+        }
+        await Future.delayed(Duration(seconds: 2)); // wait before retrying
       }
     }
-
-    void clearChat() {
-      state = [];
-    }
-
-    void removeMessage(int index) {
-      if (index >= 0 && index < state.length) {
-        final newState = List<ChatMessage>.from(state);
-        newState.removeAt(index);
-        state = newState;
-      }
-    }
-
-    //start planning this!
-    void heuristic(){
-
-    }
-
+    return "Instructions unavailable.";
   }
+
+  //request more recipes - if they dont like the ones already shown!
+  Future<void> requestMoreRecipes({
+    required String mealType,
+    required String cuisineType,
+  }) async {
+    if (mealType == null || cuisineType == null) {
+      state = [
+        ...state,
+        ChatMessage(
+          content:
+              "I need a meal type and cuisine before I can fetch more recipes.",
+          isUser: false,
+        ),
+      ];
+      return;
+    }
+
+    state = [
+      ...state,
+      ChatMessage(
+        content: "Generating More Recipes!",
+        isUser: false,
+      ),
+    ];
+
+    await _fetchRecipes(mealType, cuisineType,
+        fromConfirmation: true, forceNewBatch: true);
+  }
+
+  //analyze food photo
+  Future<void> analyzeFoodPhoto(String imagePath) async {
+    try {
+      final imageBytes = await File(imagePath).readAsBytes();
+
+      final response = await model.generateContent([
+        Content.multi([
+          TextPart(
+            'Analyze this food image and estimate its nutritional content. Provide calories, protein, carbs, and fat estimates per serving. Be specific about portion size.',
+          ),
+          DataPart('image/jpeg', imageBytes),
+        ])
+      ]);
+
+      state = [
+        ...state,
+        ChatMessage(
+          content: response.text ?? "Couldn't analyze the image.",
+          isUser: false,
+        )
+      ];
+    } catch (e) {
+      state = [
+        ...state,
+        ChatMessage(
+          content: "Error analyzing image: $e",
+          isUser: false,
+        )
+      ];
+    }
+  }
+
+  void clearChat() {
+    state = [];
+  }
+
+  void removeMessage(int index) {
+    if (index >= 0 && index < state.length) {
+      final newState = List<ChatMessage>.from(state);
+      newState.removeAt(index);
+      state = newState;
+    }
+  }
+
+  //adds a user bubble directly without gemini
+  void addLocalUserMessage(String text) {
+    state = [
+      ...state,
+      ChatMessage(content: text, isUser: true),
+    ];
+  }
+
+  //adds a bot bubble directly without gemini
+  void addLocalBotMessage(String text) {
+    state = [
+      ...state,
+      ChatMessage(content: text, isUser: false),
+    ];
+  }
+}
 
 class ChatMessage {
   final String content;
