@@ -5,8 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../db/food.dart';
 import '../providers/food_providers.dart';
 import '../providers/user_providers.dart';
-import 'meal_analysis_screen.dart';
 import '../widgets/top_bar.dart';
+import 'package:nutrition_assistant/navigation/nav_helper.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
 import 'package:percent_indicator/percent_indicator.dart';
 
@@ -279,25 +279,8 @@ class HomeScreen extends ConsumerWidget {
       ),
 
       bottomNavigationBar: NavBar(
-        currentIndex: 3,
-        onTap: (index) {
-          switch (index) {
-            case 1:
-              Navigator.pushNamed(context, '/chat');
-              break;
-            case 2:
-              Navigator.pushNamed(context, '/history');
-              break;
-            case 3:
-              Navigator.pushNamed(context, '/home');
-              break;
-            case 4:
-              Navigator.pushNamed(context, '/camera');
-              break;
-            case 5:
-              Navigator.pushNamed(context, '/profile');
-          }
-        },
+        currentIndex: navIndexHome,
+        onTap: (index) => handleNavTap(context, index),
       ),
     );
 
@@ -524,11 +507,7 @@ class HomeScreen extends ConsumerWidget {
   }
 
   Future<void> _openMealAnalyzer(BuildContext context) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const IntegratedMealCaptureFlow(),
-      ),
-    );
+    await Navigator.of(context).pushNamed('/camera');
   }
 
   void _showAddFoodDialog(BuildContext context, WidgetRef ref) {

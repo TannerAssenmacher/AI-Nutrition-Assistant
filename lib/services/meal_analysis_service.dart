@@ -118,7 +118,9 @@ class MealAnalysisService {
           'Content-Type': 'application/json',
         },
         body: json.encode({
-          'model': 'gpt-4.1-mini',
+          'model': 'gpt-5.2',
+          'reasoning': {'effort': 'medium'},
+          'max_output_tokens': 2000,
           'input': [
             {
               'role': 'system',
@@ -126,12 +128,18 @@ class MealAnalysisService {
                 {
                   'type': 'input_text',
                   'text':
-                      'You are a nutrition expert. Analyze meal images and return ONLY valid JSON. '
-                          'Use this exact structure: '
-                          '{"f":[{"n":"food name","m":grams,"k":kcal,"p":protein_g,"c":carbs_g,"a":fat_g}]} '
-                          'where n=food name, m=mass grams, k=kilocalories, p=protein grams, c=carb grams, a=fat grams. '
-                          'All numeric values (m,k,p,c,a) must be numbers, never strings. Provide your best estimate for each visible food item.'
-                }
+                        'You are a nutrition expert. Analyze meal images and return ONLY valid JSON. '
+                        'THINK STEP-BY-STEP (internally) BEFORE ANSWERING: identify foods → determine mass → derive per-gram macros → scale to mass → compute calories with 4/4/9 → sanity-check totals. '
+                        'DO NOT return your reasoning, only the final JSON. '
+                        'OUTPUT FORMAT: {"f":[{"n":"food name","m":grams,"k":kcal,"p":protein_g,"c":carbs_g,"a":fat_g}]} '
+                        'RULES: '
+                        '- All numeric values must be numbers, not strings. '
+                        '- Use at least 1 decimal place for grams/kcal when appropriate. '
+                        '- k MUST equal (p×4)+(c×4)+(a×9) exactly. '
+                        '- If a scale shows weight, that is the authoritative mass; for multiple items on one scale, estimate proportional weight per item. '
+                        '- Prefer slightly conservative estimates over overestimates when uncertain. '
+                        'Example: 150g chicken breast → ~46.5g protein, ~0g carbs, ~4.5g fat → (46.5×4)+(0×4)+(4.5×9) = 226.5 kcal'
+                      }
               ]
             },
             {
@@ -145,7 +153,6 @@ class MealAnalysisService {
               ]
             }
           ],
-          'temperature': 0.1,
         }),
       );
 
@@ -159,12 +166,70 @@ class MealAnalysisService {
       final rawJson = _extractTextResponse(responseData);
       final parsedJson = json.decode(rawJson) as Map<String, dynamic>;
 
-      return MealAnalysis.fromJson(parsedJson);
+      final analysis = MealAnalysis.fromJson(parsedJson);
+      return _normalizeAnalysis(analysis);
     } finally {
       if (fileId != null) {
         await _deleteFile(fileId);
       }
     }
+  }
+
+  /// Ensures calories align with macros (4/4/9) and strips negative/NaN values.
+  MealAnalysis _normalizeAnalysis(MealAnalysis analysis) {
+    final normalizedFoods = analysis.foods.map((food) {
+      final mass = _clampNonNegative(food.mass);
+      final protein = _clampNonNegative(food.protein);
+      final carbs = _clampNonNegative(food.carbs);
+      final fat = _clampNonNegative(food.fat);
+
+      final calories = (protein * 4) + (carbs * 4) + (fat * 9);
+
+      return AnalyzedFoodItem(
+        name: food.name,
+        mass: mass,
+        calories: calories,
+        protein: protein,
+        carbs: carbs,
+        fat: fat,
+      );
+    }).toList();
+
+    return MealAnalysis(foods: normalizedFoods);
+  }
+
+  double _clampNonNegative(double value) {
+    if (value.isNaN || value.isInfinite) return 0.0;
+    return value < 0 ? 0.0 : value;
+  }
+
+  /// Recursively extracts text or output_text from nested response nodes.
+  String? _extractTextFromNode(dynamic node) {
+    if (node is Map<String, dynamic>) {
+      final text = node['text'];
+      if (text is String && text.isNotEmpty) {
+        return text;
+      }
+      final outputText = node['output_text'];
+      if (outputText is String && outputText.isNotEmpty) {
+        return outputText;
+      }
+
+      final content = node['content'];
+      if (content != null) {
+        final nested = _extractTextFromNode(content);
+        if (nested != null) return nested;
+      }
+    }
+
+    if (node is List) {
+      for (final item in node.reversed) {
+        final nested = _extractTextFromNode(item);
+        if (nested != null) return nested;
+      }
+    }
+
+    return null;
   }
 
   Future<String> _uploadImage(File imageFile) async {
@@ -204,24 +269,46 @@ class MealAnalysisService {
   }
 
   String _extractTextResponse(Map<String, dynamic> responseData) {
+    // Direct field some responses include.
+    final outputText = responseData['output_text'];
+    if (outputText is String && outputText.isNotEmpty) {
+      return outputText;
+    }
+
+    // Primary path: responses API returns "output" with nested content.
     final output = responseData['output'];
     if (output is List && output.isNotEmpty) {
-      final firstOutput = output.first;
-      final content = firstOutput is Map<String, dynamic>
-          ? firstOutput['content']
-          : null;
-
-      if (content is List) {
-        for (final item in content) {
-          if (item is Map<String, dynamic>) {
-            final text = item['text'];
-            if (text is String && text.isNotEmpty) {
-              return text;
-            }
-          }
-        }
+      // Prefer the last entries (message often follows reasoning).
+      for (final item in output.reversed) {
+        final text = _extractTextFromNode(item);
+        if (text != null) return text;
       }
     }
-    throw Exception('API response missing expected text output.');
+
+    // Fallback: sometimes "output" is a map instead of a list.
+    if (output is Map<String, dynamic>) {
+      final content = output['content'];
+      final text = _extractTextFromNode(content);
+      if (text != null) return text;
+    }
+
+    // Legacy/chat-completions style fallback: choices -> message -> content.
+    final choices = responseData['choices'];
+    if (choices is List && choices.isNotEmpty) {
+      for (final choice in choices) {
+        final message = choice is Map<String, dynamic>
+            ? choice['message']
+            : null;
+        final content = message is Map<String, dynamic>
+            ? message['content']
+            : null;
+        final text = _extractTextFromNode(content);
+        if (text != null) return text;
+      }
+    }
+
+    // If all parsing paths fail, surface the raw payload to aid debugging.
+    throw Exception(
+        'API response missing expected text output. Payload: ${json.encode(responseData)}');
   }
 }

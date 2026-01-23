@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../db/food.dart';
 import '../providers/food_providers.dart';
 import '../providers/user_providers.dart';
-import 'meal_analysis_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -240,11 +239,7 @@ class HomeScreen extends ConsumerWidget {
   }
 
   Future<void> _openMealAnalyzer(BuildContext context) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const IntegratedMealCaptureFlow(),
-      ),
-    );
+    await Navigator.of(context).pushNamed('/camera');
   }
 
   void _showAddFoodDialog(BuildContext context, WidgetRef ref) {
