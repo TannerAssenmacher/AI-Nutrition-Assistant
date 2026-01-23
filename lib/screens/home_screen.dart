@@ -1,7 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:carousel_slider/carousel_slider.dart';
+//import 'package:carousel_slider/carousel_slider.dart';
 import '../db/food.dart';
 import '../providers/food_providers.dart';
 import '../providers/user_providers.dart';
@@ -242,7 +242,7 @@ class HomeScreen extends ConsumerWidget {
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 Padding(padding: const EdgeInsets.symmetric(vertical: 10)),*/
-                Container(
+                /*Container(
                   child: CarouselSlider(
                     items: [1, 2, 3].map((e) {
                       return Container(
@@ -271,7 +271,7 @@ class HomeScreen extends ConsumerWidget {
                       viewportFraction: 0.8,
                     ),
                   )
-                )
+                )*/
               ],
             ),
           ),),
