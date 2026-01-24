@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
+import 'package:table_calendar/table_calendar.dart';
 
 class DailyLogCalendarScreen extends StatefulWidget {
   const DailyLogCalendarScreen({super.key});
@@ -92,11 +92,72 @@ class _DailyLogCalendarScreenState extends State<DailyLogCalendarScreen> {
     });
   }
 
+  void _showFoodsSheet(DateTime day) {
+    final rows = _foodsForDay(day);
+    final totals = _totalsForDay(day);
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) {
+        final dateLabel = DateFormat('MMMM d, yyyy').format(day);
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                dateLabel,
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _MacroChip(
+                      label: 'Calories',
+                      value: totals['calories'] ?? 0,
+                      suffix: ' kcal'),
+                  _MacroChip(
+                      label: 'Protein',
+                      value: totals['protein'] ?? 0,
+                      suffix: ' g'),
+                  _MacroChip(
+                      label: 'Carbs',
+                      value: totals['carbs'] ?? 0,
+                      suffix: ' g'),
+                  _MacroChip(
+                      label: 'Fat', value: totals['fat'] ?? 0, suffix: ' g'),
+                  _MacroChip(
+                      label: 'Fiber',
+                      value: totals['fiber'] ?? 0,
+                      suffix: ' g'),
+                ],
+              ),
+              const SizedBox(height: 12),
+              if (rows.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: Text('No entries for this day'),
+                )
+              else
+                _FoodsTable(date: day, rows: rows),
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final displayDate = _selectedDay ?? _focusedDay;
-    final dateLabel = DateFormat('MMMM d, yyyy').format(displayDate);
-    final selectedFoods = _foodsForDay(displayDate);
     final totals = _totalsForDay(displayDate);
 
     return Scaffold(
@@ -120,128 +181,89 @@ class _DailyLogCalendarScreenState extends State<DailyLogCalendarScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          _CalendarCard(
-            focusedDay: _focusedDay,
-            selectedDay: _selectedDay,
-            onDaySelected: (selected, focused) {
-              setState(() {
-                _selectedDay = selected;
-                _focusedDay = focused;
-              });
-            },
-          ),
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 8,
-                    offset: Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
-                  Text(
-                    dateLabel,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      _MacroChip(
-                          label: 'Calories',
-                          value: totals['calories'] ?? 0,
-                          suffix: ' kcal'),
-                      _MacroChip(
-                          label: 'Protein',
-                          value: totals['protein'] ?? 0,
-                          suffix: ' g'),
-                      _MacroChip(
-                          label: 'Carbs',
-                          value: totals['carbs'] ?? 0,
-                          suffix: ' g'),
-                      _MacroChip(
-                          label: 'Fat',
-                          value: totals['fat'] ?? 0,
-                          suffix: ' g'),
-                      _MacroChip(
-                          label: 'Fiber',
-                          value: totals['fiber'] ?? 0,
-                          suffix: ' g'),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Expanded(
-                    child: selectedFoods.isEmpty
-                        ? const Center(child: Text('No entries for this day'))
-                        : _FoodsTable(date: displayDate, rows: selectedFoods),
-                  ),
+                  _MacroChip(
+                      label: 'Calories',
+                      value: totals['calories'] ?? 0,
+                      suffix: ' kcal'),
+                  _MacroChip(
+                      label: 'Protein',
+                      value: totals['protein'] ?? 0,
+                      suffix: ' g'),
+                  _MacroChip(
+                      label: 'Carbs',
+                      value: totals['carbs'] ?? 0,
+                      suffix: ' g'),
+                  _MacroChip(
+                      label: 'Fat', value: totals['fat'] ?? 0, suffix: ' g'),
+                  _MacroChip(
+                      label: 'Fiber',
+                      value: totals['fiber'] ?? 0,
+                      suffix: ' g'),
                 ],
               ),
             ),
-          ),
-        ],
-      ),
-      // Add your BottomNavigationBar here to match the mockup
-    );
-  }
-}
-
-class _CalendarCard extends StatelessWidget {
-  const _CalendarCard({
-    required this.focusedDay,
-    required this.selectedDay,
-    required this.onDaySelected,
-  });
-
-  final DateTime focusedDay;
-  final DateTime? selectedDay;
-  final void Function(DateTime, DateTime) onDaySelected;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: TableCalendar(
-          firstDay: DateTime.utc(2015, 1, 1),
-          lastDay: DateTime.utc(2035, 12, 31),
-          focusedDay: focusedDay,
-          selectedDayPredicate: (d) =>
-              selectedDay != null &&
-              d.year == selectedDay!.year &&
-              d.month == selectedDay!.month &&
-              d.day == selectedDay!.day,
-          onDaySelected: onDaySelected,
-          calendarStyle: const CalendarStyle(
-            todayDecoration: BoxDecoration(
-                color: Colors.transparent, shape: BoxShape.circle),
-            selectedDecoration:
-                BoxDecoration(color: Color(0xFF6DCFF6), shape: BoxShape.circle),
-            outsideDaysVisible: true,
-          ),
-          headerStyle: const HeaderStyle(
-            formatButtonVisible: false,
-            titleCentered: true,
-            leftChevronIcon: Icon(Icons.chevron_left),
-            rightChevronIcon: Icon(Icons.chevron_right),
-          ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: TableCalendar(
+                  firstDay: DateTime.utc(2015, 1, 1),
+                  lastDay: DateTime.utc(2035, 12, 31),
+                  focusedDay: _focusedDay,
+                  selectedDayPredicate: (d) =>
+                      _selectedDay != null &&
+                      d.year == _selectedDay!.year &&
+                      d.month == _selectedDay!.month &&
+                      d.day == _selectedDay!.day,
+                  onDaySelected: (selected, focused) {
+                    setState(() {
+                      _selectedDay = selected;
+                      _focusedDay = focused;
+                    });
+                    _showFoodsSheet(selected);
+                  },
+                  calendarStyle: const CalendarStyle(
+                    todayDecoration: BoxDecoration(
+                        color: Colors.transparent, shape: BoxShape.circle),
+                    selectedDecoration: BoxDecoration(
+                        color: Color(0xFF6DCFF6), shape: BoxShape.circle),
+                    outsideDaysVisible: true,
+                  ),
+                  headerStyle: const HeaderStyle(
+                    formatButtonVisible: false,
+                    titleCentered: true,
+                    leftChevronIcon: Icon(Icons.chevron_left),
+                    rightChevronIcon: Icon(Icons.chevron_right),
+                  ),
+                  calendarBuilders: CalendarBuilders(
+                    markerBuilder: (context, day, events) {
+                      final rows = _foodsForDay(day);
+                      if (rows.isEmpty) return const SizedBox.shrink();
+                      return Positioned(
+                        bottom: 4,
+                        child: Container(
+                          width: 6,
+                          height: 6,
+                          decoration: const BoxDecoration(
+                            color: Colors.redAccent,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

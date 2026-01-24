@@ -39,7 +39,7 @@ class HomeScreen extends ConsumerWidget {
                       //WELCOME USER BOX -----------------------
                       alignment: Alignment.center,
                       height: MediaQuery.of(context).size.height * 0.15,
-                      width: 700,
+                      width: MediaQuery.of(context).size.width * 0.95,
                       decoration: BoxDecoration(
                         color: const Color(0xFFFFFFFF),
                         borderRadius: BorderRadius.circular(12),
@@ -58,7 +58,7 @@ class HomeScreen extends ConsumerWidget {
                             child: Text('Welcome back, User!',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 30,
+                                  fontSize: 24,
                                   height: 1.2,
                                 ))),
                         Positioned(
@@ -69,7 +69,7 @@ class HomeScreen extends ConsumerWidget {
                               child: Text(
                                 'Click here view today\'s score:',
                                 style: TextStyle(
-                                  fontSize: 24,
+                                  fontSize: 18,
                                   decoration: TextDecoration.underline,
                                   fontWeight: FontWeight.bold,
                                   color: const Color(0xFF967460),
@@ -91,7 +91,7 @@ class HomeScreen extends ConsumerWidget {
 
                   Container(
                     width: MediaQuery.of(context).size.width * 0.95,
-                    height: MediaQuery.of(context).size.height * 0.2,
+                    height: MediaQuery.of(context).size.height * 0.18,
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFFFFF),
                       borderRadius: BorderRadius.circular(12),
@@ -103,129 +103,134 @@ class HomeScreen extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        //CONSUMPTION STATS PROGRESS BARS  -----
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          //CONSUMPTION STATS PROGRESS BARS  -----
 
-                        CircularPercentIndicator(
-                          //Cals
+                          CircularPercentIndicator(
+                            //Cals
 
-                          radius: 50.0,
-                          lineWidth: 18.0,
-                          animation: true,
-                          percent: totalCalories /
-                              2000, //THIS NEEDS TO BE UPDATED TO USER'S PERSONAL CALORIE GOAL
-                          header: Text(
-                            "Calories:",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 20.0,
-                              color: const Color(0xFF5F9735),
+                            radius: 40.0,
+                            lineWidth: 10.0,
+                            animation: true,
+                            percent: totalCalories /
+                                2000, //THIS NEEDS TO BE UPDATED TO USER'S PERSONAL CALORIE GOAL
+                            header: Text(
+                              "Calories:",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18.0,
+                                color: const Color(0xFF5F9735),
+                              ),
                             ),
-                          ),
-                          footer: new Text(
-                            "$totalCalories" "kcal",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 20.0,
-                              color: const Color(0xFF5F9735),
+                            footer: Text(
+                              "$totalCalories" "kcal",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16.0,
+                                color: const Color(0xFF5F9735),
+                              ),
                             ),
+                            circularStrokeCap: CircularStrokeCap.round,
+                            progressColor: const Color(0xFF5F9735),
+                            backgroundColor: const Color(0xFFF5EDE2),
                           ),
-                          circularStrokeCap: CircularStrokeCap.round,
-                          progressColor: const Color(0xFF5F9735),
-                          backgroundColor: const Color(0xFFF5EDE2),
-                        ),
 
-                        Padding(padding: EdgeInsets.symmetric(horizontal: 10)),
+                          const SizedBox(width: 12),
 
-                        CircularPercentIndicator(
-                          //Protein
-                          radius: 50.0,
-                          lineWidth: 18.0,
-                          animation: true,
-                          percent: dailyProtein /
-                              150, //THIS NEEDS TO BE UPDATED TO USER'S PERSONAL PROTEIN GOAL
-                          header: Text(
-                            "Protein:",
-                            style: TextStyle(
-                              color: const Color(0xFFC2482B),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 20.0,
+                          CircularPercentIndicator(
+                            //Protein
+                            radius: 40.0,
+                            lineWidth: 10.0,
+                            animation: true,
+                            percent: dailyProtein /
+                                150, //THIS NEEDS TO BE UPDATED TO USER'S PERSONAL PROTEIN GOAL
+                            header: Text(
+                              "Protein:",
+                              style: TextStyle(
+                                color: const Color(0xFFC2482B),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18.0,
+                              ),
                             ),
-                          ),
-                          footer: new Text(
-                            "$dailyProtein" "g",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 20.0,
-                              color: const Color(0xFFC2482B),
+                            footer: Text(
+                              "$dailyProtein" "g",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16.0,
+                                color: const Color(0xFFC2482B),
+                              ),
                             ),
+                            circularStrokeCap: CircularStrokeCap.round,
+                            progressColor: const Color(0xFFC2482B),
+                            backgroundColor: const Color(0xFFF5EDE2),
                           ),
-                          circularStrokeCap: CircularStrokeCap.round,
-                          progressColor: const Color(0xFFC2482B),
-                          backgroundColor: const Color(0xFFF5EDE2),
-                        ),
 
-                        Padding(padding: EdgeInsets.symmetric(horizontal: 10)),
+                          const SizedBox(width: 12),
 
-                        CircularPercentIndicator(
-                          //Carbs
-                          radius: 50.0,
-                          lineWidth: 18.0,
-                          animation: true,
-                          percent: dailyCarbs /
-                              150, //THIS NEEDS TO BE UPDATED TO USER'S PERSONAL CARBS GOAL
-                          header: Text(
-                            "Carbs:",
-                            style: TextStyle(
-                              color: const Color(0xFFE0A100),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 20.0,
+                          CircularPercentIndicator(
+                            //Carbs
+                            radius: 40.0,
+                            lineWidth: 10.0,
+                            animation: true,
+                            percent: dailyCarbs /
+                                150, //THIS NEEDS TO BE UPDATED TO USER'S PERSONAL CARBS GOAL
+                            header: Text(
+                              "Carbs:",
+                              style: TextStyle(
+                                color: const Color(0xFFE0A100),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18.0,
+                              ),
                             ),
-                          ),
-                          footer: new Text(
-                            "$dailyCarbs" "g",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 20.0,
-                              color: const Color(0xFFE0A100),
+                            footer: Text(
+                              "$dailyCarbs" "g",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16.0,
+                                color: const Color(0xFFE0A100),
+                              ),
                             ),
+                            circularStrokeCap: CircularStrokeCap.round,
+                            progressColor: const Color(0xFFE0A100),
+                            backgroundColor: const Color(0xFFF5EDE2),
                           ),
-                          circularStrokeCap: CircularStrokeCap.round,
-                          progressColor: const Color(0xFFE0A100),
-                          backgroundColor: const Color(0xFFF5EDE2),
-                        ),
-                        Padding(padding: EdgeInsets.symmetric(horizontal: 10)),
+                          const SizedBox(width: 12),
 
-                        CircularPercentIndicator(
-                          //Fats
-                          radius: 50.0,
-                          lineWidth: 18.0,
-                          animation: true,
-                          percent: dailyFat /
-                              150, //THIS NEEDS TO BE UPDATED TO USER'S PERSONAL FAT GOAL
-                          header: Text(
-                            "Fats:",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 20.0,
-                              color: const Color(0xFF3A6FB8),
+                          CircularPercentIndicator(
+                            //Fats
+                            radius: 40.0,
+                            lineWidth: 10.0,
+                            animation: true,
+                            percent: dailyFat /
+                                150, //THIS NEEDS TO BE UPDATED TO USER'S PERSONAL FAT GOAL
+                            header: Text(
+                              "Fats:",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18.0,
+                                color: const Color(0xFF3A6FB8),
+                              ),
                             ),
-                          ),
-                          footer: new Text(
-                            "$dailyFat" "g",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 20.0,
-                              color: const Color(0xFF3A6FB8),
+                            footer: Text(
+                              "$dailyFat" "g",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16.0,
+                                color: const Color(0xFF3A6FB8),
+                              ),
                             ),
+                            circularStrokeCap: CircularStrokeCap.round,
+                            progressColor: const Color(0xFF3A6FB8),
+                            backgroundColor: const Color(0xFFF5EDE2),
                           ),
-                          circularStrokeCap: CircularStrokeCap.round,
-                          progressColor: const Color(0xFF3A6FB8),
-                          backgroundColor: const Color(0xFFF5EDE2),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                   Padding(padding: const EdgeInsets.symmetric(vertical: 15)),
