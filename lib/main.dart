@@ -13,6 +13,9 @@ import 'screens/register_screen.dart';
 import 'screens/forgot_password_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/chat_screen.dart';
+import 'screens/daily_log_calendar.dart';
+import 'screens/camera_capture_screen.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -152,6 +155,8 @@ class MyApp extends StatelessWidget {
         '/profile': (context) => const ProfilePage(),
         '/home': (context) => const HomeScreen(),
         '/chat': (context) => const ChatScreen(),
+        '/camera': (context) => const CameraCaptureScreen(),
+        '/calendar': (context) => const DailyLogCalendarScreen(),
       },
     );
   }
