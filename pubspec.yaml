@@ -33,7 +33,6 @@ dependencies:
   uuid: ^4.5.1
   dropdown_search: ^6.0.2
   http: ^1.6.0
-
   table_calendar: ^3.0.9
 
 dev_dependencies:
@@ -57,4 +56,3 @@ flutter:
   assets:
     - .env
     - lib/icons/
-

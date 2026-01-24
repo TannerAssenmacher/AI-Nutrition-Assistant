@@ -1,4 +1,5 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../db/user.dart';
 import 'food_providers.dart';
 
@@ -22,33 +23,31 @@ class UserProfileNotifier extends _$UserProfileNotifier {
   }
 
   void updateWeight(double newWeight) {
-    if (state != null) {
-    }
+    if (state != null) {}
   }
 
   void updateCalorieGoal(int newGoal) {
-    if (state != null) {
-    }
+    if (state != null) {}
   }
 }
 
 // Computed provider to check if user has completed profile
 @riverpod
 bool isProfileComplete(Ref ref) {
-  final profile = ref.watch(userProfileProvider);
-  return profile != null && 
-         profile.firstname.isNotEmpty && 
-         profile.age > 0 && 
-         profile.weight > 0 && 
-         profile.height > 0;
+  final profile = ref.watch(userProfileNotifierProvider);
+  return profile != null &&
+      profile.firstname.isNotEmpty &&
+      profile.age > 0 &&
+      profile.weight > 0 &&
+      profile.height > 0;
 }
 
 // Computed provider for remaining calories
 @riverpod
 int remainingCalories(Ref ref) {
-  final profile = ref.watch(userProfileProvider);
+  final profile = ref.watch(userProfileNotifierProvider);
   final consumedCalories = ref.watch(totalDailyCaloriesProvider);
   if (profile == null) return 0;
-  
+
   return profile.dailyCalorieGoal - consumedCalories;
 }

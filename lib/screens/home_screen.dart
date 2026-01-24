@@ -18,7 +18,7 @@ class HomeScreen extends ConsumerWidget {
     final foodLog = ref.watch(foodLogProvider);
     final totalCalories = ref.watch(totalDailyCaloriesProvider);
     final dailyMacros = ref.watch(totalDailyMacrosProvider);
-    final userProfile = ref.watch(userProfileProvider);
+    final userProfile = ref.watch(userProfileNotifierProvider);
     final foodSuggestionsAsync = ref.watch(foodSuggestionsProvider);
 
     return Scaffold(

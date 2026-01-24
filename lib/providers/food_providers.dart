@@ -1,4 +1,5 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../db/food.dart';
 
 part 'food_providers.g.dart';
@@ -35,13 +36,16 @@ class FoodLog extends _$FoodLog {
 int totalDailyCalories(Ref ref) {
   final foodLog = ref.watch(foodLogProvider);
   final today = DateTime.now();
-  
+
   return foodLog
-      .where((item) => 
+      .where((item) =>
           item.consumedAt.year == today.year &&
           item.consumedAt.month == today.month &&
           item.consumedAt.day == today.day)
-      .fold(0, (total, item) => total + (item.caloriesPer100g / 100 * item.servingSize).round());
+      .fold(
+          0,
+          (total, item) =>
+              total + (item.caloriesPer100g / 100 * item.servingSize).round());
 }
 
 // Computed provider for total daily macros
@@ -49,8 +53,8 @@ int totalDailyCalories(Ref ref) {
 Map<String, double> totalDailyMacros(Ref ref) {
   final foodLog = ref.watch(foodLogProvider);
   final today = DateTime.now();
-  
-  final todaysFoods = foodLog.where((item) => 
+
+  final todaysFoods = foodLog.where((item) =>
       item.consumedAt.year == today.year &&
       item.consumedAt.month == today.month &&
       item.consumedAt.day == today.day);
@@ -77,7 +81,7 @@ Map<String, double> totalDailyMacros(Ref ref) {
 Future<List<String>> foodSuggestions(Ref ref) async {
   // Simulate API call
   await Future.delayed(const Duration(seconds: 1));
-  
+
   return [
     'Apple (80 calories)',
     'Banana (105 calories)',
