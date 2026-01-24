@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:table_calendar/table_calendar.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/user_providers.dart';
 
-class DailyLogCalendarScreen extends StatefulWidget {
+class DailyLogCalendarScreen extends ConsumerStatefulWidget {
   const DailyLogCalendarScreen({super.key});
 
   @override
-  State<DailyLogCalendarScreen> createState() => _DailyLogCalendarScreenState();
+  ConsumerState<DailyLogCalendarScreen> createState() =>
+      _DailyLogCalendarScreenState();
 }
 
-class _DailyLogCalendarScreenState extends State<DailyLogCalendarScreen> {
+class _DailyLogCalendarScreenState
+    extends ConsumerState<DailyLogCalendarScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
 
@@ -102,7 +105,12 @@ class _DailyLogCalendarScreenState extends State<DailyLogCalendarScreen> {
       builder: (context) {
         final dateLabel = DateFormat('MMMM d, yyyy').format(day);
         return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 12,
+            bottom: MediaQuery.of(context).padding.bottom + 12,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -158,7 +166,20 @@ class _DailyLogCalendarScreenState extends State<DailyLogCalendarScreen> {
   @override
   Widget build(BuildContext context) {
     final displayDate = _selectedDay ?? _focusedDay;
-    final totals = _totalsForDay(displayDate);
+    final userProfile = ref.watch(userProfileNotifierProvider);
+
+    // Mock goals if user profile not loaded - replace with actual user goals
+    final calorieGoal =
+        userProfile?.mealProfile.dailyCalorieGoal.toDouble() ?? 2000.0;
+    final proteinGoal = userProfile?.mealProfile.macroGoals['protein'] ?? 150.0;
+    final carbsGoal = userProfile?.mealProfile.macroGoals['carbs'] ?? 200.0;
+    final fatGoal = userProfile?.mealProfile.macroGoals['fat'] ?? 65.0;
+
+    // Get the week start (Monday) for the focused day
+    final weekStart =
+        _focusedDay.subtract(Duration(days: _focusedDay.weekday - 1));
+    final weekDays =
+        List.generate(7, (index) => weekStart.add(Duration(days: index)));
 
     return Scaffold(
       backgroundColor: const Color(0xFFF6E9D8),
@@ -166,9 +187,29 @@ class _DailyLogCalendarScreenState extends State<DailyLogCalendarScreen> {
         backgroundColor: const Color(0xFFF6E9D8),
         elevation: 0,
         centerTitle: false,
-        automaticallyImplyLeading: true, // Ensures back button appears
+        automaticallyImplyLeading: true,
         title: const Text('History', style: TextStyle(color: Colors.black87)),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.chevron_left),
+            color: Colors.black87,
+            tooltip: 'Previous week',
+            onPressed: () {
+              setState(() {
+                _focusedDay = _focusedDay.subtract(const Duration(days: 7));
+              });
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.chevron_right),
+            color: Colors.black87,
+            tooltip: 'Next week',
+            onPressed: () {
+              setState(() {
+                _focusedDay = _focusedDay.add(const Duration(days: 7));
+              });
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.add),
             color: Colors.redAccent,
@@ -184,86 +225,209 @@ class _DailyLogCalendarScreenState extends State<DailyLogCalendarScreen> {
       body: SafeArea(
         child: Column(
           children: [
+            // Week navigation header
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _MacroChip(
-                      label: 'Calories',
-                      value: totals['calories'] ?? 0,
-                      suffix: ' kcal'),
-                  _MacroChip(
-                      label: 'Protein',
-                      value: totals['protein'] ?? 0,
-                      suffix: ' g'),
-                  _MacroChip(
-                      label: 'Carbs',
-                      value: totals['carbs'] ?? 0,
-                      suffix: ' g'),
-                  _MacroChip(
-                      label: 'Fat', value: totals['fat'] ?? 0, suffix: ' g'),
-                  _MacroChip(
-                      label: 'Fiber',
-                      value: totals['fiber'] ?? 0,
-                      suffix: ' g'),
-                ],
-              ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: TableCalendar(
-                  firstDay: DateTime.utc(2015, 1, 1),
-                  lastDay: DateTime.utc(2035, 12, 31),
-                  focusedDay: _focusedDay,
-                  selectedDayPredicate: (d) =>
-                      _selectedDay != null &&
-                      d.year == _selectedDay!.year &&
-                      d.month == _selectedDay!.month &&
-                      d.day == _selectedDay!.day,
-                  onDaySelected: (selected, focused) {
-                    setState(() {
-                      _selectedDay = selected;
-                      _focusedDay = focused;
-                    });
-                    _showFoodsSheet(selected);
-                  },
-                  calendarStyle: const CalendarStyle(
-                    todayDecoration: BoxDecoration(
-                        color: Colors.transparent, shape: BoxShape.circle),
-                    selectedDecoration: BoxDecoration(
-                        color: Color(0xFF6DCFF6), shape: BoxShape.circle),
-                    outsideDaysVisible: true,
-                  ),
-                  headerStyle: const HeaderStyle(
-                    formatButtonVisible: false,
-                    titleCentered: true,
-                    leftChevronIcon: Icon(Icons.chevron_left),
-                    rightChevronIcon: Icon(Icons.chevron_right),
-                  ),
-                  calendarBuilders: CalendarBuilders(
-                    markerBuilder: (context, day, events) {
-                      final rows = _foodsForDay(day);
-                      if (rows.isEmpty) return const SizedBox.shrink();
-                      return Positioned(
-                        bottom: 4,
-                        child: Container(
-                          width: 6,
-                          height: 6,
-                          decoration: const BoxDecoration(
-                            color: Colors.redAccent,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Text(
+                '${DateFormat('MMMM yyyy').format(_focusedDay)}',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
                 ),
               ),
             ),
+            // 7-day blocks
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                children: weekDays.map((day) {
+                  final isSelected = _selectedDay != null &&
+                      day.year == _selectedDay!.year &&
+                      day.month == _selectedDay!.month &&
+                      day.day == _selectedDay!.day;
+                  final isToday = day.year == DateTime.now().year &&
+                      day.month == DateTime.now().month &&
+                      day.day == DateTime.now().day;
+                  final foods = _foodsForDay(day);
+                  final dayTotals = _totalsForDay(day);
+
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedDay = day;
+                      });
+                      _showFoodsSheet(day);
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(
+                          vertical: 6, horizontal: 8),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSelected
+                              ? const Color(0xFF6DCFF6)
+                              : Colors.transparent,
+                          width: 2,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Day indicator
+                          Container(
+                            width: 48,
+                            child: Column(
+                              children: [
+                                Text(
+                                  DateFormat('E').format(day),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: isToday
+                                        ? const Color(0xFF6DCFF6)
+                                            .withValues(alpha: 0.2)
+                                        : Colors.grey.shade100,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Text(
+                                    '${day.day}',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: isToday
+                                          ? const Color(0xFF6DCFF6)
+                                          : Colors.black87,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          // Meals summary
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Show meal count or "No meals"
+                                Text(
+                                  foods.isEmpty
+                                      ? 'No meals logged'
+                                      : '${foods.length} meal${foods.length != 1 ? 's' : ''}',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: foods.isEmpty
+                                        ? FontWeight.normal
+                                        : FontWeight.w600,
+                                    color: foods.isEmpty
+                                        ? Colors.grey.shade500
+                                        : Colors.black87,
+                                    fontStyle: foods.isEmpty
+                                        ? FontStyle.italic
+                                        : FontStyle.normal,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                // Progress indicators with values (always shown)
+                                _MacroProgressIndicator(
+                                  label: 'Cal',
+                                  current: dayTotals['calories'] ?? 0,
+                                  goal: calorieGoal,
+                                  color: const Color(0xFF5F9735),
+                                  valueLabel:
+                                      '${dayTotals['calories']?.toInt() ?? 0} kcal',
+                                ),
+                                const SizedBox(height: 4),
+                                _MacroProgressIndicator(
+                                  label: 'Pro',
+                                  current: dayTotals['protein'] ?? 0,
+                                  goal: proteinGoal,
+                                  color: const Color(0xFFC2482B),
+                                  valueLabel:
+                                      '${dayTotals['protein']?.toStringAsFixed(0) ?? 0}g',
+                                ),
+                                const SizedBox(height: 4),
+                                _MacroProgressIndicator(
+                                  label: 'Carb',
+                                  current: dayTotals['carbs'] ?? 0,
+                                  goal: carbsGoal,
+                                  color: const Color(0xFFE0A100),
+                                  valueLabel:
+                                      '${dayTotals['carbs']?.toStringAsFixed(0) ?? 0}g',
+                                ),
+                                const SizedBox(height: 4),
+                                _MacroProgressIndicator(
+                                  label: 'Fat',
+                                  current: dayTotals['fat'] ?? 0,
+                                  goal: fatGoal,
+                                  color: const Color(0xFF3A6FB8),
+                                  valueLabel:
+                                      '${dayTotals['fat']?.toStringAsFixed(0) ?? 0}g',
+                                ),
+                              ],
+                            ),
+                          ),
+                          // Indicator dot
+                          if (foods.isNotEmpty)
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: Colors.redAccent,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MiniMacroChip extends StatelessWidget {
+  const _MiniMacroChip({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: color,
         ),
       ),
     );
@@ -311,6 +475,119 @@ class _FoodsTable extends StatelessWidget {
               ),
           ],
         ),
+      ],
+    );
+  }
+}
+
+class _MacroProgressIndicator extends StatelessWidget {
+  const _MacroProgressIndicator({
+    required this.label,
+    required this.current,
+    required this.goal,
+    required this.color,
+    this.valueLabel,
+  });
+
+  final String label;
+  final double current;
+  final double goal;
+  final Color color;
+  final String? valueLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final percentage = goal > 0 ? (current / goal * 100).clamp(0, 150) : 0.0;
+    final isComplete = percentage >= 100;
+    final isClose = percentage >= 80 && percentage < 100;
+
+    Color statusColor;
+    if (isComplete) {
+      statusColor = Colors.green;
+    } else if (isClose) {
+      statusColor = Colors.orange;
+    } else {
+      statusColor = Colors.grey;
+    }
+
+    return Row(
+      children: [
+        SizedBox(
+          width: 32,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade700,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Stack(
+            children: [
+              Container(
+                height: 10,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade200,
+                  borderRadius: BorderRadius.circular(5),
+                ),
+              ),
+              FractionallySizedBox(
+                widthFactor: (percentage / 100).clamp(0.0, 1.0),
+                child: Container(
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.7),
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 6),
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: statusColor,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 4),
+        SizedBox(
+          width: 40,
+          child: Text(
+            '${percentage.toInt()}%',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: statusColor,
+            ),
+          ),
+        ),
+        if (valueLabel != null) ...[
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 65,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                valueLabel!,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                  color: color.withValues(alpha: 0.9),
+                ),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }

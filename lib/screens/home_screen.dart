@@ -91,7 +91,7 @@ class HomeScreen extends ConsumerWidget {
 
                   Container(
                     width: MediaQuery.of(context).size.width * 0.95,
-                    height: MediaQuery.of(context).size.height * 0.18,
+                    height: MediaQuery.of(context).size.height * 0.4,
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFFFFF),
                       borderRadius: BorderRadius.circular(12),
@@ -103,23 +103,20 @@ class HomeScreen extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.center,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      child: Wrap(
+                        alignment: WrapAlignment.center,
+                        runAlignment: WrapAlignment.center,
+                        spacing: 16,
+                        runSpacing: 14,
                         children: [
-                          //CONSUMPTION STATS PROGRESS BARS  -----
-
                           CircularPercentIndicator(
-                            //Cals
-
                             radius: 40.0,
                             lineWidth: 10.0,
                             animation: true,
-                            percent: totalCalories /
-                                2000, //THIS NEEDS TO BE UPDATED TO USER'S PERSONAL CALORIE GOAL
+                            percent: totalCalories / 2000,
                             header: Text(
                               "Calories:",
                               style: TextStyle(
@@ -140,16 +137,11 @@ class HomeScreen extends ConsumerWidget {
                             progressColor: const Color(0xFF5F9735),
                             backgroundColor: const Color(0xFFF5EDE2),
                           ),
-
-                          const SizedBox(width: 12),
-
                           CircularPercentIndicator(
-                            //Protein
                             radius: 40.0,
                             lineWidth: 10.0,
                             animation: true,
-                            percent: dailyProtein /
-                                150, //THIS NEEDS TO BE UPDATED TO USER'S PERSONAL PROTEIN GOAL
+                            percent: dailyProtein / 150,
                             header: Text(
                               "Protein:",
                               style: TextStyle(
@@ -170,16 +162,11 @@ class HomeScreen extends ConsumerWidget {
                             progressColor: const Color(0xFFC2482B),
                             backgroundColor: const Color(0xFFF5EDE2),
                           ),
-
-                          const SizedBox(width: 12),
-
                           CircularPercentIndicator(
-                            //Carbs
                             radius: 40.0,
                             lineWidth: 10.0,
                             animation: true,
-                            percent: dailyCarbs /
-                                150, //THIS NEEDS TO BE UPDATED TO USER'S PERSONAL CARBS GOAL
+                            percent: dailyCarbs / 150,
                             header: Text(
                               "Carbs:",
                               style: TextStyle(
@@ -200,15 +187,11 @@ class HomeScreen extends ConsumerWidget {
                             progressColor: const Color(0xFFE0A100),
                             backgroundColor: const Color(0xFFF5EDE2),
                           ),
-                          const SizedBox(width: 12),
-
                           CircularPercentIndicator(
-                            //Fats
                             radius: 40.0,
                             lineWidth: 10.0,
                             animation: true,
-                            percent: dailyFat /
-                                150, //THIS NEEDS TO BE UPDATED TO USER'S PERSONAL FAT GOAL
+                            percent: dailyFat / 150,
                             header: Text(
                               "Fats:",
                               style: TextStyle(
