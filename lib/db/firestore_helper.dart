@@ -71,7 +71,7 @@ class FirestoreHelper {
     final meals = await getMealsForUserOnDate(email, date);
     final logId = _dateId(date);
     final dailyLog =
-        DailyLog.fromMeals(id: logId, email: email, date: date, meals: meals);
+        DailyLog.fromMeals(id: logId, userId: email, date: date, meals: meals);
     await _db.collection(dailyLogsCollection).doc(logId).set(dailyLog.toMap());
   }
 
@@ -220,7 +220,7 @@ class FirestoreHelper {
     if (meals.isEmpty) return null;
     return DailyLog.fromMeals(
       id: logId,
-      email: email,
+      userId: email,
       date: date,
       meals: meals,
     );

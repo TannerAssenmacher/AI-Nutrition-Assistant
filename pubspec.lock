@@ -817,7 +817,7 @@ packages:
     source: hosted
     version: "3.0.0"
   simple_gesture_detector:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: simple_gesture_detector
       sha256: ba2cd5af24ff20a0b8d609cec3f40e5b0744d2a71804a2616ae086b9c19d19a3

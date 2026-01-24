@@ -7,11 +7,11 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 class DailyLog {
   // Date string in YYYY-MM-DD format (e.g. "2025-11-04") used as document ID
   final String id;
-  
-  /// User's email (matches AppUser.email) - used as foreign key to Users collection
-  final String email; // Foreign key to AppUser
+
+  /// User's ID (matches AppUser.id) - used as foreign key to Users collection
+  final String userId; // Foreign key to AppUser
   final DateTime date;
-  final List<Food> foods; // List of foods consumed on this date
+  final List<FoodItem> foods; // List of foods consumed on this date
   final List<String> mealIds;
   final double totalCalories;
   final double totalProtein;
@@ -21,10 +21,10 @@ class DailyLog {
 
   DailyLog({
     required this.id,
-    required this.email,
+    required this.userId,
     required this.date,
     required this.foods,
-    required this.mealIds,        // add to constructor
+    required this.mealIds, // add to constructor
     required this.totalCalories,
     required this.totalProtein,
     required this.totalFat,
@@ -35,12 +35,12 @@ class DailyLog {
   factory DailyLog.fromMap(Map<String, dynamic> map) {
     return DailyLog(
       id: map['id'] ?? '',
-      email: map['email'] ?? '',
+      userId: map['userId'] ?? '',
       date: DateTime.parse(map['date']),
       foods: (map['foods'] as List? ?? [])
-          .map((item) => Food.fromJson(item as Map<String, dynamic>, item['id'] as String))
+          .map((item) => FoodItem.fromJson(item as Map<String, dynamic>))
           .toList(),
-      mealIds: (map['mealIds'] as List? ?? []).cast<String>(),   // add this
+      mealIds: (map['mealIds'] as List? ?? []).cast<String>(), // add this
       totalCalories: map['totalCalories'] ?? 0.0,
       totalProtein: map['totalProtein'] ?? 0.0,
       totalFat: map['totalFat'] ?? 0.0,
@@ -51,21 +51,21 @@ class DailyLog {
 
   static DailyLog fromMeals({
     required String id,
-    required String email,
+    required String userId,
     required DateTime date,
     required List<Meal> meals,
   }) {
     double calories = 0, protein = 0, fat = 0, carbs = 0, fiber = 0;
     for (final m in meals) {
       calories += m.calories;
-      protein  += m.protein;
-      fat      += m.fat;
-      carbs    += m.carbs;
-      fiber    += m.fiber;
+      protein += m.protein;
+      fat += m.fat;
+      carbs += m.carbs;
+      fiber += m.fiber;
     }
     return DailyLog(
       id: id,
-      email: email,
+      userId: userId,
       date: date,
       foods: const [],
       mealIds: meals.map((m) => m.id).toList(),
@@ -80,10 +80,10 @@ class DailyLog {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'email': email,
+      'userId': userId,
       'date': date.toIso8601String(),
       'foods': foods.map((f) => f.toJson()).toList(),
-      'mealIds': mealIds,              // add this
+      'mealIds': mealIds, // add this
       'totalCalories': totalCalories,
       'totalProtein': totalProtein,
       'totalFat': totalFat,
@@ -103,11 +103,12 @@ class DailyLog {
   /// Creates a DailyLog for today for the given user
   static DailyLog createForToday(AppUser user) {
     final now = DateTime.now();
-    final dateStr = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
-    
+    final dateStr =
+        "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+
     return DailyLog(
       id: dateStr,
-      email: user.email,
+      userId: user.id,
       date: now,
       foods: [],
       mealIds: [],
@@ -121,14 +122,14 @@ class DailyLog {
 
   /// Check if the daily totals are within the user's goals
   bool isWithinGoals(AppUser user) {
-    if (totalCalories > user.dailyCalorieGoal) return false;
-    
-    final proteinGoal = user.macroGoals['protein'] ?? 0.0;
-    final fatGoal = user.macroGoals['fat'] ?? 0.0;
-    final carbsGoal = user.macroGoals['carbs'] ?? 0.0;
-    
+    if (totalCalories > user.mealProfile.dailyCalorieGoal) return false;
+
+    final proteinGoal = user.mealProfile.macroGoals['protein'] ?? 0.0;
+    final fatGoal = user.mealProfile.macroGoals['fat'] ?? 0.0;
+    final carbsGoal = user.mealProfile.macroGoals['carbs'] ?? 0.0;
+
     return totalProtein <= proteinGoal &&
-           totalFat <= fatGoal &&
-           totalCarbs <= carbsGoal;
+        totalFat <= fatGoal &&
+        totalCarbs <= carbsGoal;
   }
 }
