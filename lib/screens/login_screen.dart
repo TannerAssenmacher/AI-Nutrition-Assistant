@@ -168,13 +168,13 @@ class _LoginPageState extends State<LoginPage> {
 
                 SizedBox( //this is the logo image 
                   //width: MediaQuery.of(context).size.width * 0.6,
-                  height: MediaQuery.of(context).size.height * 0.2,
+                  height: MediaQuery.of(context).size.height * 0.15,
                   child: Image.asset(
                     'lib/icons/WISERBITES.png',
                     fit: BoxFit.contain,
                   )
                 ),
-                Padding(padding: const EdgeInsets.only(top: 20)),
+                Padding(padding: EdgeInsets.only(top: MediaQuery.of(context).size.height * 0.02)),
 
                 /*const Text( //text
                   'Welcome!',
@@ -189,7 +189,10 @@ class _LoginPageState extends State<LoginPage> {
                 Container(
                   width: MediaQuery.of(context).size.width * 0.85,
                   //height: MediaQuery.of(context).size.height * 0.3,
-                  padding: const EdgeInsets.fromLTRB(30, 50, 30, 50),
+                  padding: EdgeInsets.fromLTRB(MediaQuery.of(context).size.width * 0.1, 
+                                                MediaQuery.of(context).size.width * 0.05, 
+                                                MediaQuery.of(context).size.width * 0.1, 
+                                                MediaQuery.of(context).size.width * 0.05),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(100),
@@ -206,17 +209,17 @@ class _LoginPageState extends State<LoginPage> {
                   child: Form(
                       key: _formKey,
                       child: Column(children: [
-                    const SizedBox(height: 10), //padding but for inside containers
-                    const Text(
+                    SizedBox(height: MediaQuery.of(context).size.height * 0.02), //padding but for inside containers
+                    Text(
                       'Welcome!',
                       style: TextStyle(
-                        fontSize: 28,
+                        fontSize: MediaQuery.of(context).size.height * 0.03,
                         fontWeight: FontWeight.bold,
                         color: const Color(0xFF967460),
                       )
                     ),
 
-                    const SizedBox(height: 20), //padding but for inside containers
+                    SizedBox(height: MediaQuery.of(context).size.height * 0.02), //padding but for inside containers
                     TextFormField( //the enter email field
                       controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
@@ -234,8 +237,8 @@ class _LoginPageState extends State<LoginPage> {
                               borderSide: BorderSide.none,
                             ),
                             contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 18,
+                              horizontal: 10,
+                              vertical: 5,
                             ),
                           ),
                         validator: (value) {
@@ -247,7 +250,7 @@ class _LoginPageState extends State<LoginPage> {
                         onTap: _clearErrorOnType,
                     ),
 
-                    const SizedBox(height: 20), //padding but for inside containers
+                    SizedBox(height: MediaQuery.of(context).size.height * 0.02), //padding but for inside containers
                     TextFormField(
                           controller: _passwordController,
                           obscureText: true,
@@ -264,8 +267,8 @@ class _LoginPageState extends State<LoginPage> {
                               borderSide: BorderSide.none,
                             ),
                             contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 18,
+                              horizontal: 10,
+                              vertical: 5,
                             ),
                           ),
                           validator: (value) {
@@ -285,7 +288,7 @@ class _LoginPageState extends State<LoginPage> {
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
-                          const SizedBox(height: 35),
+                          SizedBox(height: MediaQuery.of(context).size.height * 0.02),
                           _isLoading
                               ? const CircularProgressIndicator()
                               : ElevatedButton(
@@ -295,19 +298,21 @@ class _LoginPageState extends State<LoginPage> {
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              minimumSize: const Size(double.infinity, 50),
+                              //minimumSize: Size(double.infinity, MediaQuery.of( context).size.height * 0.07),
+                              //maximumSize: Size(double.infinity, MediaQuery.of( context).size.height * 0.07),
+                              fixedSize: Size(MediaQuery.of(context).size.width * 0.8, MediaQuery.of(context).size.height * 0.05),
                             ),
-                            child: const Text(
+                            child: Text(
                               'Sign In',
                               style: TextStyle(
-                                fontSize: 20,
+                                fontSize: MediaQuery.of( context).size.height * 0.025,
                                 color: Colors.white,
                               ),
                             ),
                           ),
                           
   
-                          const SizedBox(height: 20),
+                          SizedBox(height: MediaQuery.of(context).size.height * 0.02),
                           TextButton( //forgot password text link
                             onPressed: () {
                               Navigator.pushNamed(context, '/forgot');
@@ -315,7 +320,7 @@ class _LoginPageState extends State<LoginPage> {
                             child: Text(
                             'Forgot Password?',
                             style: TextStyle(
-                              fontSize: 18,
+                              fontSize: MediaQuery.of(context).size.height * 0.026,
                               decoration: TextDecoration.underline,
                               color: const Color(0xFF967460),
                             ),
@@ -324,7 +329,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),),
 
 
-                const SizedBox(height: 30), //here is where the old login card is
+                //SizedBox(height: MediaQuery.of(context).size.height * 0.02), //here is where the old login card is
                 
                 /*Card(
                   
@@ -407,12 +412,12 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                 ),*/
-                const SizedBox(height: 50),
+                SizedBox(height: MediaQuery.of(context).size.height * 0.02),
                 TextButton(
                   onPressed: () => Navigator.pushNamed(context, '/register'),
                   child: Text("Don't have an account? Sign Up!",
                     style: TextStyle(
-                      fontSize: 24,
+                      fontSize: MediaQuery.of(context).size.height * 0.026,
                       decoration: TextDecoration.underline,
                       fontWeight: FontWeight.bold,
                       color: const Color(0xFF967460),

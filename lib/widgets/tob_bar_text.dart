@@ -7,7 +7,7 @@ class top_bar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: MediaQuery.of(context).size.height * 0.5,
+      height: MediaQuery.of(context).size.height * 0.1,
       width: double.infinity,
       decoration: BoxDecoration(
         color: const Color(0xFF4A3A2A),

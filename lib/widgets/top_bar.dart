@@ -26,11 +26,11 @@ class top_bar extends StatelessWidget {
       child: SafeArea(
         bottom: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(0, 10, 0, 0),
+          padding: EdgeInsets.fromLTRB(0, MediaQuery.of(context).size.height * 0.05, 0, 0),
           child: Center(
             child: Image.asset(
               'lib/icons/WISERBITES_txt_only.png',
-              height: MediaQuery.of(context).size.height * 0.05,
+              height: MediaQuery.of(context).size.height * 0.04,
               
               color: const Color(0xFFF5EDE2),
             )
