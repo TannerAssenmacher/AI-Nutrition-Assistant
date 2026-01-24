@@ -1,10 +1,14 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../db/user.dart';
+import '../db/meal_profile.dart';
+import '../db/preferences.dart';
 import '../widgets/macro_slider.dart';
 import 'package:intl/intl.dart';
+import 'package:email_validator/email_validator.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -16,6 +20,8 @@ class RegisterPage extends StatefulWidget {
 class _RegisterPageState extends State<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
   final _scrollController = ScrollController();
+  final _pageController = PageController();
+  int _currentPage = 0;
 
   // Controllers
   final _emailController = TextEditingController();
@@ -29,109 +35,217 @@ class _RegisterPageState extends State<RegisterPage> {
   final _likesController = TextEditingController();
   final _dislikesController = TextEditingController();
 
+  // Focus + touched tracking
+  final Map<TextEditingController, FocusNode> _focusMap = {};
+  final Map<TextEditingController, bool> _fieldTouched = {};
+
   // Dropdowns / selections
   String? _sex;
   String? _activityLevel;
   String? _dietaryGoal;
   List<String> _dietaryHabits = [];
-  List<String> _allergies = [];
+  List<String> _health = [];
 
   bool _isLoading = false;
   bool _submitted = false;
+  String? _emailError; // live email duplication / format error
+  String? _passwordError; // firebase weak-password, etc.
 
-  // Default macronutrient goals
-  double _protein = 20.0;
-  double _carbs = 50.0;
+  // Password live rules
+  bool _passwordTouched = false;
+  bool _hasMinLength = false;
+  bool _hasUppercase = false;
+  bool _hasNumber = false;
+  bool _hasSpecial = false;
+
+  // Email debounce
+  Timer? _emailDebounce;
+
+  // Macros
+  double _protein = 30.0;
+  double _carbs = 40.0;
   double _fats = 30.0;
 
   // Dropdown options
   final _sexOptions = ['Male', 'Female'];
-  final _activityLevels = [
-    'Sedentary',
-    'Lightly Active',
-    'Moderately Active',
-    'Very Active'
-  ];
+  final _activityLevels = ['Sedentary', 'Lightly Active', 'Moderately Active', 'Very Active'];
   final _dietGoals = ['Lose Weight', 'Maintain Weight', 'Gain Muscle'];
-  final _dietaryHabitOptions = [
-    'Vegetarian',
-    'Vegan',
-    'Pescatarian',
-    'Keto',
-    'Paleo',
-    'None'
-  ];
-  final _allergyOptions = [
-    'Peanuts',
-    'Tree Nuts',
-    'Dairy',
-    'Gluten',
-    'Shellfish',
-    'Soy',
-    'Eggs',
-    'None'
-  ];
+  final _dietaryHabitOptions = ['balanced', 'high-fiber', 'high-protein', 'low-carb', 'low-fat', 'low-sodium'];
+  final _healthOptions = ['alcohol-cocktail', 'alcohol-free', 'celery-free', 'crustacean-free', 'dairy-free', 'DASH', 'egg-free', 'fish-free', 'fodmap-free', 'gluten-free', 'immuno-supportive', 'keto-friendly', 'kidney-friendly', 'kosher', 'low-fat-abs', 'low-potassium', 'low-sugar', 'lupine-free', 'Mediterranean', 'mollusk-free', 'mustard-free', 'no-oil-added', 'paleo', 'peanut-free', 'pescatarian', 'pork-free', 'red-meat-free', 'sesame-free', 'shellfish-free', 'soy-free', 'sugar-conscious', 'sulfite-free', 'tree-nut-free', 'vegan', 'vegetarian', 'wheat-free'];
 
-  void _toggleMultiSelect(List<String> list, String value) {
-    setState(() {
-      list.contains(value) ? list.remove(value) : list.add(value);
+  @override
+  void initState() {
+    super.initState();
+
+    // Init focus + touched
+    for (final c in [
+      _firstnameController,
+      _lastnameController,
+      _emailController,
+      _passwordController,
+      _dobController,
+      _heightController,
+      _weightController,
+      _dailyCaloriesController,
+      _likesController,
+      _dislikesController,
+    ]) {
+      final node = FocusNode();
+      _focusMap[c] = node;
+      _fieldTouched[c] = false;
+
+      node.addListener(() {
+        if (node.hasFocus) {
+          setState(() => _fieldTouched[c] = true); // hide "required" on focus
+        } else {
+          if (_submitted) setState(() {}); // revalidate on blur if needed
+        }
+      });
+
+      // Mark touched on type; keep validators responsive
+      c.addListener(() {
+        if (_fieldTouched[c] != true) {
+          setState(() => _fieldTouched[c] = true);
+        } else {
+          if (_submitted) setState(() {});
+        }
+      });
+    }
+
+    // Live password rules
+    _passwordController.addListener(() {
+      final value = _passwordController.text;
+      setState(() {
+        _passwordTouched = value.isNotEmpty;
+        _hasMinLength = value.length >= 8;
+        _hasUppercase = RegExp(r'[A-Z]').hasMatch(value);
+        _hasNumber = RegExp(r'\d').hasMatch(value);
+        _hasSpecial = RegExp(r'[!@#\$&*~]').hasMatch(value);
+        if (_passwordError != null) _passwordError = null;
+      });
+    });
+
+    // Live email duplication check (debounced)
+    _emailController.addListener(() {
+      // clear any previous msg when typing
+      if (_emailError != null) setState(() => _emailError = null);
+
+      _emailDebounce?.cancel();
+      _emailDebounce = Timer(const Duration(milliseconds: 400), () async {
+        final email = _emailController.text.trim();
+        if (email.isEmpty) {
+          if (_emailError != null) setState(() => _emailError = null);
+          return;
+        }
+        if (!EmailValidator.validate(email)) {
+          // let the validator handle "invalid format" when submitted;
+          // do not set an error here to avoid flicker while typing
+          return;
+        }
+        final inUse = await _emailAlreadyInUse(email);
+        if (!mounted) return;
+        if (inUse) {
+          setState(() => _emailError = 'This email is already registered.');
+        } else if (_emailError != null) {
+          setState(() => _emailError = null);
+        }
+      });
     });
   }
 
-  /// ✅ Validates that a date string MM/DD/YYYY is a real valid date
-  bool _isValidDate(String input) {
-    final regex =
-    RegExp(r'^(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/(19|20)\d{2}$');
-    if (!regex.hasMatch(input)) return false;
+  @override
+  void dispose() {
+    _emailDebounce?.cancel();
+    for (final n in _focusMap.values) {
+      n.dispose();
+    }
+    for (final c in [
+      _firstnameController,
+      _lastnameController,
+      _emailController,
+      _passwordController,
+      _dobController,
+      _heightController,
+      _weightController,
+      _dailyCaloriesController,
+      _likesController,
+      _dislikesController,
+    ]) {
+      c.dispose();
+    }
+    super.dispose();
+  }
 
+  Future<bool> _emailAlreadyInUse(String email) async {
     try {
-      final parts = input.split('/');
-      final month = int.parse(parts[0]);
-      final day = int.parse(parts[1]);
-      final year = int.parse(parts[2]);
-      final date = DateTime(year, month, day);
-      return date.month == month &&
-          date.day == day &&
-          date.year == year &&
-          year <= DateTime.now().year;
+      final snap = await FirebaseFirestore.instance
+          .collection('Users')
+          .where('email', isEqualTo: email)
+          .limit(1)
+          .get();
+      return snap.docs.isNotEmpty;
     } catch (_) {
       return false;
     }
   }
 
+  // Check if user entered valid date of birth
+  bool _isValidDate(String input) {
+    final regex = RegExp(r'^(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/(19|20)\d{2}$');
+    if (!regex.hasMatch(input)) return false;
+    try {
+      final parts = input.split('/');
+      final date = DateTime(int.parse(parts[2]), int.parse(parts[0]), int.parse(parts[1]));
+      return date.isBefore(DateTime.now());
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // ---- PAGE 1: Validate, then go next
+  Future<void> _validatePage1AndNext() async {
+    setState(() => _submitted = true);
+    setState(() {}); // force rebuild so validators run with _submitted=true
+
+    // If email duplication already detected via live check, block navigation
+    if (_emailError != null) return;
+
+    final validLocal = _formKey.currentState?.validate() ?? false;
+    if (!validLocal) return;
+
+    _pageController.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+    setState(() => _currentPage = 1);
+  }
+
+  // ---- REGISTER USER (Auth + Firestore Sync)
   Future<void> _registerUser() async {
     setState(() => _submitted = true);
-
+    if (_emailError != null) return;
     if (!_formKey.currentState!.validate()) return;
-
-    if (_dietaryHabits.isEmpty || _allergies.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content:
-          Text('Please select at least one dietary habit and one allergy')));
-      return;
-    }
-
-    if (_sex == null || _activityLevel == null || _dietaryGoal == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Please complete all dropdowns and selections')));
-      return;
-    }
 
     setState(() => _isLoading = true);
 
     try {
-      final authResult =
-      await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      // Create user in Firebase Auth
+      final authResult = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
+      final userAuth = authResult.user;
+      if (userAuth == null) throw Exception('User creation failed — no user returned.');
+      final uid = userAuth.uid;
 
-      final uid = authResult.user?.uid;
-      if (uid == null) throw Exception('User ID not found after registration');
+      // Prepare DOB (optional)
+      DateTime? dob;
+      if (_dobController.text.trim().isNotEmpty) {
+        final parts = _dobController.text.split('/');
+        dob = DateTime(int.parse(parts[2]), int.parse(parts[0]), int.parse(parts[1]));
+      }
 
+      // Build MealProfile + Preferences objects
       final mealProfile = MealProfile(
         dietaryHabits: _dietaryHabits,
-        allergies: _allergies,
+        healthRestrictions: _health,
         preferences: Preferences(
           likes: _likesController.text
               .split(',')
@@ -144,205 +258,218 @@ class _RegisterPageState extends State<RegisterPage> {
               .where((e) => e.isNotEmpty)
               .toList(),
         ),
+        macroGoals: {'protein': _protein, 'carbs': _carbs, 'fat': _fats},
+        dailyCalorieGoal: int.tryParse(_dailyCaloriesController.text) ?? 0,
+        dietaryGoal: _dietaryGoal ?? '',
       );
 
-      final user = await AppUser.create(
+      // Build your AppUser model (use UID instead of random ID)
+      final now = DateTime.now();
+      // Convert numeric fields safely — null if blank
+      final heightValue = _heightController.text.trim().isEmpty
+          ? null
+          : double.tryParse(_heightController.text);
+      final weightValue = _weightController.text.trim().isEmpty
+          ? null
+          : double.tryParse(_weightController.text);
+      final dailyCaloriesValue = _dailyCaloriesController.text.trim().isEmpty
+          ? null
+          : int.tryParse(_dailyCaloriesController.text);
+
+      // Build AppUser model
+      final appUser = AppUser(
+        id: uid,
         firstname: _firstnameController.text.trim(),
         lastname: _lastnameController.text.trim(),
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-        age: 0,
-        sex: _sex!,
-        height: double.parse(_heightController.text),
-        weight: double.parse(_weightController.text),
-        activityLevel: _activityLevel!,
-        dietaryGoal: _dietaryGoal!,
-        mealProfile: mealProfile,
-        mealPlans: {},
-        dailyCalorieGoal: int.parse(_dailyCaloriesController.text),
-        macroGoals: {'protein': _protein, 'carbs': _carbs, 'fats': _fats},
+        dob: dob ?? DateTime(1900, 1, 1),
+        sex: _sex ?? '',
+        height: heightValue ?? 0.0, // still required by your model constructor
+        weight: weightValue ?? 0.0,
+        activityLevel: _activityLevel ?? '',
+        mealProfile: mealProfile.copyWith(
+          dailyCalorieGoal: dailyCaloriesValue ?? 0,
+        ),
+        loggedFoodItems: [],
+        createdAt: now,
+        updatedAt: now,
       );
 
-      final userJson = user.toJson();
-      userJson['dateOfBirth'] = _dobController.text;
+      // Convert to JSON
+      final userData = appUser.toJson();
 
-      await FirebaseFirestore.instance
-          .collection('Users')
-          .doc(uid)
-          .set(userJson);
-      await authResult.user?.sendEmailVerification();
+      // Replace placeholder values with null before saving
+      if (dob == null) userData['dob'] = null;
+      if (heightValue == null) userData['height'] = null;
+      if (weightValue == null) userData['weight'] = null;
+      if (dailyCaloriesValue == null) {
+        // drill down into nested structure
+        userData['mealProfile']['dailyCalorieGoal'] = null;
+      }
 
+      // If DOB is placeholder, store as null for cleanliness
+      if (dob == null) userData['dob'] = null;
+
+      await FirebaseFirestore.instance.collection('Users').doc(uid).set(userData);
+
+      // Send verification email
+      await userAuth.sendEmailVerification();
+
+      // Done
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Verification email sent! Please check your inbox.'),
-          duration: Duration(seconds: 5),
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Account created! Check your email for verification.'),
+            duration: Duration(seconds: 5),
+          ),
+        );
         Navigator.pushReplacementNamed(context, '/login');
       }
+
+    } on FirebaseAuthException catch (e) {
+      debugPrint('Firebase Auth error: ${e.code}');
+
+      if (e.code == 'email-already-in-use') {
+        setState(() => _emailError = 'This email is already registered.');
+      } else if (e.code == 'weak-password') {
+        setState(() => _passwordError = 'Password is too weak.');
+      } else {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Auth error: ${e.message}')));
+      }
+
+      // Rollback Firestore if Auth user created but Firestore write fails later
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null && !currentUser.emailVerified) {
+        await currentUser.delete(); // cleanup incomplete user
+      }
+
     } catch (e) {
-      print('🔥 Error: $e');
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Error: $e')));
+      debugPrint('Registration general error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+
+      // Rollback Auth user if Firestore write failed
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null && !currentUser.emailVerified) {
+        await currentUser.delete();
+      }
+
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
+  // ---- BUILD
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Create Account')),
+      appBar: AppBar(
+        title: Text(_currentPage == 0 ? 'Create Account' : 'More Info'),
+        centerTitle: true,
+      ),
       body: SafeArea(
-        child: Scrollbar(
-          controller: _scrollController,
-          thumbVisibility: true,
-          child: SingleChildScrollView(
-            controller: _scrollController,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                children: [
-                  Center(
-                    child: ConstrainedBox(
-                      constraints:
-                      const BoxConstraints(minWidth: 250, maxWidth: 500),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _buildTextField(_firstnameController, 'First Name'),
-                          _buildTextField(_lastnameController, 'Last Name'),
-                          _buildTextField(_emailController, 'Email',
-                              keyboardType: TextInputType.emailAddress),
-                          _buildTextField(_passwordController, 'Password',
-                              obscure: true),
+        child: Form(
+          key: _formKey,
+          autovalidateMode: _submitted ? AutovalidateMode.always : AutovalidateMode.disabled,
+          child: PageView(
+            controller: _pageController,
+            physics: const NeverScrollableScrollPhysics(),
+            children: [
+              _buildPage1(),
+              _buildPage2(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-                          // ✅ Final fixed Date of Birth field
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: TextFormField(
-                              controller: _dobController,
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                                _DOBFormatter(),
-                              ],
-                              decoration: InputDecoration(
-                                labelText: 'Date of Birth (MM/DD/YYYY)',
-                                border: const OutlineInputBorder(),
-                                suffixIcon: IconButton(
-                                  icon: const Icon(Icons.calendar_today),
-                                  onPressed: () async {
-                                    DateTime now = DateTime.now();
-                                    DateTime? pickedDate =
-                                    await showDatePicker(
-                                      context: context,
-                                      initialDate: DateTime(
-                                          now.year - 18, now.month, now.day),
-                                      firstDate: DateTime(1900),
-                                      lastDate: now,
-                                    );
-                                    if (pickedDate != null) {
-                                      _dobController.text =
-                                          DateFormat('MM/dd/yyyy')
-                                              .format(pickedDate);
-                                    }
-                                  },
-                                ),
-                              ),
-                              validator: (val) {
-                                if (val == null || val.isEmpty) {
-                                  return 'This field is required';
-                                }
-                                if (!_isValidDate(val)) {
-                                  return 'Enter a valid date (MM/DD/YYYY)';
-                                }
-                                return null;
-                              },
-                            ),
-                          ),
-
-                          _dropdownField('Sex', _sexOptions, (val) => _sex = val),
-                          _buildTextField(_heightController, 'Height (inches)',
-                              keyboardType: TextInputType.number),
-                          _buildTextField(_weightController, 'Weight (lbs)',
-                              keyboardType: TextInputType.number),
-                          _dropdownField('Activity Level', _activityLevels,
-                                  (val) => _activityLevel = val),
-                          _dropdownField('Dietary Goal', _dietGoals,
-                                  (val) => _dietaryGoal = val),
-                          _buildTextField(_dailyCaloriesController,
-                              'Daily Calorie Goal',
-                              keyboardType: TextInputType.number),
-                          const SizedBox(height: 20),
-                          const Text(
-                            'Macronutrient Goals (% of calories)',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 10),
-                          MacroSlider(
-                            protein: _protein,
-                            carbs: _carbs,
-                            fats: _fats,
-                            onChanged: (p, c, f) {
-                              setState(() {
-                                _protein = p;
-                                _carbs = c;
-                                _fats = f;
-                              });
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 25),
-                  _centeredMultiSelectField('Dietary Habits',
-                      _dietaryHabitOptions, _dietaryHabits,
-                      isRequired: true),
-                  const SizedBox(height: 24),
-                  _centeredMultiSelectField(
-                      'Allergies', _allergyOptions, _allergies,
-                      isRequired: true),
-                  const SizedBox(height: 24),
-                  Center(
-                    child: ConstrainedBox(
-                      constraints:
-                      const BoxConstraints(minWidth: 250, maxWidth: 500),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _buildOptionalTextField(_likesController,
-                              'Food Likes (comma-separated, e.g. "chicken, rice")'),
-                          _buildOptionalTextField(_dislikesController,
-                              'Food Dislikes (comma-separated, e.g. "broccoli, tofu")'),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 30),
-                  Center(
-                    child: ConstrainedBox(
-                      constraints:
-                      const BoxConstraints(minWidth: 200, maxWidth: 350),
-                      child: _isLoading
-                          ? const Center(child: CircularProgressIndicator())
-                          : ElevatedButton(
-                        onPressed: _registerUser,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          padding: const EdgeInsets.all(15),
-                        ),
-                        child: const Text(
-                          'Create Account',
-                          style: TextStyle(
-                              color: Colors.white, fontSize: 18),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+  // ---- PAGE 1
+  Widget _buildPage1() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 500),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _textFieldRequired(_firstnameController, 'First Name'),
+              _textFieldRequired(_lastnameController, 'Last Name'),
+              _emailField(),          // email with LIVE duplication check
+              _passwordField(),       // single-line live hint
+              const SizedBox(height: 30),
+              ElevatedButton(
+                onPressed: _validatePage1AndNext,
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.green, padding: const EdgeInsets.all(15)),
+                child: const Text('Next', style: TextStyle(color: Colors.white, fontSize: 18)),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ---- PAGE 2
+  Widget _buildPage2() {
+    return Scrollbar(
+      controller: _scrollController,
+      thumbVisibility: true,
+      child: SingleChildScrollView(
+        controller: _scrollController,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 500),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _dobFieldOptional(), // DOB is NOT required
+                _dropdownField('Sex', _sexOptions, (v) => _sex = v),
+                _textFieldOptional(_heightController, 'Height (inches)', keyboardType: TextInputType.number),
+                _textFieldOptional(_weightController, 'Weight (lbs)', keyboardType: TextInputType.number),
+                _dropdownField('Activity Level', _activityLevels, (v) => _activityLevel = v),
+                _dropdownField('Dietary Goal', _dietGoals, (v) => _dietaryGoal = v),
+                _textFieldOptional(_dailyCaloriesController, 'Daily Calorie Goal', keyboardType: TextInputType.number),
+                const SizedBox(height: 20),
+                const Text('Macronutrient Goals (% of calories)', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 10),
+                MacroSlider(
+                  protein: _protein,
+                  carbs: _carbs,
+                  fats: _fats,
+                  onChanged: (p, c, f) => setState(() {
+                    _protein = p; _carbs = c; _fats = f;
+                  }),
+                ),
+                const SizedBox(height: 25),
+                _centeredMultiSelectField('Dietary Habits', _dietaryHabitOptions, _dietaryHabits),
+                const SizedBox(height: 24),
+                _centeredMultiSelectField('Health Restrictions', _healthOptions, _health),
+                const SizedBox(height: 24),
+                _textFieldOptional(_likesController, 'Food Likes (comma-separated)'),
+                _textFieldOptional(_dislikesController, 'Food Dislikes (comma-separated)'),
+                const SizedBox(height: 30),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      onPressed: () {
+                        _pageController.previousPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+                        setState(() => _currentPage = 0);
+                      },
+                      child: const Text('Back'),
+                    ),
+                    _isLoading
+                        ? const CircularProgressIndicator()
+                        : ElevatedButton(
+                      onPressed: _registerUser,
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.green, padding: const EdgeInsets.all(15)),
+                      child: const Text('Create Account', style: TextStyle(color: Colors.white, fontSize: 18)),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ),
@@ -350,30 +477,132 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  // --- UI helpers ---
-  Widget _buildTextField(TextEditingController c, String label,
-      {TextInputType? keyboardType, bool obscure = false}) {
+  // ---- UI helpers (Page 1 required fields)
+
+  Widget _textFieldRequired(
+      TextEditingController c,
+      String label, {
+        TextInputType? keyboardType,
+        bool obscure = false,
+      }) {
+    final node = _focusMap[c];
+    final hasFocus = node?.hasFocus ?? false;
+    final showRequired = _submitted && c.text.isEmpty && !hasFocus;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: TextFormField(
+        controller: c,
+        focusNode: node,
+        keyboardType: keyboardType,
+        obscureText: obscure,
+        onChanged: (_) => setState(() {}),
+        onTap: () => setState(() {}), // hide required on focus
+        decoration: InputDecoration(
+          labelText: label,
+          border: const OutlineInputBorder(),
+          errorText: showRequired ? 'This field is required' : null,
+        ),
+        validator: (val) {
+          if (_submitted && (val == null || val.isEmpty)) {
+            return 'This field is required';
+          }
+          return null;
+        },
+      ),
+    );
+  }
+
+  // Email field with valid email check and required field
+  Widget _emailField() {
+    final c = _emailController;
+    final node = _focusMap[c];
+    final hasFocus = node?.hasFocus ?? false;
+    final showRequired = _submitted && c.text.isEmpty && !hasFocus;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: TextFormField(
+        controller: c,
+        focusNode: node,
+        keyboardType: TextInputType.emailAddress,
+        onChanged: (_) => setState(() {}), // keep UI responsive
+        onTap: () => setState(() {}),      // hide required on focus
+        decoration: InputDecoration(
+          labelText: 'Email',
+          border: const OutlineInputBorder(),
+          errorText: _emailError ?? (showRequired ? 'This field is required' : null),
+        ),
+        validator: (val) {
+          if (_submitted && (val == null || val.isEmpty)) {
+            return 'This field is required';
+          }
+          if (val != null && val.isNotEmpty && !EmailValidator.validate(val)) {
+            return 'Enter a valid email address';
+          }
+          return null;
+        },
+      ),
+    );
+  }
+
+  // Password field with live Firebase Auth requirements
+  Widget _passwordField() {
+    final c = _passwordController;
+    final node = _focusMap[c];
+    final hasFocus = node?.hasFocus ?? false;
+    final showRequired = _submitted && c.text.isEmpty && !hasFocus;
+
+    String? liveHint;
+    final value = c.text;
+    if (value.isNotEmpty) {
+      if (value.length < 8) {
+        liveHint = 'Password must be at least 8 characters';
+      } else if (!RegExp(r'[A-Z]').hasMatch(value)) {
+        liveHint = 'Include at least one uppercase letter';
+      } else if (!RegExp(r'\d').hasMatch(value)) {
+        liveHint = 'Include at least one number';
+      } else if (!RegExp(r'[!@#\$&*~]').hasMatch(value)) {
+        liveHint = 'Include at least one special character';
+      }
+    }
+
+    final effectiveError = _passwordError ?? (showRequired ? 'This field is required' : liveHint);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: TextFormField(
+        controller: c,
+        focusNode: node,
+        obscureText: true,
+        onChanged: (_) => setState(() {}),
+        onTap: () => setState(() {}),
+        decoration: InputDecoration(
+          labelText: 'Password',
+          border: const OutlineInputBorder(),
+          errorText: effectiveError,
+        ),
+        validator: (val) {
+          if (_submitted && (val == null || val.isEmpty)) {
+            return 'This field is required';
+          }
+          return null;
+        },
+      ),
+    );
+  }
+
+  // ---- Optional text field
+  Widget _textFieldOptional(
+      TextEditingController c,
+      String label, {
+        TextInputType? keyboardType,
+      }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: TextFormField(
         controller: c,
         keyboardType: keyboardType,
-        obscureText: obscure,
-        decoration: InputDecoration(
-          labelText: label,
-          border: const OutlineInputBorder(),
-        ),
-        validator: (val) =>
-        val == null || val.isEmpty ? 'This field is required' : null,
-      ),
-    );
-  }
-
-  Widget _buildOptionalTextField(TextEditingController c, String label) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: TextFormField(
-        controller: c,
         decoration: InputDecoration(
           labelText: label,
           border: const OutlineInputBorder(),
@@ -383,7 +612,10 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   Widget _dropdownField(
-      String label, List<String> options, void Function(String?) onChanged) {
+      String label,
+      List<String> options,
+      void Function(String?) onChanged,
+      ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: DropdownButtonFormField<String>(
@@ -391,27 +623,23 @@ class _RegisterPageState extends State<RegisterPage> {
           labelText: label,
           border: const OutlineInputBorder(),
         ),
-        value: null,
         onChanged: onChanged,
-        items: options
-            .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-            .toList(),
-        validator: (val) =>
-        val == null || val.isEmpty ? 'Please select an option' : null,
+        items: options.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
       ),
     );
   }
 
-  Widget _centeredMultiSelectField(String label, List<String> options,
-      List<String> selected, {bool isRequired = false}) {
+  Widget _centeredMultiSelectField(
+      String label,
+      List<String> options,
+      List<String> selected,
+      ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(label,
-              style:
-              const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
           const SizedBox(height: 6),
           Wrap(
             alignment: WrapAlignment.center,
@@ -422,43 +650,77 @@ class _RegisterPageState extends State<RegisterPage> {
               return FilterChip(
                 label: Text(option),
                 selected: isSelected,
-                onSelected: (_) => _toggleMultiSelect(selected, option),
+                onSelected: (_) => setState(() {
+                  isSelected ? selected.remove(option) : selected.add(option);
+                }),
                 selectedColor: Colors.green[200],
               );
             }).toList(),
           ),
-          if (_submitted && isRequired && selected.isEmpty)
-            const Padding(
-              padding: EdgeInsets.only(top: 8.0),
-              child: Text('Please select at least one option',
-                  style: TextStyle(color: Colors.red, fontSize: 13)),
-            ),
         ],
+      ),
+    );
+  }
+
+  // ---- DOB (NOT required)
+  Widget _dobFieldOptional() {
+    final c = _dobController;
+    final node = _focusMap[c];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: TextFormField(
+        controller: c,
+        focusNode: node,
+        keyboardType: TextInputType.number,
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          _DOBFormatter(),
+        ],
+        decoration: InputDecoration(
+          labelText: 'Date of Birth (MM/DD/YYYY)',
+          border: const OutlineInputBorder(),
+          suffixIcon: IconButton(
+            icon: const Icon(Icons.calendar_today),
+            onPressed: () async {
+              final now = DateTime.now();
+              final picked = await showDatePicker(
+                context: context,
+                initialDate: DateTime(now.year - 18, now.month, now.day),
+                firstDate: DateTime(1900),
+                lastDate: now,
+              );
+              if (picked != null) {
+                _dobController.text = DateFormat('MM/dd/yyyy').format(picked);
+                setState(() {});
+              }
+            },
+          ),
+        ),
+        validator: (val) {
+          // NOT required; only validate format if non-empty
+          if (val != null && val.isNotEmpty && !_isValidDate(val)) {
+            return 'Enter a valid date (MM/DD/YYYY)';
+          }
+          return null;
+        },
       ),
     );
   }
 }
 
-/// ✅ Final DOB formatter — keeps / consistent, allows backspace, and limits to MM/DD/YYYY
+// Class for DOB formatter from user input or clickable calendar
 class _DOBFormatter extends TextInputFormatter {
   @override
-  TextEditingValue formatEditUpdate(
-      TextEditingValue oldValue, TextEditingValue newValue) {
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
     String digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
-
-    // ✅ Cap at 8 digits (MMDDYYYY)
     if (digits.length > 8) digits = digits.substring(0, 8);
-
     final buffer = StringBuffer();
     for (int i = 0; i < digits.length; i++) {
       buffer.write(digits[i]);
-      // Add slashes after month and day
-      if ((i == 1 || i == 3) && i != digits.length - 1) {
-        buffer.write('/');
-      }
+      if ((i == 1 || i == 3) && i != digits.length - 1) buffer.write('/');
     }
-
-    String formatted = buffer.toString();
+    final formatted = buffer.toString();
     return TextEditingValue(
       text: formatted,
       selection: TextSelection.collapsed(offset: formatted.length),

@@ -36,7 +36,7 @@ class _ProfilePageState extends State<ProfilePage> {
   String? _activityLevel;
   String? _dietaryGoal;
   List<String> _dietaryHabits = [];
-  List<String> _allergies = [];
+  List<String> _health = [];
 
   // Macros
   double _protein = 0;
@@ -51,23 +51,55 @@ class _ProfilePageState extends State<ProfilePage> {
     'Very Active'
   ];
   final _dietGoals = ['Lose Weight', 'Maintain Weight', 'Gain Muscle'];
+  
+  //edamam api options for diet labels
   final _dietaryHabitOptions = [
-    'Vegetarian',
-    'Vegan',
-    'Pescatarian',
-    'Keto',
-    'Paleo',
-    'None'
+    'balanced', 
+    'high-fiber', 
+    'high-protein', 
+    'low-carb', 
+    'low-fat', 
+    'low-sodium'
   ];
-  final _allergyOptions = [
-    'Peanuts',
-    'Tree Nuts',
-    'Dairy',
-    'Gluten',
-    'Shellfish',
-    'Soy',
-    'Eggs',
-    'None'
+
+  //edamam api option for health labels
+  final _healthOptions = [
+   'alcohol-cocktail' , 
+   'alcohol-free', 
+   'celery-free', 
+   'crustacean-free', 
+   'dairy-free', 
+   'DASH', 
+   'egg-free', 
+   'fish-free', 
+   'fodmap-free', 
+   'gluten-free', 
+   'immuno-supportive', 
+   'keto-friendly', 
+   'kidney-friendly', 
+   'kosher', 
+   'low-fat-abs', 
+   'low-potassium', 
+   'low-sugar', 
+   'lupine-free', 
+   'Mediterranean', 
+   'mollusk-free', 
+   'mustard-free', 
+   'no-oil-added', 
+   'paleo', 
+   'peanut-free', 
+   'pescatarian', 
+   'pork-free', 
+   'red-meat-free', 
+   'sesame-free', 
+   'shellfish-free',
+    'soy-free', 
+    'sugar-conscious',
+    'sulfite-free', 
+    'tree-nut-free', 
+    'vegan', 
+    'vegetarian', 
+    'wheat-free',
   ];
 
   @override
@@ -77,37 +109,41 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _loadProfile() async {
-    if (user == null) return;
+    if (user == null) {
+      setState(() => _isLoading = false);
+      return;
+    }
     try {
       final doc = await _firestore.collection('Users').doc(user!.uid).get();
-      if (!doc.exists) return;
+      if (!doc.exists) {
+        setState(() => _isLoading = false);
+        return;
+      }
 
       final data = doc.data()!;
       setState(() {
         _firstname = data['firstname'];
         _lastname = data['lastname'];
-        _email = data['email'];
-        _dob = data['dateOfBirth'];
+        _email = user!.email;
+        _dob = (data['dob'] != null) ? data['dob'].toString().split(' ')[0] : '';
         _sex = data['sex'];
         _heightController.text = data['height'].toString();
         _weightController.text = data['weight'].toString();
         _activityLevel = data['activityLevel'];
-        _dietaryGoal = data['dietaryGoal'];
-        _dailyCaloriesController.text = data['dailyCalorieGoal'].toString();
-        final macroGoals = Map<String, dynamic>.from(data['macroGoals']);
+        _dietaryGoal = data['mealProfile']?['dietaryGoal'] ?? data['dietaryGoal'];
+        _dailyCaloriesController.text = data['mealProfile']?['dailyCalorieGoal']?.toString() ?? data['dailyCalorieGoal']?.toString() ?? '';
+        final macroGoals = Map<String, dynamic>.from(data['mealProfile']?['macroGoals'] ?? data['macroGoals'] ?? {});
         _protein = macroGoals['protein']?.toDouble() ?? 0;
         _carbs = macroGoals['carbs']?.toDouble() ?? 0;
-        _fats = macroGoals['fats']?.toDouble() ?? 0;
+        _fats = (macroGoals['fat'] ?? macroGoals['fats'] ?? 0).toDouble();
 
         if (data.containsKey('mealProfile')) {
           final mp = Map<String, dynamic>.from(data['mealProfile']);
-          _dietaryHabits =
-              (mp['dietaryHabits'] as List).map((e) => e.toString()).toList();
-          _allergies =
-              (mp['allergies'] as List).map((e) => e.toString()).toList();
-          final prefs = Map<String, dynamic>.from(mp['preferences']);
-          _likesController.text = (prefs['likes'] as List).join(', ');
-          _dislikesController.text = (prefs['dislikes'] as List).join(', ');
+          _dietaryHabits = (mp['dietaryHabits'] as List?)?.map((e) => e.toString()).toList() ?? [];
+          _health = (mp['healthRestrictions'] as List?)?.map((e) => e.toString()).toList() ?? [];
+          final prefs = Map<String, dynamic>.from(mp['preferences'] ?? {});
+          _likesController.text = (prefs['likes'] as List?)?.join(', ') ?? '';
+          _dislikesController.text = (prefs['dislikes'] as List?)?.join(', ') ?? '';
         }
       });
     } catch (e) {
@@ -122,33 +158,27 @@ class _ProfilePageState extends State<ProfilePage> {
       _submitted = true;
     });
     if (!_formKey.currentState!.validate()) return;
-    if (_dietaryHabits.isEmpty || _allergies.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content:
-          Text('Please select at least one dietary habit and one allergy.')));
-      return;
-    }
 
     setState(() => _isSaving = true);
 
     try {
       await _firestore.collection('Users').doc(user!.uid).update({
-        'height': double.parse(_heightController.text),
-        'weight': double.parse(_weightController.text),
+        'height': double.tryParse(_heightController.text),
+        'weight': double.tryParse(_weightController.text),
         'activityLevel': _activityLevel,
-        'dietaryGoal': _dietaryGoal,
-        'dailyCalorieGoal': int.parse(_dailyCaloriesController.text),
-        'macroGoals': {
+        'mealProfile.dietaryGoal': _dietaryGoal,
+        'mealProfile.dailyCalorieGoal':
+        int.tryParse(_dailyCaloriesController.text),
+        'mealProfile.macroGoals': {
           'protein': _protein,
           'carbs': _carbs,
-          'fats': _fats,
+          'fat': _fats,
         },
         'mealProfile.dietaryHabits': _dietaryHabits,
-        'mealProfile.allergies': _allergies,
+        'mealProfile.healthRestrictions': _health,
         'mealProfile.preferences.likes':
-        _likesController.text.split(',').map((e) => e.trim()).toList(),
-        'mealProfile.preferences.dislikes':
-        _dislikesController.text.split(',').map((e) => e.trim()).toList(),
+        _likesController.text.split(',').map((e) => e.trim()).toList(), 'mealProfile.preferences.dislikes':
+        _dislikesController.text.split(',').map((e) => e.trim()).toList(), 'updatedAt': FieldValue.serverTimestamp(),
       });
 
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -306,7 +336,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       'Dietary Habits', _dietaryHabitOptions, _dietaryHabits),
                   const SizedBox(height: 24),
                   _centeredMultiSelectField(
-                      'Allergies', _allergyOptions, _allergies),
+                      'Health Restrictions', _healthOptions, _health),
                   const SizedBox(height: 24),
                   Center(
                     child: ConstrainedBox(
@@ -404,10 +434,6 @@ class _ProfilePageState extends State<ProfilePage> {
           labelText: label,
           border: const OutlineInputBorder(),
         ),
-        validator: (val) {
-          if (val == null || val.isEmpty) return 'This field is required';
-          return null;
-        },
       ),
     );
   }
@@ -427,6 +453,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _dropdownField(String label, List<String> options, String? value,
       void Function(String?) onChanged) {
+    String? safeValue = options.contains(value) ? value : null;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: DropdownButtonFormField<String>(
@@ -434,13 +461,11 @@ class _ProfilePageState extends State<ProfilePage> {
           labelText: label,
           border: const OutlineInputBorder(),
         ),
-        value: value,
+        value: safeValue,
         onChanged: onChanged,
         items: options
             .map((e) => DropdownMenuItem(value: e, child: Text(e)))
             .toList(),
-        validator: (val) =>
-        val == null || val.isEmpty ? 'Please select an option' : null,
       ),
     );
   }
@@ -477,14 +502,6 @@ class _ProfilePageState extends State<ProfilePage> {
               );
             }).toList(),
           ),
-          if (_submitted && selected.isEmpty)
-            const Padding(
-              padding: EdgeInsets.only(top: 8.0),
-              child: Text(
-                'Please select at least one option',
-                style: TextStyle(color: Colors.red, fontSize: 13),
-              ),
-            ),
         ],
       ),
     );
