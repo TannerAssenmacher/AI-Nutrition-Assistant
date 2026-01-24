@@ -51,54 +51,54 @@ class _ProfilePageState extends State<ProfilePage> {
     'Very Active'
   ];
   final _dietGoals = ['Lose Weight', 'Maintain Weight', 'Gain Muscle'];
-  
+
   //edamam api options for diet labels
   final _dietaryHabitOptions = [
-    'balanced', 
-    'high-fiber', 
-    'high-protein', 
-    'low-carb', 
-    'low-fat', 
+    'balanced',
+    'high-fiber',
+    'high-protein',
+    'low-carb',
+    'low-fat',
     'low-sodium'
   ];
 
   //edamam api option for health labels
   final _healthOptions = [
-   'alcohol-cocktail' , 
-   'alcohol-free', 
-   'celery-free', 
-   'crustacean-free', 
-   'dairy-free', 
-   'DASH', 
-   'egg-free', 
-   'fish-free', 
-   'fodmap-free', 
-   'gluten-free', 
-   'immuno-supportive', 
-   'keto-friendly', 
-   'kidney-friendly', 
-   'kosher', 
-   'low-fat-abs', 
-   'low-potassium', 
-   'low-sugar', 
-   'lupine-free', 
-   'Mediterranean', 
-   'mollusk-free', 
-   'mustard-free', 
-   'no-oil-added', 
-   'paleo', 
-   'peanut-free', 
-   'pescatarian', 
-   'pork-free', 
-   'red-meat-free', 
-   'sesame-free', 
-   'shellfish-free',
-    'soy-free', 
+    'alcohol-cocktail',
+    'alcohol-free',
+    'celery-free',
+    'crustacean-free',
+    'dairy-free',
+    'DASH',
+    'egg-free',
+    'fish-free',
+    'fodmap-free',
+    'gluten-free',
+    'immuno-supportive',
+    'keto-friendly',
+    'kidney-friendly',
+    'kosher',
+    'low-fat-abs',
+    'low-potassium',
+    'low-sugar',
+    'lupine-free',
+    'Mediterranean',
+    'mollusk-free',
+    'mustard-free',
+    'no-oil-added',
+    'paleo',
+    'peanut-free',
+    'pescatarian',
+    'pork-free',
+    'red-meat-free',
+    'sesame-free',
+    'shellfish-free',
+    'soy-free',
     'sugar-conscious',
-    'sulfite-free', 
-    'tree-nut-free', 
-    'vegan', 
-    'vegetarian', 
+    'sulfite-free',
+    'tree-nut-free',
+    'vegan',
+    'vegetarian',
     'wheat-free',
   ];
 
@@ -125,25 +125,38 @@ class _ProfilePageState extends State<ProfilePage> {
         _firstname = data['firstname'];
         _lastname = data['lastname'];
         _email = user!.email;
-        _dob = (data['dob'] != null) ? data['dob'].toString().split(' ')[0] : '';
+        _dob =
+            (data['dob'] != null) ? data['dob'].toString().split(' ')[0] : '';
         _sex = data['sex'];
         _heightController.text = data['height'].toString();
         _weightController.text = data['weight'].toString();
         _activityLevel = data['activityLevel'];
-        _dietaryGoal = data['mealProfile']?['dietaryGoal'] ?? data['dietaryGoal'];
-        _dailyCaloriesController.text = data['mealProfile']?['dailyCalorieGoal']?.toString() ?? data['dailyCalorieGoal']?.toString() ?? '';
-        final macroGoals = Map<String, dynamic>.from(data['mealProfile']?['macroGoals'] ?? data['macroGoals'] ?? {});
+        _dietaryGoal =
+            data['mealProfile']?['dietaryGoal'] ?? data['dietaryGoal'];
+        _dailyCaloriesController.text =
+            data['mealProfile']?['dailyCalorieGoal']?.toString() ??
+                data['dailyCalorieGoal']?.toString() ??
+                '';
+        final macroGoals = Map<String, dynamic>.from(
+            data['mealProfile']?['macroGoals'] ?? data['macroGoals'] ?? {});
         _protein = macroGoals['protein']?.toDouble() ?? 0;
         _carbs = macroGoals['carbs']?.toDouble() ?? 0;
         _fats = (macroGoals['fat'] ?? macroGoals['fats'] ?? 0).toDouble();
 
         if (data.containsKey('mealProfile')) {
           final mp = Map<String, dynamic>.from(data['mealProfile']);
-          _dietaryHabits = (mp['dietaryHabits'] as List?)?.map((e) => e.toString()).toList() ?? [];
-          _health = (mp['healthRestrictions'] as List?)?.map((e) => e.toString()).toList() ?? [];
+          _dietaryHabits = (mp['dietaryHabits'] as List?)
+                  ?.map((e) => e.toString())
+                  .toList() ??
+              [];
+          _health = (mp['healthRestrictions'] as List?)
+                  ?.map((e) => e.toString())
+                  .toList() ??
+              [];
           final prefs = Map<String, dynamic>.from(mp['preferences'] ?? {});
           _likesController.text = (prefs['likes'] as List?)?.join(', ') ?? '';
-          _dislikesController.text = (prefs['dislikes'] as List?)?.join(', ') ?? '';
+          _dislikesController.text =
+              (prefs['dislikes'] as List?)?.join(', ') ?? '';
         }
       });
     } catch (e) {
@@ -168,7 +181,7 @@ class _ProfilePageState extends State<ProfilePage> {
         'activityLevel': _activityLevel,
         'mealProfile.dietaryGoal': _dietaryGoal,
         'mealProfile.dailyCalorieGoal':
-        int.tryParse(_dailyCaloriesController.text),
+            int.tryParse(_dailyCaloriesController.text),
         'mealProfile.macroGoals': {
           'protein': _protein,
           'carbs': _carbs,
@@ -177,16 +190,18 @@ class _ProfilePageState extends State<ProfilePage> {
         'mealProfile.dietaryHabits': _dietaryHabits,
         'mealProfile.healthRestrictions': _health,
         'mealProfile.preferences.likes':
-        _likesController.text.split(',').map((e) => e.trim()).toList(), 'mealProfile.preferences.dislikes':
-        _dislikesController.text.split(',').map((e) => e.trim()).toList(), 'updatedAt': FieldValue.serverTimestamp(),
+            _likesController.text.split(',').map((e) => e.trim()).toList(),
+        'mealProfile.preferences.dislikes':
+            _dislikesController.text.split(',').map((e) => e.trim()).toList(),
+        'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Profile updated successfully!')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile updated successfully!')));
     } catch (e) {
       print('⚠️ Error saving profile: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving profile: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error saving profile: $e')));
     } finally {
       setState(() => _isSaving = false);
     }
@@ -276,7 +291,10 @@ class _ProfilePageState extends State<ProfilePage> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('My Profile')),
+      appBar: AppBar(
+        title: const Text('My Profile'),
+        automaticallyImplyLeading: true, // Ensures back button appears
+      ),
       body: SafeArea(
         child: Scrollbar(
           thumbVisibility: true,
@@ -289,7 +307,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   Center(
                     child: ConstrainedBox(
                       constraints:
-                      const BoxConstraints(minWidth: 250, maxWidth: 500),
+                          const BoxConstraints(minWidth: 250, maxWidth: 500),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -306,8 +324,8 @@ class _ProfilePageState extends State<ProfilePage> {
                               _activityLevel, (val) => _activityLevel = val),
                           _dropdownField('Dietary Goal', _dietGoals,
                               _dietaryGoal, (val) => _dietaryGoal = val),
-                          _editableField(_dailyCaloriesController,
-                              'Daily Calorie Goal',
+                          _editableField(
+                              _dailyCaloriesController, 'Daily Calorie Goal',
                               isNumber: true),
                           const SizedBox(height: 20),
                           const Text(
@@ -341,7 +359,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   Center(
                     child: ConstrainedBox(
                       constraints:
-                      const BoxConstraints(minWidth: 250, maxWidth: 500),
+                          const BoxConstraints(minWidth: 250, maxWidth: 500),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -357,43 +375,43 @@ class _ProfilePageState extends State<ProfilePage> {
                   Center(
                     child: ConstrainedBox(
                       constraints:
-                      const BoxConstraints(minWidth: 200, maxWidth: 350),
+                          const BoxConstraints(minWidth: 200, maxWidth: 350),
                       child: _isSaving
                           ? const Center(child: CircularProgressIndicator())
                           : ElevatedButton(
-                        onPressed: _saveProfile,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          padding: const EdgeInsets.all(15),
-                        ),
-                        child: const Text(
-                          'Save Changes',
-                          style: TextStyle(
-                              color: Colors.white, fontSize: 18),
-                        ),
-                      ),
+                              onPressed: _saveProfile,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                padding: const EdgeInsets.all(15),
+                              ),
+                              child: const Text(
+                                'Save Changes',
+                                style: TextStyle(
+                                    color: Colors.white, fontSize: 18),
+                              ),
+                            ),
                     ),
                   ),
                   const SizedBox(height: 20),
                   Center(
                     child: ConstrainedBox(
                       constraints:
-                      const BoxConstraints(minWidth: 200, maxWidth: 350),
+                          const BoxConstraints(minWidth: 200, maxWidth: 350),
                       child: _isDeleting
                           ? const Center(child: CircularProgressIndicator())
                           : OutlinedButton.icon(
-                        icon: const Icon(Icons.delete_forever,
-                            color: Colors.red),
-                        label: const Text(
-                          'Delete Account',
-                          style: TextStyle(color: Colors.red),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Colors.red),
-                          padding: const EdgeInsets.all(15),
-                        ),
-                        onPressed: _confirmDeleteAccount,
-                      ),
+                              icon: const Icon(Icons.delete_forever,
+                                  color: Colors.red),
+                              label: const Text(
+                                'Delete Account',
+                                style: TextStyle(color: Colors.red),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: Colors.red),
+                                padding: const EdgeInsets.all(15),
+                              ),
+                              onPressed: _confirmDeleteAccount,
+                            ),
                     ),
                   ),
                 ],
@@ -493,9 +511,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 selected: isSelected,
                 onSelected: (_) {
                   setState(() {
-                    isSelected
-                        ? selected.remove(option)
-                        : selected.add(option);
+                    isSelected ? selected.remove(option) : selected.add(option);
                   });
                 },
                 selectedColor: Colors.green[200],

@@ -8,19 +8,17 @@ const int navIndexProfile = 5;
 
 /// Centralized navigation handler for the bottom nav bar.
 void handleNavTap(BuildContext context, int targetIndex) {
-  if (targetIndex == navIndexHistory) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('History is coming soon.'),
-      ),
-    );
-    return;
-  }
-
   String? targetRoute;
+  bool useRegularPush = false; // For screens that should allow back navigation
+
   switch (targetIndex) {
     case navIndexChat:
       targetRoute = '/chat';
+      useRegularPush = true; // Allow back navigation from chat
+      break;
+    case navIndexHistory:
+      targetRoute = '/calendar';
+      useRegularPush = true; // Allow back navigation from history
       break;
     case navIndexHome:
       targetRoute = '/home';
@@ -30,6 +28,7 @@ void handleNavTap(BuildContext context, int targetIndex) {
       break;
     case navIndexProfile:
       targetRoute = '/profile';
+      useRegularPush = true; // Allow back navigation from profile
       break;
     default:
       targetRoute = null;
@@ -42,5 +41,9 @@ void handleNavTap(BuildContext context, int targetIndex) {
     return;
   }
 
-  Navigator.pushReplacementNamed(context, targetRoute);
+  if (useRegularPush) {
+    Navigator.pushNamed(context, targetRoute);
+  } else {
+    Navigator.pushReplacementNamed(context, targetRoute);
+  }
 }

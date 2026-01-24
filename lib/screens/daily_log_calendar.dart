@@ -39,6 +39,7 @@ class _DailyLogCalendarScreenState extends State<DailyLogCalendarScreen> {
         backgroundColor: const Color(0xFFF6E9D8),
         elevation: 0,
         centerTitle: false,
+        automaticallyImplyLeading: true, // Ensures back button appears
         title: const Text('History', style: TextStyle(color: Colors.black87)),
         actions: const [
           Padding(
@@ -130,8 +131,8 @@ class _CalendarCard extends StatelessWidget {
               d.day == selectedDay!.day,
           onDaySelected: onDaySelected,
           calendarStyle: const CalendarStyle(
-            todayDecoration:
-                BoxDecoration(color: Colors.transparent, shape: BoxShape.circle),
+            todayDecoration: BoxDecoration(
+                color: Colors.transparent, shape: BoxShape.circle),
             selectedDecoration:
                 BoxDecoration(color: Color(0xFF6DCFF6), shape: BoxShape.circle),
             outsideDaysVisible: true,
@@ -198,7 +199,8 @@ class _FoodRow {
   final String meal;
   final String name;
   final String amount;
-  const _FoodRow({required this.meal, required this.name, required this.amount});
+  const _FoodRow(
+      {required this.meal, required this.name, required this.amount});
 }
 
 class _TableCellText extends StatelessWidget {
