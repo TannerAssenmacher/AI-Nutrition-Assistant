@@ -4,7 +4,7 @@ import '../db/food.dart';
 
 part 'food_providers.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 class FoodLog extends _$FoodLog {
   @override
   List<FoodItem> build() {
@@ -37,11 +37,11 @@ int totalDailyCalories(Ref ref) {
 
   return foodLog
       .where((item) =>
-  item.consumedAt.year == today.year &&
-      item.consumedAt.month == today.month &&
-      item.consumedAt.day == today.day)
-      .fold(0, (total, item) =>
-  total + (item.calories_g * item.mass_g).round());
+          item.consumedAt.year == today.year &&
+          item.consumedAt.month == today.month &&
+          item.consumedAt.day == today.day)
+      .fold(
+          0, (total, item) => total + (item.calories_g * item.mass_g).round());
 }
 
 @riverpod
@@ -54,13 +54,12 @@ Map<String, double> totalDailyMacros(Ref ref) {
   double fat = 0;
 
   for (final item in foodLog.where((i) =>
-  i.consumedAt.year == today.year &&
+      i.consumedAt.year == today.year &&
       i.consumedAt.month == today.month &&
-      i.consumedAt.day == today.day))
-  {
+      i.consumedAt.day == today.day)) {
     protein += item.protein_g * item.mass_g;
-    carbs   += item.carbs_g   * item.mass_g;
-    fat     += item.fat       * item.mass_g;
+    carbs += item.carbs_g * item.mass_g;
+    fat += item.fat * item.mass_g;
   }
 
   return {

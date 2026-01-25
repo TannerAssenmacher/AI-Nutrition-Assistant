@@ -68,10 +68,59 @@ class _RegisterPageState extends State<RegisterPage> {
 
   // Dropdown options
   final _sexOptions = ['Male', 'Female'];
-  final _activityLevels = ['Sedentary', 'Lightly Active', 'Moderately Active', 'Very Active'];
+  final _activityLevels = [
+    'Sedentary',
+    'Lightly Active',
+    'Moderately Active',
+    'Very Active'
+  ];
   final _dietGoals = ['Lose Weight', 'Maintain Weight', 'Gain Muscle'];
-  final _dietaryHabitOptions = ['balanced', 'high-fiber', 'high-protein', 'low-carb', 'low-fat', 'low-sodium'];
-  final _healthOptions = ['alcohol-cocktail', 'alcohol-free', 'celery-free', 'crustacean-free', 'dairy-free', 'DASH', 'egg-free', 'fish-free', 'fodmap-free', 'gluten-free', 'immuno-supportive', 'keto-friendly', 'kidney-friendly', 'kosher', 'low-fat-abs', 'low-potassium', 'low-sugar', 'lupine-free', 'Mediterranean', 'mollusk-free', 'mustard-free', 'no-oil-added', 'paleo', 'peanut-free', 'pescatarian', 'pork-free', 'red-meat-free', 'sesame-free', 'shellfish-free', 'soy-free', 'sugar-conscious', 'sulfite-free', 'tree-nut-free', 'vegan', 'vegetarian', 'wheat-free'];
+  final _dietaryHabitOptions = [
+    'balanced',
+    'high-fiber',
+    'high-protein',
+    'low-carb',
+    'low-fat',
+    'low-sodium'
+  ];
+  final _healthOptions = [
+    'alcohol-cocktail',
+    'alcohol-free',
+    'celery-free',
+    'crustacean-free',
+    'dairy-free',
+    'DASH',
+    'egg-free',
+    'fish-free',
+    'fodmap-free',
+    'gluten-free',
+    'immuno-supportive',
+    'keto-friendly',
+    'kidney-friendly',
+    'kosher',
+    'low-fat-abs',
+    'low-potassium',
+    'low-sugar',
+    'lupine-free',
+    'Mediterranean',
+    'mollusk-free',
+    'mustard-free',
+    'no-oil-added',
+    'paleo',
+    'peanut-free',
+    'pescatarian',
+    'pork-free',
+    'red-meat-free',
+    'sesame-free',
+    'shellfish-free',
+    'soy-free',
+    'sugar-conscious',
+    'sulfite-free',
+    'tree-nut-free',
+    'vegan',
+    'vegetarian',
+    'wheat-free'
+  ];
 
   @override
   void initState() {
@@ -191,11 +240,13 @@ class _RegisterPageState extends State<RegisterPage> {
 
   // Check if user entered valid date of birth
   bool _isValidDate(String input) {
-    final regex = RegExp(r'^(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/(19|20)\d{2}$');
+    final regex =
+        RegExp(r'^(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/(19|20)\d{2}$');
     if (!regex.hasMatch(input)) return false;
     try {
       final parts = input.split('/');
-      final date = DateTime(int.parse(parts[2]), int.parse(parts[0]), int.parse(parts[1]));
+      final date = DateTime(
+          int.parse(parts[2]), int.parse(parts[0]), int.parse(parts[1]));
       return date.isBefore(DateTime.now());
     } catch (_) {
       return false;
@@ -213,7 +264,8 @@ class _RegisterPageState extends State<RegisterPage> {
     final validLocal = _formKey.currentState?.validate() ?? false;
     if (!validLocal) return;
 
-    _pageController.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+    _pageController.nextPage(
+        duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
     setState(() => _currentPage = 1);
   }
 
@@ -227,19 +279,22 @@ class _RegisterPageState extends State<RegisterPage> {
 
     try {
       // Create user in Firebase Auth
-      final authResult = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      final authResult =
+          await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
       final userAuth = authResult.user;
-      if (userAuth == null) throw Exception('User creation failed — no user returned.');
+      if (userAuth == null)
+        throw Exception('User creation failed — no user returned.');
       final uid = userAuth.uid;
 
       // Prepare DOB (optional)
       DateTime? dob;
       if (_dobController.text.trim().isNotEmpty) {
         final parts = _dobController.text.split('/');
-        dob = DateTime(int.parse(parts[2]), int.parse(parts[0]), int.parse(parts[1]));
+        dob = DateTime(
+            int.parse(parts[2]), int.parse(parts[0]), int.parse(parts[1]));
       }
 
       // Build MealProfile + Preferences objects
@@ -309,7 +364,10 @@ class _RegisterPageState extends State<RegisterPage> {
       // If DOB is placeholder, store as null for cleanliness
       if (dob == null) userData['dob'] = null;
 
-      await FirebaseFirestore.instance.collection('Users').doc(uid).set(userData);
+      await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(uid)
+          .set(userData);
 
       // Send verification email
       await userAuth.sendEmailVerification();
@@ -318,13 +376,13 @@ class _RegisterPageState extends State<RegisterPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Account created! Check your email for verification.'),
+            content:
+                Text('Account created! Check your email for verification.'),
             duration: Duration(seconds: 5),
           ),
         );
         Navigator.pushReplacementNamed(context, '/login');
       }
-
     } on FirebaseAuthException catch (e) {
       debugPrint('Firebase Auth error: ${e.code}');
 
@@ -342,17 +400,16 @@ class _RegisterPageState extends State<RegisterPage> {
       if (currentUser != null && !currentUser.emailVerified) {
         await currentUser.delete(); // cleanup incomplete user
       }
-
     } catch (e) {
       debugPrint('Registration general error: $e');
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: $e')));
 
       // Rollback Auth user if Firestore write failed
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser != null && !currentUser.emailVerified) {
         await currentUser.delete();
       }
-
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -369,7 +426,8 @@ class _RegisterPageState extends State<RegisterPage> {
       body: SafeArea(
         child: Form(
           key: _formKey,
-          autovalidateMode: _submitted ? AutovalidateMode.always : AutovalidateMode.disabled,
+          autovalidateMode:
+              _submitted ? AutovalidateMode.always : AutovalidateMode.disabled,
           child: PageView(
             controller: _pageController,
             physics: const NeverScrollableScrollPhysics(),
@@ -395,13 +453,16 @@ class _RegisterPageState extends State<RegisterPage> {
             children: [
               _textFieldRequired(_firstnameController, 'First Name'),
               _textFieldRequired(_lastnameController, 'Last Name'),
-              _emailField(),          // email with LIVE duplication check
-              _passwordField(),       // single-line live hint
+              _emailField(), // email with LIVE duplication check
+              _passwordField(), // single-line live hint
               const SizedBox(height: 30),
               ElevatedButton(
                 onPressed: _validatePage1AndNext,
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.green, padding: const EdgeInsets.all(15)),
-                child: const Text('Next', style: TextStyle(color: Colors.white, fontSize: 18)),
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    padding: const EdgeInsets.all(15)),
+                child: const Text('Next',
+                    style: TextStyle(color: Colors.white, fontSize: 18)),
               ),
             ],
           ),
@@ -412,11 +473,10 @@ class _RegisterPageState extends State<RegisterPage> {
 
   // ---- PAGE 2
   Widget _buildPage2() {
+    // Use the primary scroll controller to avoid Scrollbar having no attached position
     return Scrollbar(
-      controller: _scrollController,
       thumbVisibility: true,
       child: SingleChildScrollView(
-        controller: _scrollController,
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
         child: Center(
           child: ConstrainedBox(
@@ -426,36 +486,51 @@ class _RegisterPageState extends State<RegisterPage> {
               children: [
                 _dobFieldOptional(), // DOB is NOT required
                 _dropdownField('Sex', _sexOptions, (v) => _sex = v),
-                _textFieldOptional(_heightController, 'Height (inches)', keyboardType: TextInputType.number),
-                _textFieldOptional(_weightController, 'Weight (lbs)', keyboardType: TextInputType.number),
-                _dropdownField('Activity Level', _activityLevels, (v) => _activityLevel = v),
-                _dropdownField('Dietary Goal', _dietGoals, (v) => _dietaryGoal = v),
-                _textFieldOptional(_dailyCaloriesController, 'Daily Calorie Goal', keyboardType: TextInputType.number),
+                _textFieldOptional(_heightController, 'Height (inches)',
+                    keyboardType: TextInputType.number),
+                _textFieldOptional(_weightController, 'Weight (lbs)',
+                    keyboardType: TextInputType.number),
+                _dropdownField('Activity Level', _activityLevels,
+                    (v) => _activityLevel = v),
+                _dropdownField(
+                    'Dietary Goal', _dietGoals, (v) => _dietaryGoal = v),
+                _textFieldOptional(
+                    _dailyCaloriesController, 'Daily Calorie Goal',
+                    keyboardType: TextInputType.number),
                 const SizedBox(height: 20),
-                const Text('Macronutrient Goals (% of calories)', style: TextStyle(fontWeight: FontWeight.bold)),
+                const Text('Macronutrient Goals (% of calories)',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 10),
                 MacroSlider(
                   protein: _protein,
                   carbs: _carbs,
                   fats: _fats,
                   onChanged: (p, c, f) => setState(() {
-                    _protein = p; _carbs = c; _fats = f;
+                    _protein = p;
+                    _carbs = c;
+                    _fats = f;
                   }),
                 ),
                 const SizedBox(height: 25),
-                _centeredMultiSelectField('Dietary Habits', _dietaryHabitOptions, _dietaryHabits),
+                _centeredMultiSelectField(
+                    'Dietary Habits', _dietaryHabitOptions, _dietaryHabits),
                 const SizedBox(height: 24),
-                _centeredMultiSelectField('Health Restrictions', _healthOptions, _health),
+                _centeredMultiSelectField(
+                    'Health Restrictions', _healthOptions, _health),
                 const SizedBox(height: 24),
-                _textFieldOptional(_likesController, 'Food Likes (comma-separated)'),
-                _textFieldOptional(_dislikesController, 'Food Dislikes (comma-separated)'),
+                _textFieldOptional(
+                    _likesController, 'Food Likes (comma-separated)'),
+                _textFieldOptional(
+                    _dislikesController, 'Food Dislikes (comma-separated)'),
                 const SizedBox(height: 30),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     TextButton(
                       onPressed: () {
-                        _pageController.previousPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+                        _pageController.previousPage(
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeInOut);
                         setState(() => _currentPage = 0);
                       },
                       child: const Text('Back'),
@@ -463,10 +538,14 @@ class _RegisterPageState extends State<RegisterPage> {
                     _isLoading
                         ? const CircularProgressIndicator()
                         : ElevatedButton(
-                      onPressed: _registerUser,
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.green, padding: const EdgeInsets.all(15)),
-                      child: const Text('Create Account', style: TextStyle(color: Colors.white, fontSize: 18)),
-                    ),
+                            onPressed: _registerUser,
+                            style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                padding: const EdgeInsets.all(15)),
+                            child: const Text('Create Account',
+                                style: TextStyle(
+                                    color: Colors.white, fontSize: 18)),
+                          ),
                   ],
                 ),
               ],
@@ -480,11 +559,11 @@ class _RegisterPageState extends State<RegisterPage> {
   // ---- UI helpers (Page 1 required fields)
 
   Widget _textFieldRequired(
-      TextEditingController c,
-      String label, {
-        TextInputType? keyboardType,
-        bool obscure = false,
-      }) {
+    TextEditingController c,
+    String label, {
+    TextInputType? keyboardType,
+    bool obscure = false,
+  }) {
     final node = _focusMap[c];
     final hasFocus = node?.hasFocus ?? false;
     final showRequired = _submitted && c.text.isEmpty && !hasFocus;
@@ -527,11 +606,12 @@ class _RegisterPageState extends State<RegisterPage> {
         focusNode: node,
         keyboardType: TextInputType.emailAddress,
         onChanged: (_) => setState(() {}), // keep UI responsive
-        onTap: () => setState(() {}),      // hide required on focus
+        onTap: () => setState(() {}), // hide required on focus
         decoration: InputDecoration(
           labelText: 'Email',
           border: const OutlineInputBorder(),
-          errorText: _emailError ?? (showRequired ? 'This field is required' : null),
+          errorText:
+              _emailError ?? (showRequired ? 'This field is required' : null),
         ),
         validator: (val) {
           if (_submitted && (val == null || val.isEmpty)) {
@@ -567,7 +647,8 @@ class _RegisterPageState extends State<RegisterPage> {
       }
     }
 
-    final effectiveError = _passwordError ?? (showRequired ? 'This field is required' : liveHint);
+    final effectiveError =
+        _passwordError ?? (showRequired ? 'This field is required' : liveHint);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -594,10 +675,10 @@ class _RegisterPageState extends State<RegisterPage> {
 
   // ---- Optional text field
   Widget _textFieldOptional(
-      TextEditingController c,
-      String label, {
-        TextInputType? keyboardType,
-      }) {
+    TextEditingController c,
+    String label, {
+    TextInputType? keyboardType,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: TextFormField(
@@ -612,10 +693,10 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   Widget _dropdownField(
-      String label,
-      List<String> options,
-      void Function(String?) onChanged,
-      ) {
+    String label,
+    List<String> options,
+    void Function(String?) onChanged,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: DropdownButtonFormField<String>(
@@ -624,22 +705,26 @@ class _RegisterPageState extends State<RegisterPage> {
           border: const OutlineInputBorder(),
         ),
         onChanged: onChanged,
-        items: options.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+        items: options
+            .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+            .toList(),
       ),
     );
   }
 
   Widget _centeredMultiSelectField(
-      String label,
-      List<String> options,
-      List<String> selected,
-      ) {
+    String label,
+    List<String> options,
+    List<String> selected,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          Text(label,
+              style:
+                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
           const SizedBox(height: 6),
           Wrap(
             alignment: WrapAlignment.center,
@@ -712,7 +797,8 @@ class _RegisterPageState extends State<RegisterPage> {
 // Class for DOB formatter from user input or clickable calendar
 class _DOBFormatter extends TextInputFormatter {
   @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+  TextEditingValue formatEditUpdate(
+      TextEditingValue oldValue, TextEditingValue newValue) {
     String digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
     if (digits.length > 8) digits = digits.substring(0, 8);
     final buffer = StringBuffer();

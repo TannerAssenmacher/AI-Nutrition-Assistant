@@ -2,6 +2,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/gemini_chat_service.dart';
+import '../providers/auth_providers.dart';
+import '../providers/firestore_providers.dart';
+import '../db/food.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key});
@@ -18,7 +21,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   bool _showCuisinePicker = false;
   String? _selectedMealType;
   String? _selectedCuisineType;
-
 
   final List<String> _cuisineTypes = [
     'American',
@@ -108,7 +110,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     notifier.addLocalUserMessage(cuisine);
 
     setState(() {
-       _selectedCuisineType = cuisine; 
+      _selectedCuisineType = cuisine;
       _showCuisinePicker = false;
     });
 
@@ -116,6 +118,46 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     notifier.handleMealTypeSelection(meal, cuisine);
 
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+  }
+
+  Future<void> _addRecipeToLog(Map<String, dynamic> recipe,
+      {required String mealType}) async {
+    final authUser = ref.read(authServiceProvider);
+    final userId = authUser?.uid;
+    if (userId == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please sign in to save meals.')),
+        );
+      }
+      return;
+    }
+
+    final name = (recipe['label'] ?? 'Meal').toString();
+    final caloriesTotal = (recipe['calories'] ?? 0).toDouble();
+
+    // Store as a single serving entry; macros default to 0 if unavailable.
+    final item = FoodItem(
+      id: 'recipe-${DateTime.now().microsecondsSinceEpoch}',
+      name: name,
+      mass_g: 1,
+      calories_g: caloriesTotal,
+      protein_g: (recipe['protein'] ?? 0).toDouble(),
+      carbs_g: (recipe['carbs'] ?? 0).toDouble(),
+      fat: (recipe['fat'] ?? 0).toDouble(),
+      mealType: mealType.isNotEmpty ? mealType : 'meal',
+      consumedAt: DateTime.now(),
+    );
+
+    await ref
+        .read(firestoreFoodLogProvider(userId).notifier)
+        .addFood(userId, item);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Added "$name" to today\'s log.')),
+      );
+    }
   }
 
   // load more recipes based off user's discretion
@@ -147,7 +189,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       options = _cuisineTypes;
       onTap = _onCuisineSelected;
     } else {
-      return const SizedBox.shrink(); 
+      return const SizedBox.shrink();
     }
 
     final buttonStyle = ElevatedButton.styleFrom(
@@ -170,7 +212,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           runSpacing: 10,
           children: options.map((text) {
             return ElevatedButton(
-              style: buttonStyle, 
+              style: buttonStyle,
               onPressed: () => onTap!(text),
               child: Text(text, style: const TextStyle(fontSize: 13)),
             );
@@ -186,6 +228,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: const Text('Nutrition Assistant Chat'),
         backgroundColor: Colors.green[600],
         foregroundColor: Colors.white,
@@ -246,22 +292,31 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           );
                         }
 
-                        if (parsed is Map && parsed['type'] == 'recipe_results') {
-                          final recipes =
-                              List<Map<String, dynamic>>.from(parsed['recipes'] ?? const []);
+                        if (parsed is Map &&
+                            parsed['type'] == 'recipe_results') {
+                          final recipes = List<Map<String, dynamic>>.from(
+                              parsed['recipes'] ?? const []);
 
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              ...recipes.map((r) => _RecipeCard(recipe: r)),
-
+                              ...recipes.map(
+                                (r) => _RecipeCard(
+                                  recipe: r,
+                                  mealType: _selectedMealType ?? 'Meal',
+                                  onAdd: () => _addRecipeToLog(
+                                    r,
+                                    mealType: _selectedMealType ?? 'meal',
+                                  ),
+                                ),
+                              ),
                               const SizedBox(height: 6),
-
                               Center(
                                 child: OutlinedButton.icon(
                                   onPressed: () {
                                     final meal = _selectedMealType ?? 'Dinner';
-                                    final cuisine = _selectedCuisineType ?? 'None'; 
+                                    final cuisine =
+                                        _selectedCuisineType ?? 'None';
                                     _loadMoreRecipes(meal, cuisine);
                                   },
                                   icon: const Icon(Icons.refresh),
@@ -271,7 +326,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                             ],
                           );
                         }
-
                       } catch (_) {}
 
                       return _ChatBubble(message: message);
@@ -358,8 +412,7 @@ class _ChatBubble extends StatelessWidget {
             CircleAvatar(
               backgroundColor: Colors.green[600],
               radius: 16,
-              child: const Icon(Icons.smart_toy,
-                  color: Colors.white, size: 16),
+              child: const Icon(Icons.smart_toy, color: Colors.white, size: 16),
             ),
             const SizedBox(width: 8),
           ],
@@ -454,9 +507,12 @@ class MealProfileSummaryBubble extends StatelessWidget {
                   Text("Meal: $mealType"),
                   Text("Cuisine: $cuisineType"),
                   const SizedBox(height: 6),
-                  Text("Dietary: ${dietary.isEmpty ? "None" : dietary.join(", ")}"),
-                  Text("Health: ${health.isEmpty ? "None" : health.join(", ")}"),
-                  Text("Dislikes: ${dislikes.isEmpty ? "None" : dislikes.join(", ")}"),
+                  Text(
+                      "Dietary: ${dietary.isEmpty ? "None" : dietary.join(", ")}"),
+                  Text(
+                      "Health: ${health.isEmpty ? "None" : health.join(", ")}"),
+                  Text(
+                      "Dislikes: ${dislikes.isEmpty ? "None" : dislikes.join(", ")}"),
                   const SizedBox(height: 10),
                   Row(
                     children: [
@@ -495,8 +551,11 @@ class MealProfileSummaryBubble extends StatelessWidget {
 
 class _RecipeCard extends StatelessWidget {
   final Map<String, dynamic> recipe;
+  final String mealType;
+  final VoidCallback onAdd;
 
-  const _RecipeCard({required this.recipe});
+  const _RecipeCard(
+      {required this.recipe, required this.mealType, required this.onAdd});
 
   @override
   Widget build(BuildContext context) {
@@ -525,6 +584,7 @@ class _RecipeCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text('Cuisine: $cuisine'),
           Text('Calories: $calories kcal'),
+          Text('Meal type: $mealType'),
           const SizedBox(height: 8),
           const Text('Ingredients',
               style: TextStyle(fontWeight: FontWeight.w600)),
@@ -539,7 +599,20 @@ class _RecipeCard extends StatelessWidget {
               url.toString(),
               style: const TextStyle(fontSize: 12, color: Colors.blueGrey),
             ),
-          ]
+          ],
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerRight,
+            child: ElevatedButton.icon(
+              onPressed: onAdd,
+              icon: const Icon(Icons.playlist_add),
+              label: const Text("Add to today's log"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green[600],
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ),
         ],
       ),
     );

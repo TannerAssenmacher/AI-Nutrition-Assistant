@@ -15,6 +15,9 @@ import 'screens/register_screen.dart';
 import 'screens/forgot_password_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/chat_screen.dart';
+import 'screens/daily_log_calendar.dart';
+import 'screens/camera_capture_screen.dart';
+
 import 'screens/meal_analysis_screen.dart';
 
 void main() async {
@@ -69,8 +72,7 @@ Future<void> _initializeFirebase() async {
         print("Firebase already initialized, using existing instance");
       } catch (e) {
         // If getting the app fails, try to initialize anyway
-        print(
-            "Firebase app exists but couldn't access it, reinitializing...");
+        print("Firebase app exists but couldn't access it, reinitializing...");
         await Firebase.initializeApp(
           options: DefaultFirebaseOptions.currentPlatform,
         );
@@ -168,6 +170,7 @@ class MyApp extends StatelessWidget {
         '/profile': (context) => const ProfilePage(),
         '/home': (context) => const HomeScreen(),
         '/chat': (context) => const ChatScreen(),
+        '/calendar': (context) => const DailyLogCalendarScreen(),
         '/camera': (context) => const CameraScreen(),
       },
     );

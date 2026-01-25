@@ -40,7 +40,7 @@ class DefaultFirebaseOptions {
   );
 
   static final FirebaseOptions android = FirebaseOptions(
-    apiKey: dotenv.env['GOOGLE_API_KEY_ANDROID']!,
+    apiKey: _require('GOOGLE_API_KEY_ANDROID'),
     appId: '1:468473644377:android:0da8f2de23872a8f267848',
     messagingSenderId: '468473644377',
     projectId: 'ai-nutrition-assistant-e2346',
@@ -74,4 +74,12 @@ class DefaultFirebaseOptions {
     storageBucket: 'ai-nutrition-assistant-e2346.firebasestorage.app',
     measurementId: 'G-2WNBSDWFJF',
   );
+
+  static String _require(String key) {
+    final value = dotenv.env[key];
+    if (value == null || value.isEmpty) {
+      throw StateError('Missing env var $key for FirebaseOptions');
+    }
+    return value;
+  }
 }

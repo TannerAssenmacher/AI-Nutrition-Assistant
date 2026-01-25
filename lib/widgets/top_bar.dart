@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 
-
 class top_bar extends StatelessWidget {
   const top_bar({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: MediaQuery.of(context).size.height * 0.1,
+      height: 96,
       width: double.infinity,
       decoration: BoxDecoration(
         color: const Color(0xFF4A3A2A),
@@ -25,26 +24,17 @@ class top_bar extends StatelessWidget {
       ),
       child: SafeArea(
         bottom: false,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(0, MediaQuery.of(context).size.height * 0.05, 0, 0),
-          child: Center(
+        child: Center(
+          child: SizedBox(
+            height: 40,
             child: Image.asset(
               'lib/icons/WISERBITES_txt_only.png',
-              height: MediaQuery.of(context).size.height * 0.04,
-              
+              fit: BoxFit.contain,
               color: const Color(0xFFF5EDE2),
-            )
-            /*child: Text(
-            "AI Nutrition Assistant",
-            style: TextStyle(
-              color: const Color(0xFFF5EDE2),
-              fontSize: 50,
-              fontWeight: FontWeight.w600,
             ),
-            ),*/
           ),
         ),
-      )
+      ),
     );
   }
 }
