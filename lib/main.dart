@@ -16,7 +16,7 @@ import 'screens/forgot_password_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/chat_screen.dart';
 import 'screens/daily_log_calendar.dart';
-import 'screens/camera_capture_screen.dart';
+import 'screens/meal_analysis_screen.dart';
 
 
 void main() async {
@@ -170,7 +170,7 @@ class MyApp extends StatelessWidget {
         '/profile': (context) => const ProfilePage(),
         '/home': (context) => const HomeScreen(),
         '/chat': (context) => const ChatScreen(),
-        '/camera': (context) => const CameraCaptureScreen(),
+        '/camera': (context) => const CameraScreen(),
         '/calendar': (context) => const DailyLogCalendarScreen(),
       },
     );

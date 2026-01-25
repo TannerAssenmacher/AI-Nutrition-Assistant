@@ -8,19 +8,13 @@ const int navIndexProfile = 5;
 
 /// Centralized navigation handler for the bottom nav bar.
 void handleNavTap(BuildContext context, int targetIndex) {
-  if (targetIndex == navIndexHistory) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('History is coming soon.'),
-      ),
-    );
-    return;
-  }
-
   String? targetRoute;
   switch (targetIndex) {
     case navIndexChat:
       targetRoute = '/chat';
+      break;
+    case navIndexHistory:
+      targetRoute = '/calendar';
       break;
     case navIndexHome:
       targetRoute = '/home';
