@@ -1,14 +1,14 @@
-import 'dart:io';
-
-import 'package:camera/camera.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+//import 'package:carousel_slider/carousel_slider.dart';
 import '../db/food.dart';
 import '../providers/food_providers.dart';
 import '../providers/user_providers.dart';
-import 'camera_capture_screen.dart';
+import '../widgets/top_bar.dart';
+import 'package:nutrition_assistant/navigation/nav_helper.dart';
+import 'package:nutrition_assistant/widgets/nav_bar.dart';
+import 'package:percent_indicator/percent_indicator.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -18,16 +18,279 @@ class HomeScreen extends ConsumerWidget {
     final foodLog = ref.watch(foodLogProvider);
     final totalCalories = ref.watch(totalDailyCaloriesProvider);
     final dailyMacros = ref.watch(totalDailyMacrosProvider);
-    final userProfile = ref.watch(userProfileProvider);
+    final dailyProtein = dailyMacros['protein'] ?? 0.0;
+    final dailyCarbs = dailyMacros['carbs'] ?? 0.0;
+    final dailyFat = dailyMacros['fat'] ?? 0.0;
+    final userProfile = ref.watch(userProfileNotifierProvider);
     final foodSuggestionsAsync = ref.watch(foodSuggestionsProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Nutrition Assistant'),
-        backgroundColor: Colors.green[600],
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
+      backgroundColor: const Color(0xFFF5EDE2),
+      body: Column(
+        children: [
+          const top_bar(),
+          Expanded(child: Padding(
+            padding: const EdgeInsets.all(30.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container( //WELCOME USER BOX -----------------------
+                  alignment: Alignment.center,
+                  height: MediaQuery.of(context).size.height * 0.15,
+                  width: 700,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFFFFF),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 10,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  
+
+                    child: Stack(
+                      children: [
+                        Positioned(
+                          top: 20,
+                          left: 20,
+                          child: Text(
+                            'Welcome back, User!',
+                            
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 30,
+                              height: 1.2,
+                              
+                            )
+                          )
+                        ),
+                        Positioned(
+                          bottom: 20,
+                          left: 20,
+                          child: TextButton(
+                            onPressed: () {
+                              
+                            },
+                            child: Text(
+                              'Click here view today\'s score:',
+                              style: TextStyle(
+                                fontSize: 24,
+                                decoration: TextDecoration.underline,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF967460),
+                              ),
+                            ),
+                        )
+                        )
+                      ]
+                    )
+                  ),
+                  
+                
+
+                Padding(padding: const EdgeInsets.symmetric(vertical: 15)),
+                /*Text( //CONSUMPTION STATS TITLE -----------------------
+                  'Today\'s Progress:',
+
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF4A3A2A),
+                  )
+                ),
+                Padding(padding: const EdgeInsets.symmetric(vertical: 5)),*/
+
+                Container(
+                    width: MediaQuery.of(context).size.width * 0.95,
+                    height: MediaQuery.of(context).size.height * 0.2,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFFFFF),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 10,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: Row(mainAxisAlignment: MainAxisAlignment.center,
+                children: [ //CONSUMPTION STATS PROGRESS BARS  -----
+                  
+                  CircularPercentIndicator( //Cals
+                  
+                  radius: 50.0,
+                  lineWidth: 18.0,
+                  animation: true,
+                  percent: totalCalories / 2000, //THIS NEEDS TO BE UPDATED TO USER'S PERSONAL CALORIE GOAL
+                  header: Text(
+                    "Calories:",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20.0,
+                      color: const Color(0xFF5F9735),
+                    ),
+                  ),
+                  footer: new Text(
+                    "$totalCalories" "kcal",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20.0,
+                      color: const Color(0xFF5F9735),
+                    ),
+                  ),
+                  circularStrokeCap: CircularStrokeCap.round,
+                  progressColor: const Color(0xFF5F9735),
+                  backgroundColor: const Color(0xFFF5EDE2),
+                  ),
+                  
+                  
+                  Padding(padding:  EdgeInsets.symmetric(horizontal: 10)),
+
+                            
+                  CircularPercentIndicator( //Protein
+                  radius: 50.0,
+                  lineWidth: 18.0,
+                  animation: true,
+                  percent: dailyProtein / 150, //THIS NEEDS TO BE UPDATED TO USER'S PERSONAL PROTEIN GOAL
+                  header: Text(
+                    "Protein:",
+                    style: TextStyle(
+                      color: const Color(0xFFC2482B),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20.0,
+                    ),
+                  ),
+                  footer: new Text(
+                    "$dailyProtein" "g",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20.0,
+                      color: const Color(0xFFC2482B),
+                    ),
+                  ),
+                  circularStrokeCap: CircularStrokeCap.round,
+                  progressColor: const Color(0xFFC2482B),
+                  backgroundColor: const Color(0xFFF5EDE2),
+                  ),
+                  
+                  Padding(padding:  EdgeInsets.symmetric(horizontal: 10)),          
+                                    
+                  CircularPercentIndicator( //Carbs
+                  radius: 50.0,
+                  lineWidth: 18.0,
+                  animation: true,
+                  percent: dailyCarbs / 150, //THIS NEEDS TO BE UPDATED TO USER'S PERSONAL CARBS GOAL
+                  header: Text(
+                    "Carbs:",
+                    style: TextStyle(
+                      color: const Color(0xFFE0A100),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20.0,
+                    ),
+                  ),
+                  footer: new Text(
+                    "$dailyCarbs" "g",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20.0,
+                      color: const Color(0xFFE0A100),
+                    ),
+                  ),
+                  circularStrokeCap: CircularStrokeCap.round,
+                  progressColor: const Color(0xFFE0A100),
+                  backgroundColor: const Color(0xFFF5EDE2),
+                  ),
+                  Padding(padding:  EdgeInsets.symmetric(horizontal: 10)),                  
+                                    
+                                    
+                  CircularPercentIndicator( //Fats
+                  radius: 50.0,
+                  lineWidth: 18.0,
+                  animation: true,
+                  percent: dailyFat / 150, //THIS NEEDS TO BE UPDATED TO USER'S PERSONAL FAT GOAL
+                  header: Text(
+                    "Fats:",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20.0,
+                      color: const Color(0xFF3A6FB8),
+                    ),
+                  ),
+                  footer: new Text(
+                    "$dailyFat" "g",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20.0,
+                      color: const Color(0xFF3A6FB8),
+                    ),
+                  ),
+                  circularStrokeCap: CircularStrokeCap.round,
+                  progressColor: const Color(0xFF3A6FB8),
+                  backgroundColor: const Color(0xFFF5EDE2),
+                  ),
+                  
+                ],),
+                ),
+                
+                Padding(padding: const EdgeInsets.symmetric(vertical: 15)),
+                /*Text( //TODAYS MEALS TITLE --------------------------
+                  'Today\'s Meals:',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                Padding(padding: const EdgeInsets.symmetric(vertical: 10)),*/
+                /*Container(
+                  child: CarouselSlider(
+                    items: [1, 2, 3].map((e) {
+                      return Container(
+                        width: MediaQuery.of(context).size.width  * 1,
+                        margin: EdgeInsets.symmetric(horizontal: 0.0),
+                        decoration: BoxDecoration(
+                          color: Color(0xFFFFFFFF),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.1),
+                              blurRadius: 10,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                      );
+                    
+                    }).toList(),
+                    options: CarouselOptions(
+                      height: MediaQuery.of(  context).size.height * 0.3,
+                      enlargeCenterPage: true,
+                      aspectRatio: 4/5,
+                      autoPlayCurve: Curves.fastOutSlowIn,
+                      autoPlayAnimationDuration: Duration(milliseconds: 800),
+                      viewportFraction: 0.8,
+                    ),
+                  )
+                )*/
+              ],
+            ),
+          ),),
+        ],
+      ),
+
+      bottomNavigationBar: NavBar(
+        currentIndex: navIndexHome,
+        onTap: (index) => handleNavTap(context, index),
+      ),
+    );
+
+    /*return Scaffold(
+      /*appBar: AppBar(
+        title: const Text('AI Nutrition Assistant', textAlign: TextAlign.center),
+        backgroundColor: const Color(0xFF3E2F26),
+        foregroundColor: const Color(0xFFF5EDE2),
+        /*actions: [
+          /*IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Logout',
             onPressed: () async {
@@ -39,16 +302,16 @@ class HomeScreen extends ConsumerWidget {
                 );
               }
             },
-          ),
-          IconButton(
+          ),*/
+          /*IconButton(
             icon: const Icon(Icons.person),
             tooltip: 'Profile',
             onPressed: () {
               Navigator.pushNamed(context, '/profile');
             },
-          ),
-        ],
-      ),
+          ),*/
+        ],*/
+      ),*/
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -73,7 +336,7 @@ class HomeScreen extends ConsumerWidget {
                     if (userProfile != null) ...[
                       const SizedBox(height: 4),
                       Text(
-                        'Goal: ${userProfile.dailyCalorieGoal} calories',
+                        'Goal: ${userProfile.mealProfile.dailyCalorieGoal} calories',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               color: Colors.grey[600],
                             ),
@@ -197,7 +460,7 @@ class HomeScreen extends ConsumerWidget {
                         child: Icon(Icons.restaurant, color: Colors.green[600]),
                       ),
                       title: Text(food.name),
-                      subtitle: Text('${food.caloriesPer100g} calories'),
+                      subtitle: Text('${food.calories_g} calories'),
                       trailing: IconButton(
                         icon: const Icon(Icons.delete, color: Colors.red),
                         onPressed: () {
@@ -227,7 +490,7 @@ class HomeScreen extends ConsumerWidget {
           const SizedBox(height: 12),
           FloatingActionButton(
             heroTag: 'cameraFab',
-            onPressed: () => _openCamera(context),
+            onPressed: () => _openMealAnalyzer(context),
             backgroundColor: Colors.green[700],
             child: const Icon(Icons.camera_alt, color: Colors.white),
           ),
@@ -240,38 +503,11 @@ class HomeScreen extends ConsumerWidget {
           ),
         ],
       ),
-    );
+    );*/
   }
 
-  Future<void> _openCamera(BuildContext context) async {
-    try {
-      final capturedFile = await Navigator.of(context).push<XFile?>(
-        MaterialPageRoute<XFile?>(
-          builder: (_) => const CameraCaptureScreen(),
-        ),
-      );
-
-      if (capturedFile == null) {
-        return;
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Meal photo captured.')),
-      );
-
-      try {
-        final file = File(capturedFile.path);
-        if (await file.exists()) {
-          await file.delete();
-        }
-      } catch (_) {
-        // Ignore cleanup failures; nothing sensitive is stored long term.
-      }
-    } catch (error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Camera unavailable: $error')),
-      );
-    }
+  Future<void> _openMealAnalyzer(BuildContext context) async {
+    await Navigator.of(context).pushNamed('/camera');
   }
 
   void _showAddFoodDialog(BuildContext context, WidgetRef ref) {
@@ -288,23 +524,18 @@ class HomeScreen extends ConsumerWidget {
           TextButton(
             onPressed: () {
               // Example: Add a sample food item
-              final sampleFood = Food(
-                  name: 'Sample Apple',
-                  category: "Fruit",
-                  caloriesPer100g: 200,
-                  proteinPer100g: 2.5,
-                  carbsPer100g: 10.0,
-                  fatPer100g: 0.5,
-                  fiberPer100g: 1.0,
-                  micronutrients: Micronutrients(
-                    calciumMg: 100,
-                    ironMg: 0.5,
-                    vitaminAMcg: 100,
-                    vitaminCMg: 50,
-                  ),
-                  source: 'Sample Source',
-                  consumedAt: DateTime.now(),
-                  servingSize: 100);
+              final sampleFood = FoodItem(
+                id: DateTime.now().millisecondsSinceEpoch.toString(),
+                name: 'Sample Apple',
+                mass_g: 100,
+                calories_g: 2.0,   // 200 cal / 100g = 2.0 cal/g
+                protein_g: 0.025,  // 2.5 / 100
+                carbs_g: 0.10,     // 10 / 100
+                fat: 0.005,        // 0.5 / 100
+                mealType: 'snack',
+                consumedAt: DateTime.now(),
+              );
+
               ref.read(foodLogProvider.notifier).addFoodItem(sampleFood);
               Navigator.of(context).pop();
             },

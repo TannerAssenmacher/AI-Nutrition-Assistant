@@ -1,17 +1,17 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../db/food.dart';
 
 part 'food_providers.g.dart';
 
-// Simple state provider for a list of consumed food items
 @riverpod
 class FoodLog extends _$FoodLog {
   @override
-  List<Food> build() {
+  List<FoodItem> build() {
     return [];
   }
 
-  void addFoodItem(Food item) {
+  void addFoodItem(FoodItem item) {
     state = [...state, item];
   }
 
@@ -23,61 +23,57 @@ class FoodLog extends _$FoodLog {
     state = [];
   }
 
-  void updateFoodItem(Food updatedItem) {
+  void updateFoodItem(FoodItem updatedItem) {
     state = state.map((item) {
       return item.id == updatedItem.id ? updatedItem : item;
     }).toList();
   }
 }
 
-// Computed provider for total daily calories
 @riverpod
 int totalDailyCalories(Ref ref) {
   final foodLog = ref.watch(foodLogProvider);
   final today = DateTime.now();
-  
+
   return foodLog
-      .where((item) => 
-          item.consumedAt.year == today.year &&
-          item.consumedAt.month == today.month &&
-          item.consumedAt.day == today.day)
-      .fold(0, (total, item) => total + (item.caloriesPer100g / 100 * item.servingSize).round());
+      .where((item) =>
+  item.consumedAt.year == today.year &&
+      item.consumedAt.month == today.month &&
+      item.consumedAt.day == today.day)
+      .fold(0, (total, item) =>
+  total + (item.calories_g * item.mass_g).round());
 }
 
-// Computed provider for total daily macros
 @riverpod
 Map<String, double> totalDailyMacros(Ref ref) {
   final foodLog = ref.watch(foodLogProvider);
   final today = DateTime.now();
-  
-  final todaysFoods = foodLog.where((item) => 
-      item.consumedAt.year == today.year &&
-      item.consumedAt.month == today.month &&
-      item.consumedAt.day == today.day);
 
-  double totalProtein = 0;
-  double totalCarbs = 0;
-  double totalFat = 0;
+  double protein = 0;
+  double carbs = 0;
+  double fat = 0;
 
-  for (final item in todaysFoods) {
-    totalProtein += (item.proteinPer100g / 100 * item.servingSize);
-    totalCarbs += (item.carbsPer100g / 100 * item.servingSize);
-    totalFat += (item.fatPer100g / 100 * item.servingSize);
+  for (final item in foodLog.where((i) =>
+  i.consumedAt.year == today.year &&
+      i.consumedAt.month == today.month &&
+      i.consumedAt.day == today.day))
+  {
+    protein += item.protein_g * item.mass_g;
+    carbs   += item.carbs_g   * item.mass_g;
+    fat     += item.fat       * item.mass_g;
   }
 
   return {
-    'protein': totalProtein,
-    'carbs': totalCarbs,
-    'fat': totalFat,
+    'protein': protein,
+    'carbs': carbs,
+    'fat': fat,
   };
 }
 
-// Example async provider for fetching food suggestions
 @riverpod
 Future<List<String>> foodSuggestions(Ref ref) async {
-  // Simulate API call
   await Future.delayed(const Duration(seconds: 1));
-  
+
   return [
     'Apple (80 calories)',
     'Banana (105 calories)',

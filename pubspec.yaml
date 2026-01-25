@@ -10,6 +10,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  table_calendar: ^3.0.9
   carousel_slider: ^4.2.1
   percent_indicator: ^4.2.3
   cupertino_icons: ^1.0.6
@@ -34,8 +35,6 @@ dependencies:
   dropdown_search: ^6.0.2
   http: ^1.6.0
 
-  table_calendar: ^3.0.9
-
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -57,4 +56,3 @@ flutter:
   assets:
     - .env
     - lib/icons/
-

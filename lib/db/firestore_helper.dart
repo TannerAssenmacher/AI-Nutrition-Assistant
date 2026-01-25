@@ -59,64 +59,69 @@ class FirestoreHelper {
     return doc.exists;
   }
 
-  static Future<void> _updateDailyLogForDate(String email, DateTime date) async {
-    final meals = await getMealsForUserOnDate(email, date);
-    final logId = _dateId(date);
-    final dailyLog =
-        DailyLog.fromMeals(id: logId, email: email, date: date, meals: meals);
-    await _db.collection(dailyLogsCollection).doc(logId).set(dailyLog.toMap());
+  // ---------------------------------------------------------------------------
+  // FOOD CRUD (logged foods under user document)
+  // ---------------------------------------------------------------------------
+
+  static Future<void> addFoodItem(String userId, FoodItem food) async {
+    final docRef = _db.collection(usersCollection).doc(userId);
+    final snap = await docRef.get();
+    if (!snap.exists) throw StateError('User $userId does not exist.');
+
+    await docRef.update({
+      'loggedFoodItems': FieldValue.arrayUnion([food.toJson()])
+    });
+  }
+
+  static Future<void> updateFoodItem(String userId, FoodItem updated) async {
+    final docRef = _db.collection(usersCollection).doc(userId);
+    final snap = await docRef.get();
+    if (!snap.exists) throw StateError('User $userId does not exist.');
+
+    final data = snap.data()!;
+    final List<dynamic> items = data['loggedFoodItems'] ?? [];
+
+    final index = items.indexWhere((item) => item['id'] == updated.id);
+    if (index == -1) throw StateError('Food ${updated.id} does not exist.');
+
+    items[index] = updated.toJson();
+    await docRef.update({'loggedFoodItems': items});
+  }
+
+  static Future<void> deleteFoodItem(String userId, String foodId) async {
+    final docRef = _db.collection(usersCollection).doc(userId);
+    final snap = await docRef.get();
+    if (!snap.exists) throw StateError('User $userId does not exist.');
+
+    final data = snap.data()!;
+    final List<dynamic> items = data['loggedFoodItems'] ?? [];
+    items.removeWhere((item) => item['id'] == foodId);
+
+    await docRef.update({'loggedFoodItems': items});
+  }
+
+  static Future<List<FoodItem>> getAllFoodItems(String userId) async {
+    final doc = await _db.collection(usersCollection).doc(userId).get();
+    if (!doc.exists) return [];
+
+    final List<dynamic> items = doc.data()!['loggedFoodItems'] ?? [];
+    return items.map((e) => FoodItem.fromJson(e)).toList();
+  }
+
+  static Future<FoodItem?> getFoodItem(String userId, String foodId) async {
+    final doc = await _db.collection(usersCollection).doc(userId).get();
+    if (!doc.exists) return null;
+
+    final List<dynamic> items = doc.data()!['loggedFoodItems'] ?? [];
+    final match = items.firstWhere(
+      (item) => item['id'] == foodId,
+      orElse: () => null,
+    );
+    return match == null ? null : FoodItem.fromJson(match);
   }
 
   // ---------------------------------------------------------------------------
-  // FOOD CRUD
-  // ---------------------------------------------------------------------------
-
-  static Future<void> createFood(Food food) async {
-    final docRef = _db.collection(foodCollection).doc(food.id);
-    if ((await docRef.get()).exists) {
-      throw StateError('Food ${food.id} already exists.');
-    }
-    await docRef.set(food.toJson());
-  }
-
-  static Future<void> updateFood(Food food) async {
-    final docRef = _db.collection(foodCollection).doc(food.id);
-    if (!(await docRef.get()).exists) {
-      throw StateError('Food ${food.id} does not exist.');
-    }
-    await docRef.update(food.toJson());
-  }
-
-  static Future<Food?> getFood(String foodId) async {
-    try {
-      final doc = await _db.collection(foodCollection).doc(foodId).get();
-      if (!doc.exists || doc.data() == null) return null;
-      return Food.fromJson(doc.data()!, doc.id);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  static Future<void> deleteFood(String foodId) async {
-    await _db.collection(foodCollection).doc(foodId).delete();
-  }
-
-  static Future<List<Food>> getAllFoods() async {
-    try {
-      final snapshot = await _db.collection(foodCollection).get();
-      return snapshot.docs.map((d) => Food.fromJson(d.data(), d.id)).toList();
-    } catch (_) {
-      return [];
-    }
-  }
-
-  static Future<bool> foodExists(String foodId) async {
-    final doc = await _db.collection(foodCollection).doc(foodId).get();
-    return doc.exists;
-  }
-
-  // ---------------------------------------------------------------------------
-  // MEAL CRUD
+  // MEAL CRUD (meals collection, keyed by userId)
   // ---------------------------------------------------------------------------
 
   static Future<void> createMeal(Meal meal) async {
@@ -146,16 +151,15 @@ class FirestoreHelper {
   }
 
   static Future<List<Meal>> getMealsForUserOnDate(
-    String email,
+    String userId,
     DateTime date,
   ) async {
     final snap = await _db
         .collection(mealsCollection)
-        .where('userEmail', isEqualTo: email)
+        .where('userId', isEqualTo: userId)
         .where(
           'date',
-          isEqualTo:
-              Timestamp.fromDate(DateTime(date.year, date.month, date.day)),
+          isEqualTo: Timestamp.fromDate(DateTime(date.year, date.month, date.day)),
         )
         .get();
     return snap.docs.map((d) => Meal.fromJson(d.data(), d.id)).toList();
@@ -169,7 +173,7 @@ class FirestoreHelper {
   /// - Looks up DailyLogs/{yyyy-MM-dd}; if missing, builds it from Meals on that date.
   /// - Returns null when nothing is logged for that date.
   static Future<DailyLog?> getDailyLogForDate(
-    String email,
+    String userId,
     DateTime date,
   ) async {
     final logId = _dateId(date);
@@ -180,11 +184,10 @@ class FirestoreHelper {
       return DailyLog.fromMap(data);
     }
 
-    final meals = await getMealsForUserOnDate(email, date);
+    final meals = await getMealsForUserOnDate(userId, date);
     if (meals.isEmpty) return null;
     return DailyLog.fromMeals(
       id: logId,
-      email: email,
       date: date,
       meals: meals,
     );
@@ -202,11 +205,6 @@ class FirestoreHelper {
       final usersSnap = await _db.collection(usersCollection).get();
       for (final doc in usersSnap.docs) {
         print('User ${doc.id}: ${doc.data()}');
-      }
-
-      final foodsSnap = await _db.collection(foodCollection).get();
-      for (final doc in foodsSnap.docs) {
-        print('Food ${doc.id}: ${doc.data()}');
       }
     } catch (e) {
       print('Error printing database: $e');

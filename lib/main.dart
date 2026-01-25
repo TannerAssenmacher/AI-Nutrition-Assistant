@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 import 'screens/home_screen.dart';
-import 'db/user.dart';
-import 'db/food.dart';
+//import 'db/user.dart';
+//import 'db/food.dart';
 import 'db/firestore_helper.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
@@ -20,25 +22,36 @@ import 'screens/camera_capture_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Initial page route if no user is logged in.
+  String initialRoute = '/login';
+
   try {
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
+
     // Load the .env before Firebase
     await dotenv.load(fileName: ".env");
-    print(
-        "✅ Loaded GOOGLE_API_KEY_ANDROID: ${dotenv.env['GOOGLE_API_KEY_ANDROID']}");
 
     // Initialize Firebase with better error handling
     await _initializeFirebase();
 
+    // If Firebase restored a user session and email is verified, skip login
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null && currentUser.emailVerified) {
+      initialRoute = '/home';
+    }
+
     // Print all Firestore data once at startup (only if needed)
     await FirestoreHelper.printAllData();
   } catch (e) {
-    print("❌ Error during initialization: $e");
+    print("Error during initialization: $e");
     // Continue with app launch even if there's an error
   }
 
   runApp(
-    const ProviderScope(
-      child: MyApp(),
+    ProviderScope(
+      child: MyApp(initialRoute: initialRoute),
     ),
   );
 }
@@ -50,32 +63,32 @@ Future<void> _initializeFirebase() async {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
-      print("✅ Firebase initialized for the first time");
+      print("Firebase initialized for the first time");
     } else {
       // Firebase already exists, try to get the default app
       try {
         Firebase.app(); // This will throw if no default app exists
-        print("✅ Firebase already initialized, using existing instance");
+        print("Firebase already initialized, using existing instance");
       } catch (e) {
         // If getting the app fails, try to initialize anyway
         print(
-            "⚠️ Firebase app exists but couldn't access it, reinitializing...");
+            "Firebase app exists but couldn't access it, reinitializing...");
         await Firebase.initializeApp(
           options: DefaultFirebaseOptions.currentPlatform,
         );
-        print("✅ Firebase reinitialized successfully");
+        print("Firebase reinitialized successfully");
       }
     }
   } on FirebaseException catch (e) {
     if (e.code == 'duplicate-app') {
-      print("✅ Firebase already initialized (duplicate-app error caught)");
+      print("Firebase already initialized (duplicate-app error caught)");
       // This is fine, Firebase is already working
     } else {
-      print("❌ Firebase initialization failed: ${e.message}");
+      print("Firebase initialization failed: ${e.message}");
       rethrow;
     }
   } catch (e) {
-    print("❌ Unexpected error during Firebase initialization: $e");
+    print("Unexpected error during Firebase initialization: $e");
     rethrow;
   }
 }
@@ -136,7 +149,9 @@ Future<void> _initializeFirebase() async {
 // await FirebaseFirestore.instance.collection("Food").doc(beefSirloin.id).set(beefSirloin.toJson());
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({super.key, required this.initialRoute});
+
+  final String initialRoute;
 
   @override
   Widget build(BuildContext context) {
@@ -147,7 +162,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       debugShowCheckedModeBanner: false,
-      initialRoute: '/login',
+      initialRoute: initialRoute,
       routes: {
         '/login': (context) => const LoginPage(),
         '/register': (context) => const RegisterPage(),
