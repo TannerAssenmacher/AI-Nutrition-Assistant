@@ -104,60 +104,83 @@ class _DailyLogCalendarScreenState
       isScrollControlled: true,
       builder: (context) {
         final dateLabel = DateFormat('MMMM d, yyyy').format(day);
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 12,
-            bottom: MediaQuery.of(context).padding.bottom + 12,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                dateLabel,
-                style: Theme.of(context)
-                    .textTheme
-                    .titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w600),
+        return DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          minChildSize: 0.3,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (context, scrollController) {
+            return SingleChildScrollView(
+              controller: scrollController,
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  top: 12,
+                  bottom: MediaQuery.of(context).padding.bottom + 12,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      dateLabel,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.brown.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.brown.shade200),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _MacroSummaryItem(
+                            label: 'Cal',
+                            value: '${totals['calories']?.toInt() ?? 0}',
+                          ),
+                          _MacroSummaryItem(
+                            label: 'Prot',
+                            value:
+                                '${totals['protein']?.toStringAsFixed(1) ?? 0}g',
+                          ),
+                          _MacroSummaryItem(
+                            label: 'Carbs',
+                            value:
+                                '${totals['carbs']?.toStringAsFixed(1) ?? 0}g',
+                          ),
+                          _MacroSummaryItem(
+                            label: 'Fat',
+                            value: '${totals['fat']?.toStringAsFixed(1) ?? 0}g',
+                          ),
+                          _MacroSummaryItem(
+                            label: 'Fiber',
+                            value:
+                                '${totals['fiber']?.toStringAsFixed(1) ?? 0}g',
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    if (rows.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        child: Text('No entries for this day'),
+                      )
+                    else
+                      _FoodsList(rows: rows),
+                    const SizedBox(height: 12),
+                  ],
+                ),
               ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _MacroChip(
-                      label: 'Calories',
-                      value: totals['calories'] ?? 0,
-                      suffix: ' kcal'),
-                  _MacroChip(
-                      label: 'Protein',
-                      value: totals['protein'] ?? 0,
-                      suffix: ' g'),
-                  _MacroChip(
-                      label: 'Carbs',
-                      value: totals['carbs'] ?? 0,
-                      suffix: ' g'),
-                  _MacroChip(
-                      label: 'Fat', value: totals['fat'] ?? 0, suffix: ' g'),
-                  _MacroChip(
-                      label: 'Fiber',
-                      value: totals['fiber'] ?? 0,
-                      suffix: ' g'),
-                ],
-              ),
-              const SizedBox(height: 12),
-              if (rows.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                  child: Text('No entries for this day'),
-                )
-              else
-                _FoodsTable(date: day, rows: rows),
-              const SizedBox(height: 12),
-            ],
-          ),
+            );
+          },
         );
       },
     );
@@ -252,6 +275,37 @@ class _DailyLogCalendarScreenState
                   final foods = _foodsForDay(day);
                   final dayTotals = _totalsForDay(day);
 
+                  // Calculate average goal completion percentage
+                  final calPercentage = calorieGoal > 0
+                      ? ((dayTotals['calories'] ?? 0) / calorieGoal * 100)
+                      : 0.0;
+                  final protPercentage = proteinGoal > 0
+                      ? ((dayTotals['protein'] ?? 0) / proteinGoal * 100)
+                      : 0.0;
+                  final carbsPercentage = carbsGoal > 0
+                      ? ((dayTotals['carbs'] ?? 0) / carbsGoal * 100)
+                      : 0.0;
+                  final fatPercentage = fatGoal > 0
+                      ? ((dayTotals['fat'] ?? 0) / fatGoal * 100)
+                      : 0.0;
+                  final avgPercentage = (calPercentage +
+                          protPercentage +
+                          carbsPercentage +
+                          fatPercentage) /
+                      4;
+
+                  // Determine color based on average
+                  Color goalIndicatorColor;
+                  if (avgPercentage >= 100) {
+                    goalIndicatorColor = Colors.green;
+                  } else if (avgPercentage >= 80) {
+                    goalIndicatorColor = Colors.orange;
+                  } else if (avgPercentage >= 50) {
+                    goalIndicatorColor = Colors.yellow.shade700;
+                  } else {
+                    goalIndicatorColor = Colors.grey;
+                  }
+
                   return GestureDetector(
                     onTap: () {
                       setState(() {
@@ -314,6 +368,21 @@ class _DailyLogCalendarScreenState
                                       color: isToday
                                           ? const Color(0xFF6DCFF6)
                                           : Colors.black87,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                // Goal completion indicator circle
+                                Container(
+                                  width: 12,
+                                  height: 12,
+                                  decoration: BoxDecoration(
+                                    color: goalIndicatorColor,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: goalIndicatorColor.withValues(
+                                          alpha: 0.5),
+                                      width: 1,
                                     ),
                                   ),
                                 ),
@@ -434,6 +503,124 @@ class _MiniMacroChip extends StatelessWidget {
   }
 }
 
+class _FoodsList extends StatelessWidget {
+  const _FoodsList({required this.rows});
+
+  final List<_FoodRow> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Food Items',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: rows.length,
+          itemBuilder: (context, index) {
+            final row = rows[index];
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.brown.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    row.name,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Cal: ${row.calories.toInt()}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                      Text(
+                        'Prot: ${row.protein.toStringAsFixed(1)}g',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                      Text(
+                        'Carbs: ${row.carbs.toStringAsFixed(1)}g',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                      Text(
+                        'Fat: ${row.fat.toStringAsFixed(1)}g',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _MacroSummaryItem extends StatelessWidget {
+  const _MacroSummaryItem({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: Colors.grey.shade600,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _FoodsTable extends StatelessWidget {
   const _FoodsTable({required this.date, required this.rows});
 
@@ -442,35 +629,37 @@ class _FoodsTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateLabel =
-        '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          dateLabel,
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        const SizedBox(height: 12),
         Table(
           border: TableBorder.all(color: Colors.brown.shade200),
           columnWidths: const {
-            0: FlexColumnWidth(2),
-            1: FlexColumnWidth(1),
+            0: FlexColumnWidth(3),
+            1: FlexColumnWidth(1.5),
+            2: FlexColumnWidth(1.5),
+            3: FlexColumnWidth(1.5),
+            4: FlexColumnWidth(1.5),
           },
           children: [
             TableRow(
               decoration: BoxDecoration(color: Colors.brown.shade50),
               children: const [
-                _TableCellText('Food Item', isHeader: true),
-                _TableCellText('Weight', isHeader: true),
+                _TableCellText('Food', isHeader: true),
+                _TableCellText('Cal', isHeader: true),
+                _TableCellText('Pro', isHeader: true),
+                _TableCellText('Carb', isHeader: true),
+                _TableCellText('Fat', isHeader: true),
               ],
             ),
             for (final row in rows)
               TableRow(
                 children: [
                   _TableCellText(row.name),
-                  _TableCellText(row.amount),
+                  _TableCellText('${row.calories.toInt()}'),
+                  _TableCellText('${row.protein.toStringAsFixed(1)}g'),
+                  _TableCellText('${row.carbs.toStringAsFixed(1)}g'),
+                  _TableCellText('${row.fat.toStringAsFixed(1)}g'),
                 ],
               ),
           ],
@@ -513,7 +702,7 @@ class _MacroProgressIndicator extends StatelessWidget {
     return Row(
       children: [
         SizedBox(
-          width: 32,
+          width: 28,
           child: Text(
             label,
             style: TextStyle(
@@ -557,7 +746,7 @@ class _MacroProgressIndicator extends StatelessWidget {
         ),
         const SizedBox(width: 4),
         SizedBox(
-          width: 40,
+          width: 32,
           child: Text(
             '${percentage.toInt()}%',
             style: TextStyle(
@@ -568,9 +757,9 @@ class _MacroProgressIndicator extends StatelessWidget {
           ),
         ),
         if (valueLabel != null) ...[
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
           SizedBox(
-            width: 65,
+            width: 50,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
               decoration: BoxDecoration(
