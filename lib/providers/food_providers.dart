@@ -1,11 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../db/food.dart';
 
 part 'food_providers.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 class FoodLog extends _$FoodLog {
   @override
   List<FoodItem> build() {

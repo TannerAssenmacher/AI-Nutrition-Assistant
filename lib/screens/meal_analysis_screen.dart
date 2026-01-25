@@ -2,22 +2,28 @@ import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:nutrition_assistant/navigation/nav_helper.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
 
 import '../services/meal_analysis_service.dart';
+import '../db/food.dart';
+import '../providers/food_providers.dart';
+import '../providers/auth_providers.dart';
+import '../providers/firestore_providers.dart';
 import 'camera_capture_screen.dart';
 
-class CameraScreen extends StatefulWidget {
+class CameraScreen extends ConsumerStatefulWidget {
   const CameraScreen({super.key});
 
   @override
-  State<CameraScreen> createState() => _CameraScreenState();
+  ConsumerState<CameraScreen> createState() => _CameraScreenState();
 }
 
-class _CameraScreenState extends State<CameraScreen> {
+class _CameraScreenState extends ConsumerState<CameraScreen> {
   bool _isAnalyzing = false;
+  bool _isSaving = false;
   MealAnalysis? _analysisResult;
   String? _errorMessage;
 
@@ -102,6 +108,102 @@ class _CameraScreenState extends State<CameraScreen> {
         }
       } catch (_) {
         // Best-effort cleanup.
+      }
+    }
+  }
+
+  Future<void> _addMealToCalendar() async {
+    final analysis = _analysisResult;
+    if (analysis == null || analysis.foods.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('No analysis to add. Capture a meal first.')),
+      );
+      return;
+    }
+
+    if (_isSaving) return;
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      final now = DateTime.now();
+      final container = ProviderScope.containerOf(context, listen: false);
+      final notifier = container.read(foodLogProvider.notifier);
+      final authUser = container.read(authServiceProvider);
+
+      final userId = authUser?.uid;
+      if (userId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Please sign in to save meals to your calendar.')),
+        );
+        return;
+      }
+
+      final firestoreLog =
+          container.read(firestoreFoodLogProvider(userId).notifier);
+      int added = 0;
+
+      for (final food in analysis.foods) {
+        if (food.mass <= 0) {
+          continue;
+        }
+
+        final mass = food.mass;
+        final caloriesPerGram = food.calories / mass;
+        final proteinPerGram = food.protein / mass;
+        final carbsPerGram = food.carbs / mass;
+        final fatPerGram = food.fat / mass;
+
+        notifier.addFoodItem(
+          FoodItem(
+            id: '${now.microsecondsSinceEpoch}-$added',
+            name: food.name,
+            mass_g: mass,
+            calories_g: caloriesPerGram,
+            protein_g: proteinPerGram,
+            carbs_g: carbsPerGram,
+            fat: fatPerGram,
+            mealType: 'meal',
+            consumedAt: now,
+          ),
+        );
+
+        await firestoreLog.addFood(
+          userId,
+          FoodItem(
+            id: '${now.microsecondsSinceEpoch}-$added',
+            name: food.name,
+            mass_g: mass,
+            calories_g: caloriesPerGram,
+            protein_g: proteinPerGram,
+            carbs_g: carbsPerGram,
+            fat: fatPerGram,
+            mealType: 'meal',
+            consumedAt: now,
+          ),
+        );
+
+        added++;
+      }
+
+      if (!mounted) return;
+
+      final message = added > 0
+          ? 'Added $added item${added == 1 ? '' : 's'} to today.'
+          : 'No items added (missing weights).';
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
       }
     }
   }
@@ -225,8 +327,8 @@ class _CameraScreenState extends State<CameraScreen> {
         content: TextField(
           controller: controller,
           autofocus: true,
-          keyboardType:
-              const TextInputType.numberWithOptions(decimal: true, signed: false),
+          keyboardType: const TextInputType.numberWithOptions(
+              decimal: true, signed: false),
           textInputAction: TextInputAction.done,
           decoration: const InputDecoration(
             labelText: 'Weight in grams',
@@ -271,6 +373,8 @@ class _CameraScreenState extends State<CameraScreen> {
         analysis: _analysisResult!,
         onEditName: _promptEditName,
         onEditWeight: _promptEditWeight,
+        onAddToCalendar: _addMealToCalendar,
+        isSavingToCalendar: _isSaving,
       );
     }
 
@@ -473,12 +577,16 @@ class MealAnalysisResultWidget extends StatelessWidget {
   final MealAnalysis analysis;
   final void Function(int) onEditName;
   final void Function(int) onEditWeight;
+  final Future<void> Function() onAddToCalendar;
+  final bool isSavingToCalendar;
 
   const MealAnalysisResultWidget({
     super.key,
     required this.analysis,
     required this.onEditName,
     required this.onEditWeight,
+    required this.onAddToCalendar,
+    required this.isSavingToCalendar,
   });
 
   @override
@@ -533,7 +641,8 @@ class MealAnalysisResultWidget extends StatelessWidget {
                               ),
                               _NutrientChip(
                                 label: 'Calories',
-                                value: '${food.calories.toStringAsFixed(0)} kcal',
+                                value:
+                                    '${food.calories.toStringAsFixed(0)} kcal',
                               ),
                               _NutrientChip(
                                 label: 'Protein',
@@ -628,6 +737,25 @@ class MealAnalysisResultWidget extends StatelessWidget {
                     grams: analysis.totalFat,
                     percentage: analysis.fatPercentage,
                     color: Colors.green,
+                  ),
+                  const SizedBox(height: 16),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: FilledButton.icon(
+                      onPressed: isSavingToCalendar ? null : onAddToCalendar,
+                      icon: isSavingToCalendar
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.calendar_month),
+                      label: Text(
+                        isSavingToCalendar
+                            ? 'Adding...'
+                            : 'Add to today\'s calendar',
+                      ),
+                    ),
                   ),
                 ],
               ),
