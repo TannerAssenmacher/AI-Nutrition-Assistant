@@ -2,6 +2,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/gemini_chat_service.dart';
+import '../providers/auth_providers.dart';
+import '../providers/firestore_providers.dart';
+import '../db/food.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key});
@@ -115,6 +118,46 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     notifier.handleMealTypeSelection(meal, cuisine);
 
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+  }
+
+  Future<void> _addRecipeToLog(Map<String, dynamic> recipe,
+      {required String mealType}) async {
+    final authUser = ref.read(authServiceProvider);
+    final userId = authUser?.uid;
+    if (userId == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please sign in to save meals.')),
+        );
+      }
+      return;
+    }
+
+    final name = (recipe['label'] ?? 'Meal').toString();
+    final caloriesTotal = (recipe['calories'] ?? 0).toDouble();
+
+    // Store as a single serving entry; macros default to 0 if unavailable.
+    final item = FoodItem(
+      id: 'recipe-${DateTime.now().microsecondsSinceEpoch}',
+      name: name,
+      mass_g: 1,
+      calories_g: caloriesTotal,
+      protein_g: (recipe['protein'] ?? 0).toDouble(),
+      carbs_g: (recipe['carbs'] ?? 0).toDouble(),
+      fat: (recipe['fat'] ?? 0).toDouble(),
+      mealType: mealType.isNotEmpty ? mealType : 'meal',
+      consumedAt: DateTime.now(),
+    );
+
+    await ref
+        .read(firestoreFoodLogProvider(userId).notifier)
+        .addFood(userId, item);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Added "$name" to today\'s log.')),
+      );
+    }
   }
 
   // load more recipes based off user's discretion
@@ -257,7 +300,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              ...recipes.map((r) => _RecipeCard(recipe: r)),
+                              ...recipes.map(
+                                (r) => _RecipeCard(
+                                  recipe: r,
+                                  mealType: _selectedMealType ?? 'Meal',
+                                  onAdd: () => _addRecipeToLog(
+                                    r,
+                                    mealType: _selectedMealType ?? 'meal',
+                                  ),
+                                ),
+                              ),
                               const SizedBox(height: 6),
                               Center(
                                 child: OutlinedButton.icon(
@@ -499,8 +551,11 @@ class MealProfileSummaryBubble extends StatelessWidget {
 
 class _RecipeCard extends StatelessWidget {
   final Map<String, dynamic> recipe;
+  final String mealType;
+  final VoidCallback onAdd;
 
-  const _RecipeCard({required this.recipe});
+  const _RecipeCard(
+      {required this.recipe, required this.mealType, required this.onAdd});
 
   @override
   Widget build(BuildContext context) {
@@ -529,6 +584,7 @@ class _RecipeCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text('Cuisine: $cuisine'),
           Text('Calories: $calories kcal'),
+          Text('Meal type: $mealType'),
           const SizedBox(height: 8),
           const Text('Ingredients',
               style: TextStyle(fontWeight: FontWeight.w600)),
@@ -543,7 +599,20 @@ class _RecipeCard extends StatelessWidget {
               url.toString(),
               style: const TextStyle(fontSize: 12, color: Colors.blueGrey),
             ),
-          ]
+          ],
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerRight,
+            child: ElevatedButton.icon(
+              onPressed: onAdd,
+              icon: const Icon(Icons.playlist_add),
+              label: const Text("Add to today's log"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green[600],
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ),
         ],
       ),
     );

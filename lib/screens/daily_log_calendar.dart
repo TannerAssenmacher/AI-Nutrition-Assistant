@@ -33,6 +33,7 @@ class _DailyLogCalendarScreenState
         final fat = item.fat * item.mass_g;
 
         rows.add(_FoodRow(
+          id: item.id,
           meal: item.mealType,
           name: item.name,
           amount: '${item.mass_g.toStringAsFixed(0)} g',
@@ -130,8 +131,9 @@ class _DailyLogCalendarScreenState
 
   void _showFoodsSheet(
     DateTime day,
-    List<_FoodRow> rows,
-    Map<String, double> totals,
+    List<_FoodRow> initialRows,
+    Map<String, double> initialTotals,
+    String userId,
   ) {
     showModalBottomSheet(
       context: context,
@@ -145,75 +147,101 @@ class _DailyLogCalendarScreenState
           maxChildSize: 0.9,
           expand: false,
           builder: (context, scrollController) {
-            return SingleChildScrollView(
-              controller: scrollController,
-              child: Padding(
-                padding: EdgeInsets.only(
-                  left: 16,
-                  right: 16,
-                  top: 12,
-                  bottom: MediaQuery.of(context).padding.bottom + 12,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      dateLabel,
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w600),
+            return Consumer(
+              builder: (context, ref, _) {
+                // Live-filter the latest stream so the sheet updates immediately after deletes
+                final logAsync = ref.watch(firestoreFoodLogProvider(userId));
+                final rows = logAsync.maybeWhen(
+                  data: (log) => _foodsForDay(day, log),
+                  orElse: () => initialRows,
+                );
+                final totals = logAsync.maybeWhen(
+                  data: (log) => _totalsForDay(day, log),
+                  orElse: () => initialTotals,
+                );
+
+                return SingleChildScrollView(
+                  controller: scrollController,
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      left: 16,
+                      right: 16,
+                      top: 12,
+                      bottom: MediaQuery.of(context).padding.bottom + 12,
                     ),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.brown.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.brown.shade200),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          _MacroSummaryItem(
-                            label: 'Cal',
-                            value: '${totals['calories']?.toInt() ?? 0}',
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          dateLabel,
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.brown.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.brown.shade200),
                           ),
-                          _MacroSummaryItem(
-                            label: 'Prot',
-                            value:
-                                '${totals['protein']?.toStringAsFixed(1) ?? 0}g',
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              _MacroSummaryItem(
+                                label: 'Cal',
+                                value: '${totals['calories']?.toInt() ?? 0}',
+                              ),
+                              _MacroSummaryItem(
+                                label: 'Prot',
+                                value:
+                                    '${totals['protein']?.toStringAsFixed(1) ?? 0}g',
+                              ),
+                              _MacroSummaryItem(
+                                label: 'Carbs',
+                                value:
+                                    '${totals['carbs']?.toStringAsFixed(1) ?? 0}g',
+                              ),
+                              _MacroSummaryItem(
+                                label: 'Fat',
+                                value:
+                                    '${totals['fat']?.toStringAsFixed(1) ?? 0}g',
+                              ),
+                              _MacroSummaryItem(
+                                label: 'Fiber',
+                                value:
+                                    '${totals['fiber']?.toStringAsFixed(1) ?? 0}g',
+                              ),
+                            ],
                           ),
-                          _MacroSummaryItem(
-                            label: 'Carbs',
-                            value:
-                                '${totals['carbs']?.toStringAsFixed(1) ?? 0}g',
+                        ),
+                        const SizedBox(height: 12),
+                        if (rows.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                            child: Text('No entries for this day'),
+                          )
+                        else
+                          _FoodsListWidget(
+                            rows: rows,
+                            onDelete: (foodId) async {
+                              debugPrint(
+                                  'UI delete tap: user=$userId foodId=$foodId day=${day.toIso8601String()}');
+                              await ref
+                                  .read(
+                                      firestoreFoodLogProvider(userId).notifier)
+                                  .removeFood(userId, foodId);
+                            },
                           ),
-                          _MacroSummaryItem(
-                            label: 'Fat',
-                            value: '${totals['fat']?.toStringAsFixed(1) ?? 0}g',
-                          ),
-                          _MacroSummaryItem(
-                            label: 'Fiber',
-                            value:
-                                '${totals['fiber']?.toStringAsFixed(1) ?? 0}g',
-                          ),
-                        ],
-                      ),
+                        const SizedBox(height: 12),
+                      ],
                     ),
-                    const SizedBox(height: 12),
-                    if (rows.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 12),
-                        child: Text('No entries for this day'),
-                      )
-                    else
-                      _FoodsList(rows: rows),
-                    const SizedBox(height: 12),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              },
             );
           },
         );
@@ -376,12 +404,12 @@ class _DailyLogCalendarScreenState
                         setState(() {
                           _selectedDay = day;
                         });
-                        _showFoodsSheet(day, foods, dayTotals);
+                        _showFoodsSheet(day, foods, dayTotals, userId);
                       },
                       child: Container(
                         margin: const EdgeInsets.symmetric(
                             vertical: 6, horizontal: 8),
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.fromLTRB(16, 16, 10, 16),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(12),
@@ -559,10 +587,12 @@ class _MiniMacroChip extends StatelessWidget {
   }
 }
 
-class _FoodsList extends StatelessWidget {
-  const _FoodsList({required this.rows});
+class _FoodsListWidget extends StatelessWidget {
+  const _FoodsListWidget({Key? key, required this.rows, required this.onDelete})
+      : super(key: key);
 
   final List<_FoodRow> rows;
+  final Future<void> Function(String foodId) onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -583,59 +613,105 @@ class _FoodsList extends StatelessWidget {
           itemCount: rows.length,
           itemBuilder: (context, index) {
             final row = rows[index];
-            return Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.brown.shade200),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    row.name,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
+            return Material(
+              key: ValueKey(row.id),
+              color: Colors.transparent,
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.brown.shade200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            row.name,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        Material(
+                          color: Colors.white,
+                          child: InkWell(
+                            onTap: () async {
+                              try {
+                                debugPrint(
+                                    'Delete button pressed for row: ${row.id}');
+                                await onDelete(row.id);
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Removed "${row.name}"'),
+                                      duration: const Duration(seconds: 2),
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Failed to remove: $e'),
+                                      duration: const Duration(seconds: 3),
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                            borderRadius: BorderRadius.circular(24),
+                            child: Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: Icon(Icons.close,
+                                  size: 18, color: Colors.grey.shade700),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Cal: ${row.calories.toInt()}',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey.shade700,
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Cal: ${row.calories.toInt()}',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey.shade700,
+                          ),
                         ),
-                      ),
-                      Text(
-                        'Prot: ${row.protein.toStringAsFixed(1)}g',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey.shade700,
+                        Text(
+                          'Prot: ${row.protein.toStringAsFixed(1)}g',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey.shade700,
+                          ),
                         ),
-                      ),
-                      Text(
-                        'Carbs: ${row.carbs.toStringAsFixed(1)}g',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey.shade700,
+                        Text(
+                          'Carbs: ${row.carbs.toStringAsFixed(1)}g',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey.shade700,
+                          ),
                         ),
-                      ),
-                      Text(
-                        'Fat: ${row.fat.toStringAsFixed(1)}g',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey.shade700,
+                        Text(
+                          'Fat: ${row.fat.toStringAsFixed(1)}g',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey.shade700,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
             );
           },
@@ -815,15 +891,17 @@ class _MacroProgressIndicator extends StatelessWidget {
         if (valueLabel != null) ...[
           const SizedBox(width: 4),
           SizedBox(
-            width: 50,
+            width: 70,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
                 valueLabel!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w500,
@@ -839,6 +917,7 @@ class _MacroProgressIndicator extends StatelessWidget {
 }
 
 class _FoodRow {
+  final String id;
   final String meal;
   final String name;
   final String amount;
@@ -849,6 +928,7 @@ class _FoodRow {
   final double fiber;
 
   const _FoodRow({
+    required this.id,
     required this.meal,
     required this.name,
     required this.amount,
