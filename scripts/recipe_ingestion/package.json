@@ -1,0 +1,13 @@
+{
+  "name": "recipe-fetcher",
+  "version": "1.0.0",
+  "description": "Fetch recipes from TheMealDB to JSON",
+  "type": "module",
+  "scripts": {
+    "fetch": "node fetch_recipes.js",
+    "upload": "node upload_recipes.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  }
+}

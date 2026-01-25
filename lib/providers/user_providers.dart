@@ -43,7 +43,8 @@ class UserProfileNotifier extends _$UserProfileNotifier {
 }
 
 // Helper to compute age from DOB
-int _ageFromDob(DateTime dob) {
+int _ageFromDob(DateTime? dob) {
+  if (dob == null) return 0;
   final now = DateTime.now();
   int age = now.year - dob.year;
   if (now.month < dob.month ||

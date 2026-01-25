@@ -4,10 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import '../providers/food_providers.dart';
 import '../db/firestore_helper.dart';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 
 part 'gemini_chat_service.g.dart';
 
@@ -40,9 +40,6 @@ class GeminiChatService extends _$GeminiChatService {
     "drink",
     "cream"
   ];
-
-  //helper
-  String _key(String mealType, String cuisineType) => '$mealType|$cuisineType';
 
   //build() initial state
   @override
@@ -203,6 +200,10 @@ class GeminiChatService extends _$GeminiChatService {
           .where((d) => d.trim().isNotEmpty && d.toLowerCase() != 'none')
           .toList();
 
+      final likes = preferences.likes
+          .where((l) => l.trim().isNotEmpty && l.toLowerCase() != 'none')
+          .toList();
+
       //user confirmation on meal profile
       if (!fromConfirmation) {
         _pendingMealType = mealType;
@@ -215,11 +216,15 @@ class GeminiChatService extends _$GeminiChatService {
           ChatMessage(
             content: jsonEncode({
               "type": "meal_profile_summary",
-              "dietary": dietaryHabits,
-              "health": healthRestrictions,
-              "dislikes": dislikes,
               "mealType": mealType,
               "cuisineType": cuisineType,
+              "dietary": dietaryHabits,
+              "health": healthRestrictions,
+              "likes": likes,
+              "dislikes": dislikes,
+              "dietaryGoal": mealProfile.dietaryGoal,
+              "dailyCalorieGoal": mealProfile.dailyCalorieGoal,
+              "macroGoals": mealProfile.macroGoals,
             }),
             isUser: false,
             timestamp: DateTime.now(),
@@ -232,134 +237,140 @@ class GeminiChatService extends _$GeminiChatService {
         _pendingCuisineType = cuisineType;
       }
 
-      final appId = dotenv.env["EDAMAM_API_ID"];
-      final appKey = dotenv.env["EDAMAM_API_KEY"];
+      // Prepare macro goals as percentages
+      final macroGoals = {
+        'protein': mealProfile.macroGoals['protein'] ?? 20.0,
+        'carbs': mealProfile.macroGoals['carbs'] ?? 50.0,
+        'fat': mealProfile.macroGoals['fat'] ?? 30.0,
+      };
 
-      final params = <String>[
-        'type=public',
-        'mealType=$mealType',
-        'app_id=$appId',
-        'app_key=$appKey',
-      ];
+      // Call RAG-based searchRecipes Cloud Function with full user profile
+      final functions = FirebaseFunctions.instance;
+      final callable = functions.httpsCallable('searchRecipes');
 
-      if (cuisineType.isNotEmpty && cuisineType.toLowerCase() != "none") {
-        params.add('cuisineType=${Uri.encodeComponent(cuisineType)}');
-      }
+      final result = await callable.call({
+        // Meal context
+        'mealType': mealType,
+        'cuisineType': cuisineType,
+        
+        // Dietary restrictions and preferences
+        'healthRestrictions': healthRestrictions,
+        'dietaryHabits': dietaryHabits,
+        'dislikes': dislikes,
+        'likes': likes,
+        
+        // User profile data for personalized filtering
+        'sex': appUser.sex,
+        'activityLevel': appUser.activityLevel,
+        'dietaryGoal': mealProfile.dietaryGoal,
+        'dailyCalorieGoal': mealProfile.dailyCalorieGoal,
+        'macroGoals': macroGoals,
+        
+        // Pagination
+        'excludeIds': _shownRecipeUris.toList(),
+        'limit': 10,
+      });
 
-      for (final d in dietaryHabits) {
-        params.add("diet=$d");
-      }
-      for (final h in healthRestrictions) {
-        params.add("health=$h");
-      }
-      for (final x in dislikes) {
-        params.add("excluded=$x");
-      }
+      final data = result.data as Map<String, dynamic>;
+      final recipes = (data['recipes'] as List?) ?? [];
+      final isExactMatch = data['isExactMatch'] as bool? ?? true;
 
-      if (forceNewBatch &&
-          (_recipeOffsets[_key(mealType, cuisineType)] == null)) {
-        _recipeOffsets[_key(mealType, cuisineType)] = 0;
-      }
-
-      // new code:
-      int from = _recipeOffsets[_key(mealType, cuisineType)] ?? 0;
-      int to = from + _batchSize;
-      print("from $from and to $to");
-
-      // increment for next batch
-      _recipeOffsets[_key(mealType, cuisineType)] = to;
-
-      params.add("from=$from");
-      params.add("to=$to");
-
-      final uri = Uri.parse(
-          "https://api.edamam.com/api/recipes/v2?${params.join('&')}");
-
-      final response = await http.get(uri);
-      final jsonBody = jsonDecode(response.body);
-      final hits = (jsonBody["hits"] as List?) ?? [];
-
-      if (hits.isEmpty) {
+      if (recipes.isEmpty) {
         state = [
           ...state,
           ChatMessage(
             content:
-                "I couldn't find recipes that match your preferences. Try different options?",
+                "I couldn't find any recipes right now. Please try adjusting your preferences or selecting a different cuisine.",
             isUser: false,
           )
         ];
         return;
       }
 
+      // Show different message based on whether results are exact matches
+      if (!isExactMatch) {
+        state = [
+          ...state,
+          ChatMessage(
+            content:
+                "I couldn't find recipes that match all your preferences exactly. Here are some close alternatives that you might enjoy:",
+            isUser: false,
+          ),
+        ];
+      } else {
+        state = [
+          ...state,
+          ChatMessage(
+            content:
+                "Here are some recipes I found that match your nutrition profile!",
+            isUser: false,
+          ),
+        ];
+      }
+
       final List<Map<String, dynamic>> recipeList = [];
 
-      final filteredHits = hits.where((hit) {
-        final recipe = hit['recipe'];
-        final uri = recipe['uri'] as String;
-        final labelLower = (recipe["label"] ?? "").toString().toLowerCase();
+      final filteredRecipes = recipes.where((recipe) {
+        final id = recipe['id'] as String;
+        final labelLower = (recipe['label'] ?? '').toString().toLowerCase();
 
         // skip non-meals
         if (nonMeals.any((nm) => labelLower.contains(nm))) return false;
 
         // skip already shown
-        if (_shownRecipeUris.contains(uri)) return false;
+        if (_shownRecipeUris.contains(id)) return false;
 
         return true;
       }).toList();
 
-      for (final hit in filteredHits.take(3)) {
-        final recipe = hit['recipe'];
-        _shownRecipeUris.add(recipe['uri'] as String);
+      for (final recipe in filteredRecipes.take(3)) {
+        _shownRecipeUris.add(recipe['id'] as String);
 
-        // merge ingredientLines + ingredients[].text
-        final rawLines = recipe["ingredientLines"] ?? [];
-        final rawIng = recipe["ingredients"] ?? [];
-
-        final allIngredients = [
-          ...List<String>.from(rawLines),
-          ...rawIng.map<String>((i) => (i["text"] ?? "").toString()).toList(),
-        ];
-
-        final ingredients = allIngredients
+        // Get ingredients from Cloud Function response
+        final rawIngredients = recipe['ingredients'] ?? [];
+        final ingredients = List<String>.from(rawIngredients)
             .map((e) => e.trim())
             .where((e) => e.isNotEmpty)
-            .toSet()
-            .toList()
-            .cast<String>();
+            .toList();
 
         print('ingredients: $ingredients');
         
-        final label = recipe["label"] ?? "Unknown Recipe";
-        final calories = (recipe["calories"] as num?)?.round() ?? 0;
-        final cuisine =
-            (recipe["cuisineType"] != null && recipe["cuisineType"].isNotEmpty)
-                ? recipe["cuisineType"][0]
-                : "General";
-        final url = recipe["url"] ?? "";
+        final label = recipe['label'] ?? 'Unknown Recipe';
+        final calories = (recipe['calories'] as num?)?.round() ?? 0;
+        final cuisine = recipe['cuisine'] ?? 'General';
+        final url = recipe['imageUrl'] ?? '';
 
-        //cooking instructins from gemini
-        final instructions =
-            await _generateInstructionsWithGemini(label, ingredients, calories);
+        // Use instructions from Cloud Function (already in Firestore)
+        // Fall back to Gemini-generated instructions if not available
+        String instructions = recipe['instructions'] ?? '';
+        if (instructions.isEmpty) {
+          instructions = await _generateInstructionsWithGemini(label, ingredients, calories);
+        }
 
         recipeList.add({
-          "label": label,
-          "cuisine": cuisine,
-          "ingredients": ingredients,
-          "calories": calories,
-          "instructions": instructions,
-          "url": url,
+          'label': label,
+          'cuisine': cuisine,
+          'ingredients': ingredients,
+          'calories': calories,
+          'instructions': instructions,
+          'url': url,
         });
       }
 
-      state = [
-        ...state,
-        ChatMessage(
-          content:
-              "Here are some recipes I found that match your nutrition profile!",
-          isUser: false,
-        ),
-      ];
+      // If no recipes passed filtering, inform user
+      if (recipeList.isEmpty) {
+        state = [
+          ...state,
+          ChatMessage(
+            content:
+                "I've shown you all the matching recipes I have. Try different options or adjust your preferences for more variety!",
+            isUser: false,
+          )
+        ];
+        return;
+      }
 
+      // Add the recipe results (intro message was already added above)
       state = [
         ...state,
         ChatMessage(
@@ -424,7 +435,7 @@ class GeminiChatService extends _$GeminiChatService {
     required String mealType,
     required String cuisineType,
   }) async {
-    if (mealType == null || cuisineType == null) {
+    if (mealType.isEmpty || cuisineType.isEmpty) {
       state = [
         ...state,
         ChatMessage(

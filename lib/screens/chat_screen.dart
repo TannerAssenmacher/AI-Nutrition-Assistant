@@ -421,9 +421,18 @@ class MealProfileSummaryBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final dietary = List<String>.from(data['dietary'] ?? const []);
     final health = List<String>.from(data['health'] ?? const []);
+    final likes = List<String>.from(data['likes'] ?? const []);
     final dislikes = List<String>.from(data['dislikes'] ?? const []);
     final mealType = (data['mealType'] ?? '').toString();
     final cuisineType = (data['cuisineType'] ?? '').toString();
+    final dietaryGoal = (data['dietaryGoal'] ?? '').toString();
+    final dailyCalorieGoal = data['dailyCalorieGoal'] as int? ?? 0;
+    final macroGoals = data['macroGoals'] as Map<String, dynamic>? ?? {};
+    
+    // Format macro goals as percentages
+    final proteinPct = (macroGoals['protein'] as num?)?.round() ?? 0;
+    final carbsPct = (macroGoals['carbs'] as num?)?.round() ?? 0;
+    final fatPct = (macroGoals['fat'] as num?)?.round() ?? 0;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -450,13 +459,20 @@ class MealProfileSummaryBubble extends StatelessWidget {
                     "Is this information correct?",
                     style: TextStyle(fontWeight: FontWeight.w700),
                   ),
-                  const SizedBox(height: 6),
-                  Text("Meal: $mealType"),
-                  Text("Cuisine: $cuisineType"),
-                  const SizedBox(height: 6),
-                  Text("Dietary: ${dietary.isEmpty ? "None" : dietary.join(", ")}"),
-                  Text("Health: ${health.isEmpty ? "None" : health.join(", ")}"),
-                  Text("Dislikes: ${dislikes.isEmpty ? "None" : dislikes.join(", ")}"),
+                  const SizedBox(height: 8),
+                  // Meal & Cuisine
+                  Text("🍽️ Meal: $mealType • Cuisine: $cuisineType"),
+                  const SizedBox(height: 4),
+                  // Goals
+                  Text("🎯 Goal: $dietaryGoal"),
+                  Text("🔥 Daily Calories: ${dailyCalorieGoal > 0 ? '$dailyCalorieGoal kcal' : 'Not set'}"),
+                  Text("📊 Macros: P $proteinPct% • C $carbsPct% • F $fatPct%"),
+                  const SizedBox(height: 4),
+                  // Preferences
+                  Text("✅ Dietary: ${dietary.isEmpty ? 'None' : dietary.join(', ')}"),
+                  Text("⚕️ Health: ${health.isEmpty ? 'None' : health.join(', ')}"),
+                  Text("👍 Likes: ${likes.isEmpty ? 'None' : likes.join(', ')}"),
+                  Text("👎 Dislikes: ${dislikes.isEmpty ? 'None' : dislikes.join(', ')}"),
                   const SizedBox(height: 10),
                   Row(
                     children: [
@@ -498,14 +514,23 @@ class _RecipeCard extends StatelessWidget {
 
   const _RecipeCard({required this.recipe});
 
+  // Capitalize first letter of each word
+  String _capitalize(String text) {
+    if (text.isEmpty) return text;
+    return text.split(' ').map((word) {
+      if (word.isEmpty) return word;
+      return word[0].toUpperCase() + word.substring(1).toLowerCase();
+    }).join(' ');
+  }
+
   @override
   Widget build(BuildContext context) {
     final label = recipe['label'] ?? 'Recipe';
-    final cuisine = recipe['cuisine'] ?? 'General';
+    final cuisine = _capitalize((recipe['cuisine'] ?? 'General').toString());
     final calories = recipe['calories'] ?? 0;
     final ingredients = List<String>.from(recipe['ingredients'] ?? const []);
     final instructions = recipe['instructions'] ?? '';
-    final url = recipe['url'] ?? '';
+    final imageUrl = recipe['url'] ?? '';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -518,6 +543,43 @@ class _RecipeCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Recipe image at the top
+          if (imageUrl.toString().isNotEmpty) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: 280,
+                  maxHeight: 200,
+                ),
+                child: Image.network(
+                  imageUrl.toString(),
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    width: 150,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Center(
+                      child: Icon(Icons.restaurant, size: 40, color: Colors.grey),
+                    ),
+                  ),
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Container(
+                      width: 150,
+                      height: 100,
+                      color: Colors.grey[200],
+                      child: const Center(child: CircularProgressIndicator()),
+                    );
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           Text(
             label,
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
@@ -533,13 +595,6 @@ class _RecipeCard extends StatelessWidget {
           const Text('Instructions',
               style: TextStyle(fontWeight: FontWeight.w600)),
           Text(instructions),
-          if (url.toString().isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(
-              url.toString(),
-              style: const TextStyle(fontSize: 12, color: Colors.blueGrey),
-            ),
-          ]
         ],
       ),
     );

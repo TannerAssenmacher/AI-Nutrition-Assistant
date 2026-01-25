@@ -17,7 +17,7 @@ class AppUser {
 
   final String firstname;
   final String lastname;
-  final DateTime dob;
+  final DateTime? dob;  // nullable - some users may not have DOB set
   final String sex;
   final double height; // inches
   final double weight; // pounds
@@ -36,7 +36,7 @@ class AppUser {
     String? id,
     required this.firstname,
     required this.lastname,
-    required this.dob,
+    this.dob,  // nullable
     required this.sex,
     required this.height,
     required this.weight,
