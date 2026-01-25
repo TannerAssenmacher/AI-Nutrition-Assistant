@@ -20,6 +20,9 @@ void handleNavTap(BuildContext context, int targetIndex) {
       targetRoute = '/calendar';
       useRegularPush = true; // Allow back navigation from history
       break;
+    case navIndexHistory:
+      targetRoute = '/calendar';
+      break;
     case navIndexHome:
       targetRoute = '/home';
       break;

@@ -1,6 +1,7 @@
 import 'meal.dart';
 import 'food.dart';
 import 'user.dart';
+import 'meal_profile.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 /// DailyLog tracks a user's food intake and nutrition totals for a single day
@@ -38,6 +39,7 @@ class DailyLog {
       userId: map['userId'] ?? '',
       date: DateTime.parse(map['date']),
       foods: (map['foods'] as List? ?? [])
+          .map((item) => FoodItem.fromJson(item as Map<String, dynamic>))
           .map((item) => FoodItem.fromJson(item as Map<String, dynamic>))
           .toList(),
       mealIds: (map['mealIds'] as List? ?? []).cast<String>(), // add this
@@ -90,14 +92,6 @@ class DailyLog {
       'totalCarbs': totalCarbs,
       'totalFiber': totalFiber,
     };
-  }
-
-  void verifyApiKey() {
-    if (dotenv.env['USDA_API_KEY'] != null) {
-      print("USDA API Key successfully loaded.");
-    } else {
-      print("USDA API Key missing or not found.");
-    }
   }
 
   /// Creates a DailyLog for today for the given user

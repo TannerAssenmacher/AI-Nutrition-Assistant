@@ -170,8 +170,12 @@ class MyApp extends StatelessWidget {
         '/profile': (context) => const ProfilePage(),
         '/home': (context) => const HomeScreen(),
         '/chat': (context) => const ChatScreen(),
-        '/camera': (context) => const CameraScreen(),
+<<<<<<<<< Temporary merge branch 1
+        '/camera': (context) => const CameraCaptureScreen(),
         '/calendar': (context) => const DailyLogCalendarScreen(),
+=========
+        '/camera': (context) => const CameraScreen(),
+>>>>>>>>> Temporary merge branch 2
       },
     );
   }
