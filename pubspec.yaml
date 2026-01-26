@@ -14,7 +14,6 @@ dependencies:
   carousel_slider: ^4.2.1
   percent_indicator: ^4.2.3
   cupertino_icons: ^1.0.6
-  flutter_dotenv: ^6.0.0
   intl: ^0.18.1
   email_validator: ^2.1.17
 
@@ -55,5 +54,4 @@ flutter:
   uses-material-design: true
 
   assets:
-    - .env
     - lib/icons/

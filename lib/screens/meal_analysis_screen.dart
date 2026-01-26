@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:nutrition_assistant/config/env.dart';
 import 'package:nutrition_assistant/navigation/nav_helper.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
 
@@ -36,14 +36,15 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   Future<void> _captureAndAnalyze() async {
     if (_isAnalyzing) return;
 
-    final apiKey = dotenv.env['OPENAI_API_KEY'];
+    final apiKey = Env.openAiApiKey;
     if (apiKey == null || apiKey.isEmpty) {
       setState(() {
         _errorMessage = 'OpenAI API key is not configured.';
       });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('OpenAI API key is missing. Please add it to .env.'),
+          content: Text(
+              'OpenAI API key is missing. Pass OPENAI_API_KEY via --dart-define.'),
         ),
       );
       return;

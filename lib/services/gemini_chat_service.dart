@@ -2,8 +2,8 @@ import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../config/env.dart';
 import '../providers/food_providers.dart';
 import '../db/firestore_helper.dart';
 import 'dart:convert';
@@ -47,9 +47,10 @@ class GeminiChatService extends _$GeminiChatService {
   //build() initial state
   @override
   List<ChatMessage> build() {
+    final apiKey = Env.require(Env.geminiApiKey, 'GEMINI_API_KEY');
     model = GenerativeModel(
       model: 'gemini-2.5-flash', //fast & free
-      apiKey: dotenv.env['GEMINI_API_KEY']!,
+      apiKey: apiKey,
       systemInstruction: Content.text('''You are a helpful nutrition assistant. 
         Help users with meal planning, calorie counting, and nutrition advice.
         Be encouraging and provide practical tips.'''),
@@ -232,8 +233,19 @@ class GeminiChatService extends _$GeminiChatService {
         _pendingCuisineType = cuisineType;
       }
 
-      final appId = dotenv.env["EDAMAM_API_ID"];
-      final appKey = dotenv.env["EDAMAM_API_KEY"];
+      final appId = Env.edamamApiId;
+      final appKey = Env.edamamApiKey;
+      if (appId.isEmpty || appKey.isEmpty) {
+        state = [
+          ...state,
+          ChatMessage(
+            content:
+                "Recipe search keys are missing. Please set EDAMAM_API_ID and EDAMAM_API_KEY via --dart-define.",
+            isUser: false,
+          ),
+        ];
+        return;
+      }
 
       final params = <String>[
         'type=public',
