@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+
+enum AnalysisStage { uploading, analyzing, cleaning }
 
 /// Simple model representing a single analyzed food item.
 class AnalyzedFoodItem {
@@ -61,8 +64,8 @@ class MealAnalysis {
     final foodsList = json['f'] as List<dynamic>? ?? [];
     return MealAnalysis(
       foods: foodsList
-          .map((item) => AnalyzedFoodItem.fromJson(
-              (item as Map).cast<String, dynamic>()))
+          .map((item) =>
+              AnalyzedFoodItem.fromJson((item as Map).cast<String, dynamic>()))
           .toList(),
     );
   }
@@ -106,55 +109,73 @@ class MealAnalysisService {
   final String apiKey;
   static const String _baseUrl = 'https://api.openai.com/v1';
 
-  Future<MealAnalysis> analyzeMealImage(File imageFile) async {
+  Future<MealAnalysis> analyzeMealImage(
+    File imageFile, {
+    String? userContext,
+    void Function(AnalysisStage stage)? onStageChanged,
+    Duration timeout = const Duration(seconds: 20),
+  }) async {
+    final client = http.Client();
     String? fileId;
 
     try {
-      fileId = await _uploadImage(imageFile);
-      final response = await http.post(
-        Uri.parse('$_baseUrl/responses'),
-        headers: {
-          'Authorization': 'Bearer $apiKey',
-          'Content-Type': 'application/json',
+      onStageChanged?.call(AnalysisStage.uploading);
+      fileId = await _uploadImage(imageFile, client, timeout);
+      final trimmedContext = userContext?.trim();
+      final contextSnippet =
+          (trimmedContext != null && trimmedContext.length > 500
+              ? trimmedContext.substring(0, 500)
+              : trimmedContext);
+
+      final userContent = [
+        {
+          'type': 'input_text',
+          'text': 'Analyze this meal and break down each food item.'
         },
-        body: json.encode({
-          'model': 'gpt-5.2',
-          'reasoning': {'effort': 'medium'},
-          'max_output_tokens': 2000,
-          'input': [
-            {
-              'role': 'system',
-              'content': [
-                {
-                  'type': 'input_text',
-                  'text':
-                        'You are a nutrition expert. Analyze meal images and return ONLY valid JSON. '
-                        'THINK STEP-BY-STEP (internally) BEFORE ANSWERING: identify foods → determine mass → derive per-gram macros → scale to mass → compute calories with 4/4/9 → sanity-check totals. '
-                        'DO NOT return your reasoning, only the final JSON. '
-                        'OUTPUT FORMAT: {"f":[{"n":"food name","m":grams,"k":kcal,"p":protein_g,"c":carbs_g,"a":fat_g}]} '
-                        'RULES: '
-                        '- All numeric values must be numbers, not strings. '
-                        '- Use at least 1 decimal place for grams/kcal when appropriate. '
-                        '- k MUST equal (p×4)+(c×4)+(a×9) exactly. '
-                        '- If a scale shows weight, that is the authoritative mass; for multiple items on one scale, estimate proportional weight per item. '
-                        '- Prefer slightly conservative estimates over overestimates when uncertain. '
-                        'Example: 150g chicken breast → ~46.5g protein, ~0g carbs, ~4.5g fat → (46.5×4)+(0×4)+(4.5×9) = 226.5 kcal'
-                      }
-              ]
+        if (contextSnippet != null && contextSnippet.isNotEmpty)
+          {
+            'type': 'input_text',
+            'text': 'User context (optional): $contextSnippet'
+          },
+        {'type': 'input_image', 'file_id': fileId},
+      ];
+      onStageChanged?.call(AnalysisStage.analyzing);
+      final response = await client
+          .post(
+            Uri.parse('$_baseUrl/responses'),
+            headers: {
+              'Authorization': 'Bearer $apiKey',
+              'Content-Type': 'application/json',
             },
-            {
-              'role': 'user',
-              'content': [
+            body: json.encode({
+              'model': 'gpt-5.2',
+              'reasoning': {'effort': 'low'},
+              'max_output_tokens': 3000,
+              'input': [
                 {
-                  'type': 'input_text',
-                  'text': 'Analyze this meal and break down each food item.'
+                  'role': 'system',
+                  'content': [
+                    {
+                      'type': 'input_text',
+                      'text': 'You are a nutrition expert. Analyze meal images and return ONLY valid JSON. '
+                          'THINK STEP-BY-STEP (internally) BEFORE ANSWERING: identify foods → determine mass → derive per-gram macros → scale to mass → compute calories with 4/4/9 → sanity-check totals. '
+                          'DO NOT return your reasoning, only the final JSON. '
+                          'OUTPUT FORMAT: {"f":[{"n":"food name","m":grams,"k":kcal,"p":protein_g,"c":carbs_g,"a":fat_g}]} '
+                          'RULES: '
+                          '- All numeric values must be numbers, not strings. '
+                          '- Use at least 1 decimal place for grams/kcal when appropriate. '
+                          '- k MUST equal (p×4)+(c×4)+(a×9) exactly. '
+                          '- If a scale shows weight, that is the authoritative mass; for multiple items on one scale, estimate proportional weight per item. '
+                          '- Prefer slightly conservative estimates over overestimates when uncertain. '
+                          'Example: 150g chicken breast → ~46.5g protein, ~0g carbs, ~4.5g fat → (46.5×4)+(0×4)+(4.5×9) = 226.5 kcal'
+                    }
+                  ]
                 },
-                {'type': 'input_image', 'file_id': fileId},
-              ]
-            }
-          ],
-        }),
-      );
+                {'role': 'user', 'content': userContent}
+              ],
+            }),
+          )
+          .timeout(timeout);
 
       if (response.statusCode != 200) {
         throw Exception(
@@ -169,9 +190,11 @@ class MealAnalysisService {
       final analysis = MealAnalysis.fromJson(parsedJson);
       return _normalizeAnalysis(analysis);
     } finally {
+      onStageChanged?.call(AnalysisStage.cleaning);
       if (fileId != null) {
-        await _deleteFile(fileId);
+        await _deleteFile(client, fileId, timeout);
       }
+      client.close();
     }
   }
 
@@ -232,16 +255,21 @@ class MealAnalysisService {
     return null;
   }
 
-  Future<String> _uploadImage(File imageFile) async {
-    final request =
-        http.MultipartRequest('POST', Uri.parse('$_baseUrl/files'));
+  Future<String> _uploadImage(
+    File imageFile,
+    http.Client client,
+    Duration timeout,
+  ) async {
+    final request = http.MultipartRequest('POST', Uri.parse('$_baseUrl/files'));
 
     request.headers['Authorization'] = 'Bearer $apiKey';
     request.fields['purpose'] = 'vision';
-    request.files.add(await http.MultipartFile.fromPath('file', imageFile.path));
+    request.files
+        .add(await http.MultipartFile.fromPath('file', imageFile.path));
 
-    final response = await request.send();
-    final responseBody = await response.stream.bytesToString();
+    final response = await client.send(request).timeout(timeout);
+    final responseBody =
+        await response.stream.bytesToString().timeout(timeout);
 
     if (response.statusCode != 200) {
       throw Exception(
@@ -257,12 +285,18 @@ class MealAnalysisService {
     return fileId;
   }
 
-  Future<void> _deleteFile(String fileId) async {
+  Future<void> _deleteFile(
+    http.Client client,
+    String fileId,
+    Duration timeout,
+  ) async {
     try {
-      await http.delete(
-        Uri.parse('$_baseUrl/files/$fileId'),
-        headers: {'Authorization': 'Bearer $apiKey'},
-      );
+      await client
+          .delete(
+            Uri.parse('$_baseUrl/files/$fileId'),
+            headers: {'Authorization': 'Bearer $apiKey'},
+          )
+          .timeout(timeout);
     } catch (_) {
       // Swallow cleanup errors.
     }
@@ -296,12 +330,10 @@ class MealAnalysisService {
     final choices = responseData['choices'];
     if (choices is List && choices.isNotEmpty) {
       for (final choice in choices) {
-        final message = choice is Map<String, dynamic>
-            ? choice['message']
-            : null;
-        final content = message is Map<String, dynamic>
-            ? message['content']
-            : null;
+        final message =
+            choice is Map<String, dynamic> ? choice['message'] : null;
+        final content =
+            message is Map<String, dynamic> ? message['content'] : null;
         final text = _extractTextFromNode(content);
         if (text != null) return text;
       }

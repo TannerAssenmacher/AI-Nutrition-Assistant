@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nutrition_assistant/config/env.dart';
@@ -26,6 +25,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   bool _isSaving = false;
   MealAnalysis? _analysisResult;
   String? _errorMessage;
+  AnalysisStage? _analysisStage;
 
   @override
   void initState() {
@@ -50,14 +50,14 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       return;
     }
 
-    final capturedFile = await Navigator.of(context).push<XFile?>(
-      MaterialPageRoute<XFile?>(
+    final captureResult = await Navigator.of(context).push<MealCaptureResult?>(
+      MaterialPageRoute<MealCaptureResult?>(
         builder: (_) => const CameraCaptureScreen(),
         settings: const RouteSettings(name: '/camera/capture'),
       ),
     );
 
-    if (capturedFile == null || !mounted) {
+    if (captureResult == null || !mounted) {
       return;
     }
 
@@ -65,13 +65,23 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       _isAnalyzing = true;
       _analysisResult = null;
       _errorMessage = null;
+      _analysisStage = AnalysisStage.uploading;
     });
 
-    final file = File(capturedFile.path);
+    final file = File(captureResult.photo.path);
     final service = MealAnalysisService(apiKey: apiKey);
 
     try {
-      final analysis = await service.analyzeMealImage(file);
+      final analysis = await service.analyzeMealImage(
+        file,
+        userContext: captureResult.userContext,
+        onStageChanged: (stage) {
+          if (!mounted) return;
+          setState(() {
+            _analysisStage = stage;
+          });
+        },
+      );
 
       if (!mounted) return;
 
@@ -101,6 +111,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       if (mounted) {
         setState(() {
           _isAnalyzing = false;
+          _analysisStage = null;
         });
       }
       try {
@@ -365,7 +376,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
 
   Widget _buildBody() {
     if (_isAnalyzing) {
-      return const _AnalyzingState();
+      return _AnalyzingState(stage: _analysisStage);
     }
 
     if (_analysisResult != null) {
@@ -469,17 +480,65 @@ class _ErrorBanner extends StatelessWidget {
 }
 
 class _AnalyzingState extends StatelessWidget {
-  const _AnalyzingState();
+  final AnalysisStage? stage;
+
+  const _AnalyzingState({this.stage});
+
+  String get _label {
+    switch (stage) {
+      case AnalysisStage.uploading:
+        return 'Uploading photo…';
+      case AnalysisStage.analyzing:
+        return 'Analyzing meal…';
+      case AnalysisStage.cleaning:
+        return 'Wrapping up…';
+      default:
+        return 'Working on your meal…';
+    }
+  }
+
+  double? get _progressValue {
+    switch (stage) {
+      case AnalysisStage.uploading:
+        return 1 / 3;
+      case AnalysisStage.analyzing:
+        return 2 / 3;
+      case AnalysisStage.cleaning:
+        return 1.0;
+      default:
+        return null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final progress = _progressValue;
+
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        children: const [
-          CircularProgressIndicator(),
-          SizedBox(height: 12),
-          Text('Analyzing your meal...'),
+        children: [
+          const CircularProgressIndicator(),
+          const SizedBox(height: 12),
+          Text(
+            _label,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Step ${((progress ?? 0) * 3).clamp(1, 3).round()} of 3',
+            style: TextStyle(color: Colors.grey.shade600),
+          ),
+          if (progress != null) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: 200,
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 6,
+              ),
+            ),
+          ],
         ],
       ),
     );
