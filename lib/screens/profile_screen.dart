@@ -59,48 +59,12 @@ class _ProfilePageState extends State<ProfilePage> {
     'high-protein', 
     'low-carb', 
     'low-fat', 
-    'low-sodium'
+    'low-sodium',
   ];
 
-  //edamam api option for health labels
-  final _healthOptions = [
-   'alcohol-cocktail' , 
-   'alcohol-free', 
-   'celery-free', 
-   'crustacean-free', 
-   'dairy-free', 
-   'DASH', 
-   'egg-free', 
-   'fish-free', 
-   'fodmap-free', 
-   'gluten-free', 
-   'immuno-supportive', 
-   'keto-friendly', 
-   'kidney-friendly', 
-   'kosher', 
-   'low-fat-abs', 
-   'low-potassium', 
-   'low-sugar', 
-   'lupine-free', 
-   'Mediterranean', 
-   'mollusk-free', 
-   'mustard-free', 
-   'no-oil-added', 
-   'paleo', 
-   'peanut-free', 
-   'pescatarian', 
-   'pork-free', 
-   'red-meat-free', 
-   'sesame-free', 
-   'shellfish-free',
-    'soy-free', 
-    'sugar-conscious',
-    'sulfite-free', 
-    'tree-nut-free', 
-    'vegan', 
-    'vegetarian', 
-    'wheat-free',
-  ];
+  //spoonacular food options
+  final _healthOptions = ['vegan', 'vegetarian', 'gluten free', 'dairy free', 'ketogenic', 'lacto-vegetarian', 'ovo-vegetarian', 'pescetarian', 'paleo', 'primal', 'low FODMAP', 'Whole30'];
+
 
   @override
   void initState() {
