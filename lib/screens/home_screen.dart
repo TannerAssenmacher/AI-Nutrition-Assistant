@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../db/food.dart';
 import '../providers/food_providers.dart';
 import '../providers/user_providers.dart';
+import '../providers/auth_providers.dart';
 import '../widgets/top_bar.dart';
 import 'package:nutrition_assistant/navigation/nav_helper.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
@@ -23,6 +24,9 @@ class HomeScreen extends ConsumerWidget {
     final dailyFat = dailyMacros['fat'] ?? 0.0;
     final userProfile = ref.watch(userProfileNotifierProvider);
     final foodSuggestionsAsync = ref.watch(foodSuggestionsProvider);
+    final authUser = ref.watch(authServiceProvider);
+    final userId = authUser?.uid;
+    final dailyStreakAsync = userId != null ? ref.watch(dailyStreakProvider(userId)) : null;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5EDE2),
@@ -61,6 +65,27 @@ class HomeScreen extends ConsumerWidget {
                                   fontSize: 24,
                                   height: 1.2,
                                 ))),
+                        // Daily Streak Indicator
+                        if (dailyStreakAsync != null)
+                          Positioned(
+                            top: 20,
+                            right: 20,
+                            child: dailyStreakAsync.when(
+                              data: (streak) => _StreakIndicator(streak: streak),
+                              loading: () => const SizedBox(
+                                width: 80,
+                                height: 60,
+                                child: Center(
+                                  child: SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  ),
+                                ),
+                              ),
+                              error: (_, __) => const SizedBox.shrink(),
+                            ),
+                          ),
                         Positioned(
                             bottom: 20,
                             left: 20,
@@ -520,6 +545,53 @@ class HomeScreen extends ConsumerWidget {
               Navigator.of(context).pop();
             },
             child: const Text('Add Sample'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StreakIndicator extends StatelessWidget {
+  final int streak;
+
+  const _StreakIndicator({required this.streak});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF3E0),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: const Color(0xFFE0A100),
+          width: 2,
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            '🔥',
+            style: TextStyle(fontSize: 20),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            '$streak',
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFFE0A100),
+            ),
+          ),
+          const Text(
+            'day streak',
+            style: TextStyle(
+              fontSize: 10,
+              color: Color(0xFFE0A100),
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),
