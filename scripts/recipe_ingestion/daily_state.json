@@ -1,6 +1,8 @@
 {
   "date": "2026-01-27",
-  "offset": 500,
-  "requestsMade": 6,
-  "recipesAdded": 433
+  "offset": 100,
+  "requestsMade": 55,
+  "recipesAdded": 535,
+  "cuisineIndex": 18,
+  "apiKeyIndex": 5
 }

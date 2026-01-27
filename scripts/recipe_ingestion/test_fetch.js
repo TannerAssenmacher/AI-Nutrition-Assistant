@@ -12,13 +12,14 @@
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 
-const API_KEY = process.env.SPOONACULAR_API_KEY;
+const API_KEYS = [
+  '5c03d61e35e6423f9d85cba97abe9c9b',
+  'f7733922048f4b439533101785244150',
+  '3ff3175c82d1435a941219ed38c55473',
+  'be1b00e1fd0646e1ad12e48aad78d1b8',
+  'b7402fac116342be927d7a98cf2a5c3d',
+];
 const BASE_URL = 'https://api.spoonacular.com';
-
-if (!API_KEY) {
-  console.error('❌ SPOONACULAR_API_KEY not set');
-  process.exit(1);
-}
 
 // Initialize Firebase
 initializeApp({
@@ -131,28 +132,60 @@ function transformRecipe(recipe) {
 }
 
 async function test() {
-  console.log('\n🧪 TEST: Fetching 5 recipes from Spoonacular...\n');
-  
-  // Step 1: Fetch from API
-  const params = new URLSearchParams({
-    apiKey: API_KEY,
-    number: '5',
-    addRecipeInformation: 'true',
-    addRecipeNutrition: 'true',
-    fillIngredients: 'true',
-    instructionsRequired: 'true',
-  });
-  
-  const response = await fetch(`${BASE_URL}/recipes/complexSearch?${params}`);
-  
-  if (!response.ok) {
-    console.error(`❌ API Error: ${response.status} ${response.statusText}`);
-    const text = await response.text();
-    console.error(text);
+  // Allow cuisine to be passed as command line argument
+  const testCuisine = process.argv[2] || null;
+
+  if (testCuisine) {
+    console.log(`\n🧪 TEST: Fetching 5 ${testCuisine} recipes from Spoonacular...\n`);
+  } else {
+    console.log('\n🧪 TEST: Fetching 5 random recipes from Spoonacular...\n');
+    console.log('💡 Tip: Pass cuisine as argument (e.g., node test_fetch.js italian)\n');
+  }
+
+  // Step 1: Fetch from API - try each key until one works
+  let data = null;
+  let lastError = null;
+
+  for (let i = 0; i < API_KEYS.length; i++) {
+    const apiKey = API_KEYS[i];
+    console.log(`🔑 Trying API key #${i + 1}...`);
+
+    const params = new URLSearchParams({
+      apiKey: apiKey,
+      number: '5',
+      addRecipeInformation: 'true',
+      addRecipeNutrition: 'true',
+      fillIngredients: 'true',
+      instructionsRequired: 'true',
+    });
+
+    // Add cuisine filter if specified
+    if (testCuisine) {
+      params.set('cuisine', testCuisine);
+    }
+
+    const response = await fetch(`${BASE_URL}/recipes/complexSearch?${params}`);
+
+    if (response.ok) {
+      data = await response.json();
+      console.log(`✅ API key #${i + 1} works!\n`);
+      break;
+    } else if (response.status === 401 || response.status === 402) {
+      console.log(`❌ API key #${i + 1} quota exceeded or unauthorized`);
+      lastError = `${response.status} ${response.statusText}`;
+      continue;
+    } else {
+      console.error(`❌ API Error: ${response.status} ${response.statusText}`);
+      const text = await response.text();
+      console.error(text);
+      process.exit(1);
+    }
+  }
+
+  if (!data) {
+    console.error(`\n❌ All API keys failed. Last error: ${lastError}`);
     process.exit(1);
   }
-  
-  const data = await response.json();
   console.log(`✅ API returned ${data.results?.length || 0} recipes\n`);
   
   if (!data.results?.length) {
@@ -162,8 +195,17 @@ async function test() {
   
   // Step 2: Transform recipes
   const transformed = data.results.map(transformRecipe);
-  
-  console.log('📋 Sample transformed recipe:');
+
+  console.log('📋 Cuisine distribution:');
+  const cuisineCounts = {};
+  transformed.forEach(r => {
+    cuisineCounts[r.cuisine] = (cuisineCounts[r.cuisine] || 0) + 1;
+  });
+  Object.entries(cuisineCounts).forEach(([cuisine, count]) => {
+    console.log(`   ${cuisine}: ${count} recipe(s)`);
+  });
+
+  console.log('\n📋 Sample transformed recipe:');
   console.log(JSON.stringify(transformed[0], null, 2));
   
   // Step 3: Validate schema

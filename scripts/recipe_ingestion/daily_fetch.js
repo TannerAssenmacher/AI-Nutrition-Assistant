@@ -31,16 +31,32 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Configuration
-const API_KEY = process.env.SPOONACULAR_API_KEY;
+const API_KEYS = [
+  '5c03d61e35e6423f9d85cba97abe9c9b',
+  'f7733922048f4b439533101785244150',
+  '3ff3175c82d1435a941219ed38c55473',
+  'be1b00e1fd0646e1ad12e48aad78d1b8',
+  'b7402fac116342be927d7a98cf2a5c3d',
+];
 const BASE_URL = 'https://api.spoonacular.com';
 const TARGET_COLLECTION = 'recipes';
 
-// Free tier: 150 points/day
+// Free tier: 150 points/day per key
 // complexSearch with nutrition = ~1.1 points per call (1 + 0.01*100 + 0.025*100*3)
 // Conservative: 100 recipes per call = ~4.6 points
-// Safe daily limit: ~30 calls = 3000 new recipes per day
+// With 5 API keys: ~6 requests per key per day = ~30 successful requests expected
+// Script will automatically stop when ALL keys hit their quota limit
 const RECIPES_PER_REQUEST = 100;
-const MAX_DAILY_REQUESTS = 30; // Stay well under 150 points
+const EXPECTED_REQUESTS_PER_KEY = 6; // Expected successful requests per key
+
+// Cuisines to cycle through (Spoonacular API values)
+const CUISINES_TO_FETCH = [
+  'african', 'american', 'british', 'cajun', 'caribbean', 'chinese',
+  'eastern european', 'european', 'french', 'german', 'greek', 'indian',
+  'irish', 'italian', 'japanese', 'jewish', 'korean', 'latin american',
+  'mediterranean', 'mexican', 'middle eastern', 'southern', 'spanish',
+  'thai', 'vietnamese',
+];
 
 // Initialize Firebase
 initializeApp({
@@ -167,9 +183,9 @@ function transformRecipe(recipe) {
   };
 }
 
-async function fetchRecipeBatch(offset) {
+async function fetchRecipeBatch(offset, cuisine = null, apiKey) {
   const params = new URLSearchParams({
-    apiKey: API_KEY,
+    apiKey: apiKey,
     offset: offset.toString(),
     number: RECIPES_PER_REQUEST.toString(),
     addRecipeInformation: 'true',
@@ -178,22 +194,27 @@ async function fetchRecipeBatch(offset) {
     instructionsRequired: 'true',
     sort: 'random', // Random for variety each day
   });
-  
+
+  // Add cuisine filter if specified
+  if (cuisine) {
+    params.set('cuisine', cuisine);
+  }
+
   const url = `${BASE_URL}/recipes/complexSearch?${params}`;
-  
+
   try {
     const response = await fetch(url);
-    
-    if (response.status === 402) {
-      console.error('❌ API quota exceeded!');
+
+    if (response.status === 402 || response.status === 401) {
+      console.error(`❌ API key quota exceeded (${response.status})!`);
       return { results: [], quotaExceeded: true };
     }
-    
+
     if (!response.ok) {
       console.error(`API Error: ${response.status}`);
       return { results: [] };
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error('Fetch error:', error.message);
@@ -204,18 +225,29 @@ async function fetchRecipeBatch(offset) {
 function loadDailyState() {
   const statePath = path.join(__dirname, 'daily_state.json');
   const today = new Date().toISOString().split('T')[0];
-  
+
   if (fs.existsSync(statePath)) {
     try {
       const state = JSON.parse(fs.readFileSync(statePath, 'utf-8'));
       if (state.date === today) {
+        // Ensure apiKeyIndex exists for backwards compatibility
+        if (state.apiKeyIndex === undefined) {
+          state.apiKeyIndex = 0;
+        }
         return state;
       }
     } catch (e) {}
   }
-  
+
   // New day, reset state
-  return { date: today, offset: 0, requestsMade: 0, recipesAdded: 0 };
+  return {
+    date: today,
+    offset: 0,
+    requestsMade: 0,
+    recipesAdded: 0,
+    cuisineIndex: 0,
+    apiKeyIndex: 0 // Track which API key we're using
+  };
 }
 
 function saveDailyState(state) {
@@ -229,69 +261,109 @@ async function main() {
   console.log(`🍳 Daily Recipe Fetch - ${startTime.toISOString()}`);
   console.log('='.repeat(50));
   
-  if (!API_KEY) {
-    console.error('❌ SPOONACULAR_API_KEY not set');
-    process.exit(1);
-  }
-  
   // Load today's state
   let state = loadDailyState();
   console.log(`📊 Today's progress: ${state.requestsMade} requests, ${state.recipesAdded} recipes added`);
-  
-  if (state.requestsMade >= MAX_DAILY_REQUESTS) {
-    console.log('✅ Daily limit reached. Run again tomorrow.');
+  console.log(`🔑 Starting with API key #${state.apiKeyIndex + 1} of ${API_KEYS.length}`);
+
+  if (state.apiKeyIndex >= API_KEYS.length) {
+    console.log('✅ All API keys exhausted for today. Run again tomorrow.');
     return;
   }
-  
+
   // Get existing recipe IDs from Firestore to skip duplicates
   console.log('\n🔍 Checking existing recipes...');
   const existingSnapshot = await db.collection(TARGET_COLLECTION).select().get();
   const existingIds = new Set(existingSnapshot.docs.map(doc => doc.id));
   console.log(`   Found ${existingIds.size} existing recipes`);
-  
+
   let newRecipes = [];
   let requestsThisRun = 0;
-  
-  // Fetch until we hit daily limit or quota
-  while (state.requestsMade + requestsThisRun < MAX_DAILY_REQUESTS) {
-    console.log(`\n📥 Fetching batch at offset ${state.offset}...`);
-    
-    const result = await fetchRecipeBatch(state.offset);
-    requestsThisRun++;
-    
-    if (result.quotaExceeded) {
-      console.log('⚠️ Quota exceeded, stopping for today');
+  let noResultsCount = 0;
+
+  // Fetch until all API keys are exhausted
+  while (true) {
+    // Check if we've exhausted all API keys
+    if (state.apiKeyIndex >= API_KEYS.length) {
+      console.log('⚠️ All API keys exhausted for today');
       break;
     }
-    
+
+    // Get current API key and cuisine
+    const currentApiKey = API_KEYS[state.apiKeyIndex];
+    const currentCuisine = CUISINES_TO_FETCH[state.cuisineIndex % CUISINES_TO_FETCH.length];
+
+    console.log(`\n📥 Fetching ${currentCuisine} recipes at offset ${state.offset}...`);
+
+    const result = await fetchRecipeBatch(state.offset, currentCuisine, currentApiKey);
+
+    if (result.quotaExceeded) {
+      console.log(`⚠️ API key #${state.apiKeyIndex + 1} quota exceeded`);
+
+      // Try next API key (don't count failed request)
+      state.apiKeyIndex++;
+
+      if (state.apiKeyIndex < API_KEYS.length) {
+        console.log(`🔄 Switching to API key #${state.apiKeyIndex + 1}`);
+        // Don't break, continue with next key
+        continue;
+      } else {
+        console.log('⚠️ All API keys exhausted for today');
+        break;
+      }
+    }
+
+    // Only count successful requests
+    requestsThisRun++;
+
     if (!result.results || result.results.length === 0) {
-      console.log('⚠️ No results, trying different offset');
-      state.offset = Math.floor(Math.random() * 5000); // Random offset for variety
+      noResultsCount++;
+      console.log(`⚠️ No results for ${currentCuisine}`);
+
+      // Move to next cuisine after 2 failed attempts or high offset
+      if (noResultsCount >= 2 || state.offset >= 300) {
+        console.log(`   Switching to next cuisine...`);
+        state.cuisineIndex++;
+        state.offset = 0;
+        noResultsCount = 0;
+      } else {
+        state.offset += RECIPES_PER_REQUEST;
+      }
       continue;
     }
-    
+
+    // Reset no-results counter on success
+    noResultsCount = 0;
+
     // Transform and filter duplicates
     let addedThisBatch = 0;
     for (const recipe of result.results) {
       const transformed = transformRecipe(recipe);
-      
+
       if (!existingIds.has(transformed.id)) {
         existingIds.add(transformed.id);
         newRecipes.push(transformed);
         addedThisBatch++;
       }
     }
-    
+
     console.log(`   ✅ ${addedThisBatch} new recipes (${result.results.length - addedThisBatch} duplicates skipped)`);
-    
+
     state.offset += RECIPES_PER_REQUEST;
-    
+
+    // Move to next cuisine after getting good results (avoid exhausting one cuisine)
+    if (state.offset >= 200) {
+      state.cuisineIndex++;
+      state.offset = 0;
+      console.log(`   Moving to next cuisine for variety...`);
+    }
+
     // Upload in batches of 500
     if (newRecipes.length >= 500) {
       await uploadBatch(newRecipes.splice(0, 500));
       state.recipesAdded += 500;
     }
-    
+
     // Rate limiting
     await new Promise(r => setTimeout(r, 1000));
   }
@@ -312,9 +384,11 @@ async function main() {
   console.log(`\n${'='.repeat(50)}`);
   console.log('✅ DAILY FETCH COMPLETE');
   console.log('='.repeat(50));
-  console.log(`📊 Requests made today: ${state.requestsMade}/${MAX_DAILY_REQUESTS}`);
+  console.log(`📊 Successful requests made: ${state.requestsMade}`);
   console.log(`📦 Recipes added today: ${state.recipesAdded}`);
   console.log(`⏱️ Duration: ${duration}s`);
+  console.log(`🔑 API keys exhausted: ${Math.min(state.apiKeyIndex + 1, API_KEYS.length)}/${API_KEYS.length}`);
+  console.log(`🍽️ Current cuisine: ${CUISINES_TO_FETCH[state.cuisineIndex % CUISINES_TO_FETCH.length]}`);
   console.log(`📅 Next run: Tomorrow (offset ${state.offset})`);
 }
 
