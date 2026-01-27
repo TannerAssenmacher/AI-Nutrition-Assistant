@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../db/food.dart';
+import 'firestore_providers.dart';
 
 part 'food_providers.g.dart';
 
@@ -83,4 +84,56 @@ Future<List<String>> foodSuggestions(Ref ref) async {
     'Broccoli (34 calories)',
     'Sweet Potato (112 calories)',
   ];
+}
+
+@riverpod
+Future<int> dailyStreak(Ref ref, String userId) async {
+  final foodLogAsync = ref.watch(firestoreFoodLogProvider(userId));
+
+  return foodLogAsync.when(
+    data: (foodLog) {
+      if (foodLog.isEmpty) {
+        return 0;
+      }
+
+      // Get unique dates from food log (sorted in descending order)
+      final datesWithFood = <DateTime>{};
+      for (final item in foodLog) {
+        datesWithFood.add(DateTime(item.consumedAt.year, item.consumedAt.month, item.consumedAt.day));
+      }
+
+      final sortedDates = datesWithFood.toList()..sort((a, b) => b.compareTo(a));
+
+      if (sortedDates.isEmpty) {
+        return 0;
+      }
+
+      // Check if today has any food logged
+      final today = DateTime.now();
+      final todayDate = DateTime(today.year, today.month, today.day);
+      final yesterdayDate = todayDate.subtract(const Duration(days: 1));
+
+      // If the most recent day with food is not today or yesterday, streak is broken
+      if (sortedDates.first != todayDate && sortedDates.first != yesterdayDate) {
+        return 0;
+      }
+
+      // Count consecutive days
+      int streak = 0;
+      DateTime expectedDate = sortedDates.first;
+
+      for (final date in sortedDates) {
+        if (date == expectedDate) {
+          streak++;
+          expectedDate = expectedDate.subtract(const Duration(days: 1));
+        } else {
+          break;
+        }
+      }
+
+      return streak;
+    },
+    error: (_, __) => 0,
+    loading: () => 0,
+  );
 }
