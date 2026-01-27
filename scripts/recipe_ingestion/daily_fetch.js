@@ -1,0 +1,339 @@
+/**
+ * Daily Recipe Fetch Script
+ * 
+ * Fetches new recipes from Spoonacular daily and uploads to Firestore.
+ * Designed to run as a cron job or scheduled task.
+ * 
+ * Features:
+ * - Respects free tier limits (150 points/day)
+ * - Skips duplicates automatically
+ * - Tracks progress for resumability
+ * - Logs all operations
+ * 
+ * Usage:
+ *   export SPOONACULAR_API_KEY="your-key"
+ *   node daily_fetch.js
+ * 
+ * Or with npm:
+ *   npm run daily
+ * 
+ * Cron example (run at 2 AM daily):
+ *   0 2 * * * cd /path/to/recipe_ingestion && npm run daily >> daily.log 2>&1
+ */
+
+import { initializeApp } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Configuration
+const API_KEY = process.env.SPOONACULAR_API_KEY;
+const BASE_URL = 'https://api.spoonacular.com';
+const TARGET_COLLECTION = 'recipes';
+
+// Free tier: 150 points/day
+// complexSearch with nutrition = ~1.1 points per call (1 + 0.01*100 + 0.025*100*3)
+// Conservative: 100 recipes per call = ~4.6 points
+// Safe daily limit: ~30 calls = 3000 new recipes per day
+const RECIPES_PER_REQUEST = 100;
+const MAX_DAILY_REQUESTS = 30; // Stay well under 150 points
+
+// Initialize Firebase
+initializeApp({
+  projectId: 'ai-nutrition-assistant-e2346',
+});
+const db = getFirestore();
+
+// Cuisine mapping
+const cuisineMap = {
+  'african': 'african', 'american': 'american', 'british': 'british',
+  'cajun': 'american', 'caribbean': 'caribbean', 'chinese': 'chinese',
+  'creole': 'american', 'eastern european': 'eastern european',
+  'european': 'central europe', 'french': 'french', 'german': 'central europe',
+  'greek': 'mediterranean', 'indian': 'indian', 'irish': 'british',
+  'italian': 'italian', 'japanese': 'japanese', 'jewish': 'middle eastern',
+  'korean': 'south east asian', 'latin american': 'mexican',
+  'mediterranean': 'mediterranean', 'mexican': 'mexican',
+  'middle eastern': 'middle eastern', 'nordic': 'central europe',
+  'southern': 'american', 'spanish': 'mediterranean',
+  'thai': 'south east asian', 'vietnamese': 'south east asian',
+};
+
+const dishTypeMap = {
+  'breakfast': ['breakfast'], 'brunch': ['breakfast'], 'morning meal': ['breakfast'],
+  'lunch': ['lunch'], 'main course': ['lunch', 'dinner'], 'main dish': ['lunch', 'dinner'],
+  'dinner': ['dinner'], 'appetizer': ['snack'], 'starter': ['snack'], 'snack': ['snack'],
+  'side dish': ['lunch', 'dinner'], 'salad': ['lunch', 'dinner'], 'soup': ['lunch', 'dinner'],
+  'dessert': ['snack'], 'beverage': ['snack'], 'drink': ['snack'],
+  'sauce': ['lunch', 'dinner'], 'marinade': ['lunch', 'dinner'],
+  'fingerfood': ['snack'], 'bread': ['breakfast', 'snack'],
+};
+
+function extractHealthLabels(recipe) {
+  const labels = [];
+  if (recipe.vegetarian) labels.push('vegetarian');
+  if (recipe.vegan) labels.push('vegan');
+  if (recipe.glutenFree) labels.push('gluten-free');
+  if (recipe.dairyFree) labels.push('dairy-free');
+  if (recipe.veryHealthy) labels.push('very-healthy');
+  if (recipe.cheap) labels.push('cheap');
+  if (recipe.veryPopular) labels.push('very-popular');
+  if (recipe.sustainable) labels.push('sustainable');
+  if (recipe.lowFodmap) labels.push('low-fodmap');
+  if (recipe.ketogenic) labels.push('ketogenic');
+  if (recipe.whole30) labels.push('whole30');
+  
+  (recipe.diets || []).forEach(diet => {
+    const normalized = diet.toLowerCase().replace(/\s+/g, '-');
+    if (!labels.includes(normalized)) labels.push(normalized);
+  });
+  
+  return labels;
+}
+
+function transformRecipe(recipe) {
+  const extendedIngredients = recipe.extendedIngredients || [];
+  const ingredients = extendedIngredients
+    .map(ing => ing.name?.toLowerCase() || ing.originalName?.toLowerCase())
+    .filter(Boolean);
+  const ingredientLines = extendedIngredients
+    .map(ing => ing.original || `${ing.amount || ''} ${ing.unit || ''} ${ing.name || ''}`.trim())
+    .filter(Boolean);
+  
+  const cuisines = recipe.cuisines || [];
+  let cuisine = 'world';
+  for (const c of cuisines) {
+    const mapped = cuisineMap[c.toLowerCase()];
+    if (mapped) { cuisine = mapped; break; }
+  }
+  if (cuisine === 'world' && cuisines.length > 0) {
+    cuisine = cuisines[0].toLowerCase().replace(/\s+/g, '-');
+  }
+  
+  const dishTypes = recipe.dishTypes || [];
+  let mealTypes = ['lunch', 'dinner'];
+  for (const dt of dishTypes) {
+    const mapped = dishTypeMap[dt.toLowerCase()];
+    if (mapped) { mealTypes = mapped; break; }
+  }
+  
+  let calories = null, protein = null, carbs = null, fat = null;
+  let fiber = null, sugar = null, sodium = null;
+  
+  if (recipe.nutrition?.nutrients) {
+    const nutrients = recipe.nutrition.nutrients;
+    const findNutrient = (name) => {
+      const n = nutrients.find(n => n.name?.toLowerCase() === name.toLowerCase());
+      return n ? Math.round(n.amount) : null;
+    };
+    calories = findNutrient('Calories');
+    protein = findNutrient('Protein');
+    carbs = findNutrient('Carbohydrates');
+    fat = findNutrient('Fat');
+    fiber = findNutrient('Fiber');
+    sugar = findNutrient('Sugar');
+    sodium = findNutrient('Sodium');
+  }
+  
+  const category = dishTypes[0]?.toLowerCase().replace(/\s+/g, '-') || 'main-dish';
+  
+  let instructions = '';
+  if (recipe.analyzedInstructions?.length > 0) {
+    const steps = recipe.analyzedInstructions[0].steps || [];
+    instructions = steps.map(s => `Step ${s.number}: ${s.step}`).join('\n\n');
+  } else if (recipe.instructions) {
+    instructions = recipe.instructions.replace(/<[^>]*>/g, '').trim();
+  }
+  
+  const summary = recipe.summary?.replace(/<[^>]*>/g, '').substring(0, 500) || null;
+  
+  return {
+    id: `spoonacular_${recipe.id}`,
+    label: recipe.title,
+    cuisine, mealTypes, category,
+    ingredients, ingredientLines, instructions,
+    calories, protein, carbs, fat, fiber, sugar, sodium,
+    imageUrl: recipe.image || null,
+    sourceUrl: recipe.sourceUrl || recipe.spoonacularSourceUrl || null,
+    readyInMinutes: recipe.readyInMinutes || null,
+    servings: recipe.servings || null,
+    summary,
+    healthLabels: extractHealthLabels(recipe),
+    source: 'spoonacular',
+  };
+}
+
+async function fetchRecipeBatch(offset) {
+  const params = new URLSearchParams({
+    apiKey: API_KEY,
+    offset: offset.toString(),
+    number: RECIPES_PER_REQUEST.toString(),
+    addRecipeInformation: 'true',
+    addRecipeNutrition: 'true',
+    fillIngredients: 'true',
+    instructionsRequired: 'true',
+    sort: 'random', // Random for variety each day
+  });
+  
+  const url = `${BASE_URL}/recipes/complexSearch?${params}`;
+  
+  try {
+    const response = await fetch(url);
+    
+    if (response.status === 402) {
+      console.error('❌ API quota exceeded!');
+      return { results: [], quotaExceeded: true };
+    }
+    
+    if (!response.ok) {
+      console.error(`API Error: ${response.status}`);
+      return { results: [] };
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Fetch error:', error.message);
+    return { results: [] };
+  }
+}
+
+function loadDailyState() {
+  const statePath = path.join(__dirname, 'daily_state.json');
+  const today = new Date().toISOString().split('T')[0];
+  
+  if (fs.existsSync(statePath)) {
+    try {
+      const state = JSON.parse(fs.readFileSync(statePath, 'utf-8'));
+      if (state.date === today) {
+        return state;
+      }
+    } catch (e) {}
+  }
+  
+  // New day, reset state
+  return { date: today, offset: 0, requestsMade: 0, recipesAdded: 0 };
+}
+
+function saveDailyState(state) {
+  const statePath = path.join(__dirname, 'daily_state.json');
+  fs.writeFileSync(statePath, JSON.stringify(state, null, 2));
+}
+
+async function main() {
+  const startTime = new Date();
+  console.log(`\n${'='.repeat(50)}`);
+  console.log(`🍳 Daily Recipe Fetch - ${startTime.toISOString()}`);
+  console.log('='.repeat(50));
+  
+  if (!API_KEY) {
+    console.error('❌ SPOONACULAR_API_KEY not set');
+    process.exit(1);
+  }
+  
+  // Load today's state
+  let state = loadDailyState();
+  console.log(`📊 Today's progress: ${state.requestsMade} requests, ${state.recipesAdded} recipes added`);
+  
+  if (state.requestsMade >= MAX_DAILY_REQUESTS) {
+    console.log('✅ Daily limit reached. Run again tomorrow.');
+    return;
+  }
+  
+  // Get existing recipe IDs from Firestore to skip duplicates
+  console.log('\n🔍 Checking existing recipes...');
+  const existingSnapshot = await db.collection(TARGET_COLLECTION).select().get();
+  const existingIds = new Set(existingSnapshot.docs.map(doc => doc.id));
+  console.log(`   Found ${existingIds.size} existing recipes`);
+  
+  let newRecipes = [];
+  let requestsThisRun = 0;
+  
+  // Fetch until we hit daily limit or quota
+  while (state.requestsMade + requestsThisRun < MAX_DAILY_REQUESTS) {
+    console.log(`\n📥 Fetching batch at offset ${state.offset}...`);
+    
+    const result = await fetchRecipeBatch(state.offset);
+    requestsThisRun++;
+    
+    if (result.quotaExceeded) {
+      console.log('⚠️ Quota exceeded, stopping for today');
+      break;
+    }
+    
+    if (!result.results || result.results.length === 0) {
+      console.log('⚠️ No results, trying different offset');
+      state.offset = Math.floor(Math.random() * 5000); // Random offset for variety
+      continue;
+    }
+    
+    // Transform and filter duplicates
+    let addedThisBatch = 0;
+    for (const recipe of result.results) {
+      const transformed = transformRecipe(recipe);
+      
+      if (!existingIds.has(transformed.id)) {
+        existingIds.add(transformed.id);
+        newRecipes.push(transformed);
+        addedThisBatch++;
+      }
+    }
+    
+    console.log(`   ✅ ${addedThisBatch} new recipes (${result.results.length - addedThisBatch} duplicates skipped)`);
+    
+    state.offset += RECIPES_PER_REQUEST;
+    
+    // Upload in batches of 500
+    if (newRecipes.length >= 500) {
+      await uploadBatch(newRecipes.splice(0, 500));
+      state.recipesAdded += 500;
+    }
+    
+    // Rate limiting
+    await new Promise(r => setTimeout(r, 1000));
+  }
+  
+  // Upload remaining recipes
+  if (newRecipes.length > 0) {
+    await uploadBatch(newRecipes);
+    state.recipesAdded += newRecipes.length;
+  }
+  
+  // Save state
+  state.requestsMade += requestsThisRun;
+  saveDailyState(state);
+  
+  const endTime = new Date();
+  const duration = Math.round((endTime - startTime) / 1000);
+  
+  console.log(`\n${'='.repeat(50)}`);
+  console.log('✅ DAILY FETCH COMPLETE');
+  console.log('='.repeat(50));
+  console.log(`📊 Requests made today: ${state.requestsMade}/${MAX_DAILY_REQUESTS}`);
+  console.log(`📦 Recipes added today: ${state.recipesAdded}`);
+  console.log(`⏱️ Duration: ${duration}s`);
+  console.log(`📅 Next run: Tomorrow (offset ${state.offset})`);
+}
+
+async function uploadBatch(recipes) {
+  console.log(`\n📤 Uploading ${recipes.length} recipes to Firestore...`);
+  
+  const BATCH_SIZE = 500;
+  for (let i = 0; i < recipes.length; i += BATCH_SIZE) {
+    const batch = db.batch();
+    const chunk = recipes.slice(i, i + BATCH_SIZE);
+    
+    for (const recipe of chunk) {
+      const docRef = db.collection(TARGET_COLLECTION).doc(recipe.id);
+      batch.set(docRef, { ...recipe, createdAt: new Date() });
+    }
+    
+    await batch.commit();
+    console.log(`   ✅ Uploaded ${Math.min(i + BATCH_SIZE, recipes.length)}/${recipes.length}`);
+  }
+}
+
+main().catch(console.error);

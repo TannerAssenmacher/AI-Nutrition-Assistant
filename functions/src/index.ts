@@ -7,7 +7,7 @@
  */
 
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
-import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { onCall, onRequest, HttpsError } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import { initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
@@ -160,21 +160,23 @@ export const onRecipeCreated = onDocumentCreated(
       const query = `
         INSERT INTO recipe_embeddings (
           id, embedding, label, cuisine, meal_types, 
-          health_labels, dietary_labels, ingredients,
-          calories, protein, carbs, fat
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          health_labels, ingredients,
+          calories, protein, carbs, fat, fiber, sugar, sodium
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
         ON CONFLICT (id) DO UPDATE SET
           embedding = EXCLUDED.embedding,
           label = EXCLUDED.label,
           cuisine = EXCLUDED.cuisine,
           meal_types = EXCLUDED.meal_types,
           health_labels = EXCLUDED.health_labels,
-          dietary_labels = EXCLUDED.dietary_labels,
           ingredients = EXCLUDED.ingredients,
           calories = EXCLUDED.calories,
           protein = EXCLUDED.protein,
           carbs = EXCLUDED.carbs,
-          fat = EXCLUDED.fat
+          fat = EXCLUDED.fat,
+          fiber = EXCLUDED.fiber,
+          sugar = EXCLUDED.sugar,
+          sodium = EXCLUDED.sodium
       `;
 
       await getPool().query(query, [
@@ -184,12 +186,14 @@ export const onRecipeCreated = onDocumentCreated(
         recipe.cuisine,
         recipe.mealTypes || [],
         recipe.healthLabels || [],
-        recipe.dietaryLabels || [],
         recipe.ingredients || [],
         recipe.calories || null,
         recipe.protein || null,
         recipe.carbs || null,
         recipe.fat || null,
+        recipe.fiber || null,
+        recipe.sugar || null,
+        recipe.sodium || null,
       ]);
 
       console.log(`Embedding stored for recipe: ${recipeId}`);
@@ -221,8 +225,45 @@ interface SearchParams {
   macroGoals?: { protein: number; carbs: number; fat: number };  // percentages
 }
 
+/**
+ * Image Proxy for CORS workaround
+ * Proxies Spoonacular images so they can be loaded on Flutter Web
+ */
+export const proxyImage = onRequest(
+  { cors: true },
+  async (request, response) => {
+    const imageUrl = request.query.url as string;
+
+    if (!imageUrl || !imageUrl.startsWith('https://img.spoonacular.com/')) {
+      response.status(400).send('Invalid image URL');
+      return;
+    }
+
+    try {
+      const fetch = (await import('node-fetch')).default;
+      const imageResponse = await fetch(imageUrl);
+
+      if (!imageResponse.ok) {
+        response.status(404).send('Image not found');
+        return;
+      }
+
+      // Set CORS headers
+      response.set('Access-Control-Allow-Origin', '*');
+      response.set('Cache-Control', 'public, max-age=86400'); // Cache for 1 day
+      response.set('Content-Type', imageResponse.headers.get('content-type') || 'image/jpeg');
+
+      const arrayBuffer = await imageResponse.arrayBuffer();
+      response.send(Buffer.from(arrayBuffer));
+    } catch (error) {
+      console.error('Error proxying image:', error);
+      response.status(500).send('Error loading image');
+    }
+  }
+);
+
 export const searchRecipes = onCall<SearchParams>(
-  { 
+  {
     cors: true,
     secrets: [pgPassword, geminiApiKey],
   },
@@ -238,8 +279,6 @@ export const searchRecipes = onCall<SearchParams>(
       excludeIds = [],
       limit = 10,
       // User profile data
-      sex,
-      activityLevel,
       dietaryGoal,
       dailyCalorieGoal,
       macroGoals,
@@ -307,6 +346,9 @@ export const searchRecipes = onCall<SearchParams>(
           protein,
           carbs,
           fat,
+          fiber,
+          sugar,
+          sodium,
           1 - (embedding <=> $1::vector) as similarity
         FROM recipe_embeddings
         WHERE 1=1
@@ -407,6 +449,9 @@ export const searchRecipes = onCall<SearchParams>(
             protein,
             carbs,
             fat,
+            fiber,
+            sugar,
+            sodium,
             1 - (embedding <=> $1::vector) as similarity
           FROM recipe_embeddings
           WHERE 1=1
@@ -468,7 +513,12 @@ export const searchRecipes = onCall<SearchParams>(
             protein: protein,
             carbs: carbs,
             fat: fat,
+            fiber: row.fiber,
+            sugar: row.sugar,
+            sodium: row.sodium,
             imageUrl: recipeData?.imageUrl,
+            readyInMinutes: recipeData?.readyInMinutes,
+            servings: recipeData?.servings,
             similarity: row.similarity,
           };
         })

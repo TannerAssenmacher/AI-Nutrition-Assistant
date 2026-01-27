@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/gemini_chat_service.dart';
@@ -21,26 +22,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
 
   final List<String> _cuisineTypes = [
+    'African',
     'American',
-    'Asian',
     'British',
     'Caribbean',
     'Central Europe',
     'Chinese',
-    'Eastern Europe',
+    'Eastern European',
     'French',
-    'Greek',
     'Indian',
     'Italian',
     'Japanese',
-    'Korean',
-    'Kosher',
     'Mediterranean',
     'Mexican',
     'Middle Eastern',
-    'Nordic',
-    'South American',
     'South East Asian',
+    'World',
     'None',
   ];
 
@@ -530,7 +527,17 @@ class _RecipeCard extends StatelessWidget {
     final calories = recipe['calories'] ?? 0;
     final ingredients = List<String>.from(recipe['ingredients'] ?? const []);
     final instructions = recipe['instructions'] ?? '';
-    final imageUrl = recipe['url'] ?? '';
+    final imageUrl = recipe['imageUrl'] ?? '';
+
+    // Convert Spoonacular URL to use CORS proxy for web
+    String getProxiedImageUrl(String url) {
+      if (url.isEmpty) return '';
+      // Use Cloud Function proxy to avoid CORS issues
+      final encodedUrl = Uri.encodeComponent(url);
+      return 'https://us-central1-ai-nutrition-assistant-e2346.cloudfunctions.net/proxyImage?url=$encodedUrl';
+    }
+
+    final proxiedImageUrl = getProxiedImageUrl(imageUrl.toString());
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -544,35 +551,56 @@ class _RecipeCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Recipe image at the top
-          if (imageUrl.toString().isNotEmpty) ...[
+          if (proxiedImageUrl.isNotEmpty) ...[
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: 280,
-                  maxHeight: 200,
+              child: Container(
+                width: 280,
+                height: 200,
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Image.network(
-                  imageUrl.toString(),
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    width: 150,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Center(
-                      child: Icon(Icons.restaurant, size: 40, color: Colors.grey),
-                    ),
-                  ),
+                  proxiedImageUrl,
+                  width: 280,
+                  height: 200,
+                  fit: BoxFit.cover,
                   loadingBuilder: (context, child, loadingProgress) {
                     if (loadingProgress == null) return child;
+                    return Center(
+                      child: CircularProgressIndicator(
+                        value: loadingProgress.expectedTotalBytes != null
+                            ? loadingProgress.cumulativeBytesLoaded /
+                                loadingProgress.expectedTotalBytes!
+                            : null,
+                      ),
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) {
+                    // CORS issue on web - show message
                     return Container(
-                      width: 150,
-                      height: 100,
-                      color: Colors.grey[200],
-                      child: const Center(child: CircularProgressIndicator()),
+                      width: 280,
+                      height: 200,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.restaurant, size: 40, color: Colors.grey),
+                          const SizedBox(height: 8),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            child: Text(
+                              'Image from Spoonacular',
+                              style: TextStyle(fontSize: 12, color: Colors.grey),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ],
+                      ),
                     );
                   },
                 ),

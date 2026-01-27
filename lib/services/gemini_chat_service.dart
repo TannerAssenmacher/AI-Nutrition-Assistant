@@ -312,10 +312,10 @@ class GeminiChatService extends _$GeminiChatService {
 
       final filteredRecipes = recipes.where((recipe) {
         final id = recipe['id'] as String;
-        final labelLower = (recipe['label'] ?? '').toString().toLowerCase();
+        final label = (recipe['label'] ?? '').toString().toLowerCase();
 
         // skip non-meals
-        if (nonMeals.any((nm) => labelLower.contains(nm))) return false;
+        if (nonMeals.any((nm) => label.contains(nm))) return false;
 
         // skip already shown
         if (_shownRecipeUris.contains(id)) return false;
@@ -353,7 +353,7 @@ class GeminiChatService extends _$GeminiChatService {
           'ingredients': ingredients,
           'calories': calories,
           'instructions': instructions,
-          'url': url,
+          'imageUrl': url,
         });
       }
 
