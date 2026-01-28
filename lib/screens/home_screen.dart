@@ -28,6 +28,7 @@ class HomeScreen extends ConsumerWidget {
     final userId = authUser?.uid;
     final dailyStreakAsync =
         userId != null ? ref.watch(dailyStreakProvider(userId)) : null;
+    final name = userProfile?.firstname ?? 'User';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5EDE2),
@@ -36,42 +37,162 @@ class HomeScreen extends ConsumerWidget {
           const top_bar(),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.all(30.0),
+              padding: EdgeInsets.all(MediaQuery.of(context).size.height * 0.02),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Row(
+                  Stack(
+                    clipBehavior: Clip.none,
                     children: [
-                      Expanded(
-                        child: Container(
-                            //WELCOME USER BOX -----------------------
-                            alignment: Alignment.center,
-                            height: MediaQuery.of(context).size.height * 0.15,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFFFFFF),
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.1),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 5),
-                                ),
-                              ],
+
+
+                      Container(
+                    width: MediaQuery.of(context).size.width * 1,
+                    height: MediaQuery.of(context).size.height * 0.35,
+                    clipBehavior: Clip.none,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFFFFF),
+                      borderRadius: BorderRadius.circular(40),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 10,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                   
+                      child: Column( 
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                        ClipRect(child: Align(
+                          alignment: Alignment.topCenter,
+                          heightFactor: 0.7,
+
+                          child: CircularPercentIndicator(
+                            radius: MediaQuery.of(context).size.height * 0.1,
+                            lineWidth: MediaQuery.of(context).size.width * 0.04,
+                            arcType: ArcType.HALF,
+                            animation: true,
+                            percent: totalCalories / 2000,
+                            center: Text(
+                              '$totalCalories' 'kcal',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: MediaQuery.of(context).size.height * 0.025,
+                                color: const Color(0xFF5F9735),
+                              ),
                             ),
-                            child: Stack(children: [
-                              Positioned(
-                                  top: 20,
-                                  left: 20,
-                                  right: 20,
-                                  child: Text('Welcome back, User!',
-                                      textAlign: TextAlign.center,
-                                      softWrap: true,
-                                      overflow: TextOverflow.visible,
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 24,
-                                        height: 1.2,
-                                      ))),
+                            header: Text(
+                              "Calories:",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: MediaQuery.of(context).size.height * 0.03,
+                                color: const Color(0xFF5F9735),
+                              ),
+                            ),
+                            /*footer: Text(
+                              "$totalCalories" "kcal",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: MediaQuery.of(context).size.width * 0.05,
+                                color: const Color(0xFF5F9735),
+                              ),
+                            ),*/
+                            circularStrokeCap: CircularStrokeCap.round,
+                            progressColor: const Color(0xFF5F9735),
+                            arcBackgroundColor: const Color(0xFFF5EDE2),
+                          )
+                        ),),
+                        
+                        
+                        
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              CircularPercentIndicator(
+                                radius: MediaQuery.of(context).size.height * 0.05,
+                                lineWidth: MediaQuery.of(context).size.width * 0.03,
+                                animation: true,
+                                percent: dailyProtein / 150,
+                                header: Text(
+                                  "Protein:",
+                                  style: TextStyle(
+                                    color: const Color(0xFFC2482B),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: MediaQuery.of(context).size.height * 0.025,
+                                  ),
+                                ),
+                                footer: Text(
+                                  "$dailyProtein" "g",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: MediaQuery.of(context).size.height * 0.025,
+                                    color: const Color(0xFFC2482B),
+                                  ),
+                                ),
+                                circularStrokeCap: CircularStrokeCap.round,
+                                progressColor: const Color(0xFFC2482B),
+                                backgroundColor: const Color(0xFFF5EDE2),
+                              ),
+                              CircularPercentIndicator(
+                                radius: MediaQuery.of(context).size.height * 0.05,
+                                lineWidth: MediaQuery.of(context).size.width * 0.03,
+                                animation: true,
+                                percent: dailyCarbs / 150,
+                                header: Text(
+                                  "Carbs:",
+                                  style: TextStyle(
+                                    color: const Color(0xFFE0A100),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: MediaQuery.of(context).size.height * 0.025,
+                                  ),
+                                ),
+                                footer: Text(
+                                  "$dailyCarbs" "g",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: MediaQuery.of(context).size.height * 0.025,
+                                    color: const Color(0xFFE0A100),
+                                  ),
+                                ),
+                                circularStrokeCap: CircularStrokeCap.round,
+                                progressColor: const Color(0xFFE0A100),
+                                backgroundColor: const Color(0xFFF5EDE2),
+                              ),
+                              CircularPercentIndicator(
+                                radius: MediaQuery.of(context).size.height * 0.05,
+                                lineWidth: MediaQuery.of(context).size.width * 0.03,
+                                animation: true,
+                                percent: dailyFat / 150,
+                                header: Text(
+                                  "Fats:",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: MediaQuery.of(context).size.height * 0.025,
+                                    color: const Color(0xFF3A6FB8),
+                                  ),
+                                ),
+                                footer: Text(
+                                  "$dailyFat" "g",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: MediaQuery.of(context).size.height * 0.025,
+                                    color: const Color(0xFF3A6FB8),
+                                  ),
+                                ),
+                                circularStrokeCap: CircularStrokeCap.round,
+                                progressColor: const Color(0xFF3A6FB8),
+                                backgroundColor: const Color(0xFFF5EDE2),
+                              ),
+                            ],
+                          ),
+                        
+                      ]),
+                    
+                  ),
+                       
                               /*Positioned(
                                   bottom: 20,
                                   left: 20,
@@ -87,26 +208,30 @@ class HomeScreen extends ConsumerWidget {
                                       ),
                                     ),
                                   ))*/
-                            ])),
-                      ),
+                          
+                      
                       // Daily Streak Indicator
                       if (dailyStreakAsync != null) ...[
-                        const SizedBox(width: 16),
-                        dailyStreakAsync.when(
+                        Positioned(
+                          top: 0,
+                          right: 0,
+                        child: dailyStreakAsync.when(
                           data: (streak) => _StreakIndicator(streak: streak),
-                          loading: () => const SizedBox(
-                            width: 80,
-                            height: 60,
+                          loading: () => SizedBox(
+                           
+                            width: MediaQuery.of(context).size.width * 0.2,
+                            height: MediaQuery.of(context).size.height * 0.1,
                             child: Center(
                               child: SizedBox(
-                                width: 20,
-                                height: 20,
+                                width: MediaQuery.of( context).size.width * 0.5,
+                                height: MediaQuery.of( context).size.height * 0.15,
                                 child:
                                     CircularProgressIndicator(strokeWidth: 2),
                               ),
                             ),
                           ),
                           error: (_, __) => const SizedBox.shrink(),
+                        ),
                         ),
                       ],
                     ],
@@ -123,145 +248,14 @@ class HomeScreen extends ConsumerWidget {
                 ),
                 Padding(padding: const EdgeInsets.symmetric(vertical: 5)),*/
 
-                  Container(
-                    width: MediaQuery.of(context).size.width * 0.95,
-                    height: MediaQuery.of(context).size.height * 0.5,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFFFFF),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 10,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                          horizontal: MediaQuery.of(context).size.width * 0.05, 
-                          vertical: MediaQuery.of(context).size.height * 0.03),
-                      child: Column( children: [
-                        CircularPercentIndicator(
-                              radius: MediaQuery.of(context).size.height * 0.1,
-                              lineWidth: MediaQuery.of(context).size.width * 0.04,
-                              arcType: ArcType.HALF,
-                              animation: true,
-                              percent: totalCalories / 2000,
-                              header: Text(
-                                "$totalCalories" "kcal",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: MediaQuery.of(context).size.height * 0.03,
-                                  color: const Color(0xFF5F9735),
-                                ),
-                              ),
-                              /*footer: Text(
-                                "$totalCalories" "kcal",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: MediaQuery.of(context).size.width * 0.05,
-                                  color: const Color(0xFF5F9735),
-                                ),
-                              ),*/
-                              circularStrokeCap: CircularStrokeCap.round,
-                              progressColor: const Color(0xFF5F9735),
-                              arcBackgroundColor: const Color(0xFFF5EDE2),
-                            ),
-                        
-                        Transform.translate(
-                          offset: Offset(0, -MediaQuery.of(context).size.height * 0.07),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: [
-                              CircularPercentIndicator(
-                                radius: MediaQuery.of(context).size.width * 0.1,
-                                lineWidth: MediaQuery.of(context).size.width * 0.03,
-                                animation: true,
-                                percent: dailyProtein / 150,
-                                header: Text(
-                                  "Protein:",
-                                  style: TextStyle(
-                                    color: const Color(0xFFC2482B),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: MediaQuery.of(context).size.width * 0.05,
-                                  ),
-                                ),
-                                footer: Text(
-                                  "$dailyProtein" "g",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: MediaQuery.of(context).size.width * 0.05,
-                                    color: const Color(0xFFC2482B),
-                                  ),
-                                ),
-                                circularStrokeCap: CircularStrokeCap.round,
-                                progressColor: const Color(0xFFC2482B),
-                                backgroundColor: const Color(0xFFF5EDE2),
-                              ),
-                              CircularPercentIndicator(
-                                radius: MediaQuery.of(context).size.width * 0.1,
-                                lineWidth: MediaQuery.of(context).size.width * 0.03,
-                                animation: true,
-                                percent: dailyCarbs / 150,
-                                header: Text(
-                                  "Carbs:",
-                                  style: TextStyle(
-                                    color: const Color(0xFFE0A100),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: MediaQuery.of(context).size.width * 0.05,
-                                  ),
-                                ),
-                                footer: Text(
-                                  "$dailyCarbs" "g",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: MediaQuery.of(context).size.width * 0.05,
-                                    color: const Color(0xFFE0A100),
-                                  ),
-                                ),
-                                circularStrokeCap: CircularStrokeCap.round,
-                                progressColor: const Color(0xFFE0A100),
-                                backgroundColor: const Color(0xFFF5EDE2),
-                              ),
-                              CircularPercentIndicator(
-                                radius: MediaQuery.of(context).size.width * 0.1,
-                                lineWidth: MediaQuery.of(context).size.width * 0.03,
-                                animation: true,
-                                percent: dailyFat / 150,
-                                header: Text(
-                                  "Fats:",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: MediaQuery.of(context).size.width * 0.05,
-                                    color: const Color(0xFF3A6FB8),
-                                  ),
-                                ),
-                                footer: Text(
-                                  "$dailyFat" "g",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: MediaQuery.of(context).size.width * 0.05,
-                                    color: const Color(0xFF3A6FB8),
-                                  ),
-                                ),
-                                circularStrokeCap: CircularStrokeCap.round,
-                                progressColor: const Color(0xFF3A6FB8),
-                                backgroundColor: const Color(0xFFF5EDE2),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ]),
-                    ),
-                  ),
+
                   //Padding(padding: const EdgeInsets.symmetric(vertical: 15)),
                   /*Text( //TODAYS MEALS TITLE --------------------------
                   'Today\'s Meals:',
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 Padding(padding: const EdgeInsets.symmetric(vertical: 10)),*/
-                  /*Container(
+                /*  Container(
                   child: CarouselSlider(
                     items: [1, 2, 3].map((e) {
                       return Container(
@@ -574,10 +568,12 @@ class _StreakIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: EdgeInsets.symmetric(
+        horizontal: MediaQuery.of(context).size.width * 0.04, 
+        vertical: MediaQuery.of(  context).size.height * 0.01,),
       decoration: BoxDecoration(
         color: const Color(0xFFFFF3E0),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: const Color(0xFFE0A100),
           width: 2,
@@ -586,23 +582,23 @@ class _StreakIndicator extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
+          Text(
             '🔥',
-            style: TextStyle(fontSize: 20),
+            style: TextStyle(fontSize: MediaQuery.of(context).size.height * 0.05),
           ),
-          const SizedBox(height: 2),
+          SizedBox(height: MediaQuery.of(context).size.height * 0.0025),
           Text(
             '$streak',
-            style: const TextStyle(
-              fontSize: 18,
+            style: TextStyle(
+              fontSize: MediaQuery.of(context).size.height * 0.03,
               fontWeight: FontWeight.bold,
               color: Color(0xFFE0A100),
             ),
           ),
-          const Text(
-            'day streak',
+          Text(
+            'DAY STREAK',
             style: TextStyle(
-              fontSize: 10,
+              fontSize: MediaQuery.of(context).size.height * 0.012,
               color: Color(0xFFE0A100),
               fontWeight: FontWeight.w500,
             ),

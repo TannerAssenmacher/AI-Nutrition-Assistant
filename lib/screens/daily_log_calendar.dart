@@ -210,11 +210,11 @@ class _DailyLogCalendarScreenState
                                 value:
                                     '${totals['fat']?.toStringAsFixed(1) ?? 0}g',
                               ),
-                              _MacroSummaryItem(
+                              /*_MacroSummaryItem(
                                 label: 'Fiber',
                                 value:
                                     '${totals['fiber']?.toStringAsFixed(1) ?? 0}g',
-                              ),
+                              ),*/
                             ],
                           ),
                         ),

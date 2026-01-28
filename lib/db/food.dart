@@ -10,13 +10,21 @@ part 'food.g.dart';
 @JsonSerializable()
 class FoodItem {
   final String id;
+    @JsonKey(defaultValue: "none")
   final String name;
+    @JsonKey(defaultValue: 0.0)
   final double mass_g;
+    @JsonKey(defaultValue: 0.0)
   final double calories_g;
+    @JsonKey(defaultValue: 0.0)
   final double protein_g;
+    @JsonKey(defaultValue: 0.0)
   final double carbs_g;
+    @JsonKey(defaultValue: 0.0)
   final double fat;
+    @JsonKey(defaultValue: "NA")
   final String mealType; // breakfast/lunch/etc.
+    
 
   @JsonKey(fromJson: AppUser.dateFromJson, toJson: AppUser.dateToJson)
   final DateTime consumedAt;
