@@ -37,6 +37,8 @@ const API_KEYS = [
   '3ff3175c82d1435a941219ed38c55473',
   'be1b00e1fd0646e1ad12e48aad78d1b8',
   'b7402fac116342be927d7a98cf2a5c3d',
+  '15b4096cb5c24b41aed6c1b2683444b0',
+  'a80b53549c1a443787491aaa8ea68e8f',
 ];
 const BASE_URL = 'https://api.spoonacular.com';
 const TARGET_COLLECTION = 'recipes';
@@ -44,7 +46,7 @@ const TARGET_COLLECTION = 'recipes';
 // Free tier: 150 points/day per key
 // complexSearch with nutrition = ~1.1 points per call (1 + 0.01*100 + 0.025*100*3)
 // Conservative: 100 recipes per call = ~4.6 points
-// With 5 API keys: ~6 requests per key per day = ~30 successful requests expected
+// With 7 API keys: ~6 requests per key per day = ~42 successful requests expected
 // Script will automatically stop when ALL keys hit their quota limit
 const RECIPES_PER_REQUEST = 100;
 const EXPECTED_REQUESTS_PER_KEY = 6; // Expected successful requests per key

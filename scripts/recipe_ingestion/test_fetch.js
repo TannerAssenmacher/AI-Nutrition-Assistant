@@ -18,6 +18,8 @@ const API_KEYS = [
   '3ff3175c82d1435a941219ed38c55473',
   'be1b00e1fd0646e1ad12e48aad78d1b8',
   'b7402fac116342be927d7a98cf2a5c3d',
+  '15b4096cb5c24b41aed6c1b2683444b0',
+  'a80b53549c1a443787491aaa8ea68e8f',
 ];
 const BASE_URL = 'https://api.spoonacular.com';
 

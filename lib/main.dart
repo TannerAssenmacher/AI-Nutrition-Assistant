@@ -35,7 +35,7 @@ void main() async {
     }
 
     // Print all Firestore data once at startup (only if needed)
-    await FirestoreHelper.printAllData();
+    // await FirestoreHelper.printAllData(); // Commented out to reduce terminal output
   } catch (e) {
     print("Error during initialization: $e");
     // Continue with app launch even if there's an error

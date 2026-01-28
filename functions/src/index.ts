@@ -1,9 +1,11 @@
 /**
  * Genkit Cloud Functions for AI Nutrition Assistant
- * 
+ *
  * Exports:
  * - onRecipeCreated: Firestore trigger to generate embeddings
  * - searchRecipes: Callable function for RAG recipe search
+ *
+ * Version: 1.0.3 - Migrated to gemini-embedding-001 (text-embedding-004 shut down Jan 14, 2026)
  */
 
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
@@ -11,9 +13,6 @@ import { onCall, onRequest, HttpsError } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import { initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
-
-import { genkit } from "genkit";
-import { googleAI, textEmbedding004 } from "@genkit-ai/googleai";
 
 import { Pool } from "pg";
 
@@ -24,11 +23,6 @@ const db = getFirestore();
 // Define secrets
 const pgPassword = defineSecret("pg-password");
 const geminiApiKey = defineSecret("gemini-api-key");
-
-// Initialize Genkit with Google AI (will use GOOGLE_API_KEY env var)
-const ai = genkit({
-  plugins: [googleAI()],
-});
 
 // PostgreSQL connection pool (lazy initialization)
 let pool: Pool | null = null;
@@ -63,15 +57,36 @@ function getPool(): Pool {
 }
 
 /**
- * Generate embedding for a recipe using Gemini
+ * Generate embedding for a recipe using Gemini REST API
  */
 async function generateEmbedding(text: string): Promise<number[]> {
-  const response = await ai.embed({
-    embedder: textEmbedding004,
-    content: text,
+  const apiKey = geminiApiKey.value();
+  // Use v1beta API with gemini-embedding-001
+  // Note: text-embedding-004 was shut down on January 14, 2026
+  // Using outputDimensionality=768 for compatibility with existing embeddings
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${apiKey}`;
+
+  const fetch = (await import("node-fetch")).default;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "models/gemini-embedding-001",
+      content: { parts: [{ text }] },
+      outputDimensionality: 768,  // Match existing text-embedding-004 dimensions
+    }),
   });
-  // Genkit returns array of embeddings, we need the first one
-  return response[0].embedding;
+
+  if (!response.ok) {
+    const error = await response.text();
+    console.error(`Embedding API error: ${response.status}`);
+    console.error(`Full error response: ${error}`);
+    console.error(`Request URL: ${url}`);
+    throw new Error(`Embedding API error: ${response.status} - ${error}`);
+  }
+
+  const data = await response.json() as any;
+  return data.embedding.values;
 }
 
 /**
@@ -329,9 +344,11 @@ export const searchRecipes = onCall<SearchParams>(
 
       console.log('Searching with query:', queryText);
       console.log('User profile - Goal:', dietaryGoal, 'Calories:', dailyCalorieGoal, 'Macros:', macroGoals);
-      
+
       // Generate query embedding
+      console.log('Generating embedding for query...');
       const queryEmbedding = await generateEmbedding(queryText);
+      console.log('Embedding generated successfully. Length:', queryEmbedding.length);
 
       // Build SQL query with filters and vector similarity
       let sql = `
@@ -429,7 +446,9 @@ export const searchRecipes = onCall<SearchParams>(
       console.log("Executing search query:", sql);
       console.log("Params:", params.slice(1)); // Skip embedding for logging
 
+      console.log('Querying PostgreSQL...');
       let result = await getPool().query(sql, params);
+      console.log(`PostgreSQL returned ${result.rows.length} results`);
       let isExactMatch = true;
 
       // If no results with strict filters, try relaxed search (just vector similarity + dislikes + excludeIds)
