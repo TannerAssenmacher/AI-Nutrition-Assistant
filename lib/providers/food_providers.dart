@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../db/food.dart';
@@ -99,10 +100,14 @@ Future<int> dailyStreak(Ref ref, String userId) async {
       // Get unique dates from food log (sorted in descending order)
       final datesWithFood = <DateTime>{};
       for (final item in foodLog) {
-        datesWithFood.add(DateTime(item.consumedAt.year, item.consumedAt.month, item.consumedAt.day));
+        final localTime = item.consumedAt.toLocal();
+        final normalizedDate =
+            DateTime(localTime.year, localTime.month, localTime.day);
+        datesWithFood.add(normalizedDate);
       }
 
-      final sortedDates = datesWithFood.toList()..sort((a, b) => b.compareTo(a));
+      final sortedDates = datesWithFood.toList()
+        ..sort((a, b) => b.compareTo(a));
 
       if (sortedDates.isEmpty) {
         return 0;
@@ -113,16 +118,32 @@ Future<int> dailyStreak(Ref ref, String userId) async {
       final todayDate = DateTime(today.year, today.month, today.day);
       final yesterdayDate = todayDate.subtract(const Duration(days: 1));
 
+      // Filter out future dates (food logged for future days shouldn't count for streak)
+      final pastDates = sortedDates
+          .where(
+              (date) => date.isBefore(todayDate.add(const Duration(days: 1))))
+          .toList();
+
+      if (pastDates.isEmpty) {
+        return 0;
+      }
+
+      debugPrint('Daily Streak Debug:');
+      debugPrint('  Today: $todayDate');
+      debugPrint('  Most recent log (excluding future): ${pastDates.first}');
+      debugPrint('  Total unique days (excluding future): ${pastDates.length}');
+
       // If the most recent day with food is not today or yesterday, streak is broken
-      if (sortedDates.first != todayDate && sortedDates.first != yesterdayDate) {
+      if (pastDates.first != todayDate && pastDates.first != yesterdayDate) {
+        debugPrint('  Streak broken - last log was before yesterday');
         return 0;
       }
 
       // Count consecutive days
       int streak = 0;
-      DateTime expectedDate = sortedDates.first;
+      DateTime expectedDate = pastDates.first;
 
-      for (final date in sortedDates) {
+      for (final date in pastDates) {
         if (date == expectedDate) {
           streak++;
           expectedDate = expectedDate.subtract(const Duration(days: 1));
@@ -131,6 +152,7 @@ Future<int> dailyStreak(Ref ref, String userId) async {
         }
       }
 
+      debugPrint('  Final streak: $streak');
       return streak;
     },
     error: (_, __) => 0,

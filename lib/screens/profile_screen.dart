@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../widgets/macro_slider.dart';
+import 'package:nutrition_assistant/navigation/nav_helper.dart';
+import 'package:nutrition_assistant/widgets/nav_bar.dart';
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+  final bool isInPageView;
+
+  const ProfilePage({super.key, this.isInPageView = false});
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -290,135 +294,142 @@ class _ProfilePageState extends State<ProfilePage> {
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Profile'),
-        automaticallyImplyLeading: true, // Ensures back button appears
-      ),
-      body: SafeArea(
-        child: Scrollbar(
-          thumbVisibility: true,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                children: [
-                  Center(
-                    child: ConstrainedBox(
-                      constraints:
-                          const BoxConstraints(minWidth: 250, maxWidth: 500),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _readOnlyField('First Name', _firstname ?? ''),
-                          _readOnlyField('Last Name', _lastname ?? ''),
-                          _readOnlyField('Email', _email ?? ''),
-                          _readOnlyField('Date of Birth', _dob ?? ''),
-                          _readOnlyField('Sex', _sex ?? ''),
-                          _editableField(_heightController, 'Height (inches)',
-                              isNumber: true),
-                          _editableField(_weightController, 'Weight (lbs)',
-                              isNumber: true),
-                          _dropdownField('Activity Level', _activityLevels,
-                              _activityLevel, (val) => _activityLevel = val),
-                          _dropdownField('Dietary Goal', _dietGoals,
-                              _dietaryGoal, (val) => _dietaryGoal = val),
-                          _editableField(
-                              _dailyCaloriesController, 'Daily Calorie Goal',
-                              isNumber: true),
-                          const SizedBox(height: 20),
-                          const Text(
-                            'Macronutrient Goals (% of calories)',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 10),
-                          MacroSlider(
-                            protein: _protein,
-                            carbs: _carbs,
-                            fats: _fats,
-                            onChanged: (p, c, f) {
-                              setState(() {
-                                _protein = p;
-                                _carbs = c;
-                                _fats = f;
-                              });
-                            },
-                          ),
-                        ],
-                      ),
+    final bodyContent = SafeArea(
+      child: Scrollbar(
+        thumbVisibility: true,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                Center(
+                  child: ConstrainedBox(
+                    constraints:
+                        const BoxConstraints(minWidth: 250, maxWidth: 500),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _readOnlyField('First Name', _firstname ?? ''),
+                        _readOnlyField('Last Name', _lastname ?? ''),
+                        _readOnlyField('Email', _email ?? ''),
+                        _readOnlyField('Date of Birth', _dob ?? ''),
+                        _readOnlyField('Sex', _sex ?? ''),
+                        _editableField(_heightController, 'Height (inches)',
+                            isNumber: true),
+                        _editableField(_weightController, 'Weight (lbs)',
+                            isNumber: true),
+                        _dropdownField('Activity Level', _activityLevels,
+                            _activityLevel, (val) => _activityLevel = val),
+                        _dropdownField('Dietary Goal', _dietGoals, _dietaryGoal,
+                            (val) => _dietaryGoal = val),
+                        _editableField(
+                            _dailyCaloriesController, 'Daily Calorie Goal',
+                            isNumber: true),
+                        const SizedBox(height: 20),
+                        const Text(
+                          'Macronutrient Goals (% of calories)',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 10),
+                        MacroSlider(
+                          protein: _protein,
+                          carbs: _carbs,
+                          fats: _fats,
+                          onChanged: (p, c, f) {
+                            setState(() {
+                              _protein = p;
+                              _carbs = c;
+                              _fats = f;
+                            });
+                          },
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 25),
-                  _centeredMultiSelectField(
-                      'Dietary Habits', _dietaryHabitOptions, _dietaryHabits),
-                  const SizedBox(height: 24),
-                  _centeredMultiSelectField(
-                      'Health Restrictions', _healthOptions, _health),
-                  const SizedBox(height: 24),
-                  Center(
-                    child: ConstrainedBox(
-                      constraints:
-                          const BoxConstraints(minWidth: 250, maxWidth: 500),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _optionalField(_likesController,
-                              'Food Likes (comma-separated, e.g. "chicken, rice")'),
-                          _optionalField(_dislikesController,
-                              'Food Dislikes (comma-separated, e.g. "broccoli, tofu")'),
-                        ],
-                      ),
+                ),
+                const SizedBox(height: 25),
+                _centeredMultiSelectField(
+                    'Dietary Habits', _dietaryHabitOptions, _dietaryHabits),
+                const SizedBox(height: 24),
+                _centeredMultiSelectField(
+                    'Health Restrictions', _healthOptions, _health),
+                const SizedBox(height: 24),
+                Center(
+                  child: ConstrainedBox(
+                    constraints:
+                        const BoxConstraints(minWidth: 250, maxWidth: 500),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _optionalField(_likesController,
+                            'Food Likes (comma-separated, e.g. "chicken, rice")'),
+                        _optionalField(_dislikesController,
+                            'Food Dislikes (comma-separated, e.g. "broccoli, tofu")'),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 30),
-                  Center(
-                    child: ConstrainedBox(
-                      constraints:
-                          const BoxConstraints(minWidth: 200, maxWidth: 350),
-                      child: _isSaving
-                          ? const Center(child: CircularProgressIndicator())
-                          : ElevatedButton(
-                              onPressed: _saveProfile,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
-                                padding: const EdgeInsets.all(15),
-                              ),
-                              child: const Text(
-                                'Save Changes',
-                                style: TextStyle(
-                                    color: Colors.white, fontSize: 18),
-                              ),
+                ),
+                const SizedBox(height: 30),
+                Center(
+                  child: ConstrainedBox(
+                    constraints:
+                        const BoxConstraints(minWidth: 200, maxWidth: 350),
+                    child: _isSaving
+                        ? const Center(child: CircularProgressIndicator())
+                        : ElevatedButton(
+                            onPressed: _saveProfile,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              padding: const EdgeInsets.all(15),
                             ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Center(
-                    child: ConstrainedBox(
-                      constraints:
-                          const BoxConstraints(minWidth: 200, maxWidth: 350),
-                      child: _isDeleting
-                          ? const Center(child: CircularProgressIndicator())
-                          : OutlinedButton.icon(
-                              icon: const Icon(Icons.delete_forever,
-                                  color: Colors.red),
-                              label: const Text(
-                                'Delete Account',
-                                style: TextStyle(color: Colors.red),
-                              ),
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: Colors.red),
-                                padding: const EdgeInsets.all(15),
-                              ),
-                              onPressed: _confirmDeleteAccount,
+                            child: const Text(
+                              'Save Changes',
+                              style:
+                                  TextStyle(color: Colors.white, fontSize: 18),
                             ),
-                    ),
+                          ),
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 20),
+                Center(
+                  child: ConstrainedBox(
+                    constraints:
+                        const BoxConstraints(minWidth: 200, maxWidth: 350),
+                    child: _isDeleting
+                        ? const Center(child: CircularProgressIndicator())
+                        : OutlinedButton.icon(
+                            icon: const Icon(Icons.delete_forever,
+                                color: Colors.red),
+                            label: const Text(
+                              'Delete Account',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Colors.red),
+                              padding: const EdgeInsets.all(15),
+                            ),
+                            onPressed: _confirmDeleteAccount,
+                          ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
+      ),
+    );
+
+    if (widget.isInPageView == true) {
+      return bodyContent;
+    }
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5EDE2),
+      body: bodyContent,
+      bottomNavigationBar: NavBar(
+        currentIndex: navIndexProfile,
+        onTap: (index) => handleNavTap(context, index),
       ),
     );
   }

@@ -5,9 +5,13 @@ import '../services/gemini_chat_service.dart';
 import '../providers/auth_providers.dart';
 import '../providers/firestore_providers.dart';
 import '../db/food.dart';
+import 'package:nutrition_assistant/navigation/nav_helper.dart';
+import 'package:nutrition_assistant/widgets/nav_bar.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
-  const ChatScreen({super.key});
+  final bool isInPageView;
+
+  const ChatScreen({super.key, this.isInPageView = false});
 
   @override
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
@@ -226,176 +230,184 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget build(BuildContext context) {
     final chatMessages = ref.watch(geminiChatServiceProvider);
 
+    final bodyContent = SafeArea(
+      child: _buildChatContent(context, chatMessages),
+    );
+
+    if (widget.isInPageView == true) {
+      return bodyContent;
+    }
+
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
+      backgroundColor: const Color(0xFFF5EDE2),
+      body: bodyContent,
+      bottomNavigationBar: NavBar(
+        currentIndex: navIndexChat,
+        onTap: (index) => handleNavTap(context, index),
+      ),
+    );
+  }
+
+  Widget _buildChatContent(
+      BuildContext context, List<ChatMessage> chatMessages) {
+    return Column(
+      children: [
+        // Clear chat button
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              icon: const Icon(Icons.clear_all),
+              label: const Text('Clear Chat'),
+              onPressed: () {
+                ref.read(geminiChatServiceProvider.notifier).clearChat();
+                setState(() {
+                  _showRecipePicker = false;
+                  _showCuisinePicker = false;
+                  _selectedMealType = null;
+                });
+              },
+            ),
+          ),
         ),
-        title: const Text('Nutrition Assistant Chat'),
-        backgroundColor: Colors.green[600],
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.clear_all),
-            tooltip: 'Clear Chat',
-            onPressed: () {
-              ref.read(geminiChatServiceProvider.notifier).clearChat();
-              setState(() {
-                _showRecipePicker = false;
-                _showCuisinePicker = false;
-                _selectedMealType = null;
-              });
-            },
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: chatMessages.isEmpty
-                ? const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.chat_bubble_outline,
-                            size: 64, color: Colors.grey),
-                        SizedBox(height: 16),
-                        Text(
-                          'Ask me anything about nutrition!',
-                          style: TextStyle(fontSize: 18, color: Colors.grey),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Try: "What should I eat for dinner?"',
-                          style: TextStyle(fontSize: 14, color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.all(16),
-                    itemCount: chatMessages.length,
-                    itemBuilder: (context, index) {
-                      final message = chatMessages[index];
-
-                      try {
-                        final parsed = jsonDecode(message.content);
-
-                        if (parsed is Map &&
-                            parsed['type'] == 'meal_profile_summary') {
-                          return MealProfileSummaryBubble(
-                            data: Map<String, dynamic>.from(parsed),
-                            onYes: () => _confirmMealProfile(true),
-                            onNo: () => _confirmMealProfile(false),
-                          );
-                        }
-
-                        if (parsed is Map &&
-                            parsed['type'] == 'recipe_results') {
-                          final recipes = List<Map<String, dynamic>>.from(
-                              parsed['recipes'] ?? const []);
-
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              ...recipes.map(
-                                (r) => _RecipeCard(
-                                  recipe: r,
-                                  mealType: _selectedMealType ?? 'Meal',
-                                  onAdd: () => _addRecipeToLog(
-                                    r,
-                                    mealType: _selectedMealType ?? 'meal',
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Center(
-                                child: OutlinedButton.icon(
-                                  onPressed: () {
-                                    final meal = _selectedMealType ?? 'Dinner';
-                                    final cuisine =
-                                        _selectedCuisineType ?? 'None';
-                                    _loadMoreRecipes(meal, cuisine);
-                                  },
-                                  icon: const Icon(Icons.refresh),
-                                  label: const Text("More recipes"),
-                                ),
-                              ),
-                            ],
-                          );
-                        }
-                      } catch (_) {}
-
-                      return _ChatBubble(message: message);
-                    },
-                  ),
-          ),
-
-          // ✅ Only one button area, centered, same color
-          _choiceBar(),
-
-          // Input bar
-          Container(
-            padding: EdgeInsets.fromLTRB(
-              16,
-              16,
-              16,
-              16 + MediaQuery.of(context).padding.bottom,
-            ),
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              border: Border(
-                top: BorderSide(color: Colors.grey[300]!),
-              ),
-            ),
-            child: Column(
-              children: [
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: OutlinedButton.icon(
-                    onPressed: _promptRecipeType,
-                    icon: const Icon(Icons.restaurant_menu),
-                    label: const Text('Generate Recipes'),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _messageController,
-                        decoration: InputDecoration(
-                          hintText:
-                              'Ask about nutrition, calories, meal planning...',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                        ),
-                        maxLines: null,
-                        textInputAction: TextInputAction.send,
-                        onSubmitted: (_) => _sendMessage(),
+        Expanded(
+          child: chatMessages.isEmpty
+              ? const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.chat_bubble_outline,
+                          size: 64, color: Colors.grey),
+                      SizedBox(height: 16),
+                      Text(
+                        'Ask me anything about nutrition!',
+                        style: TextStyle(fontSize: 18, color: Colors.grey),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    FloatingActionButton(
-                      onPressed: _sendMessage,
-                      backgroundColor: Colors.green[600],
-                      mini: true,
-                      child: const Icon(Icons.send, color: Colors.white),
-                    ),
-                  ],
+                      SizedBox(height: 8),
+                      Text(
+                        'Try: "What should I eat for dinner?"',
+                        style: TextStyle(fontSize: 14, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.all(16),
+                  itemCount: chatMessages.length,
+                  itemBuilder: (context, index) {
+                    final message = chatMessages[index];
+
+                    try {
+                      final parsed = jsonDecode(message.content);
+
+                      if (parsed is Map &&
+                          parsed['type'] == 'meal_profile_summary') {
+                        return MealProfileSummaryBubble(
+                          data: Map<String, dynamic>.from(parsed),
+                          onYes: () => _confirmMealProfile(true),
+                          onNo: () => _confirmMealProfile(false),
+                        );
+                      }
+
+                      if (parsed is Map && parsed['type'] == 'recipe_results') {
+                        final recipes = List<Map<String, dynamic>>.from(
+                            parsed['recipes'] ?? const []);
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ...recipes.map(
+                              (r) => _RecipeCard(
+                                recipe: r,
+                                mealType: _selectedMealType ?? 'Meal',
+                                onAdd: () => _addRecipeToLog(
+                                  r,
+                                  mealType: _selectedMealType ?? 'meal',
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Center(
+                              child: OutlinedButton.icon(
+                                onPressed: () {
+                                  final meal = _selectedMealType ?? 'Dinner';
+                                  final cuisine =
+                                      _selectedCuisineType ?? 'None';
+                                  _loadMoreRecipes(meal, cuisine);
+                                },
+                                icon: const Icon(Icons.refresh),
+                                label: const Text("More recipes"),
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+                    } catch (_) {}
+
+                    return _ChatBubble(message: message);
+                  },
                 ),
-              ],
+        ),
+
+        // ✅ Only one button area, centered, same color
+        _choiceBar(),
+
+        // Input bar
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.grey[100],
+            border: Border(
+              top: BorderSide(color: Colors.grey[300]!),
             ),
           ),
-        ],
-      ),
+          child: Column(
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  onPressed: _promptRecipeType,
+                  icon: const Icon(Icons.restaurant_menu),
+                  label: const Text('Generate Recipes'),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _messageController,
+                      decoration: InputDecoration(
+                        hintText:
+                            'Ask about nutrition, calories, meal planning...',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                      ),
+                      maxLines: null,
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: (_) => _sendMessage(),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  FloatingActionButton(
+                    onPressed: _sendMessage,
+                    backgroundColor: Colors.green[600],
+                    mini: true,
+                    child: const Icon(Icons.send, color: Colors.white),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

@@ -7,9 +7,13 @@ import '../providers/auth_providers.dart';
 import '../providers/firestore_providers.dart';
 import '../db/food.dart';
 import '../db/user.dart';
+import 'package:nutrition_assistant/navigation/nav_helper.dart';
+import 'package:nutrition_assistant/widgets/nav_bar.dart';
 
 class DailyLogCalendarScreen extends ConsumerStatefulWidget {
-  const DailyLogCalendarScreen({super.key});
+  final bool isInPageView;
+
+  const DailyLogCalendarScreen({super.key, this.isInPageView = false});
 
   @override
   ConsumerState<DailyLogCalendarScreen> createState() =>
@@ -20,6 +24,20 @@ class _DailyLogCalendarScreenState
     extends ConsumerState<DailyLogCalendarScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
+
+  Widget _wrapWithScaffold(Widget body) {
+    if (widget.isInPageView == true) {
+      return body;
+    }
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5EDE2),
+      body: body,
+      bottomNavigationBar: NavBar(
+        currentIndex: navIndexHistory,
+        onTap: (index) => handleNavTap(context, index),
+      ),
+    );
+  }
 
   List<_FoodRow> _foodsForDay(DateTime day, List<FoodItem> log) {
     final rows = <_FoodRow>[];
@@ -255,15 +273,11 @@ class _DailyLogCalendarScreenState
     final authUser = ref.watch(authServiceProvider);
     final userId = authUser?.uid;
     if (userId == null) {
-      return Scaffold(
-        backgroundColor: const Color(0xFFF6E9D8),
-        appBar: AppBar(
-          backgroundColor: const Color(0xFFF6E9D8),
-          elevation: 0,
-          title: const Text('History', style: TextStyle(color: Colors.black87)),
-        ),
-        body: const Center(
-          child: Text('Sign in to view your meal log.'),
+      return _wrapWithScaffold(
+        const SafeArea(
+          child: Center(
+            child: Text('Sign in to view your meal log.'),
+          ),
         ),
       );
     }
@@ -283,77 +297,70 @@ class _DailyLogCalendarScreenState
         List.generate(7, (index) => weekStart.add(Duration(days: index)));
 
     return foodLogAsync.when(
-      error: (e, _) => Scaffold(
-        backgroundColor: const Color(0xFFF6E9D8),
-        appBar: AppBar(
-          backgroundColor: const Color(0xFFF6E9D8),
-          elevation: 0,
-          title: const Text('History', style: TextStyle(color: Colors.black87)),
+      error: (e, _) => _wrapWithScaffold(
+        SafeArea(
+          child: Center(child: Text('Failed to load meals: $e')),
         ),
-        body: Center(child: Text('Failed to load meals: $e')),
       ),
-      loading: () => const Scaffold(
-        backgroundColor: Color(0xFFF6E9D8),
-        body: Center(child: CircularProgressIndicator()),
-      ),
-      data: (foodLog) => Scaffold(
-        backgroundColor: const Color(0xFFF6E9D8),
-        appBar: AppBar(
-          backgroundColor: const Color(0xFFF6E9D8),
-          elevation: 0,
-          centerTitle: false,
-          automaticallyImplyLeading: true,
-          title: const Text('History', style: TextStyle(color: Colors.black87)),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.chevron_left),
-              color: Colors.black87,
-              tooltip: 'Previous week',
-              onPressed: () {
-                setState(() {
-                  _focusedDay = _focusedDay.subtract(const Duration(days: 7));
-                });
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.chevron_right),
-              color: Colors.black87,
-              tooltip: 'Next week',
-              onPressed: () {
-                setState(() {
-                  _focusedDay = _focusedDay.add(const Duration(days: 7));
-                });
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.add),
-              color: Colors.redAccent,
-              tooltip: 'Add apple to selected day',
-              onPressed: _addPlaceholderApple,
-            ),
-            const Padding(
-              padding: EdgeInsets.only(right: 16),
-              child: Icon(Icons.calendar_month, color: Colors.redAccent),
-            ),
-          ],
+      loading: () => _wrapWithScaffold(
+        const SafeArea(
+          child: Center(child: CircularProgressIndicator()),
         ),
-        body: SafeArea(
+      ),
+      data: (foodLog) => _wrapWithScaffold(
+        SafeArea(
           child: Column(
             children: [
-              // Week navigation header
+              // Week navigation controls
               Padding(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Text(
-                  '${DateFormat('MMMM yyyy').format(_focusedDay)}',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.chevron_left),
+                      color: const Color(0xFF3E2F26),
+                      tooltip: 'Previous week',
+                      onPressed: () {
+                        setState(() {
+                          _focusedDay =
+                              _focusedDay.subtract(const Duration(days: 7));
+                        });
+                      },
+                    ),
+                    Text(
+                      '${DateFormat('MMMM yyyy').format(_focusedDay)}',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF3E2F26),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.chevron_right),
+                          color: const Color(0xFF3E2F26),
+                          tooltip: 'Next week',
+                          onPressed: () {
+                            setState(() {
+                              _focusedDay =
+                                  _focusedDay.add(const Duration(days: 7));
+                            });
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.add),
+                          color: Colors.redAccent,
+                          tooltip: 'Add apple to selected day',
+                          onPressed: _addPlaceholderApple,
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-              // 7-day blocks
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.symmetric(horizontal: 8),

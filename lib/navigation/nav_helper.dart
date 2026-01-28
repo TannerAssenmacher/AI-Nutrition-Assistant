@@ -3,22 +3,16 @@ import 'package:flutter/material.dart';
 const int navIndexChat = 1;
 const int navIndexHistory = 2;
 const int navIndexHome = 3;
-const int navIndexCamera = 4;
-const int navIndexProfile = 5;
+const int navIndexProfile = 4;
+const int navIndexCamera = 5;
 
 /// Centralized navigation handler for the bottom nav bar.
 void handleNavTap(BuildContext context, int targetIndex) {
   String? targetRoute;
-  bool useRegularPush = false; // For screens that should allow back navigation
 
   switch (targetIndex) {
     case navIndexChat:
       targetRoute = '/chat';
-      useRegularPush = true; // Allow back navigation from chat
-      break;
-    case navIndexHistory:
-      targetRoute = '/calendar';
-      useRegularPush = true; // Allow back navigation from history
       break;
     case navIndexHistory:
       targetRoute = '/calendar';
@@ -26,12 +20,11 @@ void handleNavTap(BuildContext context, int targetIndex) {
     case navIndexHome:
       targetRoute = '/home';
       break;
-    case navIndexCamera:
-      targetRoute = '/camera';
-      break;
     case navIndexProfile:
       targetRoute = '/profile';
-      useRegularPush = true; // Allow back navigation from profile
+      break;
+    case navIndexCamera:
+      targetRoute = '/camera';
       break;
     default:
       targetRoute = null;
@@ -44,9 +37,10 @@ void handleNavTap(BuildContext context, int targetIndex) {
     return;
   }
 
-  if (useRegularPush) {
-    Navigator.pushNamed(context, targetRoute);
-  } else {
-    Navigator.pushReplacementNamed(context, targetRoute);
-  }
+  // Use pushNamedAndRemoveUntil for clean tab transitions without building a stack
+  Navigator.pushNamedAndRemoveUntil(
+    context,
+    targetRoute,
+    (route) => false,
+  );
 }
