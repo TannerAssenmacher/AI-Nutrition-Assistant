@@ -26,7 +26,8 @@ class HomeScreen extends ConsumerWidget {
     final foodSuggestionsAsync = ref.watch(foodSuggestionsProvider);
     final authUser = ref.watch(authServiceProvider);
     final userId = authUser?.uid;
-    final dailyStreakAsync = userId != null ? ref.watch(dailyStreakProvider(userId)) : null;
+    final dailyStreakAsync =
+        userId != null ? ref.watch(dailyStreakProvider(userId)) : null;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5EDE2),
@@ -39,69 +40,77 @@ class HomeScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Container(
-                      //WELCOME USER BOX -----------------------
-                      alignment: Alignment.center,
-                      height: MediaQuery.of(context).size.height * 0.15,
-                      width: MediaQuery.of(context).size.width * 0.95,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFFFFF),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 10,
-                            offset: const Offset(0, 5),
-                          ),
-                        ],
-                      ),
-                      child: Stack(children: [
-                        Positioned(
-                            top: 20,
-                            left: 20,
-                            child: Text('Welcome back, User!',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 24,
-                                  height: 1.2,
-                                ))),
-                        // Daily Streak Indicator
-                        if (dailyStreakAsync != null)
-                          Positioned(
-                            top: 20,
-                            right: 20,
-                            child: dailyStreakAsync.when(
-                              data: (streak) => _StreakIndicator(streak: streak),
-                              loading: () => const SizedBox(
-                                width: 80,
-                                height: 60,
-                                child: Center(
-                                  child: SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
-                                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                            //WELCOME USER BOX -----------------------
+                            alignment: Alignment.center,
+                            height: MediaQuery.of(context).size.height * 0.15,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFFFFF),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.1),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 5),
                                 ),
+                              ],
+                            ),
+                            child: Stack(children: [
+                              Positioned(
+                                  top: 20,
+                                  left: 20,
+                                  right: 20,
+                                  child: Text('Welcome back, User!',
+                                      textAlign: TextAlign.center,
+                                      softWrap: true,
+                                      overflow: TextOverflow.visible,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 24,
+                                        height: 1.2,
+                                      ))),
+                              /*Positioned(
+                                  bottom: 20,
+                                  left: 20,
+                                  child: TextButton(
+                                    onPressed: () {},
+                                    child: Text(
+                                      'Click here view today\'s score:',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        decoration: TextDecoration.underline,
+                                        fontWeight: FontWeight.bold,
+                                        color: const Color(0xFF967460),
+                                      ),
+                                    ),
+                                  ))*/
+                            ])),
+                      ),
+                      // Daily Streak Indicator
+                      if (dailyStreakAsync != null) ...[
+                        const SizedBox(width: 16),
+                        dailyStreakAsync.when(
+                          data: (streak) => _StreakIndicator(streak: streak),
+                          loading: () => const SizedBox(
+                            width: 80,
+                            height: 60,
+                            child: Center(
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
                               ),
-                              error: (_, __) => const SizedBox.shrink(),
                             ),
                           ),
-                        Positioned(
-                            bottom: 20,
-                            left: 20,
-                            child: TextButton(
-                              onPressed: () {},
-                              child: Text(
-                                'Click here view today\'s score:',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  decoration: TextDecoration.underline,
-                                  fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF967460),
-                                ),
-                              ),
-                            ))
-                      ])),
+                          error: (_, __) => const SizedBox.shrink(),
+                        ),
+                      ],
+                    ],
+                  ),
                   Padding(padding: const EdgeInsets.symmetric(vertical: 15)),
                   /*Text( //CONSUMPTION STATS TITLE -----------------------
                   'Today\'s Progress:',
