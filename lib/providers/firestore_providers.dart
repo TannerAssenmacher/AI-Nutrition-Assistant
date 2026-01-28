@@ -17,7 +17,7 @@ class FirestoreFoodLog extends _$FirestoreFoodLog {
   @override
   Stream<List<FoodItem>> build(String userId) {
     return FirebaseFirestore.instance
-        .collection('users')
+        .collection('Users')
         .doc(userId)
         .collection('food_log')
         .orderBy('consumedAt', descending: true)
@@ -51,7 +51,7 @@ class FirestoreFoodLog extends _$FirestoreFoodLog {
         'addFood: user=$userId name=${food.name} at=${food.consumedAt.toIso8601String()}');
 
     final docRef = await FirebaseFirestore.instance
-        .collection('users')
+        .collection('Users')
         .doc(userId)
         .collection('food_log')
         .add(data);
@@ -63,7 +63,7 @@ class FirestoreFoodLog extends _$FirestoreFoodLog {
     debugPrint('removeFood: user=$userId foodId=$foodId');
     try {
       await FirebaseFirestore.instance
-          .collection('users')
+          .collection('Users')
           .doc(userId)
           .collection('food_log')
           .doc(foodId)
@@ -81,7 +81,7 @@ class FirestoreFoodLog extends _$FirestoreFoodLog {
     data['consumedAt'] = Timestamp.fromDate(food.consumedAt);
 
     await FirebaseFirestore.instance
-        .collection('users')
+        .collection('Users')
         .doc(userId)
         .collection('food_log')
         .doc(foodId)
