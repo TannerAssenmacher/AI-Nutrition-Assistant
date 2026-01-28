@@ -14,7 +14,9 @@ import '../providers/firestore_providers.dart';
 import 'camera_capture_screen.dart';
 
 class CameraScreen extends ConsumerStatefulWidget {
-  const CameraScreen({super.key});
+  final bool isInPageView;
+
+  const CameraScreen({super.key, this.isInPageView = false});
 
   @override
   ConsumerState<CameraScreen> createState() => _CameraScreenState();
@@ -398,28 +400,46 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bodyContent = _buildCameraContent(context);
+
+    final fab = FloatingActionButton.extended(
+      onPressed: _isAnalyzing ? null : _captureAndAnalyze,
+      backgroundColor: Colors.green[700],
+      icon: _isAnalyzing
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            )
+          : const Icon(Icons.camera_alt),
+      label: Text(_isAnalyzing ? 'Analyzing...' : 'Capture meal'),
+    );
+
+    if (widget.isInPageView == true) {
+      return Stack(
+        children: [
+          bodyContent,
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 16,
+            child: Center(child: fab),
+          ),
+        ],
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5EDE2),
-      body: _buildCameraContent(context),
+      body: bodyContent,
       bottomNavigationBar: NavBar(
         currentIndex: navIndexCamera,
         onTap: (index) => handleNavTap(context, index),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _isAnalyzing ? null : _captureAndAnalyze,
-        backgroundColor: Colors.green[700],
-        icon: _isAnalyzing
-            ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 3,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
-              )
-            : const Icon(Icons.camera_alt),
-        label: Text(_isAnalyzing ? 'Analyzing...' : 'Capture meal'),
-      ),
+      floatingActionButton: fab,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }

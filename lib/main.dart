@@ -12,12 +12,8 @@ import 'db/firestore_helper.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/forgot_password_screen.dart';
-import 'screens/profile_screen.dart';
-import 'screens/chat_screen.dart';
-import 'screens/daily_log_calendar.dart';
-import 'screens/camera_capture_screen.dart';
-
-import 'screens/meal_analysis_screen.dart';
+import 'screens/main_navigation_screen.dart';
+import 'navigation/nav_helper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -163,11 +159,16 @@ class MyApp extends StatelessWidget {
         '/login': (context) => const LoginPage(),
         '/register': (context) => const RegisterPage(),
         '/forgot': (context) => const ForgotPasswordPage(),
-        '/profile': (context) => const ProfilePage(),
-        '/home': (context) => const HomeScreen(),
-        '/chat': (context) => const ChatScreen(),
-        '/calendar': (context) => const DailyLogCalendarScreen(),
-        '/camera': (context) => const CameraScreen(),
+        '/home': (context) =>
+            const MainNavigationScreen(initialIndex: navIndexHome),
+        '/chat': (context) =>
+            const MainNavigationScreen(initialIndex: navIndexChat),
+        '/calendar': (context) =>
+            const MainNavigationScreen(initialIndex: navIndexHistory),
+        '/camera': (context) =>
+            const MainNavigationScreen(initialIndex: navIndexCamera),
+        '/profile': (context) =>
+            const MainNavigationScreen(initialIndex: navIndexProfile),
       },
     );
   }

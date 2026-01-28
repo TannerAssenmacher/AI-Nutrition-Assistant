@@ -9,7 +9,9 @@ import 'package:nutrition_assistant/navigation/nav_helper.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
-  const ChatScreen({super.key});
+  final bool isInPageView;
+
+  const ChatScreen({super.key, this.isInPageView = false});
 
   @override
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
@@ -228,11 +230,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget build(BuildContext context) {
     final chatMessages = ref.watch(geminiChatServiceProvider);
 
+    final bodyContent = SafeArea(
+      child: _buildChatContent(context, chatMessages),
+    );
+
+    if (widget.isInPageView == true) {
+      return bodyContent;
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5EDE2),
-      body: SafeArea(
-        child: _buildChatContent(context, chatMessages),
-      ),
+      body: bodyContent,
       bottomNavigationBar: NavBar(
         currentIndex: navIndexChat,
         onTap: (index) => handleNavTap(context, index),
@@ -348,12 +356,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
         // Input bar
         Container(
-          padding: EdgeInsets.fromLTRB(
-            16,
-            16,
-            16,
-            16 + MediaQuery.of(context).padding.bottom,
-          ),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Colors.grey[100],
             border: Border(

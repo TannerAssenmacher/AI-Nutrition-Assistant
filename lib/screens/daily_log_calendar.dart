@@ -11,7 +11,9 @@ import 'package:nutrition_assistant/navigation/nav_helper.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
 
 class DailyLogCalendarScreen extends ConsumerStatefulWidget {
-  const DailyLogCalendarScreen({super.key});
+  final bool isInPageView;
+
+  const DailyLogCalendarScreen({super.key, this.isInPageView = false});
 
   @override
   ConsumerState<DailyLogCalendarScreen> createState() =>
@@ -22,6 +24,20 @@ class _DailyLogCalendarScreenState
     extends ConsumerState<DailyLogCalendarScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
+
+  Widget _wrapWithScaffold(Widget body) {
+    if (widget.isInPageView == true) {
+      return body;
+    }
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5EDE2),
+      body: body,
+      bottomNavigationBar: NavBar(
+        currentIndex: navIndexHistory,
+        onTap: (index) => handleNavTap(context, index),
+      ),
+    );
+  }
 
   List<_FoodRow> _foodsForDay(DateTime day, List<FoodItem> log) {
     final rows = <_FoodRow>[];
@@ -257,16 +273,11 @@ class _DailyLogCalendarScreenState
     final authUser = ref.watch(authServiceProvider);
     final userId = authUser?.uid;
     if (userId == null) {
-      return Scaffold(
-        backgroundColor: const Color(0xFFF5EDE2),
-        body: const SafeArea(
+      return _wrapWithScaffold(
+        const SafeArea(
           child: Center(
             child: Text('Sign in to view your meal log.'),
           ),
-        ),
-        bottomNavigationBar: NavBar(
-          currentIndex: navIndexHistory,
-          onTap: (index) => handleNavTap(context, index),
         ),
       );
     }
@@ -286,29 +297,18 @@ class _DailyLogCalendarScreenState
         List.generate(7, (index) => weekStart.add(Duration(days: index)));
 
     return foodLogAsync.when(
-      error: (e, _) => Scaffold(
-        backgroundColor: const Color(0xFFF5EDE2),
-        body: SafeArea(
+      error: (e, _) => _wrapWithScaffold(
+        SafeArea(
           child: Center(child: Text('Failed to load meals: $e')),
         ),
-        bottomNavigationBar: NavBar(
-          currentIndex: navIndexHistory,
-          onTap: (index) => handleNavTap(context, index),
-        ),
       ),
-      loading: () => Scaffold(
-        backgroundColor: const Color(0xFFF5EDE2),
-        body: const SafeArea(
+      loading: () => _wrapWithScaffold(
+        const SafeArea(
           child: Center(child: CircularProgressIndicator()),
         ),
-        bottomNavigationBar: NavBar(
-          currentIndex: navIndexHistory,
-          onTap: (index) => handleNavTap(context, index),
-        ),
       ),
-      data: (foodLog) => Scaffold(
-        backgroundColor: const Color(0xFFF5EDE2),
-        body: SafeArea(
+      data: (foodLog) => _wrapWithScaffold(
+        SafeArea(
           child: Column(
             children: [
               // Week navigation controls
@@ -562,10 +562,6 @@ class _DailyLogCalendarScreenState
               ),
             ],
           ),
-        ),
-        bottomNavigationBar: NavBar(
-          currentIndex: navIndexHistory,
-          onTap: (index) => handleNavTap(context, index),
         ),
       ),
     );
