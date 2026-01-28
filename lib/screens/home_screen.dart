@@ -125,7 +125,7 @@ class HomeScreen extends ConsumerWidget {
 
                   Container(
                     width: MediaQuery.of(context).size.width * 0.95,
-                    height: MediaQuery.of(context).size.height * 0.4,
+                    height: MediaQuery.of(context).size.height * 0.5,
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFFFFF),
                       borderRadius: BorderRadius.circular(12),
@@ -138,119 +138,124 @@ class HomeScreen extends ConsumerWidget {
                       ],
                     ),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
-                      child: Wrap(
-                        alignment: WrapAlignment.center,
-                        runAlignment: WrapAlignment.center,
-                        spacing: 16,
-                        runSpacing: 14,
-                        children: [
-                          CircularPercentIndicator(
-                            radius: 40.0,
-                            lineWidth: 10.0,
-                            animation: true,
-                            percent: totalCalories / 2000,
-                            header: Text(
-                              "Calories:",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 18.0,
-                                color: const Color(0xFF5F9735),
+                      padding: EdgeInsets.symmetric(
+                          horizontal: MediaQuery.of(context).size.width * 0.05, 
+                          vertical: MediaQuery.of(context).size.height * 0.03),
+                      child: Column( children: [
+                        CircularPercentIndicator(
+                              radius: MediaQuery.of(context).size.height * 0.1,
+                              lineWidth: MediaQuery.of(context).size.width * 0.04,
+                              arcType: ArcType.HALF,
+                              animation: true,
+                              percent: totalCalories / 2000,
+                              header: Text(
+                                "$totalCalories" "kcal",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: MediaQuery.of(context).size.height * 0.03,
+                                  color: const Color(0xFF5F9735),
+                                ),
                               ),
+                              /*footer: Text(
+                                "$totalCalories" "kcal",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: MediaQuery.of(context).size.width * 0.05,
+                                  color: const Color(0xFF5F9735),
+                                ),
+                              ),*/
+                              circularStrokeCap: CircularStrokeCap.round,
+                              progressColor: const Color(0xFF5F9735),
+                              arcBackgroundColor: const Color(0xFFF5EDE2),
                             ),
-                            footer: Text(
-                              "$totalCalories" "kcal",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16.0,
-                                color: const Color(0xFF5F9735),
+                        
+                        Transform.translate(
+                          offset: Offset(0, -MediaQuery.of(context).size.height * 0.07),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              CircularPercentIndicator(
+                                radius: MediaQuery.of(context).size.width * 0.1,
+                                lineWidth: MediaQuery.of(context).size.width * 0.03,
+                                animation: true,
+                                percent: dailyProtein / 150,
+                                header: Text(
+                                  "Protein:",
+                                  style: TextStyle(
+                                    color: const Color(0xFFC2482B),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: MediaQuery.of(context).size.width * 0.05,
+                                  ),
+                                ),
+                                footer: Text(
+                                  "$dailyProtein" "g",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: MediaQuery.of(context).size.width * 0.05,
+                                    color: const Color(0xFFC2482B),
+                                  ),
+                                ),
+                                circularStrokeCap: CircularStrokeCap.round,
+                                progressColor: const Color(0xFFC2482B),
+                                backgroundColor: const Color(0xFFF5EDE2),
                               ),
-                            ),
-                            circularStrokeCap: CircularStrokeCap.round,
-                            progressColor: const Color(0xFF5F9735),
-                            backgroundColor: const Color(0xFFF5EDE2),
+                              CircularPercentIndicator(
+                                radius: MediaQuery.of(context).size.width * 0.1,
+                                lineWidth: MediaQuery.of(context).size.width * 0.03,
+                                animation: true,
+                                percent: dailyCarbs / 150,
+                                header: Text(
+                                  "Carbs:",
+                                  style: TextStyle(
+                                    color: const Color(0xFFE0A100),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: MediaQuery.of(context).size.width * 0.05,
+                                  ),
+                                ),
+                                footer: Text(
+                                  "$dailyCarbs" "g",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: MediaQuery.of(context).size.width * 0.05,
+                                    color: const Color(0xFFE0A100),
+                                  ),
+                                ),
+                                circularStrokeCap: CircularStrokeCap.round,
+                                progressColor: const Color(0xFFE0A100),
+                                backgroundColor: const Color(0xFFF5EDE2),
+                              ),
+                              CircularPercentIndicator(
+                                radius: MediaQuery.of(context).size.width * 0.1,
+                                lineWidth: MediaQuery.of(context).size.width * 0.03,
+                                animation: true,
+                                percent: dailyFat / 150,
+                                header: Text(
+                                  "Fats:",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: MediaQuery.of(context).size.width * 0.05,
+                                    color: const Color(0xFF3A6FB8),
+                                  ),
+                                ),
+                                footer: Text(
+                                  "$dailyFat" "g",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: MediaQuery.of(context).size.width * 0.05,
+                                    color: const Color(0xFF3A6FB8),
+                                  ),
+                                ),
+                                circularStrokeCap: CircularStrokeCap.round,
+                                progressColor: const Color(0xFF3A6FB8),
+                                backgroundColor: const Color(0xFFF5EDE2),
+                              ),
+                            ],
                           ),
-                          CircularPercentIndicator(
-                            radius: 40.0,
-                            lineWidth: 10.0,
-                            animation: true,
-                            percent: dailyProtein / 150,
-                            header: Text(
-                              "Protein:",
-                              style: TextStyle(
-                                color: const Color(0xFFC2482B),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 18.0,
-                              ),
-                            ),
-                            footer: Text(
-                              "$dailyProtein" "g",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16.0,
-                                color: const Color(0xFFC2482B),
-                              ),
-                            ),
-                            circularStrokeCap: CircularStrokeCap.round,
-                            progressColor: const Color(0xFFC2482B),
-                            backgroundColor: const Color(0xFFF5EDE2),
-                          ),
-                          CircularPercentIndicator(
-                            radius: 40.0,
-                            lineWidth: 10.0,
-                            animation: true,
-                            percent: dailyCarbs / 150,
-                            header: Text(
-                              "Carbs:",
-                              style: TextStyle(
-                                color: const Color(0xFFE0A100),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 18.0,
-                              ),
-                            ),
-                            footer: Text(
-                              "$dailyCarbs" "g",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16.0,
-                                color: const Color(0xFFE0A100),
-                              ),
-                            ),
-                            circularStrokeCap: CircularStrokeCap.round,
-                            progressColor: const Color(0xFFE0A100),
-                            backgroundColor: const Color(0xFFF5EDE2),
-                          ),
-                          CircularPercentIndicator(
-                            radius: 40.0,
-                            lineWidth: 10.0,
-                            animation: true,
-                            percent: dailyFat / 150,
-                            header: Text(
-                              "Fats:",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 18.0,
-                                color: const Color(0xFF3A6FB8),
-                              ),
-                            ),
-                            footer: Text(
-                              "$dailyFat" "g",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16.0,
-                                color: const Color(0xFF3A6FB8),
-                              ),
-                            ),
-                            circularStrokeCap: CircularStrokeCap.round,
-                            progressColor: const Color(0xFF3A6FB8),
-                            backgroundColor: const Color(0xFFF5EDE2),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ]),
                     ),
                   ),
-                  Padding(padding: const EdgeInsets.symmetric(vertical: 15)),
+                  //Padding(padding: const EdgeInsets.symmetric(vertical: 15)),
                   /*Text( //TODAYS MEALS TITLE --------------------------
                   'Today\'s Meals:',
                   style: Theme.of(context).textTheme.headlineSmall,

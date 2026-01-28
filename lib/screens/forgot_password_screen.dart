@@ -76,23 +76,28 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           top_bar(),
-          Padding(padding: EdgeInsets.all(50)),
+          Padding(padding: EdgeInsets.all(MediaQuery.of(context).size.height * 0.03),),
           Text(
             'Oh No! Forgot Your Password?',
             style: TextStyle(
-              fontSize: 24,
+              fontSize: MediaQuery.of(context).size.width * 0.06,
               fontWeight: FontWeight.bold,
               color: Color(0xFF4A3A2A),
             )
           ),
-          Padding(padding:  EdgeInsets.all(50)),
+          Padding(padding: EdgeInsets.all(MediaQuery.of(context).size.height * 0.03),),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
                   width: MediaQuery.of(context).size.width * 0.85,
                   //height: MediaQuery.of(context).size.height * 0.3,
-                  padding: const EdgeInsets.fromLTRB(30, 50, 30, 50),
+                  padding: EdgeInsets.fromLTRB(
+                    MediaQuery.of(context).size.width * 0.1,
+                    MediaQuery.of(context).size.height * 0.05,
+                    MediaQuery.of(context).size.width * 0.1,
+                    MediaQuery.of(context).size.height * 0.05,
+                    ),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(100),
@@ -108,18 +113,18 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   child: Form(
                       key: _formKey,
                   child: Column(children: [
-                    const SizedBox(height: 10), //padding but for inside containers
-                    const Text(
+                    SizedBox(height: MediaQuery.of(context).size.height * 0.02), //padding but for inside containers
+                    Text(
                       'We\'ll send you an email to reset your password.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 28,
+                        fontSize: MediaQuery.of(context).size.width * 0.05,
                         fontWeight: FontWeight.bold,
                         color: const Color(0xFF967460),
                       )
                     ),
 
-                    const SizedBox(height: 20), //padding but for inside containers
+                    SizedBox(height: MediaQuery.of(context).size.height * 0.02), //padding but for inside containers
                     TextFormField( //the enter email field
                       controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
@@ -138,7 +143,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                             ),
                             contentPadding: const EdgeInsets.symmetric(
                               horizontal: 20,
-                              vertical: 18,
+                              vertical: 12,
                             ),
                           ),
                         validator: (value) {
@@ -150,7 +155,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                         onTap: _clearErrorOnType,
                     ),
 
-                    const SizedBox(height: 25),
+                    SizedBox(height: MediaQuery.of(context).size.height * 0.03), //padding but for inside containers
                     if (_error != null)
                       Text(
                         _error!,
@@ -159,7 +164,6 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                    const SizedBox(height: 25),
                     _isLoading
                         ? const CircularProgressIndicator()
                         : ElevatedButton(
@@ -169,19 +173,19 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        minimumSize: const Size(double.infinity, 50),
+                        minimumSize: Size(double.infinity, MediaQuery.of(context).size.height * 0.07),
                       ),
-                      child: const Text(
+                      child: Text(
                         'Send Reset Email',
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: MediaQuery.of(context).size.width * 0.05,
                           color: Colors.white,
                         ),
                       ),),
-                      Padding(padding: EdgeInsets.all(20),),
+                      Padding(padding: EdgeInsets.all(MediaQuery.of(context).size.height * 0.02),),
                   ]))
       )],),
-          Padding(padding: EdgeInsets.all(30),),
+          Padding(padding: EdgeInsets.all(MediaQuery.of(context).size.height * 0.02),),
           TextButton(
 
             onPressed: () {
@@ -190,7 +194,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             child: Text(
             '< Back to Login',
             style: TextStyle(
-              fontSize: 24,
+              fontSize: MediaQuery.of(context).size.height * 0.03,
               fontWeight: FontWeight.bold,
               decoration: TextDecoration.underline,
               color: Color(0xFF4A3A2A),

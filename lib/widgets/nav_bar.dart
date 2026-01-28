@@ -16,7 +16,7 @@ class NavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-        height: 130,
+        height: MediaQuery.of(context).size.height * 0.12,
         decoration: BoxDecoration(
           color: const Color(0xFF3E2F26),
           borderRadius: const BorderRadius.only(
@@ -37,6 +37,7 @@ class NavBar extends StatelessWidget {
           children: [
             NavItem(
               icon: Icons.restaurant_outlined,
+              
               label: "Recipes",
               isActive: currentIndex == 1,
               onTap: () => onTap(1),

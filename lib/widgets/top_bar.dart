@@ -6,7 +6,7 @@ class top_bar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 96,
+      height: MediaQuery.of(context).size.height * 0.1,
       width: double.infinity,
       decoration: BoxDecoration(
         color: const Color(0xFF4A3A2A),
@@ -26,7 +26,7 @@ class top_bar extends StatelessWidget {
         bottom: false,
         child: Center(
           child: SizedBox(
-            height: 40,
+            width: MediaQuery.of(  context).size.width * 0.4,
             child: Image.asset(
               'lib/icons/WISERBITES_txt_only.png',
               fit: BoxFit.contain,
