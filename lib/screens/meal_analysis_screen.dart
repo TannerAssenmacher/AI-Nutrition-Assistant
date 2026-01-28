@@ -400,11 +400,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5EDE2),
-      appBar: AppBar(
-        title: const Text('Camera'),
-        backgroundColor: const Color(0xFF3E2F26),
-        foregroundColor: const Color(0xFFF5EDE2),
-      ),
+      body: _buildCameraContent(context),
       bottomNavigationBar: NavBar(
         currentIndex: navIndexCamera,
         onTap: (index) => handleNavTap(context, index),
@@ -425,23 +421,26 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
         label: Text(_isAnalyzing ? 'Analyzing...' : 'Capture meal'),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 110),
-          child: Column(
-            children: [
-              if (_errorMessage != null) ...[
-                _ErrorBanner(message: _errorMessage!),
-                const SizedBox(height: 12),
-              ],
-              Expanded(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 200),
-                  child: _buildBody(),
-                ),
-              ),
+    );
+  }
+
+  Widget _buildCameraContent(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 110),
+        child: Column(
+          children: [
+            if (_errorMessage != null) ...[
+              _ErrorBanner(message: _errorMessage!),
+              const SizedBox(height: 12),
             ],
-          ),
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child: _buildBody(),
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../widgets/macro_slider.dart';
+import 'package:nutrition_assistant/navigation/nav_helper.dart';
+import 'package:nutrition_assistant/widgets/nav_bar.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -291,10 +293,7 @@ class _ProfilePageState extends State<ProfilePage> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Profile'),
-        automaticallyImplyLeading: true, // Ensures back button appears
-      ),
+      backgroundColor: const Color(0xFFF5EDE2),
       body: SafeArea(
         child: Scrollbar(
           thumbVisibility: true,
@@ -419,6 +418,10 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
           ),
         ),
+      ),
+      bottomNavigationBar: NavBar(
+        currentIndex: navIndexProfile,
+        onTap: (index) => handleNavTap(context, index),
       ),
     );
   }

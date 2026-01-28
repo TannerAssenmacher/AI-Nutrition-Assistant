@@ -7,6 +7,8 @@ import '../providers/auth_providers.dart';
 import '../providers/firestore_providers.dart';
 import '../db/food.dart';
 import '../db/user.dart';
+import 'package:nutrition_assistant/navigation/nav_helper.dart';
+import 'package:nutrition_assistant/widgets/nav_bar.dart';
 
 class DailyLogCalendarScreen extends ConsumerStatefulWidget {
   const DailyLogCalendarScreen({super.key});
@@ -256,14 +258,15 @@ class _DailyLogCalendarScreenState
     final userId = authUser?.uid;
     if (userId == null) {
       return Scaffold(
-        backgroundColor: const Color(0xFFF6E9D8),
-        appBar: AppBar(
-          backgroundColor: const Color(0xFFF6E9D8),
-          elevation: 0,
-          title: const Text('History', style: TextStyle(color: Colors.black87)),
+        backgroundColor: const Color(0xFFF5EDE2),
+        body: const SafeArea(
+          child: Center(
+            child: Text('Sign in to view your meal log.'),
+          ),
         ),
-        body: const Center(
-          child: Text('Sign in to view your meal log.'),
+        bottomNavigationBar: NavBar(
+          currentIndex: navIndexHistory,
+          onTap: (index) => handleNavTap(context, index),
         ),
       );
     }
@@ -284,76 +287,80 @@ class _DailyLogCalendarScreenState
 
     return foodLogAsync.when(
       error: (e, _) => Scaffold(
-        backgroundColor: const Color(0xFFF6E9D8),
-        appBar: AppBar(
-          backgroundColor: const Color(0xFFF6E9D8),
-          elevation: 0,
-          title: const Text('History', style: TextStyle(color: Colors.black87)),
+        backgroundColor: const Color(0xFFF5EDE2),
+        body: SafeArea(
+          child: Center(child: Text('Failed to load meals: $e')),
         ),
-        body: Center(child: Text('Failed to load meals: $e')),
+        bottomNavigationBar: NavBar(
+          currentIndex: navIndexHistory,
+          onTap: (index) => handleNavTap(context, index),
+        ),
       ),
-      loading: () => const Scaffold(
-        backgroundColor: Color(0xFFF6E9D8),
-        body: Center(child: CircularProgressIndicator()),
+      loading: () => Scaffold(
+        backgroundColor: const Color(0xFFF5EDE2),
+        body: const SafeArea(
+          child: Center(child: CircularProgressIndicator()),
+        ),
+        bottomNavigationBar: NavBar(
+          currentIndex: navIndexHistory,
+          onTap: (index) => handleNavTap(context, index),
+        ),
       ),
       data: (foodLog) => Scaffold(
-        backgroundColor: const Color(0xFFF6E9D8),
-        appBar: AppBar(
-          backgroundColor: const Color(0xFFF6E9D8),
-          elevation: 0,
-          centerTitle: false,
-          automaticallyImplyLeading: true,
-          title: const Text('History', style: TextStyle(color: Colors.black87)),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.chevron_left),
-              color: Colors.black87,
-              tooltip: 'Previous week',
-              onPressed: () {
-                setState(() {
-                  _focusedDay = _focusedDay.subtract(const Duration(days: 7));
-                });
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.chevron_right),
-              color: Colors.black87,
-              tooltip: 'Next week',
-              onPressed: () {
-                setState(() {
-                  _focusedDay = _focusedDay.add(const Duration(days: 7));
-                });
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.add),
-              color: Colors.redAccent,
-              tooltip: 'Add apple to selected day',
-              onPressed: _addPlaceholderApple,
-            ),
-            const Padding(
-              padding: EdgeInsets.only(right: 16),
-              child: Icon(Icons.calendar_month, color: Colors.redAccent),
-            ),
-          ],
-        ),
+        backgroundColor: const Color(0xFFF5EDE2),
         body: SafeArea(
           child: Column(
             children: [
-              // Week navigation header
+              // Week navigation controls
               Padding(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Text(
-                  '${DateFormat('MMMM yyyy').format(_focusedDay)}',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.chevron_left),
+                      color: const Color(0xFF3E2F26),
+                      tooltip: 'Previous week',
+                      onPressed: () {
+                        setState(() {
+                          _focusedDay =
+                              _focusedDay.subtract(const Duration(days: 7));
+                        });
+                      },
+                    ),
+                    Text(
+                      '${DateFormat('MMMM yyyy').format(_focusedDay)}',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF3E2F26),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.chevron_right),
+                          color: const Color(0xFF3E2F26),
+                          tooltip: 'Next week',
+                          onPressed: () {
+                            setState(() {
+                              _focusedDay =
+                                  _focusedDay.add(const Duration(days: 7));
+                            });
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.add),
+                          color: Colors.redAccent,
+                          tooltip: 'Add apple to selected day',
+                          onPressed: _addPlaceholderApple,
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-              // 7-day blocks
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -555,6 +562,10 @@ class _DailyLogCalendarScreenState
               ),
             ],
           ),
+        ),
+        bottomNavigationBar: NavBar(
+          currentIndex: navIndexHistory,
+          onTap: (index) => handleNavTap(context, index),
         ),
       ),
     );
