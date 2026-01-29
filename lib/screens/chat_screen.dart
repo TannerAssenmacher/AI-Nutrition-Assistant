@@ -22,6 +22,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
 
   final List<String> _cuisineTypes = [
+    'No Preference',
     'African',
     'Asian',
     'American',
@@ -49,7 +50,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     'Spanish',
     'Thai',
     'Vietnamese',
-    'None',
   ];
 
   @override
@@ -536,6 +536,11 @@ class _RecipeCard extends StatelessWidget {
     final label = recipe['label'] ?? 'Recipe';
     final cuisine = _capitalize((recipe['cuisine'] ?? 'General').toString());
     final calories = recipe['calories'] ?? 0;
+    final protein = recipe['protein'] ?? 0;
+    final carbs = recipe['carbs'] ?? 0;
+    final fat = recipe['fat'] ?? 0;
+    final servings = recipe['servings'];
+    final readyInMinutes = recipe['readyInMinutes'];
     final ingredients = List<String>.from(recipe['ingredients'] ?? const []);
     final instructions = recipe['instructions'] ?? '';
     final imageUrl = recipe['imageUrl'] ?? '';
@@ -624,8 +629,18 @@ class _RecipeCard extends StatelessWidget {
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 4),
-          Text('Cuisine: $cuisine'),
+          if (cuisine.toLowerCase() != 'world') Text('Cuisine: $cuisine'),
           Text('Calories: $calories kcal'),
+          Text('P: ${protein}g  |  C: ${carbs}g  |  F: ${fat}g',
+              style: TextStyle(color: Colors.grey[700], fontSize: 13)),
+          if (readyInMinutes != null || servings != null)
+            Text(
+              [
+                if (readyInMinutes != null) 'Ready in $readyInMinutes min',
+                if (servings != null) 'Serves: $servings',
+              ].join('  |  '),
+              style: TextStyle(color: Colors.grey[700], fontSize: 13),
+            ),
           const SizedBox(height: 8),
           const Text('Ingredients',
               style: TextStyle(fontWeight: FontWeight.w600)),

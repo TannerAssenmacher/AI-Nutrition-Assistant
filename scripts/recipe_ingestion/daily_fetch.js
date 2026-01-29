@@ -52,34 +52,25 @@ const RECIPES_PER_REQUEST = 100;
 const EXPECTED_REQUESTS_PER_KEY = 6; // Expected successful requests per key
 
 // Cuisines to cycle through (Spoonacular API values)
+// These match the app's cuisine picker exactly (lowercased)
 const CUISINES_TO_FETCH = [
   'african', 'american', 'british', 'cajun', 'caribbean', 'chinese',
   'eastern european', 'european', 'french', 'german', 'greek', 'indian',
   'irish', 'italian', 'japanese', 'jewish', 'korean', 'latin american',
-  'mediterranean', 'mexican', 'middle eastern', 'southern', 'spanish',
-  'thai', 'vietnamese',
+  'mediterranean', 'mexican', 'middle eastern', 'nordic', 'southern',
+  'spanish', 'thai', 'vietnamese',
 ];
+
+// Spoonacular meal types to cycle through for each cuisine
+// null = no type filter (gets mostly main courses = lunch/dinner)
+// 'breakfast' and 'snack' are fetched explicitly to ensure coverage
+const MEAL_TYPES_TO_FETCH = [null, 'breakfast', 'snack'];
 
 // Initialize Firebase
 initializeApp({
   projectId: 'ai-nutrition-assistant-e2346',
 });
 const db = getFirestore();
-
-// Cuisine mapping
-const cuisineMap = {
-  'african': 'african', 'american': 'american', 'british': 'british',
-  'cajun': 'american', 'caribbean': 'caribbean', 'chinese': 'chinese',
-  'creole': 'american', 'eastern european': 'eastern european',
-  'european': 'central europe', 'french': 'french', 'german': 'central europe',
-  'greek': 'mediterranean', 'indian': 'indian', 'irish': 'british',
-  'italian': 'italian', 'japanese': 'japanese', 'jewish': 'middle eastern',
-  'korean': 'south east asian', 'latin american': 'mexican',
-  'mediterranean': 'mediterranean', 'mexican': 'mexican',
-  'middle eastern': 'middle eastern', 'nordic': 'central europe',
-  'southern': 'american', 'spanish': 'mediterranean',
-  'thai': 'south east asian', 'vietnamese': 'south east asian',
-};
 
 const dishTypeMap = {
   'breakfast': ['breakfast'], 'brunch': ['breakfast'], 'morning meal': ['breakfast'],
@@ -113,7 +104,7 @@ function extractHealthLabels(recipe) {
   return labels;
 }
 
-function transformRecipe(recipe) {
+function transformRecipe(recipe, fetchedCuisine = null) {
   const extendedIngredients = recipe.extendedIngredients || [];
   const ingredients = extendedIngredients
     .map(ing => ing.name?.toLowerCase() || ing.originalName?.toLowerCase())
@@ -121,15 +112,15 @@ function transformRecipe(recipe) {
   const ingredientLines = extendedIngredients
     .map(ing => ing.original || `${ing.amount || ''} ${ing.unit || ''} ${ing.name || ''}`.trim())
     .filter(Boolean);
-  
-  const cuisines = recipe.cuisines || [];
-  let cuisine = 'world';
-  for (const c of cuisines) {
-    const mapped = cuisineMap[c.toLowerCase()];
-    if (mapped) { cuisine = mapped; break; }
-  }
-  if (cuisine === 'world' && cuisines.length > 0) {
-    cuisine = cuisines[0].toLowerCase().replace(/\s+/g, '-');
+
+  // Use the cuisine we fetched with (matches app's cuisine picker values exactly).
+  // Fall back to the recipe's own cuisines array, then 'world'.
+  let cuisine = fetchedCuisine || 'world';
+  if (cuisine === 'world') {
+    const cuisines = recipe.cuisines || [];
+    if (cuisines.length > 0) {
+      cuisine = cuisines[0].toLowerCase();
+    }
   }
   
   const dishTypes = recipe.dishTypes || [];
@@ -185,7 +176,7 @@ function transformRecipe(recipe) {
   };
 }
 
-async function fetchRecipeBatch(offset, cuisine = null, apiKey) {
+async function fetchRecipeBatch(offset, cuisine = null, mealType = null, apiKey) {
   const params = new URLSearchParams({
     apiKey: apiKey,
     offset: offset.toString(),
@@ -200,6 +191,11 @@ async function fetchRecipeBatch(offset, cuisine = null, apiKey) {
   // Add cuisine filter if specified
   if (cuisine) {
     params.set('cuisine', cuisine);
+  }
+
+  // Add meal type filter if specified (e.g., 'breakfast', 'snack')
+  if (mealType) {
+    params.set('type', mealType);
   }
 
   const url = `${BASE_URL}/recipes/complexSearch?${params}`;
@@ -283,6 +279,9 @@ async function main() {
   let requestsThisRun = 0;
   let noResultsCount = 0;
 
+  // Total combinations = cuisines * meal types
+  const totalCombinations = CUISINES_TO_FETCH.length * MEAL_TYPES_TO_FETCH.length;
+
   // Fetch until all API keys are exhausted
   while (true) {
     // Check if we've exhausted all API keys
@@ -291,13 +290,18 @@ async function main() {
       break;
     }
 
-    // Get current API key and cuisine
+    // Get current API key, cuisine, and meal type
     const currentApiKey = API_KEYS[state.apiKeyIndex];
-    const currentCuisine = CUISINES_TO_FETCH[state.cuisineIndex % CUISINES_TO_FETCH.length];
+    const comboIndex = state.cuisineIndex % totalCombinations;
+    const cuisineIdx = Math.floor(comboIndex / MEAL_TYPES_TO_FETCH.length);
+    const mealTypeIdx = comboIndex % MEAL_TYPES_TO_FETCH.length;
+    const currentCuisine = CUISINES_TO_FETCH[cuisineIdx];
+    const currentMealType = MEAL_TYPES_TO_FETCH[mealTypeIdx];
+    const mealTypeLabel = currentMealType || 'all types';
 
-    console.log(`\n📥 Fetching ${currentCuisine} recipes at offset ${state.offset}...`);
+    console.log(`\n📥 Fetching ${currentCuisine} (${mealTypeLabel}) recipes at offset ${state.offset}...`);
 
-    const result = await fetchRecipeBatch(state.offset, currentCuisine, currentApiKey);
+    const result = await fetchRecipeBatch(state.offset, currentCuisine, currentMealType, currentApiKey);
 
     if (result.quotaExceeded) {
       console.log(`⚠️ API key #${state.apiKeyIndex + 1} quota exceeded`);
@@ -320,11 +324,11 @@ async function main() {
 
     if (!result.results || result.results.length === 0) {
       noResultsCount++;
-      console.log(`⚠️ No results for ${currentCuisine}`);
+      console.log(`⚠️ No results for ${currentCuisine} (${mealTypeLabel})`);
 
-      // Move to next cuisine after 2 failed attempts or high offset
+      // Move to next cuisine+mealType combo after 2 failed attempts or high offset
       if (noResultsCount >= 2 || state.offset >= 300) {
-        console.log(`   Switching to next cuisine...`);
+        console.log(`   Switching to next combination...`);
         state.cuisineIndex++;
         state.offset = 0;
         noResultsCount = 0;
@@ -340,7 +344,7 @@ async function main() {
     // Transform and filter duplicates
     let addedThisBatch = 0;
     for (const recipe of result.results) {
-      const transformed = transformRecipe(recipe);
+      const transformed = transformRecipe(recipe, currentCuisine);
 
       if (!existingIds.has(transformed.id)) {
         existingIds.add(transformed.id);
@@ -353,11 +357,11 @@ async function main() {
 
     state.offset += RECIPES_PER_REQUEST;
 
-    // Move to next cuisine after getting good results (avoid exhausting one cuisine)
+    // Move to next combination after getting good results (avoid exhausting one combo)
     if (state.offset >= 200) {
       state.cuisineIndex++;
       state.offset = 0;
-      console.log(`   Moving to next cuisine for variety...`);
+      console.log(`   Moving to next combination for variety...`);
     }
 
     // Upload in batches of 500
@@ -389,8 +393,11 @@ async function main() {
   console.log(`📊 Successful requests made: ${state.requestsMade}`);
   console.log(`📦 Recipes added today: ${state.recipesAdded}`);
   console.log(`⏱️ Duration: ${duration}s`);
+  const comboIdx = state.cuisineIndex % (CUISINES_TO_FETCH.length * MEAL_TYPES_TO_FETCH.length);
+  const cIdx = Math.floor(comboIdx / MEAL_TYPES_TO_FETCH.length);
+  const mtIdx = comboIdx % MEAL_TYPES_TO_FETCH.length;
   console.log(`🔑 API keys exhausted: ${Math.min(state.apiKeyIndex + 1, API_KEYS.length)}/${API_KEYS.length}`);
-  console.log(`🍽️ Current cuisine: ${CUISINES_TO_FETCH[state.cuisineIndex % CUISINES_TO_FETCH.length]}`);
+  console.log(`🍽️ Next combo: ${CUISINES_TO_FETCH[cIdx]} (${MEAL_TYPES_TO_FETCH[mtIdx] || 'all types'})`);
   console.log(`📅 Next run: Tomorrow (offset ${state.offset})`);
 }
 

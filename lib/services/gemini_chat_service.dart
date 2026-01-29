@@ -73,15 +73,38 @@ class GeminiChatService extends _$GeminiChatService {
           foodLog.fold<double>(0, (sum, food) => sum + food.carbs_g);
       final totalFat = foodLog.fold<double>(0, (sum, food) => sum + food.fat);
 
+      // Get user profile for personalized context
+      String profileContext = '';
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final appUser = await FirestoreHelper.getUser(user.uid);
+        if (appUser != null) {
+          final mp = appUser.mealProfile;
+          profileContext = '''
+    User profile:
+    - Sex: ${appUser.sex}, Activity level: ${appUser.activityLevel}
+    - Height: ${appUser.height} in, Weight: ${appUser.weight} lbs
+    - Daily calorie goal: ${mp.dailyCalorieGoal} kcal
+    - Dietary goal: ${mp.dietaryGoal}
+    - Macro goals: Protein ${mp.macroGoals['protein']?.round() ?? 20}%, Carbs ${mp.macroGoals['carbs']?.round() ?? 50}%, Fat ${mp.macroGoals['fat']?.round() ?? 30}%
+    - Dietary habits: ${mp.dietaryHabits.where((h) => h.trim().isNotEmpty && h.toLowerCase() != 'none').join(', ')}
+    - Health restrictions: ${mp.healthRestrictions.where((r) => r.trim().isNotEmpty && r.toLowerCase() != 'none').join(', ')}
+    - Food likes: ${mp.preferences.likes.where((l) => l.trim().isNotEmpty && l.toLowerCase() != 'none').join(', ')}
+    - Food dislikes: ${mp.preferences.dislikes.where((d) => d.trim().isNotEmpty && d.toLowerCase() != 'none').join(', ')}
+    ''';
+        }
+      }
+
       final contextualPrompt = '''
+    $profileContext
     User's current nutrition data today:
-    - Calories: $totalCalories
+    - Calories consumed: $totalCalories
     - Protein: ${totalProtein.toStringAsFixed(1)}g
     - Carbs: ${totalCarbs.toStringAsFixed(1)}g
     - Fat: ${totalFat.toStringAsFixed(1)}g
-    
+
     Foods eaten today: ${foodLog.map((food) => food.name).join(", ")}
-    
+
     User question: $userMessage
     ''';
 
@@ -244,6 +267,29 @@ class GeminiChatService extends _$GeminiChatService {
         'fat': mealProfile.macroGoals['fat'] ?? 30.0,
       };
 
+      // Compute today's consumption data for smart calorie targeting
+      final foodLog = ref.read(foodLogProvider);
+      final today = DateTime.now();
+      final todaysFoods = foodLog.where((item) =>
+          item.consumedAt.year == today.year &&
+          item.consumedAt.month == today.month &&
+          item.consumedAt.day == today.day).toList();
+
+      final consumedCalories = todaysFoods.fold<int>(
+          0, (sum, food) => sum + (food.calories_g * food.mass_g).round());
+
+      double consumedProtein = 0, consumedCarbs = 0, consumedFat = 0;
+      for (final item in todaysFoods) {
+        consumedProtein += item.protein_g * item.mass_g;
+        consumedCarbs += item.carbs_g * item.mass_g;
+        consumedFat += item.fat * item.mass_g;
+      }
+
+      final consumedMealTypes = todaysFoods
+          .map((f) => f.mealType.toLowerCase())
+          .toSet()
+          .toList();
+
       // Call RAG-based searchRecipes Cloud Function with full user profile
       final functions = FirebaseFunctions.instance;
       final callable = functions.httpsCallable('searchRecipes');
@@ -252,20 +298,34 @@ class GeminiChatService extends _$GeminiChatService {
         // Meal context
         'mealType': mealType,
         'cuisineType': cuisineType,
-        
+
         // Dietary restrictions and preferences
         'healthRestrictions': healthRestrictions,
         'dietaryHabits': dietaryHabits,
         'dislikes': dislikes,
         'likes': likes,
-        
+
         // User profile data for personalized filtering
         'sex': appUser.sex,
         'activityLevel': appUser.activityLevel,
         'dietaryGoal': mealProfile.dietaryGoal,
         'dailyCalorieGoal': mealProfile.dailyCalorieGoal,
         'macroGoals': macroGoals,
-        
+
+        // Today's consumption data for smart calorie targeting
+        'consumedCalories': consumedCalories,
+        'consumedMealTypes': consumedMealTypes,
+        'consumedMacros': {
+          'protein': consumedProtein,
+          'carbs': consumedCarbs,
+          'fat': consumedFat,
+        },
+
+        // Physical profile for context
+        'dob': appUser.dob?.toIso8601String(),
+        'height': appUser.height,
+        'weight': appUser.weight,
+
         // Pagination
         'excludeIds': _shownRecipeUris.toList(),
         'limit': 10,
@@ -352,8 +412,17 @@ class GeminiChatService extends _$GeminiChatService {
           'cuisine': cuisine,
           'ingredients': ingredients,
           'calories': calories,
+          'protein': (recipe['protein'] as num?)?.round() ?? 0,
+          'carbs': (recipe['carbs'] as num?)?.round() ?? 0,
+          'fat': (recipe['fat'] as num?)?.round() ?? 0,
+          'fiber': (recipe['fiber'] as num?)?.round(),
+          'sugar': (recipe['sugar'] as num?)?.round(),
+          'sodium': (recipe['sodium'] as num?)?.round(),
+          'servings': recipe['servings'],
+          'readyInMinutes': recipe['readyInMinutes'],
           'instructions': instructions,
           'imageUrl': url,
+          'matchScore': recipe['matchScore'],
         });
       }
 

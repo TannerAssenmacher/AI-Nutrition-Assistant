@@ -17,6 +17,10 @@ ALTER TABLE recipe_embeddings ADD COLUMN IF NOT EXISTS fiber INTEGER;
 ALTER TABLE recipe_embeddings ADD COLUMN IF NOT EXISTS sugar INTEGER;
 ALTER TABLE recipe_embeddings ADD COLUMN IF NOT EXISTS sodium INTEGER;
 
+-- Add recipe metadata columns for scoring
+ALTER TABLE recipe_embeddings ADD COLUMN IF NOT EXISTS servings INTEGER;
+ALTER TABLE recipe_embeddings ADD COLUMN IF NOT EXISTS ready_in_minutes INTEGER;
+
 -- Remove deprecated dietary_labels column if it exists
 -- (health_labels now contains all diet/allergy info)
 ALTER TABLE recipe_embeddings DROP COLUMN IF EXISTS dietary_labels;
@@ -31,21 +35,23 @@ SELECT COUNT(*) as total_recipes FROM recipe_embeddings;
 -- Expected final schema:
 -- ============================================================================
 --
---  Column       | Type        | Description
--- --------------+-------------+------------------------------------------
---  id           | text        | Primary key (spoonacular_XXXXX)
---  embedding    | vector(768) | Text embedding for semantic search
---  label        | text        | Recipe title
---  cuisine      | text        | Cuisine type
---  meal_types   | text[]      | Array of meal types
---  health_labels| text[]      | Diet/allergy labels
---  ingredients  | text[]      | Ingredient names
---  calories     | integer     | Per serving
---  protein      | integer     | Grams per serving
---  carbs        | integer     | Grams per serving
---  fat          | integer     | Grams per serving
---  fiber        | integer     | Grams per serving (NEW)
---  sugar        | integer     | Grams per serving (NEW)
---  sodium       | integer     | Mg per serving (NEW)
+--  Column           | Type        | Description
+-- ------------------+-------------+------------------------------------------
+--  id               | text        | Primary key (spoonacular_XXXXX)
+--  embedding        | vector(768) | Text embedding for semantic search
+--  label            | text        | Recipe title
+--  cuisine          | text        | Cuisine type
+--  meal_types       | text[]      | Array of meal types
+--  health_labels    | text[]      | Diet/allergy labels
+--  ingredients      | text[]      | Ingredient names
+--  calories         | integer     | Per serving
+--  protein          | integer     | Grams per serving
+--  carbs            | integer     | Grams per serving
+--  fat              | integer     | Grams per serving
+--  fiber            | integer     | Grams per serving
+--  sugar            | integer     | Grams per serving
+--  sodium           | integer     | Mg per serving
+--  servings         | integer     | Number of servings
+--  ready_in_minutes | integer     | Prep + cook time in minutes
 --
 -- ============================================================================

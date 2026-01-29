@@ -10,7 +10,8 @@
     "verify-embeddings": "node verify_embeddings.js",
     "test-rag": "node test_rag_search.js",
     "test-firestore": "node test_rag_simple.js",
-    "count": "node count_recipes.js"
+    "count": "node count_recipes.js",
+    "regenerate": "node regenerate_embeddings.js"
   },
   "dependencies": {
     "firebase-admin": "^12.0.0",
