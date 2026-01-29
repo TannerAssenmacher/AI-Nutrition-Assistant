@@ -5,9 +5,10 @@
  * Designed to run as a cron job or scheduled task.
  * 
  * Features:
- * - Respects free tier limits (150 points/day)
+ * - Respects free tier limits (150 points/day per key)
  * - Skips duplicates automatically
- * - Tracks progress for resumability
+ * - Persists pagination progress across days (only API quotas reset daily)
+ * - Tracks exhausted cuisine+mealType combinations to skip on future runs
  * - Logs all operations
  * 
  * Usage:
@@ -185,7 +186,7 @@ async function fetchRecipeBatch(offset, cuisine = null, mealType = null, apiKey)
     addRecipeNutrition: 'true',
     fillIngredients: 'true',
     instructionsRequired: 'true',
-    sort: 'random', // Random for variety each day
+    sort: 'popularity', // Deterministic ordering so offset pagination works correctly
   });
 
   // Add cuisine filter if specified
@@ -220,35 +221,44 @@ async function fetchRecipeBatch(offset, cuisine = null, mealType = null, apiKey)
   }
 }
 
-function loadDailyState() {
+function loadState() {
   const statePath = path.join(__dirname, 'daily_state.json');
   const today = new Date().toISOString().split('T')[0];
 
-  if (fs.existsSync(statePath)) {
-    try {
-      const state = JSON.parse(fs.readFileSync(statePath, 'utf-8'));
-      if (state.date === today) {
-        // Ensure apiKeyIndex exists for backwards compatibility
-        if (state.apiKeyIndex === undefined) {
-          state.apiKeyIndex = 0;
-        }
-        return state;
-      }
-    } catch (e) {}
-  }
-
-  // New day, reset state
-  return {
+  let state = {
     date: today,
     offset: 0,
     requestsMade: 0,
     recipesAdded: 0,
     cuisineIndex: 0,
-    apiKeyIndex: 0 // Track which API key we're using
+    apiKeyIndex: 0,
+    exhaustedCombos: [], // Track cuisine+mealType combos that have no more results
   };
+
+  if (fs.existsSync(statePath)) {
+    try {
+      const saved = JSON.parse(fs.readFileSync(statePath, 'utf-8'));
+
+      // Always persist pagination progress across days
+      state.cuisineIndex = saved.cuisineIndex || 0;
+      state.offset = saved.offset || 0;
+      state.exhaustedCombos = saved.exhaustedCombos || [];
+
+      if (saved.date === today) {
+        // Same day: also restore daily quota tracking
+        state.apiKeyIndex = saved.apiKeyIndex || 0;
+        state.requestsMade = saved.requestsMade || 0;
+        state.recipesAdded = saved.recipesAdded || 0;
+      }
+      // Different day: apiKeyIndex/requestsMade/recipesAdded stay at 0 (quotas reset)
+    } catch (e) {}
+  }
+
+  state.date = today;
+  return state;
 }
 
-function saveDailyState(state) {
+function saveState(state) {
   const statePath = path.join(__dirname, 'daily_state.json');
   fs.writeFileSync(statePath, JSON.stringify(state, null, 2));
 }
@@ -260,7 +270,7 @@ async function main() {
   console.log('='.repeat(50));
   
   // Load today's state
-  let state = loadDailyState();
+  let state = loadState();
   console.log(`📊 Today's progress: ${state.requestsMade} requests, ${state.recipesAdded} recipes added`);
   console.log(`🔑 Starting with API key #${state.apiKeyIndex + 1} of ${API_KEYS.length}`);
 
@@ -281,12 +291,24 @@ async function main() {
 
   // Total combinations = cuisines * meal types
   const totalCombinations = CUISINES_TO_FETCH.length * MEAL_TYPES_TO_FETCH.length;
+  const exhaustedSet = new Set(state.exhaustedCombos || []);
+
+  // Helper to get combo key for exhaustion tracking
+  function comboKey(cuisineIdx, mealTypeIdx) {
+    return `${CUISINES_TO_FETCH[cuisineIdx]}|${MEAL_TYPES_TO_FETCH[mealTypeIdx] || 'all'}`;
+  }
 
   // Fetch until all API keys are exhausted
   while (true) {
     // Check if we've exhausted all API keys
     if (state.apiKeyIndex >= API_KEYS.length) {
       console.log('⚠️ All API keys exhausted for today');
+      break;
+    }
+
+    // Check if all combinations are exhausted
+    if (exhaustedSet.size >= totalCombinations) {
+      console.log('🎉 All cuisine+mealType combinations have been fully fetched!');
       break;
     }
 
@@ -298,8 +320,16 @@ async function main() {
     const currentCuisine = CUISINES_TO_FETCH[cuisineIdx];
     const currentMealType = MEAL_TYPES_TO_FETCH[mealTypeIdx];
     const mealTypeLabel = currentMealType || 'all types';
+    const currentComboKey = comboKey(cuisineIdx, mealTypeIdx);
 
-    console.log(`\n📥 Fetching ${currentCuisine} (${mealTypeLabel}) recipes at offset ${state.offset}...`);
+    // Skip exhausted combinations
+    if (exhaustedSet.has(currentComboKey)) {
+      state.cuisineIndex++;
+      state.offset = 0;
+      continue;
+    }
+
+    console.log(`\n📥 Fetching ${currentCuisine} (${mealTypeLabel}) recipes at offset ${state.offset}... [combo ${comboIndex + 1}/${totalCombinations}, ${exhaustedSet.size} exhausted]`);
 
     const result = await fetchRecipeBatch(state.offset, currentCuisine, currentMealType, currentApiKey);
 
@@ -311,7 +341,6 @@ async function main() {
 
       if (state.apiKeyIndex < API_KEYS.length) {
         console.log(`🔄 Switching to API key #${state.apiKeyIndex + 1}`);
-        // Don't break, continue with next key
         continue;
       } else {
         console.log('⚠️ All API keys exhausted for today');
@@ -324,17 +353,21 @@ async function main() {
 
     if (!result.results || result.results.length === 0) {
       noResultsCount++;
-      console.log(`⚠️ No results for ${currentCuisine} (${mealTypeLabel})`);
+      console.log(`⚠️ No results for ${currentCuisine} (${mealTypeLabel}) at offset ${state.offset}`);
 
-      // Move to next cuisine+mealType combo after 2 failed attempts or high offset
-      if (noResultsCount >= 2 || state.offset >= 300) {
-        console.log(`   Switching to next combination...`);
+      // Mark this combination as exhausted — no more recipes available
+      if (noResultsCount >= 2 || state.offset > 0) {
+        console.log(`   ✗ Marking ${currentCuisine} (${mealTypeLabel}) as exhausted`);
+        exhaustedSet.add(currentComboKey);
+        state.exhaustedCombos = Array.from(exhaustedSet);
         state.cuisineIndex++;
         state.offset = 0;
         noResultsCount = 0;
       } else {
         state.offset += RECIPES_PER_REQUEST;
       }
+      // Save state after marking exhausted
+      saveState(state);
       continue;
     }
 
@@ -353,21 +386,29 @@ async function main() {
       }
     }
 
-    console.log(`   ✅ ${addedThisBatch} new recipes (${result.results.length - addedThisBatch} duplicates skipped)`);
+    const totalResults = result.totalResults || 0;
+    console.log(`   ✅ ${addedThisBatch} new recipes (${result.results.length - addedThisBatch} duplicates skipped) [${totalResults} total available]`);
 
     state.offset += RECIPES_PER_REQUEST;
 
-    // Move to next combination after getting good results (avoid exhausting one combo)
-    if (state.offset >= 200) {
+    // Check if we've reached the end of available results for this combination
+    // Spoonacular max offset is 900, and totalResults tells us the actual count
+    if (state.offset >= 900 || (totalResults > 0 && state.offset >= totalResults)) {
+      console.log(`   ✗ Reached end of ${currentCuisine} (${mealTypeLabel}) — marking exhausted`);
+      exhaustedSet.add(currentComboKey);
+      state.exhaustedCombos = Array.from(exhaustedSet);
       state.cuisineIndex++;
       state.offset = 0;
-      console.log(`   Moving to next combination for variety...`);
     }
+
+    // Save state after every successful request for resumability
+    saveState(state);
 
     // Upload in batches of 500
     if (newRecipes.length >= 500) {
       await uploadBatch(newRecipes.splice(0, 500));
       state.recipesAdded += 500;
+      saveState(state);
     }
 
     // Rate limiting
@@ -382,7 +423,7 @@ async function main() {
   
   // Save state
   state.requestsMade += requestsThisRun;
-  saveDailyState(state);
+  saveState(state);
   
   const endTime = new Date();
   const duration = Math.round((endTime - startTime) / 1000);
@@ -393,12 +434,15 @@ async function main() {
   console.log(`📊 Successful requests made: ${state.requestsMade}`);
   console.log(`📦 Recipes added today: ${state.recipesAdded}`);
   console.log(`⏱️ Duration: ${duration}s`);
-  const comboIdx = state.cuisineIndex % (CUISINES_TO_FETCH.length * MEAL_TYPES_TO_FETCH.length);
-  const cIdx = Math.floor(comboIdx / MEAL_TYPES_TO_FETCH.length);
-  const mtIdx = comboIdx % MEAL_TYPES_TO_FETCH.length;
-  console.log(`🔑 API keys exhausted: ${Math.min(state.apiKeyIndex + 1, API_KEYS.length)}/${API_KEYS.length}`);
-  console.log(`🍽️ Next combo: ${CUISINES_TO_FETCH[cIdx]} (${MEAL_TYPES_TO_FETCH[mtIdx] || 'all types'})`);
-  console.log(`📅 Next run: Tomorrow (offset ${state.offset})`);
+  console.log(`🔑 API keys used: ${Math.min(state.apiKeyIndex + 1, API_KEYS.length)}/${API_KEYS.length}`);
+  console.log(`📋 Exhausted combos: ${exhaustedSet.size}/${totalCombinations}`);
+  if (exhaustedSet.size < totalCombinations) {
+    const comboIdx = state.cuisineIndex % totalCombinations;
+    const cIdx = Math.floor(comboIdx / MEAL_TYPES_TO_FETCH.length);
+    const mtIdx = comboIdx % MEAL_TYPES_TO_FETCH.length;
+    console.log(`🍽️ Next combo: ${CUISINES_TO_FETCH[cIdx]} (${MEAL_TYPES_TO_FETCH[mtIdx] || 'all types'}) at offset ${state.offset}`);
+  }
+  console.log(`📅 Next run will resume from where this run left off`);
 }
 
 async function uploadBatch(recipes) {

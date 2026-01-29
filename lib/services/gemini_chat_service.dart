@@ -80,9 +80,13 @@ class GeminiChatService extends _$GeminiChatService {
         final appUser = await FirestoreHelper.getUser(user.uid);
         if (appUser != null) {
           final mp = appUser.mealProfile;
+          final age = appUser.dob != null
+              ? ((DateTime.now().difference(appUser.dob!).inDays) / 365.25).floor()
+              : null;
           profileContext = '''
     User profile:
-    - Sex: ${appUser.sex}, Activity level: ${appUser.activityLevel}
+    - Sex: ${appUser.sex}, Age: ${age ?? 'unknown'}
+    - Activity level: ${appUser.activityLevel}
     - Height: ${appUser.height} in, Weight: ${appUser.weight} lbs
     - Daily calorie goal: ${mp.dailyCalorieGoal} kcal
     - Dietary goal: ${mp.dietaryGoal}
