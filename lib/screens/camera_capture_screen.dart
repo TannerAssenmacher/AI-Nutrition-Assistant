@@ -5,8 +5,13 @@ import 'package:flutter/services.dart';
 class MealCaptureResult {
   final XFile photo;
   final String? userContext;
+  final String? imageUrl; // URL to the uploaded image in Firebase Storage
 
-  const MealCaptureResult({required this.photo, this.userContext});
+  const MealCaptureResult({
+    required this.photo,
+    this.userContext,
+    this.imageUrl,
+  });
 }
 
 class CameraCaptureScreen extends StatefulWidget {

@@ -22,7 +22,7 @@ class CameraScreen extends ConsumerStatefulWidget {
   ConsumerState<CameraScreen> createState() => _CameraScreenState();
 }
 
-class _CameraScreenState extends ConsumerState<CameraScreen> {
+class _CameraScreenState extends ConsumerState<CameraScreen> with WidgetsBindingObserver {
   bool _isAnalyzing = false;
   bool _isSaving = false;
   MealAnalysis? _analysisResult;
@@ -32,7 +32,39 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _captureAndAnalyze());
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Check if meal title was passed as argument
+      final mealTitle = ModalRoute.of(context)?.settings.arguments as String?;
+      if (mealTitle != null && mealTitle.isNotEmpty) {
+        _analyzeByText(mealTitle);
+      } else {
+        _captureAndAnalyze();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Reset analysis when returning to the app (e.g., from another screen)
+    if (state == AppLifecycleState.resumed) {
+      _resetAnalysis();
+    }
+  }
+
+  void _resetAnalysis() {
+    setState(() {
+      _analysisResult = null;
+      _isAnalyzing = false;
+      _errorMessage = null;
+      _analysisStage = null;
+    });
   }
 
   Future<void> _captureAndAnalyze() async {
@@ -122,6 +154,77 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
         }
       } catch (_) {
         // Best-effort cleanup.
+      }
+    }
+  }
+
+  Future<void> _analyzeByText(String mealTitle) async {
+    if (_isAnalyzing) return;
+
+    final apiKey = Env.openAiApiKey;
+    if (apiKey == null || apiKey.isEmpty) {
+      setState(() {
+        _errorMessage = 'OpenAI API key is not configured.';
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'OpenAI API key is missing. Pass OPENAI_API_KEY via --dart-define.'),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isAnalyzing = true;
+      _analysisResult = null;
+      _errorMessage = null;
+      _analysisStage = AnalysisStage.uploading;
+    });
+
+    final service = MealAnalysisService(apiKey: apiKey);
+
+    try {
+      final analysis = await service.analyzeMealByText(
+        mealTitle,
+        onStageChanged: (stage) {
+          if (!mounted) return;
+          setState(() {
+            _analysisStage = stage;
+          });
+        },
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _analysisResult = analysis;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Meal analysis complete!'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _errorMessage = 'Analysis failed: $e';
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Analysis failed: $e'),
+          backgroundColor: Colors.red[700],
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isAnalyzing = false;
+          _analysisStage = null;
+        });
       }
     }
   }
@@ -588,9 +691,83 @@ class _IdleState extends StatelessWidget {
             onPressed: onCapture,
             icon: const Icon(Icons.camera_alt),
             label: const Text('Capture meal'),
-          )
+          ),
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 24),
+          _AddMealByText(),
         ],
       ),
+    );
+  }
+}
+
+class _AddMealByText extends StatefulWidget {
+  const _AddMealByText();
+
+  @override
+  State<_AddMealByText> createState() => _AddMealByTextState();
+}
+
+class _AddMealByTextState extends State<_AddMealByText> {
+  final TextEditingController _mealController = TextEditingController();
+
+  @override
+  void dispose() {
+    _mealController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          'Or describe your meal',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: 250,
+          child: TextField(
+            controller: _mealController,
+            decoration: InputDecoration(
+              hintText: 'e.g., Chicken & Rice',
+              hintStyle: TextStyle(color: Colors.grey[400]),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.grey[300]!),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
+              ),
+            ),
+            style: const TextStyle(fontSize: 12),
+          ),
+        ),
+        const SizedBox(height: 12),
+        ElevatedButton.icon(
+          onPressed: () {
+            if (_mealController.text.trim().isNotEmpty) {
+              // Navigate back with the meal title as argument
+              Navigator.pop(context, _mealController.text.trim());
+              // The parent screen will catch this and restart analysis
+            }
+          },
+          icon: const Icon(Icons.auto_awesome, size: 18),
+          label: const Text('Analyze'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF5F9735),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

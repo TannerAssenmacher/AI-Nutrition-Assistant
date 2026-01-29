@@ -198,6 +198,115 @@ class MealAnalysisService {
     }
   }
 
+  Future<MealAnalysis> analyzeMealByText(
+    String mealDescription, {
+    void Function(AnalysisStage stage)? onStageChanged,
+    Duration timeout = const Duration(seconds: 20),
+  }) async {
+    final client = http.Client();
+
+    try {
+      onStageChanged?.call(AnalysisStage.analyzing);
+
+      final response = await client
+          .post(
+            Uri.parse('$_baseUrl/chat/completions'),
+            headers: {
+              'Authorization': 'Bearer $apiKey',
+              'Content-Type': 'application/json',
+            },
+            body: json.encode({
+              'model': 'gpt-4o',
+              'messages': [
+                {
+                  'role': 'system',
+                  'content': 'You are a nutrition expert. Analyze meal descriptions and return ONLY valid JSON. '
+                      'THINK STEP-BY-STEP (internally) BEFORE ANSWERING: identify foods → determine mass → derive per-gram macros → scale to mass → compute calories with 4/4/9 → sanity-check totals. '
+                      'DO NOT return your reasoning, only the final JSON. '
+                      'OUTPUT FORMAT: {"f":[{"n":"food name","m":grams,"k":kcal,"p":protein_g,"c":carbs_g,"a":fat_g}]} '
+                      'RULES: '
+                      '- All numeric values must be numbers, not strings. '
+                      '- Use at least 1 decimal place for grams/kcal when appropriate. '
+                      '- k MUST equal (p×4)+(c×4)+(a×9) exactly. '
+                      '- Prefer slightly conservative estimates over overestimates when uncertain.'
+                },
+                {
+                  'role': 'user',
+                  'content': 'Analyze this meal description and provide nutritional breakdown: $mealDescription'
+                }
+              ],
+              'max_tokens': 2000,
+            }),
+          )
+          .timeout(timeout);
+
+      if (response.statusCode != 200) {
+        throw Exception(
+            'API request failed: ${response.statusCode} - ${response.body}');
+      }
+
+      final responseData =
+          json.decode(response.body) as Map<String, dynamic>? ?? {};
+      
+      // Extract text from chat completions response
+      final choices = responseData['choices'] as List?;
+      if (choices == null || choices.isEmpty) {
+        throw Exception('No response from API');
+      }
+      
+      final firstChoice = choices.first as Map<String, dynamic>;
+      final message = firstChoice['message'] as Map<String, dynamic>?;
+      if (message == null) {
+        throw Exception('No message in response');
+      }
+      
+      final content = message['content'] as String?;
+      if (content == null || content.isEmpty) {
+        throw Exception('Empty response content');
+      }
+
+      // Parse the JSON response - try to extract JSON from the response
+      final jsonMatch = RegExp(r'\{.*\}', dotAll: true).firstMatch(content);
+      final jsonStr = jsonMatch?.group(0) ?? content;
+      final parsedJson = json.decode(jsonStr) as Map<String, dynamic>;
+
+      // Convert from short format to expected format
+      final foods = (parsedJson['f'] as List?)?.map((food) {
+            final f = food as Map<String, dynamic>;
+            return {
+              'name': f['n'] ?? 'Unknown',
+              'mass': (f['m'] as num?)?.toDouble() ?? 100.0,
+              'calories': (f['k'] as num?)?.toDouble() ?? 0.0,
+              'protein': (f['p'] as num?)?.toDouble() ?? 0.0,
+              'carbs': (f['c'] as num?)?.toDouble() ?? 0.0,
+              'fat': (f['a'] as num?)?.toDouble() ?? 0.0,
+            };
+          }).toList() ??
+          [];
+
+      if (foods.isEmpty) {
+        throw Exception('No foods parsed from response');
+      }
+
+      final analysis = MealAnalysis(
+        foods: foods
+            .map((f) => AnalyzedFoodItem(
+                  name: f['name'] as String,
+                  mass: f['mass'] as double,
+                  calories: f['calories'] as double,
+                  protein: f['protein'] as double,
+                  carbs: f['carbs'] as double,
+                  fat: f['fat'] as double,
+                ))
+            .toList(),
+      );
+      return _normalizeAnalysis(analysis);
+    } finally {
+      onStageChanged?.call(AnalysisStage.cleaning);
+      client.close();
+    }
+  }
+
   /// Ensures calories align with macros (4/4/9) and strips negative/NaN values.
   MealAnalysis _normalizeAnalysis(MealAnalysis analysis) {
     final normalizedFoods = analysis.foods.map((food) {

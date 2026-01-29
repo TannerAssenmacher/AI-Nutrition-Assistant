@@ -1,7 +1,6 @@
 import 'meal.dart';
 import 'food.dart';
 import 'user.dart';
-import 'meal_profile.dart';
 
 /// DailyLog tracks a user's food intake and nutrition totals for a single day
 class DailyLog {

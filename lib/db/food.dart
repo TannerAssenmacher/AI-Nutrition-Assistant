@@ -24,7 +24,8 @@ class FoodItem {
   final double fat;
     @JsonKey(defaultValue: "NA")
   final String mealType; // breakfast/lunch/etc.
-    
+    @JsonKey(defaultValue: "")
+  final String imageUrl; // URL to the meal photo
 
   @JsonKey(fromJson: AppUser.dateFromJson, toJson: AppUser.dateToJson)
   final DateTime consumedAt;
@@ -39,6 +40,7 @@ class FoodItem {
     required this.fat,
     required this.mealType,
     required this.consumedAt,
+    this.imageUrl = "",
   });
 
   factory FoodItem.fromJson(Map<String, dynamic> json) =>
