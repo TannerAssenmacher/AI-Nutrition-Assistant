@@ -812,7 +812,7 @@ void main() {
         updatedAt: testDate,
       );
 
-      final age = DateTime.now().year - elderlyUser.dob.year;
+      final age = DateTime.now().year - elderlyUser.dob!.year;
       expect(age, greaterThan(100));
     });
 

@@ -617,6 +617,7 @@ class _RecipeCard extends StatelessWidget {
     final ingredients = List<String>.from(recipe['ingredients'] ?? const []);
     final instructions = recipe['instructions'] ?? '';
     final imageUrl = recipe['imageUrl'] ?? '';
+    final url = recipe['sourceUrl'] ?? '';
 
     // Convert Spoonacular URL to use CORS proxy for web
     String getProxiedImageUrl(String url) {
