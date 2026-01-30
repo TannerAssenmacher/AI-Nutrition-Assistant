@@ -1,0 +1,20 @@
+{
+  "name": "recipe-ingestion",
+  "version": "3.0.0",
+  "description": "Daily recipe ingestion from Spoonacular API to Firestore",
+  "type": "module",
+  "scripts": {
+    "test": "node test_fetch.js",
+    "daily": "node daily_fetch.js",
+    "clear": "node clear_recipes.js",
+    "verify-embeddings": "node verify_embeddings.js",
+    "test-rag": "node test_rag_search.js",
+    "test-firestore": "node test_rag_simple.js",
+    "count": "node count_recipes.js",
+    "regenerate": "node regenerate_embeddings.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0",
+    "pg": "^8.11.0"
+  }
+}

@@ -91,3 +91,13 @@ app.*.map.json
 # Xcode stuff for iPhone
 /ios/Runner.xcodeproj/xcshareddata/
 /ios/Flutter/
+
+# Functions environment
+functions/.env
+
+# Service account keys (secrets)
+**/serviceAccountKey.json
+**/serviceAccountKey*.json
+
+# Node modules
+**/node_modules/

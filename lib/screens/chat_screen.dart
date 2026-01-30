@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/gemini_chat_service.dart';
@@ -27,27 +28,34 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   String? _selectedCuisineType;
 
   final List<String> _cuisineTypes = [
-    'American',
+    'No Preference',
+    'African',
     'Asian',
+    'American',
     'British',
+    'Cajun',
     'Caribbean',
-    'Central Europe',
     'Chinese',
-    'Eastern Europe',
+    'Eastern European',
+    'European',
     'French',
+    'German',
     'Greek',
     'Indian',
+    'Irish',
     'Italian',
     'Japanese',
+    'Jewish',
     'Korean',
-    'Kosher',
+    'Latin American',
     'Mediterranean',
     'Mexican',
     'Middle Eastern',
     'Nordic',
-    'South American',
-    'South East Asian',
-    'None',
+    'Southern',
+    'Spanish',
+    'Thai',
+    'Vietnamese',
   ];
 
   @override
@@ -491,9 +499,18 @@ class MealProfileSummaryBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final dietary = List<String>.from(data['dietary'] ?? const []);
     final health = List<String>.from(data['health'] ?? const []);
+    final likes = List<String>.from(data['likes'] ?? const []);
     final dislikes = List<String>.from(data['dislikes'] ?? const []);
     final mealType = (data['mealType'] ?? '').toString();
     final cuisineType = (data['cuisineType'] ?? '').toString();
+    final dietaryGoal = (data['dietaryGoal'] ?? '').toString();
+    final dailyCalorieGoal = data['dailyCalorieGoal'] as int? ?? 0;
+    final macroGoals = data['macroGoals'] as Map<String, dynamic>? ?? {};
+    
+    // Format macro goals as percentages
+    final proteinPct = (macroGoals['protein'] as num?)?.round() ?? 0;
+    final carbsPct = (macroGoals['carbs'] as num?)?.round() ?? 0;
+    final fatPct = (macroGoals['fat'] as num?)?.round() ?? 0;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -520,16 +537,20 @@ class MealProfileSummaryBubble extends StatelessWidget {
                     "Is this information correct?",
                     style: TextStyle(fontWeight: FontWeight.w700),
                   ),
-                  const SizedBox(height: 6),
-                  Text("Meal: $mealType"),
-                  Text("Cuisine: $cuisineType"),
-                  const SizedBox(height: 6),
-                  Text(
-                      "Dietary: ${dietary.isEmpty ? "None" : dietary.join(", ")}"),
-                  Text(
-                      "Health: ${health.isEmpty ? "None" : health.join(", ")}"),
-                  Text(
-                      "Dislikes: ${dislikes.isEmpty ? "None" : dislikes.join(", ")}"),
+                  const SizedBox(height: 8),
+                  // Meal & Cuisine
+                  Text("🍽️ Meal: $mealType • Cuisine: $cuisineType"),
+                  const SizedBox(height: 4),
+                  // Goals
+                  Text("🎯 Goal: $dietaryGoal"),
+                  Text("🔥 Daily Calories: ${dailyCalorieGoal > 0 ? '$dailyCalorieGoal kcal' : 'Not set'}"),
+                  Text("📊 Macros: P $proteinPct% • C $carbsPct% • F $fatPct%"),
+                  const SizedBox(height: 4),
+                  // Preferences
+                  Text("✅ Dietary: ${dietary.isEmpty ? 'None' : dietary.join(', ')}"),
+                  Text("⚕️ Health: ${health.isEmpty ? 'None' : health.join(', ')}"),
+                  Text("👍 Likes: ${likes.isEmpty ? 'None' : likes.join(', ')}"),
+                  Text("👎 Dislikes: ${dislikes.isEmpty ? 'None' : dislikes.join(', ')}"),
                   const SizedBox(height: 10),
                   Row(
                     children: [
@@ -574,14 +595,38 @@ class _RecipeCard extends StatelessWidget {
   const _RecipeCard(
       {required this.recipe, required this.mealType, required this.onAdd});
 
+  // Capitalize first letter of each word
+  String _capitalize(String text) {
+    if (text.isEmpty) return text;
+    return text.split(' ').map((word) {
+      if (word.isEmpty) return word;
+      return word[0].toUpperCase() + word.substring(1).toLowerCase();
+    }).join(' ');
+  }
+
   @override
   Widget build(BuildContext context) {
     final label = recipe['label'] ?? 'Recipe';
-    final cuisine = recipe['cuisine'] ?? 'General';
+    final cuisine = _capitalize((recipe['cuisine'] ?? 'General').toString());
     final calories = recipe['calories'] ?? 0;
+    final protein = recipe['protein'] ?? 0;
+    final carbs = recipe['carbs'] ?? 0;
+    final fat = recipe['fat'] ?? 0;
+    final servings = recipe['servings'];
+    final readyInMinutes = recipe['readyInMinutes'];
     final ingredients = List<String>.from(recipe['ingredients'] ?? const []);
     final instructions = recipe['instructions'] ?? '';
-    final url = recipe['url'] ?? '';
+    final imageUrl = recipe['imageUrl'] ?? '';
+
+    // Convert Spoonacular URL to use CORS proxy for web
+    String getProxiedImageUrl(String url) {
+      if (url.isEmpty) return '';
+      // Use Cloud Function proxy to avoid CORS issues
+      final encodedUrl = Uri.encodeComponent(url);
+      return 'https://us-central1-ai-nutrition-assistant-e2346.cloudfunctions.net/proxyImage?url=$encodedUrl';
+    }
+
+    final proxiedImageUrl = getProxiedImageUrl(imageUrl.toString());
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -594,14 +639,81 @@ class _RecipeCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Recipe image at the top
+          if (proxiedImageUrl.isNotEmpty) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                width: 280,
+                height: 200,
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Image.network(
+                  proxiedImageUrl,
+                  width: 280,
+                  height: 200,
+                  fit: BoxFit.cover,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Center(
+                      child: CircularProgressIndicator(
+                        value: loadingProgress.expectedTotalBytes != null
+                            ? loadingProgress.cumulativeBytesLoaded /
+                                loadingProgress.expectedTotalBytes!
+                            : null,
+                      ),
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) {
+                    // CORS issue on web - show message
+                    return Container(
+                      width: 280,
+                      height: 200,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.restaurant, size: 40, color: Colors.grey),
+                          const SizedBox(height: 8),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            child: Text(
+                              'Image from Spoonacular',
+                              style: TextStyle(fontSize: 12, color: Colors.grey),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           Text(
             label,
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 4),
-          Text('Cuisine: $cuisine'),
+          if (cuisine.toLowerCase() != 'world') Text('Cuisine: $cuisine'),
           Text('Calories: $calories kcal'),
-          Text('Meal type: $mealType'),
+          Text('P: ${protein}g  |  C: ${carbs}g  |  F: ${fat}g',
+              style: TextStyle(color: Colors.grey[700], fontSize: 13)),
+          if (readyInMinutes != null || servings != null)
+            Text(
+              [
+                if (readyInMinutes != null) 'Ready in $readyInMinutes min',
+                if (servings != null) 'Serves: $servings',
+              ].join('  |  '),
+              style: TextStyle(color: Colors.grey[700], fontSize: 13),
+            ),
           const SizedBox(height: 8),
           const Text('Ingredients',
               style: TextStyle(fontWeight: FontWeight.w600)),
