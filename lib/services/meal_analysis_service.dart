@@ -113,7 +113,7 @@ class MealAnalysisService {
     File imageFile, {
     String? userContext,
     void Function(AnalysisStage stage)? onStageChanged,
-    Duration timeout = const Duration(seconds: 20),
+    Duration timeout = const Duration(seconds: 100),
   }) async {
     final client = http.Client();
     String? fileId;
