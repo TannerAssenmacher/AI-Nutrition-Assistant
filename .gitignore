@@ -101,6 +101,3 @@ functions/.env
 
 # Node modules
 **/node_modules/
-
-# FVM Version Cache
-.fvm/
