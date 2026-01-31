@@ -147,6 +147,23 @@ class _DailyLogCalendarScreenState
     firestoreLog.addFood(userId, item);
   }
 
+  void _showMonthlyCalendarPicker() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return _MonthlyCalendarPicker(
+          focusedDay: _focusedDay,
+          onDateSelected: (selectedDate) {
+            setState(() {
+              _focusedDay = selectedDate;
+            });
+            Navigator.pop(context);
+          },
+        );
+      },
+    );
+  }
+
   void _showFoodsSheet(
     DateTime day,
     List<_FoodRow> initialRows,
@@ -329,12 +346,15 @@ class _DailyLogCalendarScreenState
                         });
                       },
                     ),
-                    Text(
-                      '${DateFormat('MMMM yyyy').format(_focusedDay)}',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF3E2F26),
+                    GestureDetector(
+                      onTap: _showMonthlyCalendarPicker,
+                      child: Text(
+                        '${DateFormat('MMMM yyyy').format(_focusedDay)}',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF3E2F26),
+                        ),
                       ),
                     ),
                     Row(
@@ -979,6 +999,237 @@ class _TableCellText extends StatelessWidget {
         style: TextStyle(
           fontWeight: isHeader ? FontWeight.bold : FontWeight.w500,
           color: Colors.brown.shade800,
+        ),
+      ),
+    );
+  }
+}
+
+class _MonthlyCalendarPicker extends StatefulWidget {
+  final DateTime focusedDay;
+  final Function(DateTime) onDateSelected;
+
+  const _MonthlyCalendarPicker({
+    required this.focusedDay,
+    required this.onDateSelected,
+  });
+
+  @override
+  State<_MonthlyCalendarPicker> createState() => _MonthlyCalendarPickerState();
+}
+
+class _MonthlyCalendarPickerState extends State<_MonthlyCalendarPicker> {
+  late DateTime _displayMonth;
+
+  @override
+  void initState() {
+    super.initState();
+    _displayMonth = DateTime(widget.focusedDay.year, widget.focusedDay.month);
+  }
+
+  List<List<DateTime?>> _getWeeksInMonth(DateTime month) {
+    final firstDay = DateTime(month.year, month.month, 1);
+    final lastDay = DateTime(month.year, month.month + 1, 0);
+
+    // Start from the Monday of the first week
+    final startDate = firstDay.subtract(Duration(days: firstDay.weekday - 1));
+
+    final weeks = <List<DateTime?>>[];
+    var currentDate = startDate;
+
+    while (
+        currentDate.isBefore(lastDay) || currentDate.month == lastDay.month) {
+      final week = <DateTime?>[];
+      for (int i = 0; i < 7; i++) {
+        if (currentDate.month == month.month) {
+          week.add(currentDate);
+        } else {
+          week.add(null);
+        }
+        currentDate = currentDate.add(const Duration(days: 1));
+      }
+      weeks.add(week);
+
+      if (currentDate.month != month.month && currentDate.day > 7) {
+        break;
+      }
+    }
+
+    return weeks;
+  }
+
+  // Get the Monday of the week containing the given date
+  DateTime _getMondayOfWeek(DateTime date) {
+    return date.subtract(Duration(days: date.weekday - 1));
+  }
+
+  // Check if the given date is in the focused week
+  bool _isInFocusedWeek(DateTime date) {
+    final focusedMonday = _getMondayOfWeek(widget.focusedDay);
+    final dateMonday = _getMondayOfWeek(date);
+    return focusedMonday == dateMonday;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final weeks = _getWeeksInMonth(_displayMonth);
+    final now = DateTime.now();
+
+    return Dialog(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Month/Year header with navigation
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.chevron_left),
+                  color: const Color(0xFF3E2F26),
+                  onPressed: () {
+                    setState(() {
+                      _displayMonth =
+                          DateTime(_displayMonth.year, _displayMonth.month - 1);
+                    });
+                  },
+                ),
+                Text(
+                  DateFormat('MMMM yyyy').format(_displayMonth),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF3E2F26),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.chevron_right),
+                  color: const Color(0xFF3E2F26),
+                  onPressed: () {
+                    setState(() {
+                      _displayMonth =
+                          DateTime(_displayMonth.year, _displayMonth.month + 1);
+                    });
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // Day headers (Mon-Sun)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: const [
+                _DayHeader('Mon'),
+                _DayHeader('Tue'),
+                _DayHeader('Wed'),
+                _DayHeader('Thu'),
+                _DayHeader('Fri'),
+                _DayHeader('Sat'),
+                _DayHeader('Sun'),
+              ],
+            ),
+            const SizedBox(height: 8),
+            // Calendar weeks
+            ...weeks.map((week) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: week.map((date) {
+                    if (date == null) {
+                      return const SizedBox(width: 32, height: 32);
+                    }
+
+                    final isToday = date.year == now.year &&
+                        date.month == now.month &&
+                        date.day == now.day;
+                    final isInFocusedWeek = _isInFocusedWeek(date);
+
+                    return GestureDetector(
+                      onTap: () {
+                        // Select the Monday of the week
+                        final monday = _getMondayOfWeek(date);
+                        widget.onDateSelected(monday);
+                      },
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: isInFocusedWeek
+                              ? const Color(0xFF6DCFF6)
+                              : isToday
+                                  ? const Color(0xFF6DCFF6)
+                                      .withValues(alpha: 0.2)
+                                  : Colors.transparent,
+                          shape: BoxShape.circle,
+                          border: isInFocusedWeek
+                              ? Border.all(
+                                  color: const Color(0xFF6DCFF6),
+                                  width: 2,
+                                )
+                              : null,
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${date.day}',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: isInFocusedWeek
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                              color: isInFocusedWeek
+                                  ? Colors.white
+                                  : isToday
+                                      ? const Color(0xFF6DCFF6)
+                                      : Colors.black87,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              );
+            }).toList(),
+            const SizedBox(height: 16),
+            // Close button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF3E2F26),
+                ),
+                child: const Text(
+                  'Done',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DayHeader extends StatelessWidget {
+  final String label;
+
+  const _DayHeader(this.label);
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 32,
+      child: Text(
+        label,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: Colors.grey.shade600,
         ),
       ),
     );
