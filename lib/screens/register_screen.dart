@@ -75,8 +75,28 @@ class _RegisterPageState extends State<RegisterPage> {
     'Very Active'
   ];
   final _dietGoals = ['Lose Weight', 'Maintain Weight', 'Gain Muscle'];
-  final _dietaryHabitOptions = ['balanced', 'high-fiber', 'high-protein', 'low-carb', 'low-fat', 'low-sodium'];
-  final _healthOptions = ['vegan', 'vegetarian', 'gluten free', 'dairy free', 'ketogenic', 'lacto-vegetarian', 'ovo-vegetarian', 'pescetarian', 'paleo', 'primal', 'low FODMAP', 'Whole30'];
+  final _dietaryHabitOptions = [
+    'balanced',
+    'high-fiber',
+    'high-protein',
+    'low-carb',
+    'low-fat',
+    'low-sodium'
+  ];
+  final _healthOptions = [
+    'vegan',
+    'vegetarian',
+    'gluten free',
+    'dairy free',
+    'ketogenic',
+    'lacto-vegetarian',
+    'ovo-vegetarian',
+    'pescetarian',
+    'paleo',
+    'primal',
+    'low FODMAP',
+    'Whole30'
+  ];
 
   @override
   void initState() {
@@ -300,7 +320,6 @@ class _RegisterPageState extends State<RegisterPage> {
         mealProfile: mealProfile.copyWith(
           dailyCalorieGoal: dailyCaloriesValue ?? 0,
         ),
-        loggedFoodItems: [],
         scheduledFoodItems: [],
         createdAt: now,
         updatedAt: now,

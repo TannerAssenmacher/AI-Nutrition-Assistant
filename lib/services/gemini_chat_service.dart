@@ -6,12 +6,11 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../config/env.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import '../providers/food_providers.dart';
+import '../providers/firestore_providers.dart';
 import '../db/firestore_helper.dart';
 import 'dart:convert';
 import 'package:nutrition_assistant/db/planned_food.dart';
-import '../models/planned_food_input.dart'; 
-import '../db/planned_food.dart';
-
+import '../models/planned_food_input.dart';
 
 part 'gemini_chat_service.g.dart';
 
@@ -86,7 +85,8 @@ class GeminiChatService extends _$GeminiChatService {
         if (appUser != null) {
           final mp = appUser.mealProfile;
           final age = appUser.dob != null
-              ? ((DateTime.now().difference(appUser.dob!).inDays) / 365.25).floor()
+              ? ((DateTime.now().difference(appUser.dob!).inDays) / 365.25)
+                  .floor()
               : null;
           profileContext = '''
     User profile:
@@ -142,13 +142,13 @@ class GeminiChatService extends _$GeminiChatService {
 
   //start generate recipe flow!
   //call fetchrecipes
-  Future<void> handleMealTypeSelection( String mealType, String cuisineType) async {
+  Future<void> handleMealTypeSelection(
+      String mealType, String cuisineType) async {
     await _fetchRecipes(mealType, cuisineType);
   }
 
   //confirmation on user profile
   Future<void> confirmMealProfile(bool confirmed) async {
-
     final notifier = ref.read(geminiChatServiceProvider.notifier);
 
     notifier.addLocalUserMessage(confirmed ? "Yes" : "No");
@@ -198,7 +198,6 @@ class GeminiChatService extends _$GeminiChatService {
     bool fromConfirmation = false,
     bool forceNewBatch = false,
   }) async {
-
     try {
       //user profile from user signed in
       final user = FirebaseAuth.instance.currentUser;
@@ -281,10 +280,12 @@ class GeminiChatService extends _$GeminiChatService {
       // Compute today's consumption data for smart calorie targeting
       final foodLog = ref.read(foodLogProvider);
       final today = DateTime.now();
-      final todaysFoods = foodLog.where((item) =>
-          item.consumedAt.year == today.year &&
-          item.consumedAt.month == today.month &&
-          item.consumedAt.day == today.day).toList();
+      final todaysFoods = foodLog
+          .where((item) =>
+              item.consumedAt.year == today.year &&
+              item.consumedAt.month == today.month &&
+              item.consumedAt.day == today.day)
+          .toList();
 
       final consumedCalories = todaysFoods.fold<int>(
           0, (sum, food) => sum + (food.calories_g * food.mass_g).round());
@@ -296,10 +297,8 @@ class GeminiChatService extends _$GeminiChatService {
         consumedFat += item.fat * item.mass_g;
       }
 
-      final consumedMealTypes = todaysFoods
-          .map((f) => f.mealType.toLowerCase())
-          .toSet()
-          .toList();
+      final consumedMealTypes =
+          todaysFoods.map((f) => f.mealType.toLowerCase()).toSet().toList();
 
       // Call RAG-based searchRecipes Cloud Function with full user profile
       final functions = FirebaseFunctions.instance;
@@ -405,7 +404,7 @@ class GeminiChatService extends _$GeminiChatService {
             .toList();
 
         print('ingredients: $ingredients');
-        
+
         final id = recipe['id'];
         final label = recipe['label'] ?? 'Unknown Recipe';
         final calories = (recipe['calories'] as num?)?.round() ?? 0;
@@ -416,7 +415,8 @@ class GeminiChatService extends _$GeminiChatService {
         // Fall back to Gemini-generated instructions if not available
         String instructions = recipe['instructions'] ?? '';
         if (instructions.isEmpty) {
-          instructions = await _generateInstructionsWithGemini(label, ingredients, calories);
+          instructions = await _generateInstructionsWithGemini(
+              label, ingredients, calories);
         }
 
         recipeList.add({
@@ -541,25 +541,25 @@ class GeminiChatService extends _$GeminiChatService {
         fromConfirmation: true, forceNewBatch: true);
   }
 
-  //call firestore helper to add to user's list of scheduled food items
+  //call firestore provider to add scheduled meals to subcollection
   Future<void> scheduleRecipe(
-    String recipeId, List<PlannedFoodInput> plannedInputs) async {
+      String recipeId, List<PlannedFoodInput> plannedInputs) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw StateError('User not logged in');
 
-    // build list of planned foods with dates for that specific recipe id
-    final List<PlannedFood> scheduledFoods = plannedInputs.map((input) {
-      return PlannedFood(
+    // Add each scheduled meal to the subcollection
+    for (final input in plannedInputs) {
+      final scheduledMeal = PlannedFood(
         recipeId: recipeId,
         date: input.date,
         mealType: input.mealType,
       );
-    }).toList();
 
-    await FirestoreHelper.addScheduledFoodItems(
-      userId: user.uid,
-      foods: scheduledFoods,
-    );
+      // Use the provider notifier to add to Firestore
+      await ref
+          .read(firestoreScheduledMealsProvider(user.uid).notifier)
+          .addScheduledMeal(user.uid, scheduledMeal);
+    }
   }
 
   //analyze food photo
@@ -624,7 +624,6 @@ class GeminiChatService extends _$GeminiChatService {
 }
 
 class ChatMessage {
-
   final String content;
   final bool isUser;
   final DateTime timestamp;

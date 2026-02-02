@@ -3,9 +3,13 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/gemini_chat_service.dart';
-import '../models/planned_food_input.dart'; 
+import '../models/planned_food_input.dart';
+import '../db/food.dart';
+import '../providers/auth_providers.dart';
+import '../providers/firestore_providers.dart';
 import 'package:table_calendar/table_calendar.dart';
-
+import 'package:nutrition_assistant/navigation/nav_helper.dart';
+import 'package:nutrition_assistant/widgets/nav_bar.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final bool isInPageView;
@@ -232,105 +236,92 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final chatMessages = ref.watch(geminiChatServiceProvider);
+  Widget _buildChatContent(
+    BuildContext context,
+    List<ChatMessage> chatMessages,
+  ) {
+    return Column(
+      children: [
+        Expanded(
+          child: chatMessages.isEmpty
+              ? const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.chat_bubble_outline,
+                          size: 64, color: Colors.grey),
+                      SizedBox(height: 16),
+                      Text(
+                        'Ask me anything about nutrition!',
+                        style: TextStyle(fontSize: 18, color: Colors.grey),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Try: "What should I eat for dinner?"',
+                        style: TextStyle(fontSize: 14, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.all(16),
+                  itemCount: chatMessages.length,
+                  itemBuilder: (context, index) {
+                    final message = chatMessages[index];
 
-    final bodyContent = SafeArea(
-      child: _buildChatContent(context, chatMessages),
-    );
+                    try {
+                      final parsed = jsonDecode(message.content);
 
-    if (widget.isInPageView == true) {
-      return bodyContent;
-    }
+                      if (parsed is Map &&
+                          parsed['type'] == 'meal_profile_summary') {
+                        return MealProfileSummaryBubble(
+                          data: Map<String, dynamic>.from(parsed),
+                          onYes: () => _confirmMealProfile(true),
+                          onNo: () => _confirmMealProfile(false),
+                        );
+                      }
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5EDE2),
-      body: bodyContent,
-      bottomNavigationBar: NavBar(
-        currentIndex: navIndexChat,
-        onTap: (index) => handleNavTap(context, index),
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: chatMessages.isEmpty
-                ? const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.chat_bubble_outline,
-                            size: 64, color: Colors.grey),
-                        SizedBox(height: 16),
-                        Text(
-                          'Ask me anything about nutrition!',
-                          style: TextStyle(fontSize: 18, color: Colors.grey),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Try: "What should I eat for dinner?"',
-                          style: TextStyle(fontSize: 14, color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.all(16),
-                    itemCount: chatMessages.length,
-                    itemBuilder: (context, index) {
-                      final message = chatMessages[index];
+                      if (parsed is Map && parsed['type'] == 'recipe_results') {
+                        final recipes = List<Map<String, dynamic>>.from(
+                            parsed['recipes'] ?? const []);
 
-                      try {
-                        final parsed = jsonDecode(message.content);
-
-                        if (parsed is Map &&
-                            parsed['type'] == 'meal_profile_summary') {
-                          return MealProfileSummaryBubble(
-                            data: Map<String, dynamic>.from(parsed),
-                            onYes: () => _confirmMealProfile(true),
-                            onNo: () => _confirmMealProfile(false),
-                          );
-                        }
-
-                       if (parsed is Map && parsed['type'] == 'recipe_results') {
-                          final recipes = List<Map<String, dynamic>>.from(parsed['recipes'] ?? const []);
-
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              ...recipes.map((r) => _RecipeCard(
-                                recipe: r,
-                                onSchedule: (recipeId, plannedInputs) {
-                                  ref.read(geminiChatServiceProvider.notifier)
-                                    .scheduleRecipe(recipeId, plannedInputs);
-                                },
-                              )),
-                              const SizedBox(height: 6),
-                              Center(
-                                child: OutlinedButton.icon(
-                                  onPressed: () {
-                                    final meal = _selectedMealType ?? 'Dinner';
-                                    final cuisine = _selectedCuisineType ?? 'None'; 
-                                    _loadMoreRecipes(meal, cuisine);
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ...recipes.map((r) => _RecipeCard(
+                                  recipe: r,
+                                  onSchedule: (recipeId, plannedInputs) {
+                                    ref
+                                        .read(
+                                            geminiChatServiceProvider.notifier)
+                                        .scheduleRecipe(
+                                            recipeId, plannedInputs);
                                   },
-                                  icon: const Icon(Icons.refresh),
-                                  label: const Text("More recipes"),
-                                ),
+                                )),
+                            const SizedBox(height: 6),
+                            Center(
+                              child: OutlinedButton.icon(
+                                onPressed: () {
+                                  final meal = _selectedMealType ?? 'Dinner';
+                                  final cuisine =
+                                      _selectedCuisineType ?? 'None';
+                                  _loadMoreRecipes(meal, cuisine);
+                                },
+                                icon: const Icon(Icons.refresh),
+                                label: const Text("More recipes"),
                               ),
-                            ],
-                          );
-                        }
-                      } catch (_) {}
+                            ),
+                          ],
+                        );
+                      }
+                    } catch (_) {}
 
                     return _ChatBubble(message: message);
                   },
                 ),
         ),
-
-        
         _choiceBar(),
-
         // Input bar
         Container(
           padding: const EdgeInsets.all(16),
@@ -385,6 +376,28 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final chatMessages = ref.watch(geminiChatServiceProvider);
+
+    final bodyContent = SafeArea(
+      child: _buildChatContent(context, chatMessages),
+    );
+
+    if (widget.isInPageView == true) {
+      return bodyContent;
+    }
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5EDE2),
+      body: bodyContent,
+      bottomNavigationBar: NavBar(
+        currentIndex: navIndexChat,
+        onTap: (index) => handleNavTap(context, index),
+      ),
     );
   }
 }
@@ -475,7 +488,7 @@ class MealProfileSummaryBubble extends StatelessWidget {
     final dietaryGoal = (data['dietaryGoal'] ?? '').toString();
     final dailyCalorieGoal = data['dailyCalorieGoal'] as int? ?? 0;
     final macroGoals = data['macroGoals'] as Map<String, dynamic>? ?? {};
-    
+
     // Format macro goals as percentages
     final proteinPct = (macroGoals['protein'] as num?)?.round() ?? 0;
     final carbsPct = (macroGoals['carbs'] as num?)?.round() ?? 0;
@@ -512,14 +525,19 @@ class MealProfileSummaryBubble extends StatelessWidget {
                   const SizedBox(height: 4),
                   // Goals
                   Text("🎯 Goal: $dietaryGoal"),
-                  Text("🔥 Daily Calories: ${dailyCalorieGoal > 0 ? '$dailyCalorieGoal kcal' : 'Not set'}"),
+                  Text(
+                      "🔥 Daily Calories: ${dailyCalorieGoal > 0 ? '$dailyCalorieGoal kcal' : 'Not set'}"),
                   Text("📊 Macros: P $proteinPct% • C $carbsPct% • F $fatPct%"),
                   const SizedBox(height: 4),
                   // Preferences
-                  Text("✅ Dietary: ${dietary.isEmpty ? 'None' : dietary.join(', ')}"),
-                  Text("⚕️ Health: ${health.isEmpty ? 'None' : health.join(', ')}"),
-                  Text("👍 Likes: ${likes.isEmpty ? 'None' : likes.join(', ')}"),
-                  Text("👎 Dislikes: ${dislikes.isEmpty ? 'None' : dislikes.join(', ')}"),
+                  Text(
+                      "✅ Dietary: ${dietary.isEmpty ? 'None' : dietary.join(', ')}"),
+                  Text(
+                      "⚕️ Health: ${health.isEmpty ? 'None' : health.join(', ')}"),
+                  Text(
+                      "👍 Likes: ${likes.isEmpty ? 'None' : likes.join(', ')}"),
+                  Text(
+                      "👎 Dislikes: ${dislikes.isEmpty ? 'None' : dislikes.join(', ')}"),
                   const SizedBox(height: 10),
                   Row(
                     children: [
@@ -628,10 +646,13 @@ class _RecipeCardState extends State<_RecipeCard> {
               ),
             ),
           const SizedBox(height: 12),
-          Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          Text(label,
+              style:
+                  const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
           if (cuisine.toLowerCase() != 'world') Text('Cuisine: $cuisine'),
           Text('Calories: $calories kcal'),
-          Text('P: ${protein}g  |  C: ${carbs}g  |  F: ${fat}g', style: TextStyle(color: Colors.grey[700], fontSize: 13)),
+          Text('P: ${protein}g  |  C: ${carbs}g  |  F: ${fat}g',
+              style: TextStyle(color: Colors.grey[700], fontSize: 13)),
           if (readyInMinutes != null || servings != null)
             Text(
               [
@@ -641,13 +662,14 @@ class _RecipeCardState extends State<_RecipeCard> {
               style: TextStyle(color: Colors.grey[700], fontSize: 13),
             ),
           const SizedBox(height: 8),
-          const Text('Ingredients', style: TextStyle(fontWeight: FontWeight.w600)),
+          const Text('Ingredients',
+              style: TextStyle(fontWeight: FontWeight.w600)),
           ...ingredients.map((i) => Text('• $i')),
           const SizedBox(height: 8),
-          const Text('Instructions', style: TextStyle(fontWeight: FontWeight.w600)),
+          const Text('Instructions',
+              style: TextStyle(fontWeight: FontWeight.w600)),
           Text(instructions),
           const SizedBox(height: 12),
-
           Center(
             child: ElevatedButton.icon(
               onPressed: () async {
@@ -668,7 +690,8 @@ class _RecipeCardState extends State<_RecipeCard> {
                           lastDay: DateTime.now().add(const Duration(days: 30)),
                           focusedDay: DateTime.now(),
                           calendarFormat: CalendarFormat.month,
-                          selectedDayPredicate: (day) => _selectedDates.contains(day),
+                          selectedDayPredicate: (day) =>
+                              _selectedDates.contains(day),
                           onDaySelected: (day, focusedDay) async {
                             if (!mounted) return;
 
@@ -677,13 +700,16 @@ class _RecipeCardState extends State<_RecipeCard> {
                               final mealType = await showDialog<String>(
                                 context: ctx,
                                 builder: (ctx2) => SimpleDialog(
-                                  title: Text("Select meal type for ${day.month}/${day.day}"),
-                                  children: ['Breakfast', 'Lunch', 'Dinner', 'Snack']
-                                      .map((m) => SimpleDialogOption(
-                                            child: Text(m),
-                                            onPressed: () => Navigator.pop(ctx2, m),
-                                          ))
-                                      .toList(),
+                                  title: Text(
+                                      "Select meal type for ${day.month}/${day.day}"),
+                                  children:
+                                      ['Breakfast', 'Lunch', 'Dinner', 'Snack']
+                                          .map((m) => SimpleDialogOption(
+                                                child: Text(m),
+                                                onPressed: () =>
+                                                    Navigator.pop(ctx2, m),
+                                              ))
+                                          .toList(),
                                 ),
                               );
 
@@ -715,7 +741,8 @@ class _RecipeCardState extends State<_RecipeCard> {
                 if (plannedDates.isEmpty) return;
 
                 final plannedInputs = plannedDates.entries
-                    .map((e) => PlannedFoodInput(date: e.key, mealType: e.value))
+                    .map(
+                        (e) => PlannedFoodInput(date: e.key, mealType: e.value))
                     .toList();
 
                 widget.onSchedule(recipeId, plannedInputs);
@@ -724,7 +751,8 @@ class _RecipeCardState extends State<_RecipeCard> {
 
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('$label scheduled for ${plannedInputs.length} date(s)'),
+                    content: Text(
+                        '$label scheduled for ${plannedInputs.length} date(s)'),
                   ),
                 );
               },

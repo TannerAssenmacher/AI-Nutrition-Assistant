@@ -73,24 +73,26 @@ class _MacroSliderState extends State<MacroSlider> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('Protein ${_proteinPercent.toStringAsFixed(0)}%',
-                    style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                    style: const TextStyle(
+                        color: Colors.redAccent, fontWeight: FontWeight.bold)),
                 Text('Carbs ${_carbPercent.toStringAsFixed(0)}%',
-                    style: const TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold)),
+                    style: const TextStyle(
+                        color: Colors.blueAccent, fontWeight: FontWeight.bold)),
                 Text('Fats ${_fatPercent.toStringAsFixed(0)}%',
-                    style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold)),
+                    style: const TextStyle(
+                        color: Colors.amber, fontWeight: FontWeight.bold)),
               ],
             ),
             const SizedBox(height: 10),
-
             GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onPanDown: (details) {
+              onHorizontalDragDown: (details) {
                 final dx = details.localPosition.dx;
                 final dist1 = (dx - handle1X).abs();
                 final dist2 = (dx - handle2X).abs();
                 _isDraggingFirst = dist1 < dist2;
               },
-              onPanUpdate: (details) {
+              onHorizontalDragUpdate: (details) {
                 _onDrag(details.localPosition, _isDraggingFirst);
               },
               child: SizedBox(
@@ -113,7 +115,8 @@ class _MacroSliderState extends State<MacroSlider> {
                         width: handle1X,
                         decoration: BoxDecoration(
                           color: Colors.redAccent,
-                          borderRadius: const BorderRadius.horizontal(left: Radius.circular(5)),
+                          borderRadius: const BorderRadius.horizontal(
+                              left: Radius.circular(5)),
                         ),
                       ),
                     ),
@@ -134,7 +137,8 @@ class _MacroSliderState extends State<MacroSlider> {
                         width: _width - handle2X,
                         decoration: BoxDecoration(
                           color: Colors.amber,
-                          borderRadius: const BorderRadius.horizontal(right: Radius.circular(5)),
+                          borderRadius: const BorderRadius.horizontal(
+                              right: Radius.circular(5)),
                         ),
                       ),
                     ),

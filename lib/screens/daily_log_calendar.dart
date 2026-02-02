@@ -7,6 +7,7 @@ import '../providers/auth_providers.dart';
 import '../providers/firestore_providers.dart';
 import '../db/food.dart';
 import '../db/user.dart';
+import '../db/planned_food.dart';
 import 'package:nutrition_assistant/navigation/nav_helper.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
 
@@ -39,8 +40,9 @@ class _DailyLogCalendarScreenState
     );
   }
 
-  List<_FoodRow> _foodsForDay(DateTime day, List<FoodItem> log) {
+  List<_FoodRow> _foodsForDay(DateTime day, List<FoodItem>? log) {
     final rows = <_FoodRow>[];
+    if (log == null) return rows;
     for (final item in log) {
       if (item.consumedAt.year == day.year &&
           item.consumedAt.month == day.month &&
@@ -66,7 +68,17 @@ class _DailyLogCalendarScreenState
     return rows;
   }
 
-  Map<String, double> _totalsForDay(DateTime day, List<FoodItem> log) {
+  List<PlannedFood> _scheduledMealsForDay(
+      DateTime day, List<PlannedFood>? scheduledMeals) {
+    if (scheduledMeals == null) return [];
+    return scheduledMeals.where((meal) {
+      return meal.date.year == day.year &&
+          meal.date.month == day.month &&
+          meal.date.day == day.day;
+    }).toList();
+  }
+
+  Map<String, double> _totalsForDay(DateTime day, List<FoodItem>? log) {
     final rows = _foodsForDay(day, log);
     double calories = 0, protein = 0, carbs = 0, fat = 0, fiber = 0;
     for (final r in rows) {
@@ -186,6 +198,9 @@ class _DailyLogCalendarScreenState
               builder: (context, ref, _) {
                 // Live-filter the latest stream so the sheet updates immediately after deletes
                 final logAsync = ref.watch(firestoreFoodLogProvider(userId));
+                final scheduledAsync =
+                    ref.watch(firestoreScheduledMealsProvider(userId));
+
                 final rows = logAsync.maybeWhen(
                   data: (log) => _foodsForDay(day, log),
                   orElse: () => initialRows,
@@ -193,6 +208,10 @@ class _DailyLogCalendarScreenState
                 final totals = logAsync.maybeWhen(
                   data: (log) => _totalsForDay(day, log),
                   orElse: () => initialTotals,
+                );
+                final scheduledMeals = scheduledAsync.maybeWhen(
+                  data: (meals) => _scheduledMealsForDay(day, meals),
+                  orElse: () => <PlannedFood>[],
                 );
 
                 return SingleChildScrollView(
@@ -254,6 +273,44 @@ class _DailyLogCalendarScreenState
                           ),
                         ),
                         const SizedBox(height: 12),
+                        // Scheduled Meals Section
+                        if (scheduledMeals.isNotEmpty) ...[
+                          Text(
+                            'Scheduled Meals',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleSmall
+                                ?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.blue[700]),
+                          ),
+                          const SizedBox(height: 8),
+                          for (final meal in scheduledMeals)
+                            _ScheduledMealCard(
+                              meal: meal,
+                              onDelete: () async {
+                                if (meal.id != null) {
+                                  await ref
+                                      .read(firestoreScheduledMealsProvider(
+                                              userId)
+                                          .notifier)
+                                      .removeScheduledMeal(userId, meal.id!);
+                                }
+                              },
+                            ),
+                          const SizedBox(height: 16),
+                          const Divider(),
+                          const SizedBox(height: 8),
+                        ],
+                        // Logged Foods Section
+                        Text(
+                          'Logged Foods',
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 8),
                         if (rows.isEmpty)
                           const Padding(
                             padding: EdgeInsets.symmetric(vertical: 12),
@@ -301,7 +358,7 @@ class _DailyLogCalendarScreenState
 
     final foodLogAsync = ref.watch(firestoreFoodLogProvider(userId));
     final userProfileAsync = ref.watch(firestoreUserProfileProvider(userId));
-    final goals = _goalsFromProfile(userProfileAsync.value);
+    final goals = _goalsFromProfile(userProfileAsync.valueOrNull);
     final calorieGoal = goals['calories'] ?? 2000.0;
     final proteinGoal = goals['protein'] ?? 150.0;
     final carbsGoal = goals['carbs'] ?? 200.0;
@@ -1231,6 +1288,73 @@ class _DayHeader extends StatelessWidget {
           fontWeight: FontWeight.w600,
           color: Colors.grey.shade600,
         ),
+      ),
+    );
+  }
+}
+
+class _ScheduledMealCard extends StatelessWidget {
+  final PlannedFood meal;
+  final VoidCallback onDelete;
+
+  const _ScheduledMealCard({
+    required this.meal,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue.shade200),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade100,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              Icons.schedule,
+              color: Colors.blue.shade700,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Recipe ID: ${meal.recipeId}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Meal Type: ${meal.mealType.toUpperCase()}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: onDelete,
+            icon: Icon(Icons.delete_outline, color: Colors.red.shade400),
+            tooltip: 'Remove scheduled meal',
+          ),
+        ],
       ),
     );
   }
