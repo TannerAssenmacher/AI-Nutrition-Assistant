@@ -8,6 +8,10 @@ import 'package:cloud_functions/cloud_functions.dart';
 import '../providers/food_providers.dart';
 import '../db/firestore_helper.dart';
 import 'dart:convert';
+import 'package:nutrition_assistant/db/planned_food.dart';
+import '../models/planned_food_input.dart'; 
+import '../db/planned_food.dart';
+
 
 part 'gemini_chat_service.g.dart';
 
@@ -198,6 +202,8 @@ class GeminiChatService extends _$GeminiChatService {
     try {
       //user profile from user signed in
       final user = FirebaseAuth.instance.currentUser;
+      print('Current user: $user');
+
       if (user == null) return;
 
       final appUser = await FirestoreHelper.getUser(user.uid);
@@ -400,6 +406,7 @@ class GeminiChatService extends _$GeminiChatService {
 
         print('ingredients: $ingredients');
         
+        final id = recipe['id'];
         final label = recipe['label'] ?? 'Unknown Recipe';
         final calories = (recipe['calories'] as num?)?.round() ?? 0;
         final cuisine = recipe['cuisine'] ?? 'General';
@@ -413,6 +420,7 @@ class GeminiChatService extends _$GeminiChatService {
         }
 
         recipeList.add({
+          'id': id,
           'label': label,
           'cuisine': cuisine,
           'ingredients': ingredients,
@@ -533,6 +541,27 @@ class GeminiChatService extends _$GeminiChatService {
         fromConfirmation: true, forceNewBatch: true);
   }
 
+  //call firestore helper to add to user's list of scheduled food items
+  Future<void> scheduleRecipe(
+    String recipeId, List<PlannedFoodInput> plannedInputs) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) throw StateError('User not logged in');
+
+    // build list of planned foods with dates for that specific recipe id
+    final List<PlannedFood> scheduledFoods = plannedInputs.map((input) {
+      return PlannedFood(
+        recipeId: recipeId,
+        date: input.date,
+        mealType: input.mealType,
+      );
+    }).toList();
+
+    await FirestoreHelper.addScheduledFoodItems(
+      userId: user.uid,
+      foods: scheduledFoods,
+    );
+  }
+
   //analyze food photo
   Future<void> analyzeFoodPhoto(String imagePath) async {
     try {
@@ -595,6 +624,7 @@ class GeminiChatService extends _$GeminiChatService {
 }
 
 class ChatMessage {
+
   final String content;
   final bool isUser;
   final DateTime timestamp;
