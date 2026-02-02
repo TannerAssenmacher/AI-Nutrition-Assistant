@@ -34,6 +34,7 @@ dependencies:
   dropdown_search: ^6.0.2
   http: ^1.6.0
   cached_network_image: ^3.4.1
+  table_calendar: ^3.0.9
 
 dev_dependencies:
   flutter_test:

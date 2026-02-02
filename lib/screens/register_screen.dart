@@ -290,6 +290,7 @@ class _RegisterPageState extends State<RegisterPage> {
           dailyCalorieGoal: dailyCaloriesValue ?? 0,
         ),
         loggedFoodItems: [],
+        scheduledFoodItems: [],
         createdAt: now,
         updatedAt: now,
       );

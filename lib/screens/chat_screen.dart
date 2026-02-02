@@ -3,6 +3,9 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/gemini_chat_service.dart';
+import '../models/planned_food_input.dart'; 
+import 'package:table_calendar/table_calendar.dart';
+
 
 class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key});
@@ -254,17 +257,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           );
                         }
 
-                        if (parsed is Map && parsed['type'] == 'recipe_results') {
-                          final recipes =
-                              List<Map<String, dynamic>>.from(parsed['recipes'] ?? const []);
+                       if (parsed is Map && parsed['type'] == 'recipe_results') {
+                          final recipes = List<Map<String, dynamic>>.from(parsed['recipes'] ?? const []);
 
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              ...recipes.map((r) => _RecipeCard(recipe: r)),
-
+                              ...recipes.map((r) => _RecipeCard(
+                                recipe: r,
+                                onSchedule: (recipeId, plannedInputs) {
+                                  ref.read(geminiChatServiceProvider.notifier)
+                                    .scheduleRecipe(recipeId, plannedInputs);
+                                },
+                              )),
                               const SizedBox(height: 6),
-
                               Center(
                                 child: OutlinedButton.icon(
                                   onPressed: () {
@@ -279,7 +285,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                             ],
                           );
                         }
-
                       } catch (_) {}
 
                       return _ChatBubble(message: message);
@@ -517,12 +522,23 @@ class MealProfileSummaryBubble extends StatelessWidget {
   }
 }
 
-class _RecipeCard extends StatelessWidget {
+class _RecipeCard extends StatefulWidget {
   final Map<String, dynamic> recipe;
+  final Function(String recipeId, List<PlannedFoodInput>) onSchedule;
 
-  const _RecipeCard({required this.recipe});
+  const _RecipeCard({
+    required this.recipe,
+    required this.onSchedule,
+    super.key,
+  });
 
-  // Capitalize first letter of each word
+  @override
+  State<_RecipeCard> createState() => _RecipeCardState();
+}
+
+class _RecipeCardState extends State<_RecipeCard> {
+  Set<DateTime> _selectedDates = {}; // store highlighted dates
+
   String _capitalize(String text) {
     if (text.isEmpty) return text;
     return text.split(' ').map((word) {
@@ -533,6 +549,8 @@ class _RecipeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final recipe = widget.recipe;
+    final recipeId = recipe['id'].toString();
     final label = recipe['label'] ?? 'Recipe';
     final cuisine = _capitalize((recipe['cuisine'] ?? 'General').toString());
     final calories = recipe['calories'] ?? 0;
@@ -545,15 +563,13 @@ class _RecipeCard extends StatelessWidget {
     final instructions = recipe['instructions'] ?? '';
     final imageUrl = recipe['imageUrl'] ?? '';
 
-    // Convert Spoonacular URL to use CORS proxy for web
     String getProxiedImageUrl(String url) {
       if (url.isEmpty) return '';
-      // Use Cloud Function proxy to avoid CORS issues
       final encodedUrl = Uri.encodeComponent(url);
       return 'https://us-central1-ai-nutrition-assistant-e2346.cloudfunctions.net/proxyImage?url=$encodedUrl';
     }
 
-    final proxiedImageUrl = getProxiedImageUrl(imageUrl.toString());
+    final proxiedImageUrl = getProxiedImageUrl(imageUrl);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -566,73 +582,21 @@ class _RecipeCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Recipe image at the top
-          if (proxiedImageUrl.isNotEmpty) ...[
+          if (proxiedImageUrl.isNotEmpty)
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: Container(
+              child: Image.network(
+                proxiedImageUrl,
                 width: 280,
                 height: 200,
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Image.network(
-                  proxiedImageUrl,
-                  width: 280,
-                  height: 200,
-                  fit: BoxFit.cover,
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return Center(
-                      child: CircularProgressIndicator(
-                        value: loadingProgress.expectedTotalBytes != null
-                            ? loadingProgress.cumulativeBytesLoaded /
-                                loadingProgress.expectedTotalBytes!
-                            : null,
-                      ),
-                    );
-                  },
-                  errorBuilder: (context, error, stackTrace) {
-                    // CORS issue on web - show message
-                    return Container(
-                      width: 280,
-                      height: 200,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.restaurant, size: 40, color: Colors.grey),
-                          const SizedBox(height: 8),
-                          const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 16),
-                            child: Text(
-                              'Image from Spoonacular',
-                              style: TextStyle(fontSize: 12, color: Colors.grey),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
+                fit: BoxFit.cover,
               ),
             ),
-            const SizedBox(height: 12),
-          ],
-          Text(
-            label,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 12),
+          Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
           if (cuisine.toLowerCase() != 'world') Text('Cuisine: $cuisine'),
           Text('Calories: $calories kcal'),
-          Text('P: ${protein}g  |  C: ${carbs}g  |  F: ${fat}g',
-              style: TextStyle(color: Colors.grey[700], fontSize: 13)),
+          Text('P: ${protein}g  |  C: ${carbs}g  |  F: ${fat}g', style: TextStyle(color: Colors.grey[700], fontSize: 13)),
           if (readyInMinutes != null || servings != null)
             Text(
               [
@@ -642,13 +606,97 @@ class _RecipeCard extends StatelessWidget {
               style: TextStyle(color: Colors.grey[700], fontSize: 13),
             ),
           const SizedBox(height: 8),
-          const Text('Ingredients',
-              style: TextStyle(fontWeight: FontWeight.w600)),
+          const Text('Ingredients', style: TextStyle(fontWeight: FontWeight.w600)),
           ...ingredients.map((i) => Text('• $i')),
           const SizedBox(height: 8),
-          const Text('Instructions',
-              style: TextStyle(fontWeight: FontWeight.w600)),
+          const Text('Instructions', style: TextStyle(fontWeight: FontWeight.w600)),
           Text(instructions),
+          const SizedBox(height: 12),
+
+          Center(
+            child: ElevatedButton.icon(
+              onPressed: () async {
+                if (!mounted) return;
+
+                final Map<DateTime, String> plannedDates = {};
+
+                await showDialog(
+                  context: context,
+                  builder: (ctx) => StatefulBuilder(
+                    builder: (ctx, setDialogState) => AlertDialog(
+                      title: const Text("Select Dates"),
+                      content: SizedBox(
+                        width: double.maxFinite,
+                        height: 400,
+                        child: TableCalendar(
+                          firstDay: DateTime.now(),
+                          lastDay: DateTime.now().add(const Duration(days: 30)),
+                          focusedDay: DateTime.now(),
+                          calendarFormat: CalendarFormat.month,
+                          selectedDayPredicate: (day) => _selectedDates.contains(day),
+                          onDaySelected: (day, focusedDay) async {
+                            if (!mounted) return;
+
+                            if (!_selectedDates.contains(day)) {
+                              // Ask for meal type
+                              final mealType = await showDialog<String>(
+                                context: ctx,
+                                builder: (ctx2) => SimpleDialog(
+                                  title: Text("Select meal type for ${day.month}/${day.day}"),
+                                  children: ['Breakfast', 'Lunch', 'Dinner', 'Snack']
+                                      .map((m) => SimpleDialogOption(
+                                            child: Text(m),
+                                            onPressed: () => Navigator.pop(ctx2, m),
+                                          ))
+                                      .toList(),
+                                ),
+                              );
+
+                              if (mealType != null) {
+                                setDialogState(() {
+                                  _selectedDates.add(day);
+                                  plannedDates[day] = mealType;
+                                });
+                              }
+                            } else {
+                              setDialogState(() {
+                                _selectedDates.remove(day);
+                                plannedDates.remove(day);
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text("Done"),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+
+                if (plannedDates.isEmpty) return;
+
+                final plannedInputs = plannedDates.entries
+                    .map((e) => PlannedFoodInput(date: e.key, mealType: e.value))
+                    .toList();
+
+                widget.onSchedule(recipeId, plannedInputs);
+
+                if (!mounted) return;
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('$label scheduled for ${plannedInputs.length} date(s)'),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.schedule),
+              label: const Text("Schedule"),
+            ),
+          ),
         ],
       ),
     );
