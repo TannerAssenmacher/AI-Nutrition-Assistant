@@ -63,6 +63,26 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       return;
     }
 
+    if (captureResult.mode == CaptureMode.barcode) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'Barcode scans aren\'t analyzed yet. Please take a meal photo.'),
+        ),
+      );
+      return;
+    }
+
+    final photo = captureResult.photo;
+    if (photo == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No photo captured. Please try again.')),
+      );
+      return;
+    }
+
     setState(() {
       _isAnalyzing = true;
       _analysisResult = null;
@@ -70,7 +90,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       _analysisStage = AnalysisStage.uploading;
     });
 
-    final file = File(captureResult.photo.path);
+    final file = File(photo.path);
     final service = MealAnalysisService(apiKey: apiKey);
 
     try {

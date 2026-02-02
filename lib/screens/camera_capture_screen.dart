@@ -1,12 +1,23 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
+
+enum CaptureMode { photo, barcode }
 
 class MealCaptureResult {
-  final XFile photo;
+  final CaptureMode mode;
+  final XFile? photo;
+  final String? barcode;
   final String? userContext;
 
-  const MealCaptureResult({required this.photo, this.userContext});
+  const MealCaptureResult({required this.photo, this.userContext})
+      : mode = CaptureMode.photo,
+        barcode = null;
+
+  const MealCaptureResult.barcode({required this.barcode, this.photo})
+      : mode = CaptureMode.barcode,
+        userContext = null;
 }
 
 class CameraCaptureScreen extends StatefulWidget {
@@ -18,457 +29,467 @@ class CameraCaptureScreen extends StatefulWidget {
 
 class _CameraCaptureScreenState extends State<CameraCaptureScreen>
     with WidgetsBindingObserver {
-  CameraController? _controller;
-  Future<void>? _initializeControllerFuture;
+  CaptureMode _captureMode = CaptureMode.photo;
+  
+  // Photo mode
+  CameraController? _cameraController;
+  bool _isCameraInitialized = false;
   bool _isCapturing = false;
-  String? _errorMessage;
+  
+  // Barcode mode - we let MobileScanner widget manage itself
+  bool _hasDetectedBarcode = false;
+  
+  // Shared
+  bool _isSwitchingMode = false;
+  String? _error;
+  
+  // Context
   final TextEditingController _contextController = TextEditingController();
-  bool _isContextVisible = false;
-  static const int _maxContextLength = 500;
+  bool _showContext = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _initializeCamera();
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    _initCamera();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    switch (state) {
-      case AppLifecycleState.inactive:
-      case AppLifecycleState.paused:
-        _disposeController(updateState: false);
-        break;
-      case AppLifecycleState.resumed:
-        _initializeCamera();
-        break;
-      case AppLifecycleState.detached:
-      case AppLifecycleState.hidden:
-        break;
+    if (_captureMode != CaptureMode.photo) return;
+    
+    final controller = _cameraController;
+    if (controller == null || !controller.value.isInitialized) return;
+
+    if (state == AppLifecycleState.inactive) {
+      controller.dispose();
+      _cameraController = null;
+      _isCameraInitialized = false;
+    } else if (state == AppLifecycleState.resumed) {
+      _initCamera();
     }
-  }
-
-  Future<void> _initializeCamera() async {
-    if (!mounted) return;
-
-    setState(() => _errorMessage = null);
-
-    try {
-      final cameras = await availableCameras();
-      if (!mounted) return;
-
-      if (cameras.isEmpty) {
-        setState(() => _errorMessage = 'No camera detected on this device.');
-        return;
-      }
-
-      await _disposeController(updateState: false);
-
-      final controller = CameraController(
-        cameras.first,
-        ResolutionPreset.high,
-        enableAudio: false,
-      );
-
-      final initFuture = controller.initialize();
-
-      if (!mounted) {
-        await controller.dispose();
-        return;
-      }
-
-      setState(() {
-        _controller = controller;
-        _initializeControllerFuture = initFuture;
-      });
-
-      await initFuture;
-      
-      // Trigger rebuild after initialization completes
-      if (mounted) setState(() {});
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _errorMessage = 'Failed to initialize the camera.');
-    }
-  }
-
-  Future<void> _disposeController({bool updateState = true}) async {
-    final controller = _controller;
-    _controller = null;
-    _initializeControllerFuture = null;
-    _isCapturing = false;
-
-    if (controller != null) {
-      try {
-        await controller.dispose();
-      } catch (_) {}
-    }
-
-    if (updateState && mounted) setState(() {});
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _disposeController(updateState: false);
+    _cameraController?.dispose();
     _contextController.dispose();
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     super.dispose();
   }
 
-  Future<void> _capturePhoto() async {
-    final controller = _controller;
-    final initFuture = _initializeControllerFuture;
-
-    if (controller == null || initFuture == null || _isCapturing) return;
+  Future<void> _initCamera() async {
+    if (!mounted) return;
+    
+    setState(() {
+      _error = null;
+      _isCameraInitialized = false;
+    });
 
     try {
-      setState(() => _isCapturing = true);
+      final cameras = await availableCameras();
+      if (cameras.isEmpty) {
+        setState(() => _error = 'No camera found');
+        return;
+      }
 
-      await initFuture;
-      final picture = await controller.takePicture();
-
-      if (!mounted) return;
-
-      final contextNote = _contextController.text.trim();
-
-      Navigator.of(context).pop(
-        MealCaptureResult(
-          photo: picture,
-          userContext: contextNote.isEmpty ? null : contextNote,
-        ),
+      final camera = cameras.firstWhere(
+        (c) => c.lensDirection == CameraLensDirection.back,
+        orElse: () => cameras.first,
       );
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Unable to capture photo. Please try again.'),
-          behavior: SnackBarBehavior.floating,
-        ),
+
+      final controller = CameraController(
+        camera,
+        ResolutionPreset.high,
+        enableAudio: false,
       );
-    } finally {
-      if (mounted) setState(() => _isCapturing = false);
+
+      await controller.initialize();
+      
+      if (!mounted) {
+        controller.dispose();
+        return;
+      }
+
+      _cameraController = controller;
+      setState(() => _isCameraInitialized = true);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _error = 'Camera failed to start');
+      }
     }
   }
 
-  void _toggleContextPanel() {
-    if (_isContextVisible) {
-      // Dismiss keyboard when closing
-      FocusScope.of(context).unfocus();
+  Future<void> _switchMode() async {
+    if (_isSwitchingMode) return;
+    
+    setState(() => _isSwitchingMode = true);
+
+    if (_captureMode == CaptureMode.photo) {
+      // Switch to barcode
+      _cameraController?.dispose();
+      _cameraController = null;
+      _isCameraInitialized = false;
+      
+      // Small delay for camera release
+      await Future.delayed(const Duration(milliseconds: 300));
+      
+      if (mounted) {
+        setState(() {
+          _captureMode = CaptureMode.barcode;
+          _hasDetectedBarcode = false;
+          _isSwitchingMode = false;
+          _error = null;
+        });
+      }
+    } else {
+      // Switch to photo
+      setState(() {
+        _captureMode = CaptureMode.photo;
+        _hasDetectedBarcode = false;
+        _error = null;
+      });
+      
+      // Small delay then init camera
+      await Future.delayed(const Duration(milliseconds: 300));
+      await _initCamera();
+      
+      if (mounted) {
+        setState(() => _isSwitchingMode = false);
+      }
     }
-    setState(() => _isContextVisible = !_isContextVisible);
+  }
+
+  Future<void> _takePhoto() async {
+    final controller = _cameraController;
+    if (controller == null || !controller.value.isInitialized || _isCapturing) {
+      return;
+    }
+
+    setState(() => _isCapturing = true);
+
+    try {
+      final file = await controller.takePicture();
+      if (!mounted) return;
+
+      final userContextText = _contextController.text.trim();
+      Navigator.of(context).pop(
+        MealCaptureResult(
+          photo: file,
+          userContext: userContextText.isEmpty ? null : userContextText,
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to take photo')),
+        );
+        setState(() => _isCapturing = false);
+      }
+    }
+  }
+
+  void _onBarcodeDetected(BarcodeCapture capture) {
+    if (!mounted || _hasDetectedBarcode) return;
+
+    for (final barcode in capture.barcodes) {
+      final value = barcode.rawValue;
+      if (value != null && value.isNotEmpty) {
+        _hasDetectedBarcode = true;
+        Navigator.of(context).pop(
+          MealCaptureResult.barcode(barcode: value),
+        );
+        return;
+      }
+    }
+  }
+
+  void _onTapFocus(TapDownDetails details, BoxConstraints constraints) {
+    final controller = _cameraController;
+    if (controller == null || !controller.value.isInitialized) return;
+
+    final x = details.localPosition.dx / constraints.maxWidth;
+    final y = details.localPosition.dy / constraints.maxHeight;
+
+    try {
+      controller.setFocusPoint(Offset(x, y));
+      controller.setFocusMode(FocusMode.auto);
+    } catch (_) {}
   }
 
   @override
   Widget build(BuildContext context) {
-    final controller = _controller;
-    final initFuture = _initializeControllerFuture;
-
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
         backgroundColor: Colors.black,
-        body: _errorMessage != null
-            ? _buildErrorState()
-            : (controller == null || initFuture == null)
-                ? _buildLoadingState()
-                : FutureBuilder<void>(
-                    future: initFuture,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.done &&
-                          controller.value.isInitialized) {
-                        return _buildCameraView(controller);
-                      }
-                      if (snapshot.hasError) {
-                        return _buildErrorState(
-                          message: 'Camera error: ${snapshot.error}',
-                        );
-                      }
-                      return _buildLoadingState();
-                    },
-                  ),
-      ),
-    );
-  }
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Camera/Scanner view
+            if (_captureMode == CaptureMode.photo)
+              _buildPhotoView()
+            else
+              _buildBarcodeView(),
 
-  Widget _buildLoadingState() {
-    return const Center(
-      child: CircularProgressIndicator(
-        color: Colors.white,
-        strokeWidth: 2,
-      ),
-    );
-  }
+            // Overlay for barcode mode
+            if (_captureMode == CaptureMode.barcode)
+              const _ScannerOverlay(),
 
-  Widget _buildErrorState({String? message}) {
-    return SafeArea(
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.camera_alt_outlined,
-                color: Colors.white.withOpacity(0.5),
-                size: 48,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                message ?? _errorMessage ?? 'An error occurred.',
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.8),
-                  fontSize: 15,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
+            // Top bar
+            _buildTopBar(),
+
+            // Bottom controls
+            _buildBottomControls(),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildCameraView(CameraController controller) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        // Fullscreen camera preview
-        _FullscreenCameraPreview(controller: controller),
+  Widget _buildPhotoView() {
+    if (_error != null) {
+      return _buildErrorView(_error!);
+    }
 
-        // Top gradient for status bar readability
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 120,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.black.withOpacity(0.5),
-                  Colors.transparent,
-                ],
-              ),
-            ),
-          ),
-        ),
-
-        // Bottom gradient for controls readability
-        Positioned(
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: 200,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.bottomCenter,
-                end: Alignment.topCenter,
-                colors: [
-                  Colors.black.withOpacity(0.6),
-                  Colors.transparent,
-                ],
-              ),
-            ),
-          ),
-        ),
-
-        // Back button
-        Positioned(
-          top: 0,
-          left: 0,
-          child: SafeArea(
-            child: IconButton(
-              onPressed: () => Navigator.of(context).pop(),
-              icon: const Icon(Icons.arrow_back_ios_new_rounded),
-              color: Colors.white,
-              iconSize: 22,
-              padding: const EdgeInsets.all(16),
-            ),
-          ),
-        ),
-
-        // Bottom controls: Capture button + Context toggle/panel
-        Positioned(
-          bottom: 0,
-          left: 0,
-          right: 0,
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Context input panel (above buttons when visible)
-                  if (_isContextVisible)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: _ContextInputCard(
-                        controller: _contextController,
-                        maxLength: _maxContextLength,
-                        onClose: _toggleContextPanel,
-                      ),
-                    ),
-                  // Button row
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      // Spacer to balance the layout
-                      const SizedBox(width: 56),
-                      const Spacer(),
-                      // Capture button (centered)
-                      _CaptureButton(
-                        isCapturing: _isCapturing,
-                        onCapture: _isCapturing ? null : _capturePhoto,
-                      ),
-                      const Spacer(),
-                      // Context toggle button (right side)
-                      _ContextToggleButton(
-                        isOpen: _isContextVisible,
-                        hasContent: _contextController.text.isNotEmpty,
-                        onTap: _toggleContextPanel,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Fullscreen camera preview that fills the entire screen edge-to-edge.
-/// Uses SizedBox.expand with FittedBox for reliable "cover" behavior.
-class _FullscreenCameraPreview extends StatelessWidget {
-  final CameraController controller;
-
-  const _FullscreenCameraPreview({required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    // Check if controller is properly initialized
-    if (!controller.value.isInitialized) {
-      return const SizedBox.expand(
-        child: ColoredBox(color: Colors.black),
+    final controller = _cameraController;
+    if (!_isCameraInitialized || controller == null || !controller.value.isInitialized) {
+      return const Center(
+        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
       );
     }
 
-    return SizedBox.expand(
-      child: FittedBox(
-        fit: BoxFit.cover,
-        child: SizedBox(
-          width: controller.value.previewSize?.height ?? 1,
-          height: controller.value.previewSize?.width ?? 1,
-          child: CameraPreview(controller),
+    final previewSize = controller.value.previewSize;
+    if (previewSize == null) {
+      return const Center(
+        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return GestureDetector(
+          onTapDown: (d) => _onTapFocus(d, constraints),
+          child: SizedBox.expand(
+            child: FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width: previewSize.height,
+                height: previewSize.width,
+                child: CameraPreview(controller),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildBarcodeView() {
+    // Let MobileScanner manage its own controller
+    return MobileScanner(
+      fit: BoxFit.cover,
+      onDetect: _onBarcodeDetected,
+      errorBuilder: (context, error) {
+        return _buildErrorView('Scanner error: ${error.errorCode}');
+      },
+    );
+  }
+
+  Widget _buildErrorView(String message) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 48,
+              color: Colors.white.withValues(alpha: 0.6),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.8),
+                fontSize: 16,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            TextButton(
+              onPressed: () {
+                if (_captureMode == CaptureMode.photo) {
+                  _initCamera();
+                } else {
+                  setState(() {}); // Trigger rebuild for MobileScanner
+                }
+              },
+              child: const Text(
+                'Try Again',
+                style: TextStyle(color: Colors.white, fontSize: 16),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
-}
 
-class _ContextInputCard extends StatelessWidget {
-  final TextEditingController controller;
-  final int maxLength;
-  final VoidCallback onClose;
+  Widget _buildTopBar() {
+    return Positioned(
+      top: 0,
+      left: 0,
+      right: 0,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.black.withValues(alpha: 0.7),
+              Colors.transparent,
+            ],
+          ),
+        ),
+        child: SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            child: Row(
+              children: [
+                IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close, color: Colors.white, size: 28),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
-  const _ContextInputCard({
-    required this.controller,
-    required this.maxLength,
-    required this.onClose,
-  });
+  Widget _buildBottomControls() {
+    return Positioned(
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.bottomCenter,
+            end: Alignment.topCenter,
+            colors: [
+              Colors.black.withValues(alpha: 0.85),
+              Colors.transparent,
+            ],
+          ),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Context panel
+                if (_showContext && _captureMode == CaptureMode.photo) ...[
+                  _buildContextPanel(),
+                  const SizedBox(height: 20),
+                ],
 
-  @override
-  Widget build(BuildContext context) {
+                // Mode indicator
+                Text(
+                  _captureMode == CaptureMode.photo ? 'Photo' : 'Barcode',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.7),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Control buttons
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    // Mode toggle
+                    _ControlButton(
+                      icon: _captureMode == CaptureMode.photo
+                          ? Icons.qr_code_scanner
+                          : Icons.camera_alt,
+                      onTap: _isSwitchingMode ? null : _switchMode,
+                      isLoading: _isSwitchingMode,
+                    ),
+
+                    // Capture button
+                    _CaptureButton(
+                      onTap: _captureMode == CaptureMode.photo && _isCameraInitialized && !_isCapturing
+                          ? _takePhoto
+                          : null,
+                      isCapturing: _isCapturing,
+                      isEmpty: _captureMode == CaptureMode.barcode,
+                    ),
+
+                    // Context toggle (photo only)
+                    if (_captureMode == CaptureMode.photo)
+                      _ControlButton(
+                        icon: _showContext ? Icons.check : Icons.edit_note,
+                        onTap: () => setState(() => _showContext = !_showContext),
+                        isActive: _showContext || _contextController.text.isNotEmpty,
+                      )
+                    else
+                      const SizedBox(width: 56),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContextPanel() {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.85),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.1),
-          width: 1,
-        ),
+        color: Colors.white.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  'Add meal context',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -0.3,
-                  ),
-                ),
-              ),
-              GestureDetector(
-                onTap: onClose,
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF5CF0C0).withOpacity(0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.check_rounded,
-                    color: Color(0xFF5CF0C0),
-                    size: 18,
-                  ),
-                ),
-              ),
-            ],
+          Text(
+            'Add context',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.9),
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 12),
           TextField(
-            controller: controller,
+            controller: _contextController,
             maxLines: 2,
-            maxLength: maxLength,
-            maxLengthEnforcement: MaxLengthEnforcement.enforced,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 15,
-              height: 1.4,
-            ),
-            cursorColor: const Color(0xFF5CF0C0),
+            maxLength: 500,
+            style: const TextStyle(color: Colors.white, fontSize: 15),
+            cursorColor: Colors.white,
             decoration: InputDecoration(
-              hintText: 'e.g., 90/10 ground beef, grilled without oil',
-              hintStyle: TextStyle(
-                color: Colors.white.withOpacity(0.4),
-                fontSize: 15,
-              ),
+              hintText: 'e.g., 200g chicken breast, grilled',
+              hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.4)),
               filled: true,
-              fillColor: Colors.white.withOpacity(0.08),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 12,
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
+              fillColor: Colors.white.withValues(alpha: 0.1),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
               ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(
-                  color: Color(0xFF5CF0C0),
-                  width: 1.5,
-                ),
-              ),
-              counterStyle: TextStyle(
-                color: Colors.white.withOpacity(0.4),
-                fontSize: 11,
-              ),
+              contentPadding: const EdgeInsets.all(12),
+              counterStyle: TextStyle(color: Colors.white.withValues(alpha: 0.4)),
             ),
           ),
         ],
@@ -477,43 +498,89 @@ class _ContextInputCard extends StatelessWidget {
   }
 }
 
-class _CaptureButton extends StatelessWidget {
-  final bool isCapturing;
-  final VoidCallback? onCapture;
+class _ControlButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+  final bool isLoading;
+  final bool isActive;
 
-  const _CaptureButton({
-    required this.isCapturing,
-    required this.onCapture,
+  const _ControlButton({
+    required this.icon,
+    required this.onTap,
+    this.isLoading = false,
+    this.isActive = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onCapture,
-      child: AnimatedContainer(
+      onTap: onTap,
+      child: AnimatedOpacity(
         duration: const Duration(milliseconds: 150),
-        width: 78,
-        height: 78,
+        opacity: onTap == null ? 0.4 : 1.0,
+        child: Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            color: isActive
+                ? Colors.white.withValues(alpha: 0.3)
+                : Colors.white.withValues(alpha: 0.15),
+            shape: BoxShape.circle,
+          ),
+          child: isLoading
+              ? const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                )
+              : Icon(icon, color: Colors.white, size: 26),
+        ),
+      ),
+    );
+  }
+}
+
+class _CaptureButton extends StatelessWidget {
+  final VoidCallback? onTap;
+  final bool isCapturing;
+  final bool isEmpty;
+
+  const _CaptureButton({
+    required this.onTap,
+    required this.isCapturing,
+    required this.isEmpty,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 80,
+        height: 80,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(
-            color: Colors.white,
-            width: 4,
-          ),
+          border: Border.all(color: Colors.white, width: 4),
         ),
-        padding: const EdgeInsets.all(3),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.all(4),
+        child: Container(
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: isCapturing ? Colors.white.withOpacity(0.5) : Colors.white,
+            color: isEmpty
+                ? Colors.transparent
+                : (isCapturing ? Colors.white60 : Colors.white),
           ),
           child: isCapturing
-              ? const Padding(
-                  padding: EdgeInsets.all(20),
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    color: Colors.black,
+              ? const Center(
+                  child: SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      color: Colors.black,
+                      strokeWidth: 2,
+                    ),
                   ),
                 )
               : null,
@@ -523,44 +590,96 @@ class _CaptureButton extends StatelessWidget {
   }
 }
 
-class _ContextToggleButton extends StatelessWidget {
-  final bool isOpen;
-  final bool hasContent;
-  final VoidCallback onTap;
-
-  const _ContextToggleButton({
-    required this.isOpen,
-    required this.hasContent,
-    required this.onTap,
-  });
+/// Clean scanner overlay with corner brackets
+class _ScannerOverlay extends StatelessWidget {
+  const _ScannerOverlay();
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 56,
-        height: 56,
-        decoration: BoxDecoration(
-          color: isOpen || hasContent
-              ? const Color(0xFF5CF0C0).withOpacity(0.2)
-              : Colors.black.withOpacity(0.4),
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: isOpen || hasContent
-                ? const Color(0xFF5CF0C0).withOpacity(0.5)
-                : Colors.white.withOpacity(0.2),
-            width: 1.5,
-          ),
-        ),
-        child: Icon(
-          isOpen ? Icons.close_rounded : Icons.sticky_note_2_outlined,
-          color: isOpen || hasContent
-              ? const Color(0xFF5CF0C0)
-              : Colors.white.withOpacity(0.9),
-          size: 24,
-        ),
+    return IgnorePointer(
+      child: CustomPaint(
+        painter: _OverlayPainter(),
+        size: Size.infinite,
       ),
     );
   }
+}
+
+class _OverlayPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final boxW = size.width * 0.8;
+    final boxH = boxW * 0.55;
+    final left = (size.width - boxW) / 2;
+    final top = (size.height - boxH) / 2 - 50;
+    final rect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(left, top, boxW, boxH),
+      const Radius.circular(20),
+    );
+
+    // Dark background with cutout
+    final bgPaint = Paint()..color = Colors.black54;
+    final path = Path()
+      ..addRect(Rect.fromLTWH(0, 0, size.width, size.height))
+      ..addRRect(rect)
+      ..fillType = PathFillType.evenOdd;
+    canvas.drawPath(path, bgPaint);
+
+    // White corner brackets
+    final paint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4
+      ..strokeCap = StrokeCap.round;
+
+    const len = 30.0;
+    const r = 20.0;
+    final l = rect.left;
+    final t = rect.top;
+    final ri = rect.right;
+    final b = rect.bottom;
+
+    // Top-left
+    canvas.drawPath(
+      Path()
+        ..moveTo(l, t + len)
+        ..lineTo(l, t + r)
+        ..quadraticBezierTo(l, t, l + r, t)
+        ..lineTo(l + len, t),
+      paint,
+    );
+
+    // Top-right
+    canvas.drawPath(
+      Path()
+        ..moveTo(ri - len, t)
+        ..lineTo(ri - r, t)
+        ..quadraticBezierTo(ri, t, ri, t + r)
+        ..lineTo(ri, t + len),
+      paint,
+    );
+
+    // Bottom-left
+    canvas.drawPath(
+      Path()
+        ..moveTo(l, b - len)
+        ..lineTo(l, b - r)
+        ..quadraticBezierTo(l, b, l + r, b)
+        ..lineTo(l + len, b),
+      paint,
+    );
+
+    // Bottom-right
+    canvas.drawPath(
+      Path()
+        ..moveTo(ri - len, b)
+        ..lineTo(ri - r, b)
+        ..quadraticBezierTo(ri, b, ri, b - r)
+        ..lineTo(ri, b - len),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
