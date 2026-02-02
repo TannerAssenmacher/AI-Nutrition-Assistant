@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'user.dart';
 import 'food.dart';
+import 'planned_food.dart';
 import 'meal.dart';
 import 'daily_log.dart';
 
@@ -19,8 +20,13 @@ class FirestoreHelper {
   static Future<void> createUser(AppUser user) async {
     final docRef = _db.collection(usersCollection).doc(user.id);
     final snap = await docRef.get();
-    if (snap.exists) throw StateError('User ${user.id} already exists.');
-    await docRef.set(user.toJson());
+    if (snap.exists) {
+      throw StateError('User ${user.id} already exists.');
+    }
+    await docRef.set({
+      ...user.toJson(), 
+      'loggedFoodItems': [],
+      'scheduledFoodItems': []});
     print('Created user ${user.id}.');
   }
 
@@ -33,14 +39,23 @@ class FirestoreHelper {
   }
 
   static Future<AppUser?> getUser(String userId) async {
-    try {
-      final doc = await _db.collection(usersCollection).doc(userId).get();
-      if (!doc.exists || doc.data() == null) return null;
-      return AppUser.fromJson(doc.data()!, doc.id);
-    } catch (e) {
-      print('Error fetching user: $e');
-      return null;
-    }
+     try {
+    final doc = await _db.collection(usersCollection).doc(userId).get();
+    if (!doc.exists || doc.data() == null) return null;
+
+    final data = doc.data()!;
+    data['loggedFoodItems'] = data['loggedFoodItems'] is List
+        ? List.from(data['loggedFoodItems'])
+        : [];
+    data['scheduledFoodItems'] = data['scheduledFoodItems'] is List
+        ? List.from(data['scheduledFoodItems'])
+        : []; 
+
+    return AppUser.fromJson(data, doc.id);
+  } catch (e) {
+    print('Error fetching user: $e');
+    return null;
+  }
   }
 
   static Future<void> deleteUser(String userId) async {
@@ -150,6 +165,80 @@ class FirestoreHelper {
 
     return match == null ? null : FoodItem.fromJson(match);
   }
+
+
+  // ---------------------------------------------------------------------------
+  // SCHEDULED FOOD CRUD
+  // ---------------------------------------------------------------------------
+
+  //add recipe to scheduled food items list
+  static Future<void> addScheduledFoodItems({
+    required String userId, required List<PlannedFood> foods}) async {
+    final docRef = _db.collection(usersCollection).doc(userId);
+    final snap = await docRef.get();
+
+    if (!snap.exists) throw StateError('User $userId does not exist.');
+
+    final jsonList = foods.map((f) => f.toJson()).toList();
+
+    await docRef.update({
+      'scheduledFoodItems': FieldValue.arrayUnion(jsonList),
+    });
+
+    print('Added ${foods.length} scheduled foods for user $userId.');
+  }
+
+  //delete scheduled food item by recipeId and date
+  static Future<void> deleteScheduledFoodByDate(
+      String userId, String recipeId, DateTime date,
+      {String? mealType}) async {
+    final docRef = _db.collection(usersCollection).doc(userId);
+    final snap = await docRef.get();
+
+    if (!snap.exists) throw StateError('User $userId does not exist.');
+
+    final List<dynamic> items = snap.data()?['scheduledFoodItems'] ?? [];
+
+    //filter out items that match both recipe ID and date (and mealType if provided)
+    final filtered = items.where((item) {
+      final json = Map<String, dynamic>.from(item);
+      final itemDate = DateTime.parse(json['date']);
+
+      final matchesDate = itemDate.year == date.year &&
+          itemDate.month == date.month &&
+          itemDate.day == date.day;
+
+      final matchesRecipe = json['recipeId'] == recipeId;
+
+      final matchesMeal = mealType == null || json['mealType'] == mealType;
+
+      //keep items that don't match all 3 conditions
+      return !(matchesDate && matchesRecipe && matchesMeal);
+    }).toList();
+
+    await docRef.update({'scheduledFoodItems': filtered});
+
+    print('Deleted scheduled food $recipeId for $date from user $userId.');
+  }
+
+  //get scheduled food items for a specific date
+  static Future<List<PlannedFood>> getScheduledFoodItemsByDate(
+      String userId, DateTime date) async {
+    final doc = await _db.collection(usersCollection).doc(userId).get();
+    if (!doc.exists) return [];
+
+    final List<dynamic> items = doc.data()?['scheduledFoodItems'] ?? [];
+    return items
+        .map((json) => PlannedFood.fromJson(Map<String, dynamic>.from(json)))
+        .where((planned) =>
+            planned.date.year == date.year &&
+            planned.date.month == date.month &&
+            planned.date.day == date.day)
+        .toList();
+  }
+
+  //if you want an update function, create it here!
+
 
   // ---------------------------------------------------------------------------
   // MEAL CRUD

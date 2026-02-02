@@ -1,4 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'package:nutrition_assistant/db/planned_food.dart';
 import 'package:uuid/uuid.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'food.dart';
@@ -25,6 +26,8 @@ class AppUser {
 
   final MealProfile mealProfile;
   final List<FoodItem> loggedFoodItems;
+  final List<PlannedFood> scheduledFoodItems; //scheduler!
+  
 
   @JsonKey(fromJson: dateFromJson, toJson: dateToJson)
   final DateTime createdAt;
@@ -43,6 +46,7 @@ class AppUser {
     required this.activityLevel,
     required this.mealProfile,
     required this.loggedFoodItems,
+    required this.scheduledFoodItems,
     required this.createdAt,
     required this.updatedAt,
   }) : id = id ?? const Uuid().v4();
@@ -84,6 +88,7 @@ class AppUser {
       activityLevel: activityLevel,
       mealProfile: mealProfile,
       loggedFoodItems: [],
+      scheduledFoodItems: [],
       createdAt: now,
       updatedAt: now,
     );
@@ -109,6 +114,7 @@ class AppUser {
       activityLevel: user.activityLevel,
       mealProfile: user.mealProfile,
       loggedFoodItems: user.loggedFoodItems,
+      scheduledFoodItems: user.scheduledFoodItems,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     );
@@ -116,7 +122,7 @@ class AppUser {
 
   Map<String, dynamic> toJson() => _$AppUserToJson(this);
 
-  // Copy with
+
   AppUser copyWith({
     String? id,
     String? firstname,
@@ -128,6 +134,7 @@ class AppUser {
     String? activityLevel,
     MealProfile? mealProfile,
     List<FoodItem>? loggedFoodItems,
+    List<PlannedFood>? scheduledFoodItems, //can be null at first
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -142,6 +149,7 @@ class AppUser {
       activityLevel: activityLevel ?? this.activityLevel,
       mealProfile: mealProfile ?? this.mealProfile,
       loggedFoodItems: loggedFoodItems ?? this.loggedFoodItems,
+      scheduledFoodItems: scheduledFoodItems ?? this.scheduledFoodItems,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

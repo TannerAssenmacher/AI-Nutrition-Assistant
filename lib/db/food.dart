@@ -45,7 +45,6 @@ class FoodItem {
       _$FoodItemFromJson(json);
   Map<String, dynamic> toJson() => _$FoodItemToJson(this);
 }
-
 // For later implementation of micronutrients:
 
 // @JsonSerializable()
