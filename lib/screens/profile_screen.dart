@@ -58,17 +58,29 @@ class _ProfilePageState extends State<ProfilePage> {
 
   //edamam api options for diet labels
   final _dietaryHabitOptions = [
-    'balanced', 
-    'high-fiber', 
-    'high-protein', 
-    'low-carb', 
-    'low-fat', 
+    'balanced',
+    'high-fiber',
+    'high-protein',
+    'low-carb',
+    'low-fat',
     'low-sodium',
   ];
 
   //spoonacular food options
-  final _healthOptions = ['vegan', 'vegetarian', 'gluten free', 'dairy free', 'ketogenic', 'lacto-vegetarian', 'ovo-vegetarian', 'pescetarian', 'paleo', 'primal', 'low FODMAP', 'Whole30'];
-
+  final _healthOptions = [
+    'vegan',
+    'vegetarian',
+    'gluten free',
+    'dairy free',
+    'ketogenic',
+    'lacto-vegetarian',
+    'ovo-vegetarian',
+    'pescetarian',
+    'paleo',
+    'primal',
+    'low FODMAP',
+    'Whole30'
+  ];
 
   @override
   void initState() {
@@ -147,25 +159,32 @@ class _ProfilePageState extends State<ProfilePage> {
         'height': double.tryParse(_heightController.text),
         'weight': double.tryParse(_weightController.text),
         'activityLevel': _activityLevel,
-        'mealProfile.dietaryGoal': _dietaryGoal,
-        'mealProfile.dailyCalorieGoal':
-            int.tryParse(_dailyCaloriesController.text),
-        'mealProfile.macroGoals': {
-          'protein': _protein,
-          'carbs': _carbs,
-          'fat': _fats,
+        'mealProfile': {
+          'dietaryGoal': _dietaryGoal,
+          'dailyCalorieGoal': int.tryParse(_dailyCaloriesController.text),
+          'macroGoals': {
+            'protein': _protein,
+            'carbs': _carbs,
+            'fat': _fats,
+          },
+          'dietaryHabits': _dietaryHabits,
+          'healthRestrictions': _health,
+          'preferences': {
+            'likes':
+                _likesController.text.split(',').map((e) => e.trim()).toList(),
+            'dislikes': _dislikesController.text
+                .split(',')
+                .map((e) => e.trim())
+                .toList(),
+          },
         },
-        'mealProfile.dietaryHabits': _dietaryHabits,
-        'mealProfile.healthRestrictions': _health,
-        'mealProfile.preferences.likes':
-            _likesController.text.split(',').map((e) => e.trim()).toList(),
-        'mealProfile.preferences.dislikes':
-            _dislikesController.text.split(',').map((e) => e.trim()).toList(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile updated successfully!')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Profile updated successfully!')));
+      }
     } catch (e) {
       print('⚠️ Error saving profile: $e');
       ScaffoldMessenger.of(context)

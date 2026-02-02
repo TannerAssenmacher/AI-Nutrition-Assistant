@@ -18,16 +18,14 @@ class AppUser {
 
   final String firstname;
   final String lastname;
-  final DateTime? dob;  // nullable - some users may not have DOB set
+  final DateTime? dob; // nullable - some users may not have DOB set
   final String sex;
   final double height; // inches
   final double weight; // pounds
   final String activityLevel;
 
   final MealProfile mealProfile;
-  final List<FoodItem> loggedFoodItems;
   final List<PlannedFood> scheduledFoodItems; //scheduler!
-  
 
   @JsonKey(fromJson: dateFromJson, toJson: dateToJson)
   final DateTime createdAt;
@@ -39,13 +37,12 @@ class AppUser {
     String? id,
     required this.firstname,
     required this.lastname,
-    this.dob,  // nullable
+    this.dob, // nullable
     required this.sex,
     required this.height,
     required this.weight,
     required this.activityLevel,
     required this.mealProfile,
-    required this.loggedFoodItems,
     required this.scheduledFoodItems,
     required this.createdAt,
     required this.updatedAt,
@@ -87,7 +84,6 @@ class AppUser {
       weight: weight,
       activityLevel: activityLevel,
       mealProfile: mealProfile,
-      loggedFoodItems: [],
       scheduledFoodItems: [],
       createdAt: now,
       updatedAt: now,
@@ -113,7 +109,6 @@ class AppUser {
       weight: user.weight,
       activityLevel: user.activityLevel,
       mealProfile: user.mealProfile,
-      loggedFoodItems: user.loggedFoodItems,
       scheduledFoodItems: user.scheduledFoodItems,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
@@ -121,7 +116,6 @@ class AppUser {
   }
 
   Map<String, dynamic> toJson() => _$AppUserToJson(this);
-
 
   AppUser copyWith({
     String? id,
@@ -133,7 +127,6 @@ class AppUser {
     double? weight,
     String? activityLevel,
     MealProfile? mealProfile,
-    List<FoodItem>? loggedFoodItems,
     List<PlannedFood>? scheduledFoodItems, //can be null at first
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -148,7 +141,6 @@ class AppUser {
       weight: weight ?? this.weight,
       activityLevel: activityLevel ?? this.activityLevel,
       mealProfile: mealProfile ?? this.mealProfile,
-      loggedFoodItems: loggedFoodItems ?? this.loggedFoodItems,
       scheduledFoodItems: scheduledFoodItems ?? this.scheduledFoodItems,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

@@ -23,10 +23,7 @@ class FirestoreHelper {
     if (snap.exists) {
       throw StateError('User ${user.id} already exists.');
     }
-    await docRef.set({
-      ...user.toJson(), 
-      'loggedFoodItems': [],
-      'scheduledFoodItems': []});
+    await docRef.set({...user.toJson(), 'scheduledFoodItems': []});
     print('Created user ${user.id}.');
   }
 
@@ -39,23 +36,20 @@ class FirestoreHelper {
   }
 
   static Future<AppUser?> getUser(String userId) async {
-     try {
-    final doc = await _db.collection(usersCollection).doc(userId).get();
-    if (!doc.exists || doc.data() == null) return null;
+    try {
+      final doc = await _db.collection(usersCollection).doc(userId).get();
+      if (!doc.exists || doc.data() == null) return null;
 
-    final data = doc.data()!;
-    data['loggedFoodItems'] = data['loggedFoodItems'] is List
-        ? List.from(data['loggedFoodItems'])
-        : [];
-    data['scheduledFoodItems'] = data['scheduledFoodItems'] is List
-        ? List.from(data['scheduledFoodItems'])
-        : []; 
+      final data = doc.data()!;
+      data['scheduledFoodItems'] = data['scheduledFoodItems'] is List
+          ? List.from(data['scheduledFoodItems'])
+          : [];
 
-    return AppUser.fromJson(data, doc.id);
-  } catch (e) {
-    print('Error fetching user: $e');
-    return null;
-  }
+      return AppUser.fromJson(data, doc.id);
+    } catch (e) {
+      print('Error fetching user: $e');
+      return null;
+    }
   }
 
   static Future<void> deleteUser(String userId) async {
@@ -91,9 +85,10 @@ class FirestoreHelper {
   }
 
   // ---------------------------------------------------------------------------
-  // FOOD CRUD
+  // DEPRECATED: Legacy food item methods (app now uses food_log subcollection)
   // ---------------------------------------------------------------------------
 
+  /* DEPRECATED - Use FirestoreFoodLog provider instead
   // Add a food item to logged foods for a user
   static Future<void> addFoodItem(String userId, FoodItem food) async {
     final docRef = _db.collection(usersCollection).doc(userId);
@@ -165,15 +160,15 @@ class FirestoreHelper {
 
     return match == null ? null : FoodItem.fromJson(match);
   }
-
+  */
 
   // ---------------------------------------------------------------------------
   // SCHEDULED FOOD CRUD
   // ---------------------------------------------------------------------------
 
   //add recipe to scheduled food items list
-  static Future<void> addScheduledFoodItems({
-    required String userId, required List<PlannedFood> foods}) async {
+  static Future<void> addScheduledFoodItems(
+      {required String userId, required List<PlannedFood> foods}) async {
     final docRef = _db.collection(usersCollection).doc(userId);
     final snap = await docRef.get();
 
@@ -238,7 +233,6 @@ class FirestoreHelper {
   }
 
   //if you want an update function, create it here!
-
 
   // ---------------------------------------------------------------------------
   // MEAL CRUD

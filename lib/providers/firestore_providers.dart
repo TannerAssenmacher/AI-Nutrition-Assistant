@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../db/food.dart';
 import '../db/user.dart';
+import '../db/planned_food.dart';
 
 part 'firestore_providers.g.dart';
 
@@ -85,6 +86,85 @@ class FirestoreFoodLog extends _$FirestoreFoodLog {
         .doc(userId)
         .collection('food_log')
         .doc(foodId)
+        .update(data);
+  }
+}
+
+@riverpod
+class FirestoreScheduledMeals extends _$FirestoreScheduledMeals {
+  @override
+  Stream<List<PlannedFood>> build(String userId) {
+    return FirebaseFirestore.instance
+        .collection('Users')
+        .doc(userId)
+        .collection('scheduled_meals')
+        .orderBy('date', descending: false)
+        .snapshots()
+        .map((snapshot) {
+      debugPrint(
+          'FirestoreScheduledMeals stream: user=$userId docs=${snapshot.docs.length}');
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        // Always prefer the Firestore document id for deletes/updates to succeed
+        data['id'] = doc.id;
+        // Normalize date to DateTime for JSON parser
+        final date = data['date'];
+        if (date is Timestamp) {
+          data['date'] = date.toDate();
+        } else if (date is String) {
+          data['date'] = DateTime.tryParse(date) ?? DateTime.now();
+        }
+
+        return PlannedFood.fromJson(data);
+      }).toList();
+    });
+  }
+
+  Future<void> addScheduledMeal(String userId, PlannedFood meal) async {
+    final data = meal.toJson();
+    // Ensure DateTime is stored as Firestore Timestamp
+    data['date'] = Timestamp.fromDate(meal.date);
+
+    debugPrint(
+        'addScheduledMeal: user=$userId recipeId=${meal.recipeId} at=${meal.date.toIso8601String()} mealType=${meal.mealType}');
+
+    final docRef = await FirebaseFirestore.instance
+        .collection('Users')
+        .doc(userId)
+        .collection('scheduled_meals')
+        .add(data);
+
+    debugPrint('addScheduledMeal success: docId=${docRef.id}');
+  }
+
+  Future<void> removeScheduledMeal(String userId, String mealId) async {
+    debugPrint('removeScheduledMeal: user=$userId mealId=$mealId');
+    try {
+      await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(userId)
+          .collection('scheduled_meals')
+          .doc(mealId)
+          .delete();
+      debugPrint('removeScheduledMeal success: user=$userId mealId=$mealId');
+    } catch (e, st) {
+      debugPrint(
+          'removeScheduledMeal error: user=$userId mealId=$mealId error=$e');
+      debugPrint('$st');
+      rethrow;
+    }
+  }
+
+  Future<void> updateScheduledMeal(
+      String userId, String mealId, PlannedFood meal) async {
+    final data = meal.toJson();
+    data['date'] = Timestamp.fromDate(meal.date);
+
+    await FirebaseFirestore.instance
+        .collection('Users')
+        .doc(userId)
+        .collection('scheduled_meals')
+        .doc(mealId)
         .update(data);
   }
 }
