@@ -320,7 +320,6 @@ class _RegisterPageState extends State<RegisterPage> {
         mealProfile: mealProfile.copyWith(
           dailyCalorieGoal: dailyCaloriesValue ?? 0,
         ),
-        scheduledFoodItems: [],
         createdAt: now,
         updatedAt: now,
       );

@@ -71,10 +71,17 @@ class _DailyLogCalendarScreenState
   List<PlannedFood> _scheduledMealsForDay(
       DateTime day, List<PlannedFood>? scheduledMeals) {
     if (scheduledMeals == null) return [];
+
+    // Normalize both dates to midnight for consistent comparison
+    final dayNormalized = DateTime(day.year, day.month, day.day);
+
     return scheduledMeals.where((meal) {
-      return meal.date.year == day.year &&
-          meal.date.month == day.month &&
-          meal.date.day == day.day;
+      final mealDateNormalized =
+          DateTime(meal.date.year, meal.date.month, meal.date.day);
+      final matches = mealDateNormalized == dayNormalized;
+      debugPrint(
+          '_scheduledMealsForDay: $mealDateNormalized vs $dayNormalized => $matches');
+      return matches;
     }).toList();
   }
 

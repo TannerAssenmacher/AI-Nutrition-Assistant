@@ -1,5 +1,4 @@
 import 'package:json_annotation/json_annotation.dart';
-import 'package:nutrition_assistant/db/planned_food.dart';
 import 'package:uuid/uuid.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'food.dart';
@@ -25,7 +24,6 @@ class AppUser {
   final String activityLevel;
 
   final MealProfile mealProfile;
-  final List<PlannedFood> scheduledFoodItems; //scheduler!
 
   @JsonKey(fromJson: dateFromJson, toJson: dateToJson)
   final DateTime createdAt;
@@ -43,7 +41,6 @@ class AppUser {
     required this.weight,
     required this.activityLevel,
     required this.mealProfile,
-    required this.scheduledFoodItems,
     required this.createdAt,
     required this.updatedAt,
   }) : id = id ?? const Uuid().v4();
@@ -84,7 +81,6 @@ class AppUser {
       weight: weight,
       activityLevel: activityLevel,
       mealProfile: mealProfile,
-      scheduledFoodItems: [],
       createdAt: now,
       updatedAt: now,
     );
@@ -109,7 +105,6 @@ class AppUser {
       weight: user.weight,
       activityLevel: user.activityLevel,
       mealProfile: user.mealProfile,
-      scheduledFoodItems: user.scheduledFoodItems,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     );
@@ -127,7 +122,6 @@ class AppUser {
     double? weight,
     String? activityLevel,
     MealProfile? mealProfile,
-    List<PlannedFood>? scheduledFoodItems, //can be null at first
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -141,7 +135,6 @@ class AppUser {
       weight: weight ?? this.weight,
       activityLevel: activityLevel ?? this.activityLevel,
       mealProfile: mealProfile ?? this.mealProfile,
-      scheduledFoodItems: scheduledFoodItems ?? this.scheduledFoodItems,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

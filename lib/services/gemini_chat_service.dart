@@ -549,9 +549,13 @@ class GeminiChatService extends _$GeminiChatService {
 
     // Add each scheduled meal to the subcollection
     for (final input in plannedInputs) {
+      // Normalize date to midnight (remove time component) for consistent comparison
+      final normalizedDate =
+          DateTime(input.date.year, input.date.month, input.date.day);
+
       final scheduledMeal = PlannedFood(
         recipeId: recipeId,
-        date: input.date,
+        date: normalizedDate,
         mealType: input.mealType,
       );
 
