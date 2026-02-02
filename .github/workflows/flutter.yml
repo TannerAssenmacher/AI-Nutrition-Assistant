@@ -58,6 +58,9 @@ jobs:
       - name: Install Firebase CLI
         run: curl -sL https://firebase.tools | bash
 
+      - name: Build Cloud Functions
+        run: cd functions && npm ci && npm run build
+
       - name: Deploy to Firebase
         run: firebase deploy --project ai-nutrition-assistant-e2346 --debug
         env:

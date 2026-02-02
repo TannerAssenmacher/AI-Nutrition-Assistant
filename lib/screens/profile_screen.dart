@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../widgets/macro_slider.dart';
+import 'package:nutrition_assistant/navigation/nav_helper.dart';
+import 'package:nutrition_assistant/widgets/nav_bar.dart';
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+  final bool isInPageView;
+
+  const ProfilePage({super.key, this.isInPageView = false});
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -51,7 +55,7 @@ class _ProfilePageState extends State<ProfilePage> {
     'Very Active'
   ];
   final _dietGoals = ['Lose Weight', 'Maintain Weight', 'Gain Muscle'];
-  
+
   //edamam api options for diet labels
   final _dietaryHabitOptions = [
     'balanced', 
@@ -89,25 +93,38 @@ class _ProfilePageState extends State<ProfilePage> {
         _firstname = data['firstname'];
         _lastname = data['lastname'];
         _email = user!.email;
-        _dob = (data['dob'] != null) ? data['dob'].toString().split(' ')[0] : '';
+        _dob =
+            (data['dob'] != null) ? data['dob'].toString().split(' ')[0] : '';
         _sex = data['sex'];
         _heightController.text = data['height'].toString();
         _weightController.text = data['weight'].toString();
         _activityLevel = data['activityLevel'];
-        _dietaryGoal = data['mealProfile']?['dietaryGoal'] ?? data['dietaryGoal'];
-        _dailyCaloriesController.text = data['mealProfile']?['dailyCalorieGoal']?.toString() ?? data['dailyCalorieGoal']?.toString() ?? '';
-        final macroGoals = Map<String, dynamic>.from(data['mealProfile']?['macroGoals'] ?? data['macroGoals'] ?? {});
+        _dietaryGoal =
+            data['mealProfile']?['dietaryGoal'] ?? data['dietaryGoal'];
+        _dailyCaloriesController.text =
+            data['mealProfile']?['dailyCalorieGoal']?.toString() ??
+                data['dailyCalorieGoal']?.toString() ??
+                '';
+        final macroGoals = Map<String, dynamic>.from(
+            data['mealProfile']?['macroGoals'] ?? data['macroGoals'] ?? {});
         _protein = macroGoals['protein']?.toDouble() ?? 0;
         _carbs = macroGoals['carbs']?.toDouble() ?? 0;
         _fats = (macroGoals['fat'] ?? macroGoals['fats'] ?? 0).toDouble();
 
         if (data.containsKey('mealProfile')) {
           final mp = Map<String, dynamic>.from(data['mealProfile']);
-          _dietaryHabits = (mp['dietaryHabits'] as List?)?.map((e) => e.toString()).toList() ?? [];
-          _health = (mp['healthRestrictions'] as List?)?.map((e) => e.toString()).toList() ?? [];
+          _dietaryHabits = (mp['dietaryHabits'] as List?)
+                  ?.map((e) => e.toString())
+                  .toList() ??
+              [];
+          _health = (mp['healthRestrictions'] as List?)
+                  ?.map((e) => e.toString())
+                  .toList() ??
+              [];
           final prefs = Map<String, dynamic>.from(mp['preferences'] ?? {});
           _likesController.text = (prefs['likes'] as List?)?.join(', ') ?? '';
-          _dislikesController.text = (prefs['dislikes'] as List?)?.join(', ') ?? '';
+          _dislikesController.text =
+              (prefs['dislikes'] as List?)?.join(', ') ?? '';
         }
       });
     } catch (e) {
@@ -132,7 +149,7 @@ class _ProfilePageState extends State<ProfilePage> {
         'activityLevel': _activityLevel,
         'mealProfile.dietaryGoal': _dietaryGoal,
         'mealProfile.dailyCalorieGoal':
-        int.tryParse(_dailyCaloriesController.text),
+            int.tryParse(_dailyCaloriesController.text),
         'mealProfile.macroGoals': {
           'protein': _protein,
           'carbs': _carbs,
@@ -141,16 +158,18 @@ class _ProfilePageState extends State<ProfilePage> {
         'mealProfile.dietaryHabits': _dietaryHabits,
         'mealProfile.healthRestrictions': _health,
         'mealProfile.preferences.likes':
-        _likesController.text.split(',').map((e) => e.trim()).toList(), 'mealProfile.preferences.dislikes':
-        _dislikesController.text.split(',').map((e) => e.trim()).toList(), 'updatedAt': FieldValue.serverTimestamp(),
+            _likesController.text.split(',').map((e) => e.trim()).toList(),
+        'mealProfile.preferences.dislikes':
+            _dislikesController.text.split(',').map((e) => e.trim()).toList(),
+        'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Profile updated successfully!')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile updated successfully!')));
     } catch (e) {
       print('⚠️ Error saving profile: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving profile: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error saving profile: $e')));
     } finally {
       setState(() => _isSaving = false);
     }
@@ -239,132 +258,142 @@ class _ProfilePageState extends State<ProfilePage> {
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('My Profile')),
-      body: SafeArea(
-        child: Scrollbar(
-          thumbVisibility: true,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                children: [
-                  Center(
-                    child: ConstrainedBox(
-                      constraints:
-                      const BoxConstraints(minWidth: 250, maxWidth: 500),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _readOnlyField('First Name', _firstname ?? ''),
-                          _readOnlyField('Last Name', _lastname ?? ''),
-                          _readOnlyField('Email', _email ?? ''),
-                          _readOnlyField('Date of Birth', _dob ?? ''),
-                          _readOnlyField('Sex', _sex ?? ''),
-                          _editableField(_heightController, 'Height (inches)',
-                              isNumber: true),
-                          _editableField(_weightController, 'Weight (lbs)',
-                              isNumber: true),
-                          _dropdownField('Activity Level', _activityLevels,
-                              _activityLevel, (val) => _activityLevel = val),
-                          _dropdownField('Dietary Goal', _dietGoals,
-                              _dietaryGoal, (val) => _dietaryGoal = val),
-                          _editableField(_dailyCaloriesController,
-                              'Daily Calorie Goal',
-                              isNumber: true),
-                          const SizedBox(height: 20),
-                          const Text(
-                            'Macronutrient Goals (% of calories)',
-                            style: TextStyle(fontWeight: FontWeight.bold),
+    final bodyContent = SafeArea(
+      child: Scrollbar(
+        thumbVisibility: true,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                Center(
+                  child: ConstrainedBox(
+                    constraints:
+                        const BoxConstraints(minWidth: 250, maxWidth: 500),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _readOnlyField('First Name', _firstname ?? ''),
+                        _readOnlyField('Last Name', _lastname ?? ''),
+                        _readOnlyField('Email', _email ?? ''),
+                        _readOnlyField('Date of Birth', _dob ?? ''),
+                        _readOnlyField('Sex', _sex ?? ''),
+                        _editableField(_heightController, 'Height (inches)',
+                            isNumber: true),
+                        _editableField(_weightController, 'Weight (lbs)',
+                            isNumber: true),
+                        _dropdownField('Activity Level', _activityLevels,
+                            _activityLevel, (val) => _activityLevel = val),
+                        _dropdownField('Dietary Goal', _dietGoals, _dietaryGoal,
+                            (val) => _dietaryGoal = val),
+                        _editableField(
+                            _dailyCaloriesController, 'Daily Calorie Goal',
+                            isNumber: true),
+                        const SizedBox(height: 20),
+                        const Text(
+                          'Macronutrient Goals (% of calories)',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 10),
+                        MacroSlider(
+                          protein: _protein,
+                          carbs: _carbs,
+                          fats: _fats,
+                          onChanged: (p, c, f) {
+                            setState(() {
+                              _protein = p;
+                              _carbs = c;
+                              _fats = f;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 25),
+                _centeredMultiSelectField(
+                    'Dietary Habits', _dietaryHabitOptions, _dietaryHabits),
+                const SizedBox(height: 24),
+                _centeredMultiSelectField(
+                    'Health Restrictions', _healthOptions, _health),
+                const SizedBox(height: 24),
+                Center(
+                  child: ConstrainedBox(
+                    constraints:
+                        const BoxConstraints(minWidth: 250, maxWidth: 500),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _optionalField(_likesController,
+                            'Food Likes (comma-separated, e.g. "chicken, rice")'),
+                        _optionalField(_dislikesController,
+                            'Food Dislikes (comma-separated, e.g. "broccoli, tofu")'),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 30),
+                Center(
+                  child: ConstrainedBox(
+                    constraints:
+                        const BoxConstraints(minWidth: 200, maxWidth: 350),
+                    child: _isSaving
+                        ? const Center(child: CircularProgressIndicator())
+                        : ElevatedButton(
+                            onPressed: _saveProfile,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              padding: const EdgeInsets.all(15),
+                            ),
+                            child: const Text(
+                              'Save Changes',
+                              style:
+                                  TextStyle(color: Colors.white, fontSize: 18),
+                            ),
                           ),
-                          const SizedBox(height: 10),
-                          MacroSlider(
-                            protein: _protein,
-                            carbs: _carbs,
-                            fats: _fats,
-                            onChanged: (p, c, f) {
-                              setState(() {
-                                _protein = p;
-                                _carbs = c;
-                                _fats = f;
-                              });
-                            },
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Center(
+                  child: ConstrainedBox(
+                    constraints:
+                        const BoxConstraints(minWidth: 200, maxWidth: 350),
+                    child: _isDeleting
+                        ? const Center(child: CircularProgressIndicator())
+                        : OutlinedButton.icon(
+                            icon: const Icon(Icons.delete_forever,
+                                color: Colors.red),
+                            label: const Text(
+                              'Delete Account',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Colors.red),
+                              padding: const EdgeInsets.all(15),
+                            ),
+                            onPressed: _confirmDeleteAccount,
                           ),
-                        ],
-                      ),
-                    ),
                   ),
-                  const SizedBox(height: 25),
-                  _centeredMultiSelectField(
-                      'Dietary Habits', _dietaryHabitOptions, _dietaryHabits),
-                  const SizedBox(height: 24),
-                  _centeredMultiSelectField(
-                      'Health Restrictions', _healthOptions, _health),
-                  const SizedBox(height: 24),
-                  Center(
-                    child: ConstrainedBox(
-                      constraints:
-                      const BoxConstraints(minWidth: 250, maxWidth: 500),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _optionalField(_likesController,
-                              'Food Likes (comma-separated, e.g. "chicken, rice")'),
-                          _optionalField(_dislikesController,
-                              'Food Dislikes (comma-separated, e.g. "broccoli, tofu")'),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 30),
-                  Center(
-                    child: ConstrainedBox(
-                      constraints:
-                      const BoxConstraints(minWidth: 200, maxWidth: 350),
-                      child: _isSaving
-                          ? const Center(child: CircularProgressIndicator())
-                          : ElevatedButton(
-                        onPressed: _saveProfile,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          padding: const EdgeInsets.all(15),
-                        ),
-                        child: const Text(
-                          'Save Changes',
-                          style: TextStyle(
-                              color: Colors.white, fontSize: 18),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Center(
-                    child: ConstrainedBox(
-                      constraints:
-                      const BoxConstraints(minWidth: 200, maxWidth: 350),
-                      child: _isDeleting
-                          ? const Center(child: CircularProgressIndicator())
-                          : OutlinedButton.icon(
-                        icon: const Icon(Icons.delete_forever,
-                            color: Colors.red),
-                        label: const Text(
-                          'Delete Account',
-                          style: TextStyle(color: Colors.red),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Colors.red),
-                          padding: const EdgeInsets.all(15),
-                        ),
-                        onPressed: _confirmDeleteAccount,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
+      ),
+    );
+
+    if (widget.isInPageView == true) {
+      return bodyContent;
+    }
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5EDE2),
+      body: bodyContent,
+      bottomNavigationBar: NavBar(
+        currentIndex: navIndexProfile,
+        onTap: (index) => handleNavTap(context, index),
       ),
     );
   }
@@ -457,9 +486,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 selected: isSelected,
                 onSelected: (_) {
                   setState(() {
-                    isSelected
-                        ? selected.remove(option)
-                        : selected.add(option);
+                    isSelected ? selected.remove(option) : selected.add(option);
                   });
                 },
                 selectedColor: Colors.green[200],

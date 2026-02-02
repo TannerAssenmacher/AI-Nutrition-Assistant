@@ -2,8 +2,8 @@ import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../config/env.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import '../providers/food_providers.dart';
 import '../db/firestore_helper.dart';
@@ -48,9 +48,10 @@ class GeminiChatService extends _$GeminiChatService {
   //build() initial state
   @override
   List<ChatMessage> build() {
+    final apiKey = Env.require(Env.geminiApiKey, 'GEMINI_API_KEY');
     model = GenerativeModel(
       model: 'gemini-2.5-flash', //fast & free
-      apiKey: dotenv.env['GEMINI_API_KEY']!,
+      apiKey: apiKey,
       systemInstruction: Content.text('''You are a helpful nutrition assistant. 
         Help users with meal planning, calorie counting, and nutrition advice.
         Be encouraging and provide practical tips.'''),

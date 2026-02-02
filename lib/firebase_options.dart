@@ -2,7 +2,7 @@
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'config/env.dart';
 
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
@@ -30,7 +30,7 @@ class DefaultFirebaseOptions {
   }
 
   static final FirebaseOptions web = FirebaseOptions(
-    apiKey: dotenv.env['GOOGLE_API_KEY_WEB']!,
+    apiKey: Env.require(Env.googleApiKeyWeb, 'GOOGLE_API_KEY_WEB'),
     appId: '1:468473644377:web:13d28a9e81135191267848',
     messagingSenderId: '468473644377',
     projectId: 'ai-nutrition-assistant-e2346',
@@ -40,7 +40,7 @@ class DefaultFirebaseOptions {
   );
 
   static final FirebaseOptions android = FirebaseOptions(
-    apiKey: dotenv.env['GOOGLE_API_KEY_ANDROID']!,
+    apiKey: Env.require(Env.googleApiKeyAndroid, 'GOOGLE_API_KEY_ANDROID'),
     appId: '1:468473644377:android:0da8f2de23872a8f267848',
     messagingSenderId: '468473644377',
     projectId: 'ai-nutrition-assistant-e2346',
@@ -48,7 +48,7 @@ class DefaultFirebaseOptions {
   );
 
   static final FirebaseOptions ios = FirebaseOptions(
-    apiKey: dotenv.env['GOOGLE_API_KEY_IOS']!,
+    apiKey: Env.require(Env.googleApiKeyIos, 'GOOGLE_API_KEY_IOS'),
     appId: '1:468473644377:ios:7686922e87701012267848',
     messagingSenderId: '468473644377',
     projectId: 'ai-nutrition-assistant-e2346',
@@ -57,7 +57,7 @@ class DefaultFirebaseOptions {
   );
 
   static final FirebaseOptions macos = FirebaseOptions(
-    apiKey: dotenv.env['GOOGLE_API_KEY_MACOS']!,
+    apiKey: Env.require(Env.googleApiKeyMacos, 'GOOGLE_API_KEY_MACOS'),
     appId: '1:468473644377:ios:f4d65ac6e7d52171267848',
     messagingSenderId: '468473644377',
     projectId: 'ai-nutrition-assistant-e2346',
@@ -66,7 +66,7 @@ class DefaultFirebaseOptions {
   );
 
   static final FirebaseOptions windows = FirebaseOptions(
-    apiKey: dotenv.env['GOOGLE_API_KEY_WEB']!, // reuse web key if needed
+    apiKey: Env.require(Env.googleApiKeyWeb, 'GOOGLE_API_KEY_WEB'),
     appId: '1:468473644377:web:c92d26cd4e74b40c267848',
     messagingSenderId: '468473644377',
     projectId: 'ai-nutrition-assistant-e2346',

@@ -10,9 +10,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
+  table_calendar: ^3.0.9
+  carousel_slider: ^4.2.1
+  percent_indicator: ^4.2.3
   cupertino_icons: ^1.0.6
-  flutter_dotenv: ^6.0.0
   intl: ^0.18.1
   email_validator: ^2.1.17
 
@@ -33,6 +34,7 @@ dependencies:
   uuid: ^4.5.1
   dropdown_search: ^6.0.2
   http: ^1.6.0
+  simple_gesture_detector: ^0.2.0
   cached_network_image: ^3.4.1
   table_calendar: ^3.0.9
 
@@ -55,4 +57,4 @@ flutter:
   uses-material-design: true
 
   assets:
-    - .env
+    - lib/icons/

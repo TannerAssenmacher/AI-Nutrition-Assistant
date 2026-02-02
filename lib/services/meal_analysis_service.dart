@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+
+enum AnalysisStage { uploading, analyzing, cleaning }
 
 /// Simple model representing a single analyzed food item.
 class AnalyzedFoodItem {
@@ -61,8 +64,8 @@ class MealAnalysis {
     final foodsList = json['f'] as List<dynamic>? ?? [];
     return MealAnalysis(
       foods: foodsList
-          .map((item) => AnalyzedFoodItem.fromJson(
-              (item as Map).cast<String, dynamic>()))
+          .map((item) =>
+              AnalyzedFoodItem.fromJson((item as Map).cast<String, dynamic>()))
           .toList(),
     );
   }
@@ -106,48 +109,73 @@ class MealAnalysisService {
   final String apiKey;
   static const String _baseUrl = 'https://api.openai.com/v1';
 
-  Future<MealAnalysis> analyzeMealImage(File imageFile) async {
+  Future<MealAnalysis> analyzeMealImage(
+    File imageFile, {
+    String? userContext,
+    void Function(AnalysisStage stage)? onStageChanged,
+    Duration timeout = const Duration(seconds: 100),
+  }) async {
+    final client = http.Client();
     String? fileId;
 
     try {
-      fileId = await _uploadImage(imageFile);
-      final response = await http.post(
-        Uri.parse('$_baseUrl/responses'),
-        headers: {
-          'Authorization': 'Bearer $apiKey',
-          'Content-Type': 'application/json',
+      onStageChanged?.call(AnalysisStage.uploading);
+      fileId = await _uploadImage(imageFile, client, timeout);
+      final trimmedContext = userContext?.trim();
+      final contextSnippet =
+          (trimmedContext != null && trimmedContext.length > 500
+              ? trimmedContext.substring(0, 500)
+              : trimmedContext);
+
+      final userContent = [
+        {
+          'type': 'input_text',
+          'text': 'Analyze this meal and break down each food item.'
         },
-        body: json.encode({
-          'model': 'gpt-4.1-mini',
-          'input': [
-            {
-              'role': 'system',
-              'content': [
-                {
-                  'type': 'input_text',
-                  'text':
-                      'You are a nutrition expert. Analyze meal images and return ONLY valid JSON. '
-                          'Use this exact structure: '
-                          '{"f":[{"n":"food name","m":grams,"k":kcal,"p":protein_g,"c":carbs_g,"a":fat_g}]} '
-                          'where n=food name, m=mass grams, k=kilocalories, p=protein grams, c=carb grams, a=fat grams. '
-                          'All numeric values (m,k,p,c,a) must be numbers, never strings. Provide your best estimate for each visible food item.'
-                }
-              ]
+        if (contextSnippet != null && contextSnippet.isNotEmpty)
+          {
+            'type': 'input_text',
+            'text': 'User context (optional): $contextSnippet'
+          },
+        {'type': 'input_image', 'file_id': fileId},
+      ];
+      onStageChanged?.call(AnalysisStage.analyzing);
+      final response = await client
+          .post(
+            Uri.parse('$_baseUrl/responses'),
+            headers: {
+              'Authorization': 'Bearer $apiKey',
+              'Content-Type': 'application/json',
             },
-            {
-              'role': 'user',
-              'content': [
+            body: json.encode({
+              'model': 'gpt-5.2',
+              'reasoning': {'effort': 'low'},
+              'max_output_tokens': 3000,
+              'input': [
                 {
-                  'type': 'input_text',
-                  'text': 'Analyze this meal and break down each food item.'
+                  'role': 'system',
+                  'content': [
+                    {
+                      'type': 'input_text',
+                      'text': 'You are a nutrition expert. Analyze meal images and return ONLY valid JSON. '
+                          'THINK STEP-BY-STEP (internally) BEFORE ANSWERING: identify foods → determine mass → derive per-gram macros → scale to mass → compute calories with 4/4/9 → sanity-check totals. '
+                          'DO NOT return your reasoning, only the final JSON. '
+                          'OUTPUT FORMAT: {"f":[{"n":"food name","m":grams,"k":kcal,"p":protein_g,"c":carbs_g,"a":fat_g}]} '
+                          'RULES: '
+                          '- All numeric values must be numbers, not strings. '
+                          '- Use at least 1 decimal place for grams/kcal when appropriate. '
+                          '- k MUST equal (p×4)+(c×4)+(a×9) exactly. '
+                          '- If a scale shows weight, that is the authoritative mass; for multiple items on one scale, estimate proportional weight per item. '
+                          '- Prefer slightly conservative estimates over overestimates when uncertain. '
+                          'Example: 150g chicken breast → ~46.5g protein, ~0g carbs, ~4.5g fat → (46.5×4)+(0×4)+(4.5×9) = 226.5 kcal'
+                    }
+                  ]
                 },
-                {'type': 'input_image', 'file_id': fileId},
-              ]
-            }
-          ],
-          'temperature': 0.1,
-        }),
-      );
+                {'role': 'user', 'content': userContent}
+              ],
+            }),
+          )
+          .timeout(timeout);
 
       if (response.statusCode != 200) {
         throw Exception(
@@ -159,24 +187,89 @@ class MealAnalysisService {
       final rawJson = _extractTextResponse(responseData);
       final parsedJson = json.decode(rawJson) as Map<String, dynamic>;
 
-      return MealAnalysis.fromJson(parsedJson);
+      final analysis = MealAnalysis.fromJson(parsedJson);
+      return _normalizeAnalysis(analysis);
     } finally {
+      onStageChanged?.call(AnalysisStage.cleaning);
       if (fileId != null) {
-        await _deleteFile(fileId);
+        await _deleteFile(client, fileId, timeout);
       }
+      client.close();
     }
   }
 
-  Future<String> _uploadImage(File imageFile) async {
-    final request =
-        http.MultipartRequest('POST', Uri.parse('$_baseUrl/files'));
+  /// Ensures calories align with macros (4/4/9) and strips negative/NaN values.
+  MealAnalysis _normalizeAnalysis(MealAnalysis analysis) {
+    final normalizedFoods = analysis.foods.map((food) {
+      final mass = _clampNonNegative(food.mass);
+      final protein = _clampNonNegative(food.protein);
+      final carbs = _clampNonNegative(food.carbs);
+      final fat = _clampNonNegative(food.fat);
+
+      final calories = (protein * 4) + (carbs * 4) + (fat * 9);
+
+      return AnalyzedFoodItem(
+        name: food.name,
+        mass: mass,
+        calories: calories,
+        protein: protein,
+        carbs: carbs,
+        fat: fat,
+      );
+    }).toList();
+
+    return MealAnalysis(foods: normalizedFoods);
+  }
+
+  double _clampNonNegative(double value) {
+    if (value.isNaN || value.isInfinite) return 0.0;
+    return value < 0 ? 0.0 : value;
+  }
+
+  /// Recursively extracts text or output_text from nested response nodes.
+  String? _extractTextFromNode(dynamic node) {
+    if (node is Map<String, dynamic>) {
+      final text = node['text'];
+      if (text is String && text.isNotEmpty) {
+        return text;
+      }
+      final outputText = node['output_text'];
+      if (outputText is String && outputText.isNotEmpty) {
+        return outputText;
+      }
+
+      final content = node['content'];
+      if (content != null) {
+        final nested = _extractTextFromNode(content);
+        if (nested != null) return nested;
+      }
+    }
+
+    if (node is List) {
+      for (final item in node.reversed) {
+        final nested = _extractTextFromNode(item);
+        if (nested != null) return nested;
+      }
+    }
+
+    return null;
+  }
+
+  Future<String> _uploadImage(
+    File imageFile,
+    http.Client client,
+    Duration timeout,
+  ) async {
+    final request = http.MultipartRequest('POST', Uri.parse('$_baseUrl/files'));
 
     request.headers['Authorization'] = 'Bearer $apiKey';
     request.fields['purpose'] = 'vision';
-    request.files.add(await http.MultipartFile.fromPath('file', imageFile.path));
+    request.files
+        .add(await http.MultipartFile.fromPath('file', imageFile.path));
 
-    final response = await request.send();
-    final responseBody = await response.stream.bytesToString();
+    final response = await client.send(request).timeout(timeout);
+    final responseBody =
+        await response.stream.bytesToString().timeout(timeout);
 
     if (response.statusCode != 200) {
       throw Exception(
@@ -192,36 +285,62 @@ class MealAnalysisService {
     return fileId;
   }
 
-  Future<void> _deleteFile(String fileId) async {
+  Future<void> _deleteFile(
+    http.Client client,
+    String fileId,
+    Duration timeout,
+  ) async {
     try {
-      await http.delete(
-        Uri.parse('$_baseUrl/files/$fileId'),
-        headers: {'Authorization': 'Bearer $apiKey'},
-      );
+      await client
+          .delete(
+            Uri.parse('$_baseUrl/files/$fileId'),
+            headers: {'Authorization': 'Bearer $apiKey'},
+          )
+          .timeout(timeout);
     } catch (_) {
       // Swallow cleanup errors.
     }
   }
 
   String _extractTextResponse(Map<String, dynamic> responseData) {
+    // Direct field some responses include.
+    final outputText = responseData['output_text'];
+    if (outputText is String && outputText.isNotEmpty) {
+      return outputText;
+    }
+
+    // Primary path: responses API returns "output" with nested content.
     final output = responseData['output'];
     if (output is List && output.isNotEmpty) {
-      final firstOutput = output.first;
-      final content = firstOutput is Map<String, dynamic>
-          ? firstOutput['content']
-          : null;
-
-      if (content is List) {
-        for (final item in content) {
-          if (item is Map<String, dynamic>) {
-            final text = item['text'];
-            if (text is String && text.isNotEmpty) {
-              return text;
-            }
-          }
-        }
+      // Prefer the last entries (message often follows reasoning).
+      for (final item in output.reversed) {
+        final text = _extractTextFromNode(item);
+        if (text != null) return text;
       }
     }
-    throw Exception('API response missing expected text output.');
+
+    // Fallback: sometimes "output" is a map instead of a list.
+    if (output is Map<String, dynamic>) {
+      final content = output['content'];
+      final text = _extractTextFromNode(content);
+      if (text != null) return text;
+    }
+
+    // Legacy/chat-completions style fallback: choices -> message -> content.
+    final choices = responseData['choices'];
+    if (choices is List && choices.isNotEmpty) {
+      for (final choice in choices) {
+        final message =
+            choice is Map<String, dynamic> ? choice['message'] : null;
+        final content =
+            message is Map<String, dynamic> ? message['content'] : null;
+        final text = _extractTextFromNode(content);
+        if (text != null) return text;
+      }
+    }
+
+    // If all parsing paths fail, surface the raw payload to aid debugging.
+    throw Exception(
+        'API response missing expected text output. Payload: ${json.encode(responseData)}');
   }
 }

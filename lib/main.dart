@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -12,8 +12,8 @@ import 'db/firestore_helper.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/forgot_password_screen.dart';
-import 'screens/profile_screen.dart';
-import 'screens/chat_screen.dart';
+import 'screens/main_navigation_screen.dart';
+import 'navigation/nav_helper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,8 +22,9 @@ void main() async {
   String initialRoute = '/login';
 
   try {
-    // Load the .env before Firebase
-    await dotenv.load(fileName: ".env");
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
 
     // Initialize Firebase with better error handling
     await _initializeFirebase();
@@ -63,8 +64,7 @@ Future<void> _initializeFirebase() async {
         print("Firebase already initialized, using existing instance");
       } catch (e) {
         // If getting the app fails, try to initialize anyway
-        print(
-            "Firebase app exists but couldn't access it, reinitializing...");
+        print("Firebase app exists but couldn't access it, reinitializing...");
         await Firebase.initializeApp(
           options: DefaultFirebaseOptions.currentPlatform,
         );
@@ -159,9 +159,16 @@ class MyApp extends StatelessWidget {
         '/login': (context) => const LoginPage(),
         '/register': (context) => const RegisterPage(),
         '/forgot': (context) => const ForgotPasswordPage(),
-        '/profile': (context) => const ProfilePage(),
-        '/home': (context) => const HomeScreen(),
-        '/chat': (context) => const ChatScreen(),
+        '/home': (context) =>
+            const MainNavigationScreen(initialIndex: navIndexHome),
+        '/chat': (context) =>
+            const MainNavigationScreen(initialIndex: navIndexChat),
+        '/calendar': (context) =>
+            const MainNavigationScreen(initialIndex: navIndexHistory),
+        '/camera': (context) =>
+            const MainNavigationScreen(initialIndex: navIndexCamera),
+        '/profile': (context) =>
+            const MainNavigationScreen(initialIndex: navIndexProfile),
       },
     );
   }

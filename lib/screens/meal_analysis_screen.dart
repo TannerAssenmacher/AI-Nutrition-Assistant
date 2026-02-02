@@ -1,169 +1,651 @@
 import 'dart:io';
-import 'package:camera/camera.dart';
+
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:nutrition_assistant/config/env.dart';
+import 'package:nutrition_assistant/navigation/nav_helper.dart';
+import 'package:nutrition_assistant/widgets/nav_bar.dart';
+
 import '../services/meal_analysis_service.dart';
+import '../db/food.dart';
+import '../providers/food_providers.dart';
+import '../providers/auth_providers.dart';
+import '../providers/firestore_providers.dart';
 import 'camera_capture_screen.dart';
 
-class IntegratedMealCaptureFlow extends StatefulWidget {
-  const IntegratedMealCaptureFlow({super.key});
+class CameraScreen extends ConsumerStatefulWidget {
+  final bool isInPageView;
+
+  const CameraScreen({super.key, this.isInPageView = false});
 
   @override
-  State<IntegratedMealCaptureFlow> createState() =>
-      _IntegratedMealCaptureFlowState();
+  ConsumerState<CameraScreen> createState() => _CameraScreenState();
 }
 
-class _IntegratedMealCaptureFlowState extends State<IntegratedMealCaptureFlow> {
+class _CameraScreenState extends ConsumerState<CameraScreen> {
   bool _isAnalyzing = false;
+  bool _isSaving = false;
   MealAnalysis? _analysisResult;
   String? _errorMessage;
+  AnalysisStage? _analysisStage;
 
-  Future<void> _openCamera(BuildContext context) async {
-    final apiKey = dotenv.env['OPENAI_API_KEY'];
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _captureAndAnalyze());
+  }
+
+  Future<void> _captureAndAnalyze() async {
+    if (_isAnalyzing) return;
+
+    final apiKey = Env.openAiApiKey;
     if (apiKey == null || apiKey.isEmpty) {
       setState(() {
         _errorMessage = 'OpenAI API key is not configured.';
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'OpenAI API key is missing. Pass OPENAI_API_KEY via --dart-define.'),
+        ),
+      );
       return;
     }
 
-    // Try taking picture of meal and sending to API for analysis
+    final captureResult = await Navigator.of(context).push<MealCaptureResult?>(
+      MaterialPageRoute<MealCaptureResult?>(
+        builder: (_) => const CameraCaptureScreen(),
+        settings: const RouteSettings(name: '/camera/capture'),
+      ),
+    );
+
+    if (captureResult == null || !mounted) {
+      return;
+    }
+
+    setState(() {
+      _isAnalyzing = true;
+      _analysisResult = null;
+      _errorMessage = null;
+      _analysisStage = AnalysisStage.uploading;
+    });
+
+    final file = File(captureResult.photo.path);
+    final service = MealAnalysisService(apiKey: apiKey);
+
     try {
-      final capturedFile = await Navigator.of(context).push<XFile?>(
-        MaterialPageRoute<XFile?>(
-          builder: (_) => const CameraCaptureScreen(),
-        ),
+      final analysis = await service.analyzeMealImage(
+        file,
+        userContext: captureResult.userContext,
+        onStageChanged: (stage) {
+          if (!mounted) return;
+          setState(() {
+            _analysisStage = stage;
+          });
+        },
       );
 
-      if (capturedFile == null) {
+      if (!mounted) return;
+
+      setState(() {
+        _analysisResult = analysis;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Meal analysis complete!'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _errorMessage = 'Analysis failed: $e';
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Analysis failed: $e'),
+          backgroundColor: Colors.red[700],
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isAnalyzing = false;
+          _analysisStage = null;
+        });
+      }
+      try {
+        if (await file.exists()) {
+          await file.delete();
+        }
+      } catch (_) {
+        // Best-effort cleanup.
+      }
+    }
+  }
+
+  Future<void> _addMealToCalendar() async {
+    final analysis = _analysisResult;
+    if (analysis == null || analysis.foods.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('No analysis to add. Capture a meal first.')),
+      );
+      return;
+    }
+
+    if (_isSaving) return;
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      final now = DateTime.now();
+      final container = ProviderScope.containerOf(context, listen: false);
+      final notifier = container.read(foodLogProvider.notifier);
+      final authUser = container.read(authServiceProvider);
+
+      final userId = authUser?.uid;
+      if (userId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Please sign in to save meals to your calendar.')),
+        );
         return;
       }
 
-      if (!mounted) return;
+      final firestoreLog =
+          container.read(firestoreFoodLogProvider(userId).notifier);
+      int added = 0;
 
-      setState(() {
-        _isAnalyzing = true;
-        _analysisResult = null;
-        _errorMessage = null;
-      });
-
-      final file = File(capturedFile.path);
-      final service = MealAnalysisService(apiKey: apiKey);
-
-      try {
-        final analysis = await service.analyzeMealImage(file);
-
-        if (!mounted) return;
-
-        setState(() {
-          _analysisResult = analysis;
-          _isAnalyzing = false;
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Meal analysis complete!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } catch (e) {
-        if (!mounted) return;
-
-        setState(() {
-          _isAnalyzing = false;
-          _errorMessage = 'Analysis failed: $e';
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Analysis failed: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      } finally {
-        try {
-          if (await file.exists()) {
-            await file.delete();
-          }
-        } catch (_) {
-          // Ignore cleanup failures.
+      for (final food in analysis.foods) {
+        if (food.mass <= 0) {
+          continue;
         }
+
+        final mass = food.mass;
+        final caloriesPerGram = food.calories / mass;
+        final proteinPerGram = food.protein / mass;
+        final carbsPerGram = food.carbs / mass;
+        final fatPerGram = food.fat / mass;
+
+        notifier.addFoodItem(
+          FoodItem(
+            id: '${now.microsecondsSinceEpoch}-$added',
+            name: food.name,
+            mass_g: mass,
+            calories_g: caloriesPerGram,
+            protein_g: proteinPerGram,
+            carbs_g: carbsPerGram,
+            fat: fatPerGram,
+            mealType: 'meal',
+            consumedAt: now,
+          ),
+        );
+
+        await firestoreLog.addFood(
+          userId,
+          FoodItem(
+            id: '${now.microsecondsSinceEpoch}-$added',
+            name: food.name,
+            mass_g: mass,
+            calories_g: caloriesPerGram,
+            protein_g: proteinPerGram,
+            carbs_g: carbsPerGram,
+            fat: fatPerGram,
+            mealType: 'meal',
+            consumedAt: now,
+          ),
+        );
+
+        added++;
       }
-    } catch (error) {
+
       if (!mounted) return;
-      setState(() {
-        _errorMessage = 'Camera unavailable: $error';
-      });
+
+      final message = added > 0
+          ? 'Added $added item${added == 1 ? '' : 's'} to today.'
+          : 'No items added (missing weights).';
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Camera unavailable: $error')),
+        SnackBar(content: Text(message)),
       );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
+  }
+
+  void _updateItemName(int index, String newName) {
+    final current = _analysisResult;
+    if (current == null || index < 0 || index >= current.foods.length) return;
+    final trimmed = newName.trim();
+    if (trimmed.isEmpty) return;
+
+    final updatedFoods = List<AnalyzedFoodItem>.from(current.foods);
+    final item = updatedFoods[index];
+    updatedFoods[index] = AnalyzedFoodItem(
+      name: trimmed,
+      mass: item.mass,
+      calories: item.calories,
+      protein: item.protein,
+      carbs: item.carbs,
+      fat: item.fat,
+    );
+
+    setState(() {
+      _analysisResult = MealAnalysis(foods: updatedFoods);
+    });
+  }
+
+  void _updateItemWeight(int index, double newMass) {
+    final current = _analysisResult;
+    if (current == null || index < 0 || index >= current.foods.length) return;
+    if (newMass <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Weight must be greater than 0.')),
+      );
+      return;
+    }
+
+    final updatedFoods = List<AnalyzedFoodItem>.from(current.foods);
+    final item = updatedFoods[index];
+    if (item.mass <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Original weight missing; cannot adjust macros.'),
+        ),
+      );
+      return;
+    }
+
+    // Derive per-gram macros from the original AI estimate, then scale to the new mass.
+    final proteinPerGram = item.protein / item.mass;
+    final carbsPerGram = item.carbs / item.mass;
+    final fatPerGram = item.fat / item.mass;
+
+    final protein = proteinPerGram * newMass;
+    final carbs = carbsPerGram * newMass;
+    final fat = fatPerGram * newMass;
+    final calories = protein * 4 + carbs * 4 + fat * 9;
+
+    updatedFoods[index] = AnalyzedFoodItem(
+      name: item.name,
+      mass: newMass,
+      calories: calories,
+      protein: protein,
+      carbs: carbs,
+      fat: fat,
+    );
+
+    setState(() {
+      _analysisResult = MealAnalysis(foods: updatedFoods);
+    });
+  }
+
+  Future<void> _promptEditName(int index) async {
+    final current = _analysisResult;
+    if (current == null || index < 0 || index >= current.foods.length) return;
+    final controller = TextEditingController(text: current.foods[index].name);
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit item name'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textInputAction: TextInputAction.done,
+          decoration: const InputDecoration(
+            labelText: 'Name',
+          ),
+          onSubmitted: (_) {
+            _updateItemName(index, controller.text);
+            Navigator.of(context).pop();
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              _updateItemName(index, controller.text);
+              Navigator.of(context).pop();
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _promptEditWeight(int index) async {
+    final current = _analysisResult;
+    if (current == null || index < 0 || index >= current.foods.length) return;
+    final controller = TextEditingController(
+      text: current.foods[index].mass.toStringAsFixed(0),
+    );
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit weight (grams)'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: const TextInputType.numberWithOptions(
+              decimal: true, signed: false),
+          textInputAction: TextInputAction.done,
+          decoration: const InputDecoration(
+            labelText: 'Weight in grams',
+            hintText: 'e.g. 150',
+          ),
+          onSubmitted: (_) {
+            final parsed = double.tryParse(controller.text.trim());
+            if (parsed != null) {
+              _updateItemWeight(index, parsed);
+            }
+            Navigator.of(context).pop();
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final parsed = double.tryParse(controller.text.trim());
+              if (parsed != null) {
+                _updateItemWeight(index, parsed);
+              }
+              Navigator.of(context).pop();
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_isAnalyzing) {
+      return _AnalyzingState(stage: _analysisStage);
+    }
+
+    if (_analysisResult != null) {
+      return MealAnalysisResultWidget(
+        key: const ValueKey('analysis_result'),
+        analysis: _analysisResult!,
+        onEditName: _promptEditName,
+        onEditWeight: _promptEditWeight,
+        onAddToCalendar: _addMealToCalendar,
+        isSavingToCalendar: _isSaving,
+      );
+    }
+
+    return _IdleState(
+      key: const ValueKey('idle_state'),
+      onCapture: _captureAndAnalyze,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bodyContent = _buildCameraContent(context);
+
+    final fab = FloatingActionButton.extended(
+      onPressed: _isAnalyzing ? null : _captureAndAnalyze,
+      backgroundColor: Colors.green[700],
+      icon: _isAnalyzing
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            )
+          : const Icon(Icons.camera_alt),
+      label: Text(_isAnalyzing ? 'Analyzing...' : 'Capture meal'),
+    );
+
+    if (widget.isInPageView == true) {
+      return Stack(
+        children: [
+          bodyContent,
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 16,
+            child: Center(child: fab),
+          ),
+        ],
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5EDE2),
+      body: bodyContent,
+      bottomNavigationBar: NavBar(
+        currentIndex: navIndexCamera,
+        onTap: (index) => handleNavTap(context, index),
+      ),
+      floatingActionButton: fab,
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+    );
+  }
+
+  Widget _buildCameraContent(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 110),
+        child: Column(
+          children: [
+            if (_errorMessage != null) ...[
+              _ErrorBanner(message: _errorMessage!),
+              const SizedBox(height: 12),
+            ],
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child: _buildBody(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ErrorBanner extends StatelessWidget {
+  final String message;
+
+  const _ErrorBanner({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.red[50],
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.red[200]!),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.error_outline, color: Colors.red[400]),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(color: Colors.red[700]),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AnalyzingState extends StatelessWidget {
+  final AnalysisStage? stage;
+
+  const _AnalyzingState({this.stage});
+
+  String get _label {
+    switch (stage) {
+      case AnalysisStage.uploading:
+        return 'Uploading photo…';
+      case AnalysisStage.analyzing:
+        return 'Analyzing meal…';
+      case AnalysisStage.cleaning:
+        return 'Wrapping up…';
+      default:
+        return 'Working on your meal…';
+    }
+  }
+
+  double? get _progressValue {
+    switch (stage) {
+      case AnalysisStage.uploading:
+        return 1 / 3;
+      case AnalysisStage.analyzing:
+        return 2 / 3;
+      case AnalysisStage.cleaning:
+        return 1.0;
+      default:
+        return null;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final progress = _progressValue;
+
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CircularProgressIndicator(),
+          const SizedBox(height: 12),
+          Text(
+            _label,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Step ${((progress ?? 0) * 3).clamp(1, 3).round()} of 3',
+            style: TextStyle(color: Colors.grey.shade600),
+          ),
+          if (progress != null) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: 200,
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 6,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _IdleState extends StatelessWidget {
+  final VoidCallback onCapture;
+
+  const _IdleState({super.key, required this.onCapture});
+
+  @override
+  Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Meal Analyzer'),
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.camera_alt, size: 60, color: Colors.grey),
+          const SizedBox(height: 10),
+          Text(
+            'No photo captured yet',
+            style: textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: onCapture,
+            icon: const Icon(Icons.camera_alt),
+            label: const Text('Capture meal'),
+          )
+        ],
       ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: _isAnalyzing
-              ? const Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text('Analyzing your meal...'),
-                  ],
-                )
-              : _analysisResult != null
-                  ? MealAnalysisResultWidget(analysis: _analysisResult!)
-                  : Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.restaurant_menu,
-                          size: 80,
-                          color: Colors.grey,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Capture a meal to analyze',
-                          style: textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 12),
-                        if (_errorMessage != null) ...[
-                          Text(
-                            _errorMessage!,
-                            textAlign: TextAlign.center,
-                            style: textTheme.bodyMedium
-                                ?.copyWith(color: Colors.red),
-                          ),
-                          const SizedBox(height: 12),
-                        ],
-                        const SizedBox(height: 8),
-                        ElevatedButton.icon(
-                          onPressed: () => _openCamera(context),
-                          icon: const Icon(Icons.camera_alt),
-                          label: const Text('Take Photo'),
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 32,
-                              vertical: 16,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+    );
+  }
+}
+
+class _EditableChip extends StatelessWidget {
+  final String label;
+  final String value;
+  final VoidCallback onTap;
+
+  const _EditableChip({
+    required this.label,
+    required this.value,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.grey.shade300),
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _openCamera(context),
-        child: const Icon(Icons.camera_alt),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade700,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                const Icon(Icons.edit, size: 14, color: Colors.black54),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -172,10 +654,18 @@ class _IntegratedMealCaptureFlowState extends State<IntegratedMealCaptureFlow> {
 // Widget to display the meal analysis results.
 class MealAnalysisResultWidget extends StatelessWidget {
   final MealAnalysis analysis;
+  final void Function(int) onEditName;
+  final void Function(int) onEditWeight;
+  final Future<void> Function() onAddToCalendar;
+  final bool isSavingToCalendar;
 
   const MealAnalysisResultWidget({
     super.key,
     required this.analysis,
+    required this.onEditName,
+    required this.onEditWeight,
+    required this.onAddToCalendar,
+    required this.isSavingToCalendar,
   });
 
   @override
@@ -190,14 +680,6 @@ class MealAnalysisResultWidget extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Food Items',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
                   ...analysis.foods.asMap().entries.map((entry) {
                     final idx = entry.key;
                     final food = entry.value;
@@ -206,56 +688,55 @@ class MealAnalysisResultWidget extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            '${idx + 1}. ${food.name}',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
                           Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
                               Expanded(
-                                child: _NutrientChip(
-                                  label: 'Weight',
-                                  value: '${food.mass.toStringAsFixed(0)}g',
+                                child: Text(
+                                  '${idx + 1}. ${food.name}',
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: _NutrientChip(
-                                  label: 'Calories',
-                                  value: food.calories.toStringAsFixed(0),
-                                ),
+                              IconButton(
+                                icon: const Icon(Icons.edit, size: 18),
+                                tooltip: 'Edit name',
+                                onPressed: () => onEditName(idx),
                               ),
                             ],
                           ),
                           const SizedBox(height: 8),
-                          Row(
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
                             children: [
-                              Expanded(
-                                child: _NutrientChip(
-                                  label: 'Protein',
-                                  value: '${food.protein.toStringAsFixed(1)}g',
-                                  color: Colors.blue.shade50,
-                                ),
+                              _EditableChip(
+                                label: 'Weight',
+                                value: '${food.mass.toStringAsFixed(0)} g',
+                                onTap: () => onEditWeight(idx),
                               ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: _NutrientChip(
-                                  label: 'Carbs',
-                                  value: '${food.carbs.toStringAsFixed(1)}g',
-                                  color: Colors.orange.shade50,
-                                ),
+                              _NutrientChip(
+                                label: 'Calories',
+                                value:
+                                    '${food.calories.toStringAsFixed(0)} kcal',
                               ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: _NutrientChip(
-                                  label: 'Fat',
-                                  value: '${food.fat.toStringAsFixed(1)}g',
-                                  color: Colors.green.shade50,
-                                ),
+                              _NutrientChip(
+                                label: 'Protein',
+                                value: '${food.protein.toStringAsFixed(1)} g',
+                                color: Colors.blue.shade50,
+                              ),
+                              _NutrientChip(
+                                label: 'Carbs',
+                                value: '${food.carbs.toStringAsFixed(1)} g',
+                                color: Colors.orange.shade50,
+                              ),
+                              _NutrientChip(
+                                label: 'Fat',
+                                value: '${food.fat.toStringAsFixed(1)} g',
+                                color: Colors.green.shade50,
                               ),
                             ],
                           ),
@@ -335,6 +816,25 @@ class MealAnalysisResultWidget extends StatelessWidget {
                     grams: analysis.totalFat,
                     percentage: analysis.fatPercentage,
                     color: Colors.green,
+                  ),
+                  const SizedBox(height: 16),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: FilledButton.icon(
+                      onPressed: isSavingToCalendar ? null : onAddToCalendar,
+                      icon: isSavingToCalendar
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.calendar_month),
+                      label: Text(
+                        isSavingToCalendar
+                            ? 'Adding...'
+                            : 'Add to today\'s calendar',
+                      ),
+                    ),
                   ),
                 ],
               ),

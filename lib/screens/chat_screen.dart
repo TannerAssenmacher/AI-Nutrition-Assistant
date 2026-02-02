@@ -8,7 +8,9 @@ import 'package:table_calendar/table_calendar.dart';
 
 
 class ChatScreen extends ConsumerStatefulWidget {
-  const ChatScreen({super.key});
+  final bool isInPageView;
+
+  const ChatScreen({super.key, this.isInPageView = false});
 
   @override
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
@@ -22,7 +24,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   bool _showCuisinePicker = false;
   String? _selectedMealType;
   String? _selectedCuisineType;
-
 
   final List<String> _cuisineTypes = [
     'No Preference',
@@ -119,7 +120,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     notifier.addLocalUserMessage(cuisine);
 
     setState(() {
-       _selectedCuisineType = cuisine; 
+      _selectedCuisineType = cuisine;
       _showCuisinePicker = false;
     });
 
@@ -127,6 +128,46 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     notifier.handleMealTypeSelection(meal, cuisine);
 
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+  }
+
+  Future<void> _addRecipeToLog(Map<String, dynamic> recipe,
+      {required String mealType}) async {
+    final authUser = ref.read(authServiceProvider);
+    final userId = authUser?.uid;
+    if (userId == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please sign in to save meals.')),
+        );
+      }
+      return;
+    }
+
+    final name = (recipe['label'] ?? 'Meal').toString();
+    final caloriesTotal = (recipe['calories'] ?? 0).toDouble();
+
+    // Store as a single serving entry; macros default to 0 if unavailable.
+    final item = FoodItem(
+      id: 'recipe-${DateTime.now().microsecondsSinceEpoch}',
+      name: name,
+      mass_g: 1,
+      calories_g: caloriesTotal,
+      protein_g: (recipe['protein'] ?? 0).toDouble(),
+      carbs_g: (recipe['carbs'] ?? 0).toDouble(),
+      fat: (recipe['fat'] ?? 0).toDouble(),
+      mealType: mealType.isNotEmpty ? mealType : 'meal',
+      consumedAt: DateTime.now(),
+    );
+
+    await ref
+        .read(firestoreFoodLogProvider(userId).notifier)
+        .addFood(userId, item);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Added "$name" to today\'s log.')),
+      );
+    }
   }
 
   // load more recipes based off user's discretion
@@ -158,7 +199,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       options = _cuisineTypes;
       onTap = _onCuisineSelected;
     } else {
-      return const SizedBox.shrink(); 
+      return const SizedBox.shrink();
     }
 
     final buttonStyle = ElevatedButton.styleFrom(
@@ -181,7 +222,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           runSpacing: 10,
           children: options.map((text) {
             return ElevatedButton(
-              style: buttonStyle, 
+              style: buttonStyle,
               onPressed: () => onTap!(text),
               child: Text(text, style: const TextStyle(fontSize: 13)),
             );
@@ -195,25 +236,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget build(BuildContext context) {
     final chatMessages = ref.watch(geminiChatServiceProvider);
 
+    final bodyContent = SafeArea(
+      child: _buildChatContent(context, chatMessages),
+    );
+
+    if (widget.isInPageView == true) {
+      return bodyContent;
+    }
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Nutrition Assistant Chat'),
-        backgroundColor: Colors.green[600],
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.clear_all),
-            tooltip: 'Clear Chat',
-            onPressed: () {
-              ref.read(geminiChatServiceProvider.notifier).clearChat();
-              setState(() {
-                _showRecipePicker = false;
-                _showCuisinePicker = false;
-                _selectedMealType = null;
-              });
-            },
-          ),
-        ],
+      backgroundColor: const Color(0xFFF5EDE2),
+      body: bodyContent,
+      bottomNavigationBar: NavBar(
+        currentIndex: navIndexChat,
+        onTap: (index) => handleNavTap(context, index),
       ),
       body: Column(
         children: [
@@ -287,69 +323,68 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         }
                       } catch (_) {}
 
-                      return _ChatBubble(message: message);
-                    },
-                  ),
+                    return _ChatBubble(message: message);
+                  },
+                ),
+        ),
+
+        
+        _choiceBar(),
+
+        // Input bar
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.grey[100],
+            border: Border(
+              top: BorderSide(color: Colors.grey[300]!),
+            ),
           ),
-
-          // ✅ Only one button area, centered, same color
-          _choiceBar(),
-
-          // Input bar
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              border: Border(
-                top: BorderSide(color: Colors.grey[300]!),
+          child: Column(
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  onPressed: _promptRecipeType,
+                  icon: const Icon(Icons.restaurant_menu),
+                  label: const Text('Generate Recipes'),
+                ),
               ),
-            ),
-            child: Column(
-              children: [
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: OutlinedButton.icon(
-                    onPressed: _promptRecipeType,
-                    icon: const Icon(Icons.restaurant_menu),
-                    label: const Text('Generate Recipes'),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _messageController,
-                        decoration: InputDecoration(
-                          hintText:
-                              'Ask about nutrition, calories, meal planning...',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _messageController,
+                      decoration: InputDecoration(
+                        hintText:
+                            'Ask about nutrition, calories, meal planning...',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
                         ),
-                        maxLines: null,
-                        textInputAction: TextInputAction.send,
-                        onSubmitted: (_) => _sendMessage(),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
                       ),
+                      maxLines: null,
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: (_) => _sendMessage(),
                     ),
-                    const SizedBox(width: 8),
-                    FloatingActionButton(
-                      onPressed: _sendMessage,
-                      backgroundColor: Colors.green[600],
-                      mini: true,
-                      child: const Icon(Icons.send, color: Colors.white),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+                  ),
+                  const SizedBox(width: 8),
+                  FloatingActionButton(
+                    onPressed: _sendMessage,
+                    backgroundColor: Colors.green[600],
+                    mini: true,
+                    child: const Icon(Icons.send, color: Colors.white),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -371,8 +406,7 @@ class _ChatBubble extends StatelessWidget {
             CircleAvatar(
               backgroundColor: Colors.green[600],
               radius: 16,
-              child: const Icon(Icons.smart_toy,
-                  color: Colors.white, size: 16),
+              child: const Icon(Icons.smart_toy, color: Colors.white, size: 16),
             ),
             const SizedBox(width: 8),
           ],
@@ -562,6 +596,7 @@ class _RecipeCardState extends State<_RecipeCard> {
     final ingredients = List<String>.from(recipe['ingredients'] ?? const []);
     final instructions = recipe['instructions'] ?? '';
     final imageUrl = recipe['imageUrl'] ?? '';
+    final url = recipe['sourceUrl'] ?? '';
 
     String getProxiedImageUrl(String url) {
       if (url.isEmpty) return '';
