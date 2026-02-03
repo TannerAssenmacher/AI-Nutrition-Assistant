@@ -205,7 +205,6 @@ void main() {
         weight: 75,
         activityLevel: 'lightly_active',
         mealProfile: mockMealProfile,
-        loggedFoodItems: const [],
         createdAt: testDate,
         updatedAt: testDate,
       );
@@ -226,7 +225,6 @@ void main() {
         weight: 60,
         activityLevel: 'moderately_active',
         mealProfile: mockMealProfile,
-        loggedFoodItems: const [],
         createdAt: testDate,
         updatedAt: testDate,
       );
@@ -245,7 +243,6 @@ void main() {
         weight: 75,
         activityLevel: 'lightly_active',
         mealProfile: mockMealProfile,
-        loggedFoodItems: const [],
         createdAt: testDate,
         updatedAt: testDate,
       );
@@ -279,7 +276,6 @@ void main() {
         weight: 75,
         activityLevel: 'lightly_active',
         mealProfile: mockMealProfile,
-        loggedFoodItems: const [],
         createdAt: testDate,
         updatedAt: testDate,
       );
@@ -297,7 +293,6 @@ void main() {
         weight: 60,
         activityLevel: 'very_active',
         mealProfile: newMealProfile,
-        loggedFoodItems: [],
         createdAt: newDate,
         updatedAt: newDate,
       );
@@ -323,7 +318,6 @@ void main() {
         weight: 75,
         activityLevel: 'lightly_active',
         mealProfile: mockMealProfile,
-        loggedFoodItems: const [],
         createdAt: testDate,
         updatedAt: testDate,
       );
@@ -337,7 +331,6 @@ void main() {
       expect(json['weight'], 75);
       expect(json['activityLevel'], 'lightly_active');
       expect(json['mealProfile'], isA<Map>());
-      expect(json['loggedFoodItems'], isA<List>());
       // ID should be excluded from JSON
       expect(json.containsKey('id'), isFalse);
     });
@@ -359,7 +352,6 @@ void main() {
           'dailyCalorieGoal': 2500,
           'dietaryGoal': 'muscle_gain',
         },
-        'loggedFoodItems': [],
         'createdAt': Timestamp.fromDate(testDate),
         'updatedAt': Timestamp.fromDate(testDate),
       };
@@ -788,7 +780,6 @@ void main() {
         weight: 3.5,
         activityLevel: 'sedentary',
         mealProfile: mockMealProfile,
-        loggedFoodItems: const [],
         createdAt: testDate,
         updatedAt: testDate,
       );
@@ -807,7 +798,6 @@ void main() {
         weight: 65,
         activityLevel: 'lightly_active',
         mealProfile: mockMealProfile,
-        loggedFoodItems: const [],
         createdAt: testDate,
         updatedAt: testDate,
       );
@@ -826,7 +816,6 @@ void main() {
         weight: 100,
         activityLevel: 'active',
         mealProfile: mockMealProfile,
-        loggedFoodItems: const [],
         createdAt: testDate,
         updatedAt: testDate,
       );
@@ -844,7 +833,6 @@ void main() {
         weight: 500, // extreme weight
         activityLevel: 'sedentary',
         mealProfile: mockMealProfile,
-        loggedFoodItems: const [],
         createdAt: testDate,
         updatedAt: testDate,
       );
@@ -862,7 +850,6 @@ void main() {
         weight: 70,
         activityLevel: 'moderately_active',
         mealProfile: mockMealProfile,
-        loggedFoodItems: const [],
         createdAt: testDate,
         updatedAt: testDate,
       );
@@ -881,7 +868,6 @@ void main() {
         weight: 60,
         activityLevel: 'very_active',
         mealProfile: mockMealProfile,
-        loggedFoodItems: const [],
         createdAt: testDate,
         updatedAt: testDate,
       );
@@ -909,7 +895,6 @@ void main() {
           weight: 75,
           activityLevel: level,
           mealProfile: mockMealProfile,
-          loggedFoodItems: const [],
           createdAt: testDate,
           updatedAt: testDate,
         );
@@ -918,7 +903,7 @@ void main() {
       }
     });
 
-    test('should handle user with many logged food items', () {
+    test('should handle many FoodItems serializing and deserializing', () {
       final foodItems = List.generate(
         100,
         (i) => FoodItem(
@@ -934,21 +919,14 @@ void main() {
         ),
       );
 
-      final user = AppUser(
-        firstname: 'Test',
-        lastname: 'User',
-        dob: DateTime(2000, 1, 1),
-        sex: 'male',
-        height: 180,
-        weight: 75,
-        activityLevel: 'active',
-        mealProfile: mockMealProfile,
-        loggedFoodItems: foodItems,
-        createdAt: testDate,
-        updatedAt: testDate,
-      );
+      final roundTripped = foodItems
+          .map((item) => FoodItem.fromJson(item.toJson()))
+          .toList();
 
-      expect(user.loggedFoodItems.length, 100);
+      expect(roundTripped.length, 100);
+      expect(roundTripped[0].id, 'food_0');
+      expect(roundTripped[99].id, 'food_99');
+      expect(roundTripped[50].name, 'Food 50');
     });
 
     test('should generate unique IDs', () {
@@ -963,7 +941,6 @@ void main() {
           weight: 75,
           activityLevel: 'active',
           mealProfile: mockMealProfile,
-          loggedFoodItems: const [],
           createdAt: testDate,
           updatedAt: testDate,
         );
@@ -984,7 +961,6 @@ void main() {
         weight: 75,
         activityLevel: 'active',
         mealProfile: mockMealProfile,
-        loggedFoodItems: const [],
         createdAt: testDate,
         updatedAt: testDate,
       );

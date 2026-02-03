@@ -53,7 +53,6 @@ void main() {
       weight: weight,
       activityLevel: activityLevel,
       mealProfile: mealProfile ?? mockMealProfile,
-      loggedFoodItems: const [],
       createdAt: testDate,
       updatedAt: testDate,
     );

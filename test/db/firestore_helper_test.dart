@@ -35,7 +35,6 @@ AppUser createMockUser({String? id}) {
     weight: 75,
     activityLevel: 'lightly_active',
     mealProfile: mealProfile,
-    loggedFoodItems: const [],
     createdAt: now,
     updatedAt: now,
   );
@@ -58,8 +57,11 @@ FoodItem createMockFood({String? id, String? name}) {
 }
 
 void main() {
+  late FakeFirebaseFirestore fakeFirestore;
+
   setUp(() {
-    FirestoreHelper.useDb(FakeFirebaseFirestore());
+    fakeFirestore = FakeFirebaseFirestore();
+    FirestoreHelper.useDb(fakeFirestore);
   });
 
   // ============================================================================
@@ -131,140 +133,99 @@ void main() {
   });
 
   // ============================================================================
-  // FOOD CRUD TESTS (EMBEDDED)
+  // FOOD LOG SUBCOLLECTION CRUD TESTS
   // ============================================================================
-  group('Food CRUD (embedded)', () {
-    test('addFoodItem adds food to user', () async {
+  group('Food Log Subcollection', () {
+    foodLogRef(String userId) =>
+        fakeFirestore.collection('Users').doc(userId).collection('food_log');
+
+    test('add and read food item', () async {
       final user = createMockUser();
       await FirestoreHelper.createUser(user);
 
-      await FirestoreHelper.addFoodItem(user.id, createMockFood());
+      final food = createMockFood();
+      await foodLogRef(user.id).doc(food.id).set(food.toJson());
 
-      final foods = await FirestoreHelper.getAllFoodItems(user.id);
-      expect(foods.length, 1);
-      expect(foods.first.name, 'Avocado');
+      final snap = await foodLogRef(user.id).get();
+      expect(snap.docs.length, 1);
+      expect(snap.docs.first.data()['name'], 'Avocado');
     });
 
-    test('updateFoodItem updates an existing food', () async {
+    test('update food item', () async {
       final user = createMockUser();
       final food = createMockFood();
       await FirestoreHelper.createUser(user);
-      await FirestoreHelper.addFoodItem(user.id, food);
+      await foodLogRef(user.id).doc(food.id).set(food.toJson());
 
-      final updated = FoodItem(
-        id: food.id,
-        name: 'Ripe Avocado',
-        mass_g: food.mass_g,
-        calories_g: 2.0,
-        protein_g: food.protein_g,
-        carbs_g: food.carbs_g,
-        fat: food.fat,
-        mealType: food.mealType,
-        consumedAt: food.consumedAt,
-      );
+      await foodLogRef(user.id)
+          .doc(food.id)
+          .update({'name': 'Ripe Avocado', 'calories_g': 2.0});
 
-      await FirestoreHelper.updateFoodItem(user.id, updated);
-
-      final fetched = await FirestoreHelper.getFoodItem(user.id, updated.id);
-      expect(fetched!.name, 'Ripe Avocado');
-      expect(fetched.calories_g, 2.0);
+      final doc = await foodLogRef(user.id).doc(food.id).get();
+      expect(doc.data()!['name'], 'Ripe Avocado');
+      expect(doc.data()!['calories_g'], 2.0);
     });
 
-    test('deleteFoodItem removes food from user', () async {
+    test('delete food item', () async {
       final user = createMockUser();
       final food = createMockFood();
       await FirestoreHelper.createUser(user);
-      await FirestoreHelper.addFoodItem(user.id, food);
+      await foodLogRef(user.id).doc(food.id).set(food.toJson());
 
-      await FirestoreHelper.deleteFoodItem(user.id, food.id);
+      await foodLogRef(user.id).doc(food.id).delete();
 
-      final foods = await FirestoreHelper.getAllFoodItems(user.id);
-      expect(foods.isEmpty, true);
+      final snap = await foodLogRef(user.id).get();
+      expect(snap.docs, isEmpty);
     });
 
-    test('getFoodItem returns null for missing food', () async {
+    test('get single food item by id', () async {
+      final user = createMockUser();
+      await FirestoreHelper.createUser(user);
+      await foodLogRef(user.id)
+          .doc('food_1')
+          .set(createMockFood(id: 'food_1', name: 'Apple').toJson());
+
+      final doc = await foodLogRef(user.id).doc('food_1').get();
+      expect(doc.exists, isTrue);
+      expect(doc.data()!['name'], 'Apple');
+    });
+
+    test('get non-existent food item returns non-existent doc', () async {
       final user = createMockUser();
       await FirestoreHelper.createUser(user);
 
-      final food = await FirestoreHelper.getFoodItem(user.id, 'missing');
-      expect(food, isNull);
+      final doc = await foodLogRef(user.id).doc('missing').get();
+      expect(doc.exists, isFalse);
     });
 
-    test('getAllFoodItems returns list', () async {
+    test('empty subcollection returns no docs', () async {
       final user = createMockUser();
       await FirestoreHelper.createUser(user);
 
-      await FirestoreHelper.addFoodItem(user.id, createMockFood(id: 'food1', name: 'Avocado'));
-      await FirestoreHelper.addFoodItem(user.id, createMockFood(id: 'food2', name: 'Apple'));
-
-      final foods = await FirestoreHelper.getAllFoodItems(user.id);
-      expect(foods.length, 2);
+      final snap = await foodLogRef(user.id).get();
+      expect(snap.docs, isEmpty);
     });
   });
 
   // ============================================================================
-  // FOOD CRUD ERROR CASES
-  // ============================================================================
-  group('Food CRUD Error Cases', () {
-    test('addFoodItem throws StateError for non-existent user', () async {
-      expect(
-        () => FirestoreHelper.addFoodItem('non_existent_user', createMockFood()),
-        throwsA(isA<StateError>()),
-      );
-    });
-
-    test('updateFoodItem throws StateError for non-existent user', () async {
-      expect(
-        () => FirestoreHelper.updateFoodItem('non_existent_user', createMockFood()),
-        throwsA(isA<StateError>()),
-      );
-    });
-
-    test('updateFoodItem throws StateError for non-existent food', () async {
-      final user = createMockUser();
-      await FirestoreHelper.createUser(user);
-
-      expect(
-        () => FirestoreHelper.updateFoodItem(user.id, createMockFood()),
-        throwsA(isA<StateError>()),
-      );
-    });
-
-    test('deleteFoodItem throws StateError for non-existent user', () async {
-      expect(
-        () => FirestoreHelper.deleteFoodItem('non_existent_user', 'food_id'),
-        throwsA(isA<StateError>()),
-      );
-    });
-
-    test('getAllFoodItems returns empty for non-existent user', () async {
-      final foods = await FirestoreHelper.getAllFoodItems('non_existent');
-      expect(foods, isEmpty);
-    });
-
-    test('getFoodItem returns null for non-existent user', () async {
-      final food = await FirestoreHelper.getFoodItem('non_existent', 'food_id');
-      expect(food, isNull);
-    });
-  });
-
-  // ============================================================================
-  // MULTIPLE FOOD ITEMS
+  // MULTIPLE FOOD ITEMS IN SUBCOLLECTION
   // ============================================================================
   group('Multiple Food Items', () {
+    foodLogRef(String userId) =>
+        fakeFirestore.collection('Users').doc(userId).collection('food_log');
+
     test('should handle adding many food items', () async {
       final user = createMockUser();
       await FirestoreHelper.createUser(user);
 
       for (int i = 0; i < 10; i++) {
-        await FirestoreHelper.addFoodItem(
-          user.id, 
-          createMockFood(id: 'food_$i', name: 'Food $i'),
-        );
+        await foodLogRef(user.id)
+            .doc('food_$i')
+            .set(createMockFood(id: 'food_$i', name: 'Food $i').toJson());
       }
 
-      final foods = await FirestoreHelper.getAllFoodItems(user.id);
-      expect(foods.length, 10);
+      final snap = await foodLogRef(user.id).get();
+      expect(snap.docs.length, 10);
     });
 
     test('should correctly delete specific food from multiple', () async {
@@ -272,21 +233,20 @@ void main() {
       await FirestoreHelper.createUser(user);
 
       for (int i = 0; i < 3; i++) {
-        await FirestoreHelper.addFoodItem(
-          user.id, 
-          createMockFood(id: 'food_$i', name: 'Food $i'),
-        );
+        await foodLogRef(user.id)
+            .doc('food_$i')
+            .set(createMockFood(id: 'food_$i', name: 'Food $i').toJson());
       }
 
-      await FirestoreHelper.deleteFoodItem(user.id, 'food_1');
+      await foodLogRef(user.id).doc('food_1').delete();
 
-      final foods = await FirestoreHelper.getAllFoodItems(user.id);
-      expect(foods.length, 2);
+      final snap = await foodLogRef(user.id).get();
+      expect(snap.docs.length, 2);
 
-      final foodIds = foods.map((f) => f.id).toList();
-      expect(foodIds.contains('food_0'), isTrue);
-      expect(foodIds.contains('food_1'), isFalse);
-      expect(foodIds.contains('food_2'), isTrue);
+      final ids = snap.docs.map((d) => d.id).toList();
+      expect(ids.contains('food_0'), isTrue);
+      expect(ids.contains('food_1'), isFalse);
+      expect(ids.contains('food_2'), isTrue);
     });
 
     test('should update correct food among multiple', () async {
@@ -294,52 +254,43 @@ void main() {
       await FirestoreHelper.createUser(user);
 
       for (int i = 0; i < 3; i++) {
-        await FirestoreHelper.addFoodItem(
-          user.id, 
-          createMockFood(id: 'food_$i', name: 'Food $i'),
-        );
+        await foodLogRef(user.id)
+            .doc('food_$i')
+            .set(createMockFood(id: 'food_$i', name: 'Food $i').toJson());
       }
 
-      final updatedFood = FoodItem(
-        id: 'food_1',
-        name: 'Updated Food 1',
-        mass_g: 200,
-        calories_g: 2.0,
-        protein_g: 0.2,
-        carbs_g: 0.4,
-        fat: 0.1,
-        mealType: 'dinner',
-        consumedAt: DateTime.now(),
-      );
+      await foodLogRef(user.id)
+          .doc('food_1')
+          .update({'name': 'Updated Food 1', 'mass_g': 200});
 
-      await FirestoreHelper.updateFoodItem(user.id, updatedFood);
+      final food0 = await foodLogRef(user.id).doc('food_0').get();
+      final food1 = await foodLogRef(user.id).doc('food_1').get();
+      final food2 = await foodLogRef(user.id).doc('food_2').get();
 
-      final food0 = await FirestoreHelper.getFoodItem(user.id, 'food_0');
-      final food1 = await FirestoreHelper.getFoodItem(user.id, 'food_1');
-      final food2 = await FirestoreHelper.getFoodItem(user.id, 'food_2');
-
-      expect(food0!.name, 'Food 0');
-      expect(food1!.name, 'Updated Food 1');
-      expect(food1.mass_g, 200);
-      expect(food2!.name, 'Food 2');
+      expect(food0.data()!['name'], 'Food 0');
+      expect(food1.data()!['name'], 'Updated Food 1');
+      expect(food1.data()!['mass_g'], 200);
+      expect(food2.data()!['name'], 'Food 2');
     });
   });
 
   // ============================================================================
-  // USER WITH LOGGED FOODS
+  // USER DELETION WITH FOOD LOG
   // ============================================================================
-  group('User with Logged Foods', () {
-    test('deleting user cleans up all data', () async {
+  group('User with Food Log', () {
+    test('deleting user does not auto-delete subcollection', () async {
       final user = createMockUser();
       await FirestoreHelper.createUser(user);
-      await FirestoreHelper.addFoodItem(user.id, createMockFood());
+      await fakeFirestore
+          .collection('Users')
+          .doc(user.id)
+          .collection('food_log')
+          .doc('food_1')
+          .set(createMockFood(id: 'food_1').toJson());
 
       expect(await FirestoreHelper.userExists(user.id), isTrue);
-      final foods = await FirestoreHelper.getAllFoodItems(user.id);
-      expect(foods.length, 1);
 
       await FirestoreHelper.deleteUser(user.id);
-
       expect(await FirestoreHelper.userExists(user.id), isFalse);
     });
   });
@@ -369,7 +320,6 @@ void main() {
     test('printAllData does not throw errors', () async {
       final user = createMockUser();
       await FirestoreHelper.createUser(user);
-      await FirestoreHelper.addFoodItem(user.id, createMockFood());
 
       await expectLater(FirestoreHelper.printAllData(), completes);
     });
