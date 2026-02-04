@@ -18,7 +18,7 @@ part 'gemini_chat_service.g.dart';
 enum ChatStage { idle, awaitingMealType, awaitingCuisine }
 
 //chatbot service
-@riverpod
+@Riverpod(keepAlive: true)
 class GeminiChatService extends _$GeminiChatService {
   late final GenerativeModel model;
   ChatStage stage = ChatStage.idle;
@@ -56,6 +56,38 @@ class GeminiChatService extends _$GeminiChatService {
         Be encouraging and provide practical tips.'''),
     );
     return [];
+  }
+
+  /// Build conversation history for Gemini multi-turn chat.
+  /// Takes last 20 messages and converts them to Content objects.
+  /// Recipe results are summarized to avoid token bloat.
+  List<Content> _buildConversationHistory() {
+    final recentMessages = state.length > 20
+        ? state.sublist(state.length - 20)
+        : state;
+
+    return recentMessages.map((msg) {
+      String text = msg.content;
+
+      // Summarize special message types to reduce tokens
+      try {
+        final parsed = jsonDecode(msg.content);
+        if (parsed is Map && parsed['type'] == 'recipe_results') {
+          final recipes = parsed['recipes'] as List? ?? [];
+          final names = recipes.map((r) => r['label']).join(', ');
+          text = 'I showed you these recipes: $names';
+        } else if (parsed is Map && parsed['type'] == 'meal_profile_summary') {
+          text = 'I showed your meal profile for confirmation.';
+        }
+      } catch (_) {
+        // Not JSON, use as-is
+      }
+
+      return Content(
+        msg.isUser ? 'user' : 'model',
+        [TextPart(text)],
+      );
+    }).toList();
   }
 
   //normal chat response
@@ -117,8 +149,10 @@ class GeminiChatService extends _$GeminiChatService {
     User question: $userMessage
     ''';
 
-      final response = await model
-          .generateContent([Content.text(contextualPrompt)]); //call gemini
+      // Use multi-turn chat with conversation history for context
+      final history = _buildConversationHistory();
+      final chat = model.startChat(history: history);
+      final response = await chat.sendMessage(Content.text(contextualPrompt));
 
       //add gemini's response
       state = [
