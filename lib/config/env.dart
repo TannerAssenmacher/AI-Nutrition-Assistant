@@ -9,6 +9,8 @@ class Env {
   static const String openAiApiKey =
       String.fromEnvironment('OPENAI_API_KEY', defaultValue: '');
 
+  static const String usdaApiKey =
+      String.fromEnvironment('USDA_API_KEY', defaultValue: '');
   static const String googleApiKeyWeb =
       String.fromEnvironment('GOOGLE_API_KEY_WEB', defaultValue: '');
   static const String googleApiKeyAndroid =

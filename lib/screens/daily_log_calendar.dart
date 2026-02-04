@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/user_providers.dart';
@@ -10,6 +11,7 @@ import '../db/user.dart';
 import '../db/planned_food.dart';
 import 'package:nutrition_assistant/navigation/nav_helper.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
+import 'package:nutrition_assistant/services/food_search_service.dart';
 
 class DailyLogCalendarScreen extends ConsumerStatefulWidget {
   final bool isInPageView;
@@ -78,10 +80,7 @@ class _DailyLogCalendarScreenState
     return scheduledMeals.where((meal) {
       final mealDateNormalized =
           DateTime(meal.date.year, meal.date.month, meal.date.day);
-      final matches = mealDateNormalized == dayNormalized;
-      debugPrint(
-          '_scheduledMealsForDay: $mealDateNormalized vs $dayNormalized => $matches');
-      return matches;
+      return mealDateNormalized == dayNormalized;
     }).toList();
   }
 
@@ -336,6 +335,15 @@ class _DailyLogCalendarScreenState
                             },
                           ),
                         const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () => _showAddMealDialog(day, userId),
+                            icon: const Icon(Icons.add),
+                            label: const Text('Add meal'),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
                       ],
                     ),
                   ),
@@ -345,6 +353,15 @@ class _DailyLogCalendarScreenState
           },
         );
       },
+    );
+  }
+
+  Future<void> _showAddMealDialog(DateTime day, String userId) async {
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) => _AddMealModal(day: day, userId: userId),
     );
   }
 
@@ -652,6 +669,511 @@ class _DailyLogCalendarScreenState
   }
 }
 
+class _AddMealModal extends ConsumerStatefulWidget {
+  final DateTime day;
+  final String userId;
+
+  const _AddMealModal({required this.day, required this.userId});
+
+  @override
+  ConsumerState<_AddMealModal> createState() => _AddMealModalState();
+}
+
+class _AddMealModalState extends ConsumerState<_AddMealModal> {
+  bool _isSearchMode = true;
+
+  // Manual entry controllers
+  final _nameController = TextEditingController();
+  final _gramsController = TextEditingController(text: '100');
+  final _caloriesController = TextEditingController();
+  final _proteinController = TextEditingController();
+  final _carbsController = TextEditingController();
+  final _fatController = TextEditingController();
+  String _mealType = 'snack';
+
+  // Search state
+  final _searchController = TextEditingController();
+  final _searchService = FoodSearchService();
+  Timer? _debounce;
+  bool _isLoading = false;
+  String? _error;
+  List<FoodSearchResult> _results = const [];
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _nameController.dispose();
+    _gramsController.dispose();
+    _caloriesController.dispose();
+    _proteinController.dispose();
+    _carbsController.dispose();
+    _fatController.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchQueryChanged(String value) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 350), () {
+      _runSearch(value);
+    });
+  }
+
+  Future<void> _runSearch(String query) async {
+    final trimmed = query.trim();
+    if (trimmed.length < 2) {
+      setState(() {
+        _results = const [];
+        _error = null;
+        _isLoading = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final results = await _searchService.searchFoods(trimmed);
+      if (!mounted) return;
+      setState(() {
+        _results = results;
+        _isLoading = false;
+        _error = results.isEmpty
+            ? 'No results found from USDA or Spoonacular.'
+            : null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _error = 'Search failed: $e';
+      });
+    }
+  }
+
+  Future<void> _addManualMeal() async {
+    final name = _nameController.text.trim();
+    final grams = double.tryParse(_gramsController.text.trim());
+    final calories = double.tryParse(_caloriesController.text.trim());
+    final protein = double.tryParse(_proteinController.text.trim());
+    final carbs = double.tryParse(_carbsController.text.trim());
+    final fat = double.tryParse(_fatController.text.trim());
+
+    if (name.isEmpty || grams == null || grams <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a name and valid grams.')),
+      );
+      return;
+    }
+
+    final caloriesTotal = calories ?? 0;
+    final proteinTotal = protein ?? 0;
+    final carbsTotal = carbs ?? 0;
+    final fatTotal = fat ?? 0;
+
+    final consumedAt =
+        DateTime(widget.day.year, widget.day.month, widget.day.day, 12);
+    final item = FoodItem(
+      id: 'manual-${DateTime.now().microsecondsSinceEpoch}',
+      name: name,
+      mass_g: grams,
+      calories_g: caloriesTotal / grams,
+      protein_g: proteinTotal / grams,
+      carbs_g: carbsTotal / grams,
+      fat: fatTotal / grams,
+      mealType: _mealType,
+      consumedAt: consumedAt,
+    );
+
+    try {
+      await ref
+          .read(firestoreFoodLogProvider(widget.userId).notifier)
+          .addFood(widget.userId, item);
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Added "$name"')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to add meal: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _addSearchResult(FoodSearchResult result) async {
+    final gramsController =
+        TextEditingController(text: result.servingGrams.toStringAsFixed(0));
+    String mealType = 'snack';
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Add ${result.name}'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                value: mealType,
+                decoration: const InputDecoration(labelText: 'Meal type'),
+                items: const [
+                  DropdownMenuItem(
+                      value: 'breakfast', child: Text('Breakfast')),
+                  DropdownMenuItem(value: 'lunch', child: Text('Lunch')),
+                  DropdownMenuItem(value: 'dinner', child: Text('Dinner')),
+                  DropdownMenuItem(value: 'snack', child: Text('Snack')),
+                ],
+                onChanged: (value) {
+                  if (value != null) {
+                    mealType = value;
+                  }
+                },
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: gramsController,
+                decoration: const InputDecoration(labelText: 'Grams'),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Source: ${result.sourceLabel}',
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final grams = double.tryParse(gramsController.text.trim());
+                if (grams == null || grams <= 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text('Please enter a valid grams value.')),
+                  );
+                  return;
+                }
+
+                final consumedAt = DateTime(
+                  widget.day.year,
+                  widget.day.month,
+                  widget.day.day,
+                  12,
+                );
+
+                final item = FoodItem(
+                  id: 'search-${DateTime.now().microsecondsSinceEpoch}',
+                  name: result.name,
+                  mass_g: grams,
+                  calories_g: result.caloriesPerGram,
+                  protein_g: result.proteinPerGram,
+                  carbs_g: result.carbsPerGram,
+                  fat: result.fatPerGram,
+                  mealType: mealType,
+                  consumedAt: consumedAt,
+                );
+
+                try {
+                  await ref
+                      .read(firestoreFoodLogProvider(widget.userId).notifier)
+                      .addFood(widget.userId, item);
+                  if (context.mounted) {
+                    Navigator.pop(context); // Close the portion dialog
+                    if (mounted) {
+                      Navigator.pop(context); // Close the main modal
+                    }
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Added "${result.name}"')),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to add: $e')),
+                    );
+                  }
+                }
+              },
+              child: const Text('Add'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.7,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (context, scrollController) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: 16,
+            right: 16,
+          ),
+          child: Column(
+            children: [
+              // Toggle buttons
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.brown.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() => _isSearchMode = true),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            color: _isSearchMode
+                                ? Colors.brown.shade600
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.search,
+                                size: 20,
+                                color: _isSearchMode
+                                    ? Colors.white
+                                    : Colors.brown.shade600,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Search Online',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: _isSearchMode
+                                      ? Colors.white
+                                      : Colors.brown.shade600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() => _isSearchMode = false),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            color: !_isSearchMode
+                                ? Colors.brown.shade600
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.edit,
+                                size: 20,
+                                color: !_isSearchMode
+                                    ? Colors.white
+                                    : Colors.brown.shade600,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Manual Entry',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: !_isSearchMode
+                                      ? Colors.white
+                                      : Colors.brown.shade600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Content
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: scrollController,
+                  child:
+                      _isSearchMode ? _buildSearchMode() : _buildManualMode(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSearchMode() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          controller: _searchController,
+          decoration: InputDecoration(
+            hintText: 'Search USDA foods (Spoonacular fallback)...',
+            prefixIcon: const Icon(Icons.search),
+            suffixIcon: _searchController.text.isEmpty
+                ? null
+                : IconButton(
+                    icon: const Icon(Icons.clear),
+                    onPressed: () {
+                      _searchController.clear();
+                      _runSearch('');
+                      setState(() {});
+                    },
+                  ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          onChanged: (value) {
+            setState(() {});
+            _onSearchQueryChanged(value);
+          },
+          onSubmitted: _runSearch,
+        ),
+        if (_isLoading)
+          const Padding(
+            padding: EdgeInsets.only(top: 8),
+            child: LinearProgressIndicator(minHeight: 2),
+          ),
+        if (_error != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              _error!,
+              style: TextStyle(color: Colors.red.shade400, fontSize: 12),
+            ),
+          ),
+        if (_results.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _results.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 6),
+              itemBuilder: (context, index) {
+                final result = _results[index];
+                return _FoodSearchResultTile(
+                  result: result,
+                  onAdd: () => _addSearchResult(result),
+                );
+              },
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildManualMode() {
+    return Column(
+      children: [
+        TextField(
+          controller: _nameController,
+          decoration: const InputDecoration(labelText: 'Meal name'),
+          textInputAction: TextInputAction.next,
+        ),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<String>(
+          value: _mealType,
+          decoration: const InputDecoration(labelText: 'Meal type'),
+          items: const [
+            DropdownMenuItem(value: 'breakfast', child: Text('Breakfast')),
+            DropdownMenuItem(value: 'lunch', child: Text('Lunch')),
+            DropdownMenuItem(value: 'dinner', child: Text('Dinner')),
+            DropdownMenuItem(value: 'snack', child: Text('Snack')),
+          ],
+          onChanged: (value) {
+            if (value != null) {
+              setState(() => _mealType = value);
+            }
+          },
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _gramsController,
+          decoration: const InputDecoration(labelText: 'Grams'),
+          keyboardType: TextInputType.number,
+          textInputAction: TextInputAction.next,
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _caloriesController,
+          decoration: const InputDecoration(labelText: 'Total calories'),
+          keyboardType: TextInputType.number,
+          textInputAction: TextInputAction.next,
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _proteinController,
+          decoration: const InputDecoration(labelText: 'Total protein (g)'),
+          keyboardType: TextInputType.number,
+          textInputAction: TextInputAction.next,
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _carbsController,
+          decoration: const InputDecoration(labelText: 'Total carbs (g)'),
+          keyboardType: TextInputType.number,
+          textInputAction: TextInputAction.next,
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _fatController,
+          decoration: const InputDecoration(labelText: 'Total fat (g)'),
+          keyboardType: TextInputType.number,
+        ),
+        const SizedBox(height: 20),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: _addManualMeal,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.brown.shade600,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+            ),
+            child: const Text(
+              'Add Meal',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _MiniMacroChip extends StatelessWidget {
   const _MiniMacroChip({required this.label, required this.color});
 
@@ -690,14 +1212,6 @@ class _FoodsListWidget extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Food Items',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 8),
         ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -808,6 +1322,76 @@ class _FoodsListWidget extends StatelessWidget {
           },
         ),
       ],
+    );
+  }
+}
+
+class _FoodSearchResultTile extends StatelessWidget {
+  const _FoodSearchResultTile({required this.result, required this.onAdd});
+
+  final FoodSearchResult result;
+  final VoidCallback onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    final calories = (result.caloriesPerGram * result.servingGrams).round();
+
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.brown.shade200),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  result.name,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${result.servingGrams.toStringAsFixed(0)} g · $calories kcal',
+                  style: TextStyle(
+                    color: Colors.grey.shade700,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'P ${(result.proteinPerGram * result.servingGrams).toStringAsFixed(1)}g · '
+                  'C ${(result.carbsPerGram * result.servingGrams).toStringAsFixed(1)}g · '
+                  'F ${(result.fatPerGram * result.servingGrams).toStringAsFixed(1)}g',
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: 11,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  result.sourceLabel,
+                  style: TextStyle(
+                    color: Colors.grey.shade500,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          OutlinedButton(
+            onPressed: onAdd,
+            child: const Text('Add'),
+          ),
+        ],
+      ),
     );
   }
 }
