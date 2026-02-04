@@ -23,6 +23,7 @@ const db = getFirestore();
 // Define secrets
 const pgPassword = defineSecret("pg-password");
 const geminiApiKey = defineSecret("gemini-api-key");
+const usdaApiKey = defineSecret("USDA_API_KEY");
 
 // PostgreSQL connection pool (lazy initialization)
 let pool: Pool | null = null;
@@ -588,6 +589,200 @@ export const proxyImage = onRequest(
     }
   }
 );
+
+/**
+ * Search foods via USDA FoodData Central, with Spoonacular fallback
+ * Requires authentication (including anonymous auth)
+ */
+export const searchFoods = onCall(
+  {
+    cors: true,
+    invoker: 'public',
+    secrets: [usdaApiKey],
+  },
+  async (request) => {
+    // Verify user is authenticated (including anonymous users)
+    if (!request.auth) {
+      throw new HttpsError(
+        'unauthenticated',
+        'User must be authenticated to search foods'
+      );
+    }
+
+    const query = (request.data?.query || '').toString().trim();
+    if (!query) {
+      throw new HttpsError('invalid-argument', 'Query is required');
+    }
+
+    const results: any[] = [];
+
+    // USDA FoodData Central API
+    try {
+      const apiKey = usdaApiKey.value();
+      const usdaUrl = new URL('https://api.nal.usda.gov/fdc/v1/foods/search');
+      usdaUrl.searchParams.set('api_key', apiKey);
+      usdaUrl.searchParams.set('query', query);
+      usdaUrl.searchParams.set('pageSize', '10');
+      usdaUrl.searchParams.set('dataType', 'Foundation,SR Legacy');
+
+      const response = await fetch(usdaUrl.toString());
+
+      if (response.ok) {
+        const data = (await response.json()) as any;
+        const foods = Array.isArray(data?.foods) ? data.foods : [];
+
+        for (const food of foods) {
+          const name = (food?.description || '').toString().trim();
+          if (!name) continue;
+
+          const nutrients = Array.isArray(food?.foodNutrients)
+            ? food.foodNutrients
+            : [];
+
+          // USDA nutrient IDs: 1008=Energy, 1003=Protein, 1005=Carbs, 1004=Fat
+          const calories = findNutrient(nutrients, [1008], ['Energy']);
+          const protein = findNutrient(nutrients, [1003], ['Protein']);
+          const carbs = findNutrient(nutrients, [1005], ['Carbohydrate']);
+          const fat = findNutrient(nutrients, [1004], ['Total lipid (fat)']);
+
+          if (calories === null) continue;
+
+          // USDA nutrients are per 100g
+          const servingGrams = 100;
+
+          results.push({
+            id: `usda_${food?.fdcId || name}`,
+            name,
+            caloriesPerGram: calories / servingGrams,
+            proteinPerGram: (protein || 0) / servingGrams,
+            carbsPerGram: (carbs || 0) / servingGrams,
+            fatPerGram: (fat || 0) / servingGrams,
+            servingGrams,
+            source: 'usda',
+          });
+        }
+
+        console.log(`USDA returned ${results.length} results`);
+      } else {
+        console.warn(`USDA API error: ${response.status} ${response.statusText}`);
+      }
+    } catch (error) {
+      console.warn('USDA search failed:', error);
+    }
+
+    // Spoonacular fallback with multiple API keys for redundancy
+    // (from daily_fetch.js production pattern)
+    const SPOONACULAR_KEYS = [
+      '5c03d61e35e6423f9d85cba97abe9c9b',
+      'f7733922048f4b439533101785244150',
+      '3ff3175c82d1435a941219ed38c55473',
+      'be1b00e1fd0646e1ad12e48aad78d1b8',
+      'b7402fac116342be927d7a98cf2a5c3d',
+      '15b4096cb5c24b41aed6c1b2683444b0',
+      'a80b53549c1a443787491aaa8ea68e8f',
+    ];
+
+    const keysToTry = SPOONACULAR_KEYS;
+
+    for (const apiKey of keysToTry) {
+      try {
+        const spoonUrl = new URL('https://api.spoonacular.com/recipes/complexSearch');
+        spoonUrl.searchParams.set('apiKey', apiKey);
+        spoonUrl.searchParams.set('query', query);
+        spoonUrl.searchParams.set('number', '10');
+        spoonUrl.searchParams.set('addRecipeNutrition', 'true');
+
+        const response = await fetch(spoonUrl.toString());
+
+        // Quota exceeded - try next key
+        if (response.status === 402 || response.status === 401) {
+          console.warn(
+            `Spoonacular API key quota exceeded (${response.status}), trying next key...`
+          );
+          continue;
+        }
+
+        if (!response.ok) {
+          console.warn(
+            `Spoonacular error: ${response.status} ${response.statusText}`
+          );
+          continue;
+        }
+
+        const data = (await response.json()) as any;
+        const items = Array.isArray(data?.results) ? data.results : [];
+
+        for (const item of items) {
+          const name = (item?.title || '').toString().trim();
+          if (!name) continue;
+
+          const nutrition = item?.nutrition || null;
+          if (!nutrition) continue;
+
+          const weight = nutrition?.weightPerServing || null;
+          const servingGrams =
+            weight?.unit === 'g' ? Number(weight?.amount) : null;
+          if (!servingGrams || servingGrams <= 0) continue;
+
+          const nutrients = Array.isArray(nutrition?.nutrients)
+            ? nutrition.nutrients
+            : [];
+
+          const calories = findNutrient(nutrients, [], ['Calories']);
+          const protein = findNutrient(nutrients, [], ['Protein']);
+          const carbs = findNutrient(nutrients, [], ['Carbohydrates']);
+          const fat = findNutrient(nutrients, [], ['Fat']);
+
+          if (calories === null) continue;
+
+          results.push({
+            id: `spoon_${item?.id || name}`,
+            name,
+            caloriesPerGram: calories / servingGrams,
+            proteinPerGram: (protein || 0) / servingGrams,
+            carbsPerGram: (carbs || 0) / servingGrams,
+            fatPerGram: (fat || 0) / servingGrams,
+            servingGrams,
+            source: 'spoonacular',
+          });
+        }
+
+        // Success - return results from this key
+        return { results };
+      } catch (error) {
+        console.warn(`Spoonacular search with key failed: ${error}, trying next key...`);
+      }
+    }
+
+    console.warn('All Spoonacular API keys exhausted or failed');
+    return { results };
+  }
+);
+
+function findNutrient(
+  nutrients: any[],
+  ids: number[],
+  names: string[],
+): number | null {
+  for (const nutrient of nutrients) {
+    const id = nutrient?.nutrientId;
+    if (typeof id === 'number' && ids.includes(id)) {
+      const value = nutrient?.value ?? nutrient?.amount;
+      if (typeof value === 'number') return value;
+    }
+
+    const name = (nutrient?.nutrientName ?? nutrient?.name ?? '').toString();
+    if (
+      name &&
+      names.some((n) => n.toLowerCase() === name.toLowerCase())
+    ) {
+      const value = nutrient?.value ?? nutrient?.amount;
+      if (typeof value === 'number') return value;
+    }
+  }
+
+  return null;
+}
 
 export const searchRecipes = onCall<SearchParams>(
   {
