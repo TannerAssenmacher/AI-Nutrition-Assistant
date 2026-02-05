@@ -88,6 +88,50 @@ class _ProfilePageState extends State<ProfilePage> {
     _loadProfile();
   }
 
+  /// Calculate estimated daily calorie goal using Mifflin-St Jeor formula
+  int _calculateDailyCalories() {
+    final height = double.tryParse(_heightController.text);
+    final weight = double.tryParse(_weightController.text);
+
+    if (height == null || weight == null || _sex == null || _activityLevel == null || _dob == null) {
+      return 0;
+    }
+
+    // Convert height from inches to cm
+    final heightCm = height * 2.54;
+    // Convert weight from lbs to kg
+    final weightKg = weight / 2.205;
+    
+    // Calculate age from date of birth
+    final dob = DateTime.parse(_dob!);
+    final now = DateTime.now();
+    int age = now.year - dob.year;
+    if (now.month < dob.month || (now.month == dob.month && now.day < dob.day)) {
+      age--;
+    }
+
+    // Mifflin-St Jeor formula
+    double bmr;
+    if (_sex == 'Male') {
+      bmr = (10 * weightKg) + (6.25 * heightCm) - (5 * age) + 5;
+    } else {
+      bmr = (10 * weightKg) + (6.25 * heightCm) - (5 * age) - 161;
+    }
+
+    // Activity level multipliers
+    final activityMultipliers = {
+      'Sedentary': 1.2,
+      'Lightly Active': 1.375,
+      'Moderately Active': 1.55,
+      'Very Active': 1.725,
+    };
+
+    final multiplier = activityMultipliers[_activityLevel] ?? 1.55;
+    final dailyCalories = (bmr * multiplier).round();
+
+    return dailyCalories;
+  }
+
   Future<void> _loadProfile() async {
     if (user == null) {
       setState(() => _isLoading = false);
@@ -306,9 +350,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             _activityLevel, (val) => _activityLevel = val),
                         _dropdownField('Dietary Goal', _dietGoals, _dietaryGoal,
                             (val) => _dietaryGoal = val),
-                        _editableField(
-                            _dailyCaloriesController, 'Daily Calorie Goal',
-                            isNumber: true),
+                        _calorieGoalField(),
                         const SizedBox(height: 20),
                         const Text(
                           'Macronutrient Goals (% of calories)',
@@ -513,6 +555,26 @@ class _ProfilePageState extends State<ProfilePage> {
             }).toList(),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _calorieGoalField() {
+    final estimatedCalories = _calculateDailyCalories();
+    final displayEstimate =
+        estimatedCalories > 0 ? estimatedCalories.toString() : 'N/A';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: TextFormField(
+        controller: _dailyCaloriesController,
+        keyboardType: TextInputType.number,
+        decoration: InputDecoration(
+          labelText: 'Daily Calorie Goal',
+          border: const OutlineInputBorder(),
+          helperText: 'Estimated: $displayEstimate calories',
+          helperStyle: const TextStyle(fontSize: 12),
+        ),
       ),
     );
   }

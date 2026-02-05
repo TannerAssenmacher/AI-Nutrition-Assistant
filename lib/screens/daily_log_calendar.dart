@@ -497,12 +497,14 @@ class _DailyLogCalendarScreenState
 
                     // Determine color based on average
                     Color goalIndicatorColor;
-                    if (avgPercentage >= 100) {
+                    if (avgPercentage > 130) {
+                      goalIndicatorColor = Colors.red;
+                    } else if (avgPercentage > 110) {
+                      goalIndicatorColor = Colors.yellow.shade700;
+                    } else if (avgPercentage >= 90) {
                       goalIndicatorColor = Colors.green;
                     } else if (avgPercentage >= 80) {
                       goalIndicatorColor = Colors.orange;
-                    } else if (avgPercentage >= 50) {
-                      goalIndicatorColor = Colors.yellow.shade700;
                     } else {
                       goalIndicatorColor = Colors.grey;
                     }
@@ -1494,13 +1496,15 @@ class _MacroProgressIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final percentage = goal > 0 ? (current / goal * 100).clamp(0, 150) : 0.0;
-    final isComplete = percentage >= 100;
-    final isClose = percentage >= 80 && percentage < 100;
 
     Color statusColor;
-    if (isComplete) {
+    if (percentage > 130) {
+      statusColor = Colors.red;
+    } else if (percentage > 110) {
+      statusColor = Colors.yellow.shade700;
+    } else if (percentage >= 90) {
       statusColor = Colors.green;
-    } else if (isClose) {
+    } else if (percentage >= 80) {
       statusColor = Colors.orange;
     } else {
       statusColor = Colors.grey;
