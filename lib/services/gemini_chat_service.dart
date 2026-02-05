@@ -49,7 +49,7 @@ class GeminiChatService extends _$GeminiChatService {
   List<ChatMessage> build() {
     final apiKey = Env.require(Env.geminiApiKey, 'GEMINI_API_KEY');
     model = GenerativeModel(
-      model: 'gemini-2.5-flash', //fast & free
+      model: 'gemini-3-flash-preview', //fast & free
       apiKey: apiKey,
       systemInstruction: Content.text('''You are a helpful nutrition assistant. 
         Help users with meal planning, calorie counting, and nutrition advice.
