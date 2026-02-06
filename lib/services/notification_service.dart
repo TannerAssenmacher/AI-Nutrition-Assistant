@@ -8,6 +8,8 @@ class NotificationService {
   static final FlutterLocalNotificationsPlugin _notifications =
       FlutterLocalNotificationsPlugin();
   static bool _initialized = false;
+  static DateTime? _lastStreakNotificationDate;
+  static DateTime? _lastMacroNotificationDate;
 
   /// Initialize the notification service
   static Future<void> initialize() async {
@@ -16,7 +18,8 @@ class NotificationService {
     // Initialize timezone
     tz.initializeTimeZones();
 
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
@@ -69,7 +72,7 @@ class NotificationService {
     required Map<String, double> goals,
   }) {
     final remaining = <String, double>{};
-    
+
     // Calculate what's already logged
     final loggedCalories = currentTotals['calories'] ?? 0;
     final loggedProtein = currentTotals['protein'] ?? 0;
@@ -178,6 +181,15 @@ class NotificationService {
 
   /// Show streak reminder notification
   static Future<void> showStreakReminder(int currentStreak) async {
+    // Only show once per day
+    final now = DateTime.now();
+    if (_lastStreakNotificationDate != null &&
+        _lastStreakNotificationDate!.year == now.year &&
+        _lastStreakNotificationDate!.month == now.month &&
+        _lastStreakNotificationDate!.day == now.day) {
+      return; // Already shown today
+    }
+
     final message = getStreakReminderMessage(currentStreak);
     await showNotification(
       id: 1,
@@ -185,10 +197,20 @@ class NotificationService {
       message: message,
       payload: 'streak_reminder',
     );
+    _lastStreakNotificationDate = now;
   }
 
   /// Show macro reminder notification
   static Future<void> showMacroReminder(Map<String, double> remaining) async {
+    // Only show once per day
+    final now = DateTime.now();
+    if (_lastMacroNotificationDate != null &&
+        _lastMacroNotificationDate!.year == now.year &&
+        _lastMacroNotificationDate!.month == now.month &&
+        _lastMacroNotificationDate!.day == now.day) {
+      return; // Already shown today
+    }
+
     final message = getMacroReminderMessage(remaining);
     await showNotification(
       id: 2,
@@ -196,6 +218,7 @@ class NotificationService {
       message: message,
       payload: 'macro_reminder',
     );
+    _lastMacroNotificationDate = now;
   }
 
   /// Schedule daily streak reminder (e.g., at 12:00 PM)
