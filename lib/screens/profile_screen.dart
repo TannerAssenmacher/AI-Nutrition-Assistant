@@ -7,7 +7,6 @@ import 'package:nutrition_assistant/widgets/nav_bar.dart';
 
 class ProfilePage extends StatefulWidget {
   final bool isInPageView;
-
   const ProfilePage({super.key, this.isInPageView = false});
 
   @override
@@ -22,7 +21,12 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _isLoading = true;
   bool _isSaving = false;
 
-  // Controllers
+  // Colors
+  final Color bgColor = const Color(0xFFF5EDE2);
+  final Color brandColor = const Color(0xFF5F9735); 
+  final Color deleteColor = const Color(0xFFD32F2F); // Solid Red
+
+  // Controllers for Header Boxes
   final _heightController = TextEditingController();
   final _weightController = TextEditingController();
   final _dailyCaloriesController = TextEditingController();
@@ -31,13 +35,24 @@ class _ProfilePageState extends State<ProfilePage> {
   String? _firstname;
   String? _lastname;
   String? _email;
-  String? _dietaryGoal;
+  String? _dob;
+  String? _sex;
   String? _activityLevel;
+  String? _dietaryGoal;
+  List<String> _dietaryHabits = [];
+  List<String> _health = [];
 
-  // Macros
   double _protein = 0;
   double _carbs = 0;
   double _fats = 0;
+
+  final _activityLevels = ['Sedentary', 'Lightly Active', 'Moderately Active', 'Very Active'];
+  final _dietGoals = ['Lose Weight', 'Maintain Weight', 'Gain Muscle'];
+  final _dietaryHabitOptions = ['balanced', 'high-fiber', 'high-protein', 'low-carb', 'low-fat', 'low-sodium'];
+  final _healthOptions = [
+    'vegan', 'vegetarian', 'gluten free', 'dairy free', 'ketogenic', 
+    'lacto-vegetarian', 'ovo-vegetarian', 'pescetarian', 'paleo', 'primal', 'low FODMAP', 'Whole30'
+  ];
 
   @override
   void initState() {
@@ -45,23 +60,25 @@ class _ProfilePageState extends State<ProfilePage> {
     _loadProfile();
   }
 
+  String _getInitials() {
+    String initials = "";
+    if (_firstname != null && _firstname!.isNotEmpty) initials += _firstname![0].toUpperCase();
+    if (_lastname != null && _lastname!.isNotEmpty) initials += _lastname![0].toUpperCase();
+    return initials.isEmpty ? "?" : initials;
+  }
+
   Future<void> _loadProfile() async {
-    if (user == null) {
-      setState(() => _isLoading = false);
-      return;
-    }
+    if (user == null) return;
     try {
       final doc = await _firestore.collection('Users').doc(user!.uid).get();
-      if (!doc.exists) {
-        setState(() => _isLoading = false);
-        return;
-      }
-
+      if (!doc.exists) return;
       final data = doc.data()!;
       setState(() {
-        _firstname = data['firstname'] ?? 'User';
-        _lastname = data['lastname'] ?? '';
+        _firstname = data['firstname'];
+        _lastname = data['lastname'];
         _email = user!.email;
+        _dob = (data['dob'] != null) ? data['dob'].toString().split(' ')[0] : '';
+        _sex = data['sex'];
         _heightController.text = data['height']?.toString() ?? '';
         _weightController.text = data['weight']?.toString() ?? '';
         _activityLevel = data['activityLevel'];
@@ -74,9 +91,12 @@ class _ProfilePageState extends State<ProfilePage> {
         _protein = macroGoals['protein']?.toDouble() ?? 0;
         _carbs = macroGoals['carbs']?.toDouble() ?? 0;
         _fats = (macroGoals['fat'] ?? macroGoals['fats'] ?? 0).toDouble();
+        
+        _dietaryHabits = List<String>.from(mealProfile['dietaryHabits'] ?? []);
+        _health = List<String>.from(mealProfile['healthRestrictions'] ?? []);
       });
     } catch (e) {
-      debugPrint('Error: $e');
+      debugPrint("Error loading: $e");
     } finally {
       setState(() => _isLoading = false);
     }
@@ -88,13 +108,16 @@ class _ProfilePageState extends State<ProfilePage> {
       await _firestore.collection('Users').doc(user!.uid).update({
         'height': double.tryParse(_heightController.text),
         'weight': double.tryParse(_weightController.text),
-        'mealProfile.dailyCalorieGoal': int.tryParse(_dailyCaloriesController.text),
-        'mealProfile.macroGoals': {'protein': _protein, 'carbs': _carbs, 'fat': _fats},
-        'updatedAt': FieldValue.serverTimestamp(),
+        'activityLevel': _activityLevel,
+        'mealProfile': {
+          'dietaryGoal': _dietaryGoal,
+          'dailyCalorieGoal': int.tryParse(_dailyCaloriesController.text),
+          'macroGoals': {'protein': _protein, 'carbs': _carbs, 'fat': _fats},
+          'dietaryHabits': _dietaryHabits,
+          'healthRestrictions': _health,
+        },
       });
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Changes saved!')));
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error saving: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile Updated!')));
     } finally {
       setState(() => _isSaving = false);
     }
@@ -102,18 +125,16 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-
-    const primaryColor = Color(0xFFB5A1E3); // The lavender color from your img
+    if (_isLoading) return Scaffold(backgroundColor: bgColor, body: const Center(child: CircularProgressIndicator()));
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9F9FB),
+      backgroundColor: bgColor,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+        backgroundColor: Colors.transparent, 
+        elevation: 0, 
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black, size: 20),
-          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black, size: 20), 
+          onPressed: () => Navigator.pop(context)
         ),
       ),
       body: SingleChildScrollView(
@@ -121,77 +142,101 @@ class _ProfilePageState extends State<ProfilePage> {
         child: Column(
           children: [
             // --- HEADER ---
-            Center(
-              child: Column(
-                children: [
-                  const CircleAvatar(
-                    radius: 50,
-                    backgroundColor: Colors.white,
-                    child: Icon(Icons.person, size: 50, color: primaryColor),
-                  ),
-                  const SizedBox(height: 12),
-                  Text('$_firstname $_lastname', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  Text(_email ?? '', style: TextStyle(color: Colors.grey[500])),
-                ],
+            CircleAvatar(
+              radius: 50, 
+              backgroundColor: brandColor, 
+              child: Text(
+                _getInitials(),
+                style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white),
               ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 12),
+            Text('$_firstname $_lastname', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            Text(_email ?? '', style: TextStyle(color: Colors.grey[600], fontSize: 14)),
+            const SizedBox(height: 25),
 
-            // --- STATS ROW (Total Calories, Weight, Height) ---
+            // --- HEADER BOXES ---
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildStatCard(_dailyCaloriesController.text.isEmpty ? "0" : _dailyCaloriesController.text, "Total Cal", primaryColor, true),
-                _buildStatCard("${_weightController.text}", "Weight", Colors.white, false),
-                _buildStatCard("${_heightController.text}", "Height", Colors.white, false),
+                _buildStatBox("Height", _heightController),
+                _buildStatBox("Weight", _weightController),
+                _buildStatBox("Daily Cal", _dailyCaloriesController, isPrimary: true),
               ],
-            ),
-            const SizedBox(height: 32),
-
-            // --- MENU ITEMS ---
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)],
-              ),
-              child: Column(
-                children: [
-                  _buildMenuTile(Icons.person_outline, "User", _firstname ?? "Profile Details"),
-                  const Divider(height: 1, indent: 60),
-                  _buildMenuTile(Icons.restaurant_menu_outlined, "Meal Profile", _dietaryGoal ?? "Manage Goals"),
-                  const Divider(height: 1, indent: 60),
-                  _buildMenuTile(Icons.delete_outline, "Delete Account", "Permanent Action", isDelete: true),
-                ],
-              ),
             ),
             const SizedBox(height: 30),
 
-            // --- MACROS ---
-            const Align(alignment: Alignment.centerLeft, child: Text(" Nutrient Balance", style: TextStyle(fontWeight: FontWeight.bold))),
-            MacroSlider(
-              protein: _protein, carbs: _carbs, fats: _fats,
-              onChanged: (p, c, f) => setState(() { _protein = p; _carbs = c; _fats = f; }),
-            ),
-            const SizedBox(height: 40),
+            // --- USER SECTION ---
+            _sectionHeader("User"),
+            _buildCard([
+              _buildListTile(Icons.badge_outlined, "First Name", _firstname ?? ""),
+              _buildListTile(Icons.badge_outlined, "Last Name", _lastname ?? ""),
+              _buildListTile(Icons.email_outlined, "Email", _email ?? ""),
+              _buildListTile(Icons.calendar_today, "DOB", _dob ?? "Not set"),
+              _buildListTile(Icons.wc, "Sex", _sex ?? "Not set"),
+              _buildListTile(Icons.bolt, "Activity Level", _activityLevel ?? "Select", 
+                  onTap: () => _showPicker("Activity", _activityLevels, _activityLevel, (v) => setState(() => _activityLevel = v))),
+              _buildListTile(Icons.track_changes, "Dietary Goal", _dietaryGoal ?? "Select", 
+                  onTap: () => _showPicker("Diet Goal", _dietGoals, _dietaryGoal, (v) => setState(() => _dietaryGoal = v))),
+            ]),
 
-            // --- SAVE BUTTON ---
+            const SizedBox(height: 25),
+
+            // --- MEAL PROFILE SECTION ---
+            _sectionHeader("Meal Profile"),
+            _buildCard([
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text("Macronutrients Goal", style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 12),
+                    MacroSlider(
+                      protein: _protein, carbs: _carbs, fats: _fats, 
+                      onChanged: (p, c, f) => setState(() { _protein = p; _carbs = c; _fats = f; })
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              _buildMultiSelectTile("Dietary Habits", _dietaryHabitOptions, _dietaryHabits),
+              const Divider(height: 1),
+              _buildMultiSelectTile("Health Restrictions", _healthOptions, _health),
+            ]),
+
+            const SizedBox(height: 30),
+
+            // --- BUTTONS ---
             SizedBox(
               width: double.infinity,
               height: 55,
               child: ElevatedButton(
                 onPressed: _saveProfile,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryColor,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  elevation: 0,
+                  backgroundColor: brandColor, 
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))
                 ),
                 child: _isSaving 
                   ? const CircularProgressIndicator(color: Colors.white) 
                   : const Text("Save Changes", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
               ),
             ),
-            const SizedBox(height: 30),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 55,
+              child: ElevatedButton(
+                onPressed: () {}, // Add logic for account deletion
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: deleteColor, 
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                  elevation: 0,
+                ),
+                child: const Text("Delete Account", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+              ),
+            ),
+            const SizedBox(height: 40),
           ],
         ),
       ),
@@ -202,40 +247,121 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildStatCard(String value, String label, Color color, bool isDark) {
+  Widget _sectionHeader(String title) {
+    return Align(
+      alignment: Alignment.centerLeft, 
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 8, left: 4),
+        child: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black54)),
+      )
+    );
+  }
+
+  Widget _buildStatBox(String label, TextEditingController controller, {bool isPrimary = false}) {
     return Container(
-      width: MediaQuery.of(context).size.width * 0.27,
-      padding: const EdgeInsets.symmetric(vertical: 20),
+      width: MediaQuery.of(context).size.width * 0.28,
+      padding: const EdgeInsets.symmetric(vertical: 18),
       decoration: BoxDecoration(
-        color: color,
+        color: isPrimary ? brandColor : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: isDark ? null : Border.all(color: Colors.grey.withOpacity(0.1)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)],
       ),
       child: Column(
         children: [
-          Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
-          const SizedBox(height: 4),
-          Text(label, style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.grey)),
+          SizedBox(
+            width: 70,
+            child: TextField(
+              controller: controller,
+              textAlign: TextAlign.center,
+              keyboardType: TextInputType.number,
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: isPrimary ? Colors.white : Colors.black),
+              decoration: const InputDecoration(border: InputBorder.none, isDense: true),
+            ),
+          ),
+          Text(label, style: TextStyle(fontSize: 12, color: isPrimary ? Colors.white70 : Colors.grey)),
         ],
       ),
     );
   }
 
-  Widget _buildMenuTile(IconData icon, String title, String subtitle, {bool isDelete = false}) {
-    return ListTile(
-      onTap: isDelete ? () {} : null, // Add your existing logic here
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(color: isDelete ? Colors.red[50] : const Color(0xFFF3F0FF), borderRadius: BorderRadius.circular(10)),
-        child: Icon(icon, color: isDelete ? Colors.red : const Color(0xFFB5A1E3), size: 22),
+  Widget _buildCard(List<Widget> children) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white, 
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)]
       ),
-      title: Text(title, style: TextStyle(fontWeight: FontWeight.w600, color: isDelete ? Colors.red : Colors.black87)),
-      subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
-      trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+      child: Column(children: children),
+    );
+  }
+
+  Widget _buildListTile(IconData icon, String title, String value, {VoidCallback? onTap}) {
+    return ListTile(
+      onTap: onTap,
+      leading: Icon(icon, color: brandColor, size: 22),
+      title: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min, 
+        children: [
+          Text(value, style: const TextStyle(color: Colors.grey, fontSize: 14)),
+          if (onTap != null) const Icon(Icons.chevron_right, size: 18, color: Colors.grey),
+        ]
+      ),
+    );
+  }
+
+  Widget _buildMultiSelectTile(String title, List<String> options, List<String> selected) {
+    return ListTile(
+      title: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 10.0, bottom: 5),
+        child: Wrap(
+          spacing: 8, 
+          runSpacing: 4,
+          children: options.map((opt) {
+            final isSel = selected.contains(opt);
+            return ChoiceChip(
+              label: Text(opt, style: TextStyle(fontSize: 12, color: isSel ? Colors.white : Colors.black87)),
+              selected: isSel,
+              selectedColor: brandColor,
+              backgroundColor: bgColor.withOpacity(0.5),
+              onSelected: (v) => setState(() => v ? selected.add(opt) : selected.remove(opt)),
+            );
+          }).toList()
+        ),
+      ),
+    );
+  }
+
+  void _showPicker(String title, List<String> options, String? current, Function(String) onSelect) {
+    showModalBottomSheet(
+      context: context, 
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(25))),
+      builder: (context) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min, 
+          children: [
+            Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            const Divider(),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                children: options.map((o) => ListTile(
+                  title: Text(o, textAlign: TextAlign.center), 
+                  onTap: () { onSelect(o); Navigator.pop(context); }
+                )).toList(),
+              ),
+            ),
+            const SizedBox(height: 20),
+          ]
+        ),
+      )
     );
   }
 }
-
 /*import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
