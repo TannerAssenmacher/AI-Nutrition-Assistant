@@ -12,6 +12,7 @@ import '../db/planned_food.dart';
 import 'package:nutrition_assistant/navigation/nav_helper.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
 import 'package:nutrition_assistant/services/food_search_service.dart';
+import 'package:nutrition_assistant/services/notification_service.dart';
 
 class DailyLogCalendarScreen extends ConsumerStatefulWidget {
   final bool isInPageView;
@@ -27,6 +28,14 @@ class _DailyLogCalendarScreenState
     extends ConsumerState<DailyLogCalendarScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
+  bool _notificationsChecked = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize notifications when screen loads
+    NotificationService.initialize();
+  }
 
   Widget _wrapWithScaffold(Widget body) {
     if (widget.isInPageView == true) {
@@ -365,6 +374,62 @@ class _DailyLogCalendarScreenState
     );
   }
 
+  void _checkAndShowNotifications(
+    List<FoodItem> foodLog,
+    Map<String, double> goals,
+    String userId,
+  ) async {
+    // Only check once per session
+    if (_notificationsChecked) return;
+    _notificationsChecked = true;
+
+    // Only check for today
+    final now = DateTime.now();
+    
+    // Check streak notification (show if no log today)
+    if (!NotificationService.hasLoggedToday(foodLog)) {
+      final streakAsync = ref.read(dailyStreakProvider(userId));
+      streakAsync.whenData((streak) {
+        NotificationService.showStreakReminder(streak);
+      });
+    }
+
+    // Check macro notification (show after 6 PM if goals not met)
+    if (NotificationService.isAfter6PM()) {
+      final todayLog = foodLog.where((item) =>
+        item.consumedAt.year == now.year &&
+        item.consumedAt.month == now.month &&
+        item.consumedAt.day == now.day
+      ).toList();
+
+      final dayTotals = _totalsForDay(now, todayLog);
+      final remaining = NotificationService.calculateRemainingMacros(
+        currentTotals: dayTotals,
+        goals: goals,
+      );
+
+      // Show notification if any macros still needed
+      final hasRemaining = remaining.values.any((value) => value > 10);
+      if (hasRemaining) {
+        NotificationService.showMacroReminder(remaining);
+      }
+    }
+  }
+
+  String _getMacroNotificationMessage(
+    List<FoodItem> foodLog,
+    Map<String, double> goals,
+    String userId,
+  ) {
+    final now = DateTime.now();
+    final dayTotals = _totalsForDay(now, foodLog);
+    final remaining = NotificationService.calculateRemainingMacros(
+      currentTotals: dayTotals,
+      goals: goals,
+    );
+    return NotificationService.getMacroReminderMessage(remaining);
+  }
+
   @override
   Widget build(BuildContext context) {
     final displayDate = _selectedDay ?? _focusedDay;
@@ -405,7 +470,13 @@ class _DailyLogCalendarScreenState
           child: Center(child: CircularProgressIndicator()),
         ),
       ),
-      data: (foodLog) => _wrapWithScaffold(
+      data: (foodLog) {
+        // Check notifications on first build or when data changes
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _checkAndShowNotifications(foodLog, goals, userId);
+        });
+
+        return _wrapWithScaffold(
         SafeArea(
           child: Column(
             children: [
@@ -666,7 +737,8 @@ class _DailyLogCalendarScreenState
             ],
           ),
         ),
-      ),
+      );
+      },
     );
   }
 }
