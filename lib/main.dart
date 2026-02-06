@@ -14,6 +14,7 @@ import 'screens/register_screen.dart';
 import 'screens/forgot_password_screen.dart';
 import 'screens/main_navigation_screen.dart';
 import 'navigation/nav_helper.dart';
+import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,6 +29,13 @@ void main() async {
 
     // Initialize Firebase with better error handling
     await _initializeFirebase();
+
+    // Initialize notification service
+    await NotificationService.initialize();
+
+    // Schedule daily reminders
+    await NotificationService.scheduleStreakReminder();
+    await NotificationService.scheduleMacroCheckReminder();
 
     // If Firebase restored a user session and email is verified, skip login
     final currentUser = FirebaseAuth.instance.currentUser;
