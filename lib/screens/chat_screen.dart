@@ -643,6 +643,10 @@ class _RecipeCardState extends State<_RecipeCard> {
                 width: 280,
                 height: 200,
                 fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  // Silently hide image if it fails to load
+                  return const SizedBox.shrink();
+                },
               ),
             ),
           const SizedBox(height: 12),
