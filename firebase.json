@@ -28,9 +28,7 @@
   "functions": {
     "source": "functions",
     "codebase": "default",
-        "runtime": "nodejs20",
-    "predeploy": [
-      "npm --prefix ./functions run build"
-    ]
+    "runtime": "nodejs20",
+    "predeploy": "cd functions && npm run build"
   }
 }
