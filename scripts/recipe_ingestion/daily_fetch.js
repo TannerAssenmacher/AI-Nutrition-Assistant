@@ -54,7 +54,9 @@ const EXPECTED_REQUESTS_PER_KEY = 6; // Expected successful requests per key
 
 // Cuisines to cycle through (Spoonacular API values)
 // These match the app's cuisine picker exactly (lowercased)
+// null = no cuisine filter, fetches recipes regardless of cuisine tag
 const CUISINES_TO_FETCH = [
+  null,
   'african', 'american', 'british', 'cajun', 'caribbean', 'chinese',
   'eastern european', 'european', 'french', 'german', 'greek', 'indian',
   'irish', 'italian', 'japanese', 'jewish', 'korean', 'latin american',
@@ -64,8 +66,15 @@ const CUISINES_TO_FETCH = [
 
 // Spoonacular meal types to cycle through for each cuisine
 // null = no type filter (gets mostly main courses = lunch/dinner)
-// 'breakfast' and 'snack' are fetched explicitly to ensure coverage
-const MEAL_TYPES_TO_FETCH = [null, 'breakfast', 'snack'];
+// Additional types fetch recipes that may not appear in the default results
+const MEAL_TYPES_TO_FETCH = [
+  null, 'breakfast', 'snack', 'dessert', 'appetizer',
+  'salad', 'soup', 'side dish', 'beverage', 'fingerfood', 'bread',
+];
+
+// Sort orders to cycle through — different sorts surface different recipes
+// Each cuisine+mealType combo is tried with each sort before being marked exhausted
+const SORT_ORDERS = ['popularity', 'healthiness', 'time', 'random'];
 
 // Initialize Firebase
 initializeApp({
@@ -177,7 +186,7 @@ function transformRecipe(recipe, fetchedCuisine = null) {
   };
 }
 
-async function fetchRecipeBatch(offset, cuisine = null, mealType = null, apiKey) {
+async function fetchRecipeBatch(offset, cuisine = null, mealType = null, apiKey, sort = 'popularity') {
   const params = new URLSearchParams({
     apiKey: apiKey,
     offset: offset.toString(),
@@ -186,7 +195,7 @@ async function fetchRecipeBatch(offset, cuisine = null, mealType = null, apiKey)
     addRecipeNutrition: 'true',
     fillIngredients: 'true',
     instructionsRequired: 'true',
-    sort: 'popularity', // Deterministic ordering so offset pagination works correctly
+    sort: sort,
   });
 
   // Add cuisine filter if specified
@@ -289,13 +298,13 @@ async function main() {
   let requestsThisRun = 0;
   let noResultsCount = 0;
 
-  // Total combinations = cuisines * meal types
-  const totalCombinations = CUISINES_TO_FETCH.length * MEAL_TYPES_TO_FETCH.length;
+  // Total combinations = cuisines * meal types * sort orders
+  const totalCombinations = CUISINES_TO_FETCH.length * MEAL_TYPES_TO_FETCH.length * SORT_ORDERS.length;
   const exhaustedSet = new Set(state.exhaustedCombos || []);
 
   // Helper to get combo key for exhaustion tracking
-  function comboKey(cuisineIdx, mealTypeIdx) {
-    return `${CUISINES_TO_FETCH[cuisineIdx]}|${MEAL_TYPES_TO_FETCH[mealTypeIdx] || 'all'}`;
+  function comboKey(cuisineIdx, mealTypeIdx, sortIdx) {
+    return `${CUISINES_TO_FETCH[cuisineIdx] || 'world'}|${MEAL_TYPES_TO_FETCH[mealTypeIdx] || 'all'}|${SORT_ORDERS[sortIdx]}`;
   }
 
   // Fetch until all API keys are exhausted
@@ -315,12 +324,15 @@ async function main() {
     // Get current API key, cuisine, and meal type
     const currentApiKey = API_KEYS[state.apiKeyIndex];
     const comboIndex = state.cuisineIndex % totalCombinations;
-    const cuisineIdx = Math.floor(comboIndex / MEAL_TYPES_TO_FETCH.length);
-    const mealTypeIdx = comboIndex % MEAL_TYPES_TO_FETCH.length;
+    const sortIdx = comboIndex % SORT_ORDERS.length;
+    const mealTypeIdx = Math.floor(comboIndex / SORT_ORDERS.length) % MEAL_TYPES_TO_FETCH.length;
+    const cuisineIdx = Math.floor(comboIndex / (SORT_ORDERS.length * MEAL_TYPES_TO_FETCH.length));
     const currentCuisine = CUISINES_TO_FETCH[cuisineIdx];
     const currentMealType = MEAL_TYPES_TO_FETCH[mealTypeIdx];
+    const currentSort = SORT_ORDERS[sortIdx];
+    const cuisineLabel = currentCuisine || 'world';
     const mealTypeLabel = currentMealType || 'all types';
-    const currentComboKey = comboKey(cuisineIdx, mealTypeIdx);
+    const currentComboKey = comboKey(cuisineIdx, mealTypeIdx, sortIdx);
 
     // Skip exhausted combinations
     if (exhaustedSet.has(currentComboKey)) {
@@ -329,9 +341,9 @@ async function main() {
       continue;
     }
 
-    console.log(`\n📥 Fetching ${currentCuisine} (${mealTypeLabel}) recipes at offset ${state.offset}... [combo ${comboIndex + 1}/${totalCombinations}, ${exhaustedSet.size} exhausted]`);
+    console.log(`\n📥 Fetching ${cuisineLabel} (${mealTypeLabel}, sort: ${currentSort}) recipes at offset ${state.offset}... [combo ${comboIndex + 1}/${totalCombinations}, ${exhaustedSet.size} exhausted]`);
 
-    const result = await fetchRecipeBatch(state.offset, currentCuisine, currentMealType, currentApiKey);
+    const result = await fetchRecipeBatch(state.offset, currentCuisine, currentMealType, currentApiKey, currentSort);
 
     if (result.quotaExceeded) {
       console.log(`⚠️ API key #${state.apiKeyIndex + 1} quota exceeded`);
@@ -353,11 +365,11 @@ async function main() {
 
     if (!result.results || result.results.length === 0) {
       noResultsCount++;
-      console.log(`⚠️ No results for ${currentCuisine} (${mealTypeLabel}) at offset ${state.offset}`);
+      console.log(`⚠️ No results for ${cuisineLabel} (${mealTypeLabel}) at offset ${state.offset}`);
 
       // Mark this combination as exhausted — no more recipes available
       if (noResultsCount >= 2 || state.offset > 0) {
-        console.log(`   ✗ Marking ${currentCuisine} (${mealTypeLabel}) as exhausted`);
+        console.log(`   ✗ Marking ${cuisineLabel} (${mealTypeLabel}) as exhausted`);
         exhaustedSet.add(currentComboKey);
         state.exhaustedCombos = Array.from(exhaustedSet);
         state.cuisineIndex++;
@@ -394,7 +406,7 @@ async function main() {
     // Check if we've reached the end of available results for this combination
     // Spoonacular max offset is 900, and totalResults tells us the actual count
     if (state.offset >= 900 || (totalResults > 0 && state.offset >= totalResults)) {
-      console.log(`   ✗ Reached end of ${currentCuisine} (${mealTypeLabel}) — marking exhausted`);
+      console.log(`   ✗ Reached end of ${cuisineLabel} (${mealTypeLabel}) — marking exhausted`);
       exhaustedSet.add(currentComboKey);
       state.exhaustedCombos = Array.from(exhaustedSet);
       state.cuisineIndex++;
@@ -438,9 +450,10 @@ async function main() {
   console.log(`📋 Exhausted combos: ${exhaustedSet.size}/${totalCombinations}`);
   if (exhaustedSet.size < totalCombinations) {
     const comboIdx = state.cuisineIndex % totalCombinations;
-    const cIdx = Math.floor(comboIdx / MEAL_TYPES_TO_FETCH.length);
-    const mtIdx = comboIdx % MEAL_TYPES_TO_FETCH.length;
-    console.log(`🍽️ Next combo: ${CUISINES_TO_FETCH[cIdx]} (${MEAL_TYPES_TO_FETCH[mtIdx] || 'all types'}) at offset ${state.offset}`);
+    const sIdx = comboIdx % SORT_ORDERS.length;
+    const mtIdx = Math.floor(comboIdx / SORT_ORDERS.length) % MEAL_TYPES_TO_FETCH.length;
+    const cIdx = Math.floor(comboIdx / (SORT_ORDERS.length * MEAL_TYPES_TO_FETCH.length));
+    console.log(`🍽️ Next combo: ${CUISINES_TO_FETCH[cIdx] || 'world'} (${MEAL_TYPES_TO_FETCH[mtIdx] || 'all types'}, sort: ${SORT_ORDERS[sIdx]}) at offset ${state.offset}`);
   }
   console.log(`📅 Next run will resume from where this run left off`);
 }
