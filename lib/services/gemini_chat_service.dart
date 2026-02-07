@@ -14,6 +14,9 @@ import '../models/planned_food_input.dart';
 
 part 'gemini_chat_service.g.dart';
 
+// Loading state for the chatbot
+final chatLoadingProvider = StateProvider<bool>((ref) => false);
+
 //controlling chatflow
 enum ChatStage { idle, awaitingMealType, awaitingCuisine }
 
@@ -24,8 +27,6 @@ class GeminiChatService extends _$GeminiChatService {
   ChatStage stage = ChatStage.idle;
 
   //flags
-  String? _pendingMealType;
-  String? _pendingCuisineType;
   final Map<String, int> _recipeOffsets = {};
   final int _batchSize = 3;
   final Set<String> _shownRecipeUris = {};
@@ -388,6 +389,7 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
       ChatMessage(content: userMessage, isUser: true)
     ]; //add user's message to chat
 
+    ref.read(chatLoadingProvider.notifier).state = true;
     try {
       // First check if user is asking about recipes we already showed
       // (e.g., "give me the first recipe again", "tell me more about that dish")
@@ -491,6 +493,8 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
           isUser: false,
         )
       ];
+    } finally {
+      ref.read(chatLoadingProvider.notifier).state = false;
     }
   }
 
@@ -501,57 +505,14 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
     await _fetchRecipes(mealType, cuisineType);
   }
 
-  //confirmation on user profile
-  Future<void> confirmMealProfile(bool confirmed) async {
-    final notifier = ref.read(geminiChatServiceProvider.notifier);
-
-    notifier.addLocalUserMessage(confirmed ? "Yes" : "No");
-
-    if (!confirmed) {
-      // "No"
-      state = [
-        ...state,
-        ChatMessage(
-          content:
-              "Got it. Please update your dietary preferences in your profile before continuing.",
-          isUser: false,
-          timestamp: DateTime.now(),
-        ),
-      ];
-      // clear pending values so we don’t accidentally reuse them later
-      _pendingMealType = null;
-      _pendingCuisineType = null;
-      return;
-    }
-
-    // "Yes"
-    state = [
-      ...state,
-      ChatMessage(
-        content: "Perfect! Generating your personalized recipes now.",
-        isUser: false,
-        timestamp: DateTime.now(),
-      ),
-    ];
-
-    if (_pendingMealType != null && _pendingCuisineType != null) {
-      await _fetchRecipes(_pendingMealType!, _pendingCuisineType!,
-          fromConfirmation: true);
-
-      //global variables no longer needed
-      _pendingMealType = null;
-      _pendingCuisineType = null;
-    }
-  }
-
   //fetch recipes with mealType, cuisineType
   //fetch with dietary and health restrictions, likes and dislikes
   Future<void> _fetchRecipes(
     String mealType,
     String cuisineType, {
-    bool fromConfirmation = false,
     bool forceNewBatch = false,
   }) async {
+    ref.read(chatLoadingProvider.notifier).state = true;
     try {
       //user profile from user signed in
       final user = FirebaseAuth.instance.currentUser;
@@ -591,13 +552,11 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
           .where((l) => l.trim().isNotEmpty && l.toLowerCase() != 'none')
           .toList();
 
-      //user confirmation on meal profile
-      if (!fromConfirmation) {
-        _pendingMealType = mealType;
-        _pendingCuisineType = cuisineType;
+      if (!forceNewBatch) {
         _recipeOffsets["$mealType-$cuisineType"] =
             0; // reset when selection changes
 
+        // Show profile summary (informational only)
         state = [
           ...state,
           ChatMessage(
@@ -617,11 +576,6 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
             timestamp: DateTime.now(),
           ),
         ];
-
-        return;
-      } else {
-        _pendingMealType = mealType;
-        _pendingCuisineType = cuisineType;
       }
 
       // Prepare macro goals as percentages
@@ -828,6 +782,8 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
           isUser: false,
         ),
       ];
+    } finally {
+      ref.read(chatLoadingProvider.notifier).state = false;
     }
   }
 
@@ -894,8 +850,7 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
       ),
     ];
 
-    await _fetchRecipes(mealType, cuisineType,
-        fromConfirmation: true, forceNewBatch: true);
+    await _fetchRecipes(mealType, cuisineType, forceNewBatch: true);
   }
 
   //call firestore provider to add scheduled meals to subcollection
