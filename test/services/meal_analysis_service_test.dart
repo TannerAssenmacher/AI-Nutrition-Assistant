@@ -288,9 +288,9 @@ void main() {
               name: 'Test',
               mass: 100,
               calories: 400,
-              protein: 25, // 25g * 4 = 100 kcal -> 25%
-              carbs: 50, // 50g * 4 = 200 kcal -> 50%
-              fat: 11.11, // ~11g * 9 = 100 kcal -> 25%
+              protein: 25, // 25g * 4 = 100 calories -> 25%
+              carbs: 50, // 50g * 4 = 200 calories -> 50%
+              fat: 11.11, // ~11g * 9 = 100 calories -> 25%
             ),
           ],
         );
@@ -306,7 +306,7 @@ void main() {
               mass: 100,
               calories: 400,
               protein: 25,
-              carbs: 50, // 50g * 4 = 200 kcal -> 50%
+              carbs: 50, // 50g * 4 = 200 calories -> 50%
               fat: 11.11,
             ),
           ],
@@ -324,7 +324,7 @@ void main() {
               calories: 400,
               protein: 25,
               carbs: 50,
-              fat: 11.11, // ~11g * 9 = ~100 kcal -> ~25%
+              fat: 11.11, // ~11g * 9 = ~100 calories -> ~25%
             ),
           ],
         );
@@ -402,9 +402,8 @@ void main() {
       final output = responseData['output'];
       if (output is List && output.isNotEmpty) {
         final firstOutput = output.first;
-        final content = firstOutput is Map<String, dynamic>
-            ? firstOutput['content']
-            : null;
+        final content =
+            firstOutput is Map<String, dynamic> ? firstOutput['content'] : null;
 
         if (content is List) {
           for (final item in content) {
@@ -425,21 +424,27 @@ void main() {
         'output': [
           {
             'content': [
-              {'type': 'text', 'text': '{"f":[{"n":"Apple","m":150,"k":78,"p":0.5,"c":21,"a":0.3}]}'}
+              {
+                'type': 'text',
+                'text':
+                    '{"f":[{"n":"Apple","m":150,"k":78,"p":0.5,"c":21,"a":0.3}]}'
+              }
             ]
           }
         ]
       };
 
       final text = extractTextResponse(responseData);
-      expect(text, '{"f":[{"n":"Apple","m":150,"k":78,"p":0.5,"c":21,"a":0.3}]}');
+      expect(
+          text, '{"f":[{"n":"Apple","m":150,"k":78,"p":0.5,"c":21,"a":0.3}]}');
     });
 
     test('should parse extracted JSON into MealAnalysis', () {
-      final jsonText = '{"f":[{"n":"Banana","m":118,"k":105,"p":1.3,"c":27,"a":0.4}]}';
+      final jsonText =
+          '{"f":[{"n":"Banana","m":118,"k":105,"p":1.3,"c":27,"a":0.4}]}';
       final parsed = MealAnalysis.fromJson(Map<String, dynamic>.from(
-        (const JsonDecoder().convert(jsonText) as Map).cast<String, dynamic>()
-      ));
+          (const JsonDecoder().convert(jsonText) as Map)
+              .cast<String, dynamic>()));
 
       expect(parsed.foods.length, 1);
       expect(parsed.foods[0].name, 'Banana');
@@ -457,8 +462,8 @@ void main() {
       }
       ''';
       final parsed = MealAnalysis.fromJson(Map<String, dynamic>.from(
-        (const JsonDecoder().convert(jsonText) as Map).cast<String, dynamic>()
-      ));
+          (const JsonDecoder().convert(jsonText) as Map)
+              .cast<String, dynamic>()));
 
       expect(parsed.foods.length, 3);
       expect(parsed.totalCalories, 505);
@@ -549,7 +554,8 @@ void main() {
             'content': [
               {
                 'type': 'output_text',
-                'text': '{"f":[{"n":"Spaghetti Carbonara","m":350,"k":650,"p":25,"c":70,"a":28}]}'
+                'text':
+                    '{"f":[{"n":"Spaghetti Carbonara","m":350,"k":650,"p":25,"c":70,"a":28}]}'
               }
             ]
           }
@@ -559,8 +565,7 @@ void main() {
 
       final text = extractTextResponse(responseData);
       final parsed = MealAnalysis.fromJson(Map<String, dynamic>.from(
-        (const JsonDecoder().convert(text) as Map).cast<String, dynamic>()
-      ));
+          (const JsonDecoder().convert(text) as Map).cast<String, dynamic>()));
 
       expect(parsed.foods.length, 1);
       expect(parsed.foods[0].name, 'Spaghetti Carbonara');
@@ -572,23 +577,17 @@ void main() {
   // MEAL ANALYSIS SERVICE INSTANCE TESTS
   // ============================================================================
   group('MealAnalysisService Instance', () {
-    test('should create service with API key', () {
-      final service = MealAnalysisService(apiKey: 'test-api-key');
-      expect(service.apiKey, 'test-api-key');
-    });
-
-    test('should create service with empty API key', () {
-      final service = MealAnalysisService(apiKey: '');
-      expect(service.apiKey, '');
+    test('should create service with default callable client', () {
+      final service = MealAnalysisService();
+      expect(service, isNotNull);
     });
 
     test('should create multiple independent service instances', () {
-      final service1 = MealAnalysisService(apiKey: 'key-1');
-      final service2 = MealAnalysisService(apiKey: 'key-2');
-
-      expect(service1.apiKey, 'key-1');
-      expect(service2.apiKey, 'key-2');
-      expect(service1.apiKey, isNot(equals(service2.apiKey)));
+      final service1 = MealAnalysisService();
+      final service2 = MealAnalysisService();
+      expect(service1, isNotNull);
+      expect(service2, isNotNull);
+      expect(identical(service1, service2), isFalse);
     });
   });
 }

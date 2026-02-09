@@ -1,15 +1,17 @@
+import 'dart:async';
 import 'dart:io';
 
+import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:nutrition_assistant/config/env.dart';
 import 'package:nutrition_assistant/navigation/nav_helper.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
 
+import '../services/food_search_service.dart';
 import '../services/meal_analysis_service.dart';
 import '../db/food.dart';
 import '../providers/food_providers.dart';
-import '../providers/auth_providers.dart';
 import '../providers/firestore_providers.dart';
 import 'camera_capture_screen.dart';
 
@@ -24,10 +26,12 @@ class CameraScreen extends ConsumerStatefulWidget {
 
 class _CameraScreenState extends ConsumerState<CameraScreen> {
   bool _isAnalyzing = false;
+  bool _isLookingUpBarcode = false;
   bool _isSaving = false;
   MealAnalysis? _analysisResult;
   String? _errorMessage;
   AnalysisStage? _analysisStage;
+  final FoodSearchService _foodSearchService = FoodSearchService();
 
   @override
   void initState() {
@@ -36,21 +40,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   }
 
   Future<void> _captureAndAnalyze() async {
-    if (_isAnalyzing) return;
-
-    final apiKey = Env.openAiApiKey;
-    if (apiKey == null || apiKey.isEmpty) {
-      setState(() {
-        _errorMessage = 'OpenAI API key is not configured.';
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-              'OpenAI API key is missing. Pass OPENAI_API_KEY via --dart-define.'),
-        ),
-      );
-      return;
-    }
+    if (_isAnalyzing || _isLookingUpBarcode) return;
 
     final captureResult = await Navigator.of(context).push<MealCaptureResult?>(
       MaterialPageRoute<MealCaptureResult?>(
@@ -64,13 +54,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     }
 
     if (captureResult.mode == CaptureMode.barcode) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-              'Barcode scans aren\'t analyzed yet. Please take a meal photo.'),
-        ),
-      );
+      await _handleBarcodeLookup(captureResult.barcode);
       return;
     }
 
@@ -91,7 +75,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     });
 
     final file = File(photo.path);
-    final service = MealAnalysisService(apiKey: apiKey);
+    final service = MealAnalysisService();
 
     try {
       final analysis = await service.analyzeMealImage(
@@ -114,6 +98,19 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Meal analysis complete!'),
+        ),
+      );
+    } on FirebaseFunctionsException catch (e) {
+      if (!mounted) return;
+      final message = _buildAnalyzeMealErrorMessage(e);
+      setState(() {
+        _errorMessage = message;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red[700],
         ),
       );
     } catch (e) {
@@ -146,6 +143,189 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     }
   }
 
+  Future<void> _handleBarcodeLookup(String? rawBarcode) async {
+    final scannedBarcode = (rawBarcode ?? '').trim();
+    if (scannedBarcode.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Scanned barcode was empty.')),
+      );
+      return;
+    }
+    final displayBarcode = FoodSearchService.canonicalBarcode(scannedBarcode);
+    final barcodeForMessages =
+        displayBarcode.isEmpty ? scannedBarcode : displayBarcode;
+
+    setState(() {
+      _isLookingUpBarcode = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final result = await _foodSearchService
+          .lookupFoodByBarcode(scannedBarcode)
+          .timeout(const Duration(seconds: 25));
+      if (!mounted) return;
+
+      if (result == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No product found for barcode $barcodeForMessages.'),
+          ),
+        );
+        return;
+      }
+
+      final wasAdded = await _showBarcodeFoodDialog(result);
+      if (!mounted || !wasAdded) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Added "${result.name}" to your daily log.')),
+      );
+    } on FirebaseFunctionsException catch (e) {
+      if (!mounted) return;
+      final message =
+          _buildBarcodeLookupErrorMessage(e, barcodeForMessages: barcodeForMessages);
+      setState(() {
+        _errorMessage = message;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red[700],
+        ),
+      );
+    } on TimeoutException {
+      if (!mounted) return;
+      final message =
+          'Barcode lookup timed out. Check your connection and try again.';
+      setState(() {
+        _errorMessage = message;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red[700],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final message = 'Barcode lookup failed: $e';
+      setState(() {
+        _errorMessage = message;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red[700],
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLookingUpBarcode = false;
+        });
+      }
+    }
+  }
+
+  Future<bool> _showBarcodeFoodDialog(FoodSearchResult result) async {
+    final wasAdded = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return _BarcodeFoodDialog(
+          result: result,
+          onAdd: (grams, mealType) async {
+            final userId = FirebaseAuth.instance.currentUser?.uid;
+            if (userId == null) {
+              throw StateError('Please sign in to save scanned foods.');
+            }
+
+            final consumedAt = DateTime.now();
+            final item = FoodItem(
+              id: 'barcode-${DateTime.now().microsecondsSinceEpoch}',
+              name: result.name,
+              mass_g: grams,
+              calories_g: result.caloriesPerGram,
+              protein_g: result.proteinPerGram,
+              carbs_g: result.carbsPerGram,
+              fat: result.fatPerGram,
+              mealType: mealType,
+              consumedAt: consumedAt,
+            );
+
+            ref.read(foodLogProvider.notifier).addFoodItem(item);
+            await ref
+                .read(firestoreFoodLogProvider(userId).notifier)
+                .addFood(userId, item);
+          },
+        );
+      },
+    );
+
+    return wasAdded ?? false;
+  }
+
+  String _formatCompactNumber(double value, {int maxDecimals = 1}) {
+    final safeValue = value.isFinite ? value : 0;
+    final normalized = safeValue.abs() < 0.0000001 ? 0 : safeValue;
+    if (maxDecimals <= 0) {
+      return normalized.round().toString();
+    }
+
+    final fixed = normalized.toStringAsFixed(maxDecimals);
+    final withoutTrailingZeros = fixed.replaceFirst(RegExp(r'0+$'), '');
+    return withoutTrailingZeros.replaceFirst(RegExp(r'\.$'), '');
+  }
+
+  String _buildAnalyzeMealErrorMessage(FirebaseFunctionsException e) {
+    if (_isMissingCallable(e)) {
+      return 'Cloud Function analyzeMealImage was not found. Deploy Functions to us-central1 for project ai-nutrition-assistant-e2346.';
+    }
+    if (e.code == 'unauthenticated') {
+      return 'Please sign in to analyze meals.';
+    }
+    if (e.code == 'permission-denied') {
+      return 'Permission denied while analyzing meal. Check Firebase auth rules and App Check settings.';
+    }
+    return e.message ?? 'Meal analysis failed. Please try again.';
+  }
+
+  String _buildBarcodeLookupErrorMessage(
+    FirebaseFunctionsException e, {
+    required String barcodeForMessages,
+  }) {
+    if (_isMissingCallable(e)) {
+      return 'Cloud Function lookupFoodByBarcode was not found. Deploy Functions to us-central1 for project ai-nutrition-assistant-e2346.';
+    }
+    if (e.code == 'not-found') {
+      return 'No food found for barcode $barcodeForMessages.';
+    }
+    if (e.code == 'unauthenticated') {
+      return 'Please sign in to log scanned foods.';
+    }
+    if (e.code == 'invalid-argument') {
+      return 'Invalid barcode. Please scan again.';
+    }
+    return e.message ?? 'Barcode lookup failed. Please try again.';
+  }
+
+  bool _isMissingCallable(FirebaseFunctionsException e) {
+    if (e.code != 'not-found') {
+      return false;
+    }
+    final message = (e.message ?? '').toLowerCase();
+    if (message.isEmpty) {
+      return true;
+    }
+    return message.contains('not found') ||
+        message.contains('function') ||
+        message.contains('callable');
+  }
+
   Future<void> _addMealToCalendar() async {
     final analysis = _analysisResult;
     if (analysis == null || analysis.foods.isEmpty) {
@@ -166,9 +346,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       final now = DateTime.now();
       final container = ProviderScope.containerOf(context, listen: false);
       final notifier = container.read(foodLogProvider.notifier);
-      final authUser = container.read(authServiceProvider);
-
-      final userId = authUser?.uid;
+      final userId = FirebaseAuth.instance.currentUser?.uid;
       if (userId == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -397,6 +575,10 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   }
 
   Widget _buildBody() {
+    if (_isLookingUpBarcode) {
+      return const _AnalyzingState(labelOverride: 'Looking up barcode…');
+    }
+
     if (_isAnalyzing) {
       return _AnalyzingState(stage: _analysisStage);
     }
@@ -421,11 +603,12 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   @override
   Widget build(BuildContext context) {
     final bodyContent = _buildCameraContent(context);
+    final isBusy = _isAnalyzing || _isLookingUpBarcode;
 
     final fab = FloatingActionButton.extended(
-      onPressed: _isAnalyzing ? null : _captureAndAnalyze,
+      onPressed: isBusy ? null : _captureAndAnalyze,
       backgroundColor: Colors.green[700],
-      icon: _isAnalyzing
+      icon: isBusy
           ? const SizedBox(
               width: 20,
               height: 20,
@@ -435,7 +618,13 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
               ),
             )
           : const Icon(Icons.camera_alt),
-      label: Text(_isAnalyzing ? 'Analyzing...' : 'Capture meal'),
+      label: Text(
+        _isAnalyzing
+            ? 'Analyzing...'
+            : _isLookingUpBarcode
+                ? 'Looking up...'
+                : 'Capture meal',
+      ),
     );
 
     if (widget.isInPageView == true) {
@@ -518,12 +707,317 @@ class _ErrorBanner extends StatelessWidget {
   }
 }
 
+class _BarcodeMacroRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _BarcodeMacroRow({
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: Colors.grey.shade700,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Flexible(
+            child: Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.end,
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BarcodeFoodDialog extends StatefulWidget {
+  final FoodSearchResult result;
+  final Future<void> Function(double grams, String mealType) onAdd;
+
+  const _BarcodeFoodDialog({
+    required this.result,
+    required this.onAdd,
+  });
+
+  @override
+  State<_BarcodeFoodDialog> createState() => _BarcodeFoodDialogState();
+}
+
+class _BarcodeFoodDialogState extends State<_BarcodeFoodDialog> {
+  late final TextEditingController _gramsController;
+  late final FocusNode _gramsFocusNode;
+  String _mealType = 'snack';
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _gramsController = TextEditingController(
+      text: _formatCompactNumber(widget.result.servingGrams, maxDecimals: 0),
+    );
+    _gramsFocusNode = FocusNode();
+  }
+
+  @override
+  void dispose() {
+    _gramsController.dispose();
+    _gramsFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _dismissKeyboard() {
+    FocusManager.instance.primaryFocus?.unfocus();
+  }
+
+  String _formatCompactNumber(double value, {int maxDecimals = 1}) {
+    final safeValue = value.isFinite ? value : 0;
+    final normalized = safeValue.abs() < 0.0000001 ? 0 : safeValue;
+    if (maxDecimals <= 0) {
+      return normalized.round().toString();
+    }
+
+    final fixed = normalized.toStringAsFixed(maxDecimals);
+    final withoutTrailingZeros = fixed.replaceFirst(RegExp(r'0+$'), '');
+    return withoutTrailingZeros.replaceFirst(RegExp(r'\.$'), '');
+  }
+
+  String _errorMessage(Object error) {
+    if (error is StateError) {
+      return error.message;
+    }
+    return error.toString();
+  }
+
+  Future<void> _handleAdd() async {
+    final grams = double.tryParse(_gramsController.text.trim());
+    if (grams == null || grams <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid grams amount.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      await widget.onAdd(grams, _mealType);
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_errorMessage(error))),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final previewInput =
+        double.tryParse(_gramsController.text.trim()) ??
+            widget.result.servingGrams;
+    final gramsPreview = previewInput > 0 ? previewInput : 0;
+    final previewCalories = widget.result.caloriesPerGram * gramsPreview;
+    final previewProtein = widget.result.proteinPerGram * gramsPreview;
+    final previewCarbs = widget.result.carbsPerGram * gramsPreview;
+    final previewFat = widget.result.fatPerGram * gramsPreview;
+    final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
+
+    return Stack(
+      children: [
+        Center(
+          child: AlertDialog(
+            title: const Text('Scanned Food'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.result.name,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  if ((widget.result.brand ?? '').isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      widget.result.brand!,
+                      style: TextStyle(
+                        color: Colors.grey.shade700,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: _mealType,
+                    decoration: const InputDecoration(
+                      labelText: 'Meal type',
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'breakfast',
+                        child: Text('Breakfast'),
+                      ),
+                      DropdownMenuItem(value: 'lunch', child: Text('Lunch')),
+                      DropdownMenuItem(
+                        value: 'dinner',
+                        child: Text('Dinner'),
+                      ),
+                      DropdownMenuItem(value: 'snack', child: Text('Snack')),
+                    ],
+                    onChanged: _isSaving
+                        ? null
+                        : (value) {
+                            if (value == null) return;
+                            setState(() {
+                              _mealType = value;
+                            });
+                          },
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _gramsController,
+                    focusNode: _gramsFocusNode,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    textInputAction: TextInputAction.done,
+                    decoration: InputDecoration(
+                      labelText: 'Grams',
+                      helperText:
+                          'USDA reference: ${_formatCompactNumber(widget.result.servingGrams, maxDecimals: 0)} g',
+                      suffixIcon: IconButton(
+                        tooltip: 'Done',
+                        icon: const Icon(Icons.check),
+                        onPressed: _dismissKeyboard,
+                      ),
+                    ),
+                    onChanged: (_) {
+                      setState(() {});
+                    },
+                    onSubmitted: (_) => _dismissKeyboard(),
+                    onTapOutside: (_) => _dismissKeyboard(),
+                  ),
+                  const SizedBox(height: 12),
+                  _BarcodeMacroRow(
+                    label: 'Calories',
+                    value:
+                        '${_formatCompactNumber(previewCalories, maxDecimals: 0)} Cal',
+                  ),
+                  _BarcodeMacroRow(
+                    label: 'Protein',
+                    value:
+                        '${_formatCompactNumber(previewProtein, maxDecimals: 1)} g',
+                  ),
+                  _BarcodeMacroRow(
+                    label: 'Carbs',
+                    value:
+                        '${_formatCompactNumber(previewCarbs, maxDecimals: 1)} g',
+                  ),
+                  _BarcodeMacroRow(
+                    label: 'Fat',
+                    value: '${_formatCompactNumber(previewFat, maxDecimals: 1)} g',
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    widget.result.sourceLabel,
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: _isSaving
+                    ? null
+                    : () {
+                        _dismissKeyboard();
+                        Navigator.of(context).pop(false);
+                      },
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: _isSaving ? null : _handleAdd,
+                child: _isSaving
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Add to log'),
+              ),
+            ],
+          ),
+        ),
+        Positioned(
+          right: 20,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 12,
+          child: IgnorePointer(
+            ignoring: !keyboardVisible,
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 150),
+              opacity: keyboardVisible ? 1 : 0,
+              child: Material(
+                color: Colors.black87,
+                shape: const CircleBorder(),
+                child: IconButton(
+                  icon: const Icon(Icons.check, color: Colors.white),
+                  onPressed: _dismissKeyboard,
+                  tooltip: 'Done',
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _AnalyzingState extends StatelessWidget {
   final AnalysisStage? stage;
+  final String? labelOverride;
 
-  const _AnalyzingState({this.stage});
+  const _AnalyzingState({this.stage, this.labelOverride});
 
   String get _label {
+    if (labelOverride != null && labelOverride!.trim().isNotEmpty) {
+      return labelOverride!;
+    }
+
     switch (stage) {
       case AnalysisStage.uploading:
         return 'Uploading photo…';
@@ -563,12 +1057,12 @@ class _AnalyzingState extends StatelessWidget {
             _label,
             style: const TextStyle(fontWeight: FontWeight.w600),
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Step ${((progress ?? 0) * 3).clamp(1, 3).round()} of 3',
-            style: TextStyle(color: Colors.grey.shade600),
-          ),
           if (progress != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Step ${(progress * 3).clamp(1, 3).round()} of 3',
+              style: TextStyle(color: Colors.grey.shade600),
+            ),
             const SizedBox(height: 12),
             SizedBox(
               width: 200,
@@ -741,7 +1235,7 @@ class MealAnalysisResultWidget extends StatelessWidget {
                               _NutrientChip(
                                 label: 'Calories',
                                 value:
-                                    '${food.calories.toStringAsFixed(0)} kcal',
+                                    '${food.calories.toStringAsFixed(0)} Cal',
                               ),
                               _NutrientChip(
                                 label: 'Protein',
@@ -795,7 +1289,7 @@ class MealAnalysisResultWidget extends StatelessWidget {
                         child: _TotalCard(
                           label: 'Total Calories',
                           value: analysis.totalCalories.toStringAsFixed(0),
-                          unit: 'kcal',
+                          unit: 'Cal',
                         ),
                       ),
                       const SizedBox(width: 8),

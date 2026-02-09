@@ -3,17 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
-import 'screens/home_screen.dart';
 //import 'db/user.dart';
 //import 'db/food.dart';
-import 'db/firestore_helper.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/forgot_password_screen.dart';
 import 'screens/main_navigation_screen.dart';
 import 'navigation/nav_helper.dart';
+import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,9 +27,19 @@ void main() async {
     // Initialize Firebase with better error handling
     await _initializeFirebase();
 
-    // If Firebase restored a user session and email is verified, skip login
+    // Initialize notification service
+    await NotificationService.initialize();
+
+    // Schedule daily reminders
+    await NotificationService.scheduleStreakReminder();
+    await NotificationService.scheduleMacroCheckReminder();
+
+    // Only resume an existing authenticated session.
     final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser != null && currentUser.emailVerified) {
+
+    // If we have a verified user or a persisted anonymous user, skip login.
+    if (currentUser != null &&
+        (currentUser.emailVerified || currentUser.isAnonymous)) {
       initialRoute = '/home';
     }
 

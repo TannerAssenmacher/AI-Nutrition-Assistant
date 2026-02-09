@@ -183,14 +183,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
   }
 
-  // confirm user meal profile with backend logic
-  void _confirmMealProfile(bool confirmed) {
-    final notifier = ref.read(geminiChatServiceProvider.notifier);
-
-    notifier.confirmMealProfile(confirmed);
-
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
-  }
 
   Widget _choiceBar() {
     List<String> options = [];
@@ -239,6 +231,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget _buildChatContent(
     BuildContext context,
     List<ChatMessage> chatMessages,
+    bool isLoading,
   ) {
     return Column(
       children: [
@@ -266,8 +259,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               : ListView.builder(
                   controller: _scrollController,
                   padding: const EdgeInsets.all(16),
-                  itemCount: chatMessages.length,
+                  itemCount: chatMessages.length + (isLoading ? 1 : 0),
                   itemBuilder: (context, index) {
+                    // Show typing indicator as the last item when loading
+                    if (index == chatMessages.length) {
+                      return const _TypingIndicator();
+                    }
+
                     final message = chatMessages[index];
 
                     try {
@@ -277,8 +275,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           parsed['type'] == 'meal_profile_summary') {
                         return MealProfileSummaryBubble(
                           data: Map<String, dynamic>.from(parsed),
-                          onYes: () => _confirmMealProfile(true),
-                          onNo: () => _confirmMealProfile(false),
                         );
                       }
 
@@ -382,9 +378,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     final chatMessages = ref.watch(geminiChatServiceProvider);
+    final isLoading = ref.watch(chatLoadingProvider);
+
+    // Auto-scroll when typing indicator appears (not when response arrives)
+    ref.listen(chatLoadingProvider, (prev, next) {
+      if (next) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+      }
+    });
 
     final bodyContent = SafeArea(
-      child: _buildChatContent(context, chatMessages),
+      child: _buildChatContent(context, chatMessages, isLoading),
     );
 
     if (widget.isInPageView == true) {
@@ -465,16 +469,105 @@ class _ChatBubble extends StatelessWidget {
   }
 }
 
+class _TypingIndicator extends StatefulWidget {
+  const _TypingIndicator();
+
+  @override
+  State<_TypingIndicator> createState() => _TypingIndicatorState();
+}
+
+class _TypingIndicatorState extends State<_TypingIndicator>
+    with TickerProviderStateMixin {
+  late final List<AnimationController> _controllers;
+  late final List<Animation<double>> _animations;
+
+  @override
+  void initState() {
+    super.initState();
+    _controllers = List.generate(3, (i) {
+      return AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 600),
+      );
+    });
+
+    _animations = _controllers.map((c) {
+      return Tween<double>(begin: 0, end: -6).animate(
+        CurvedAnimation(parent: c, curve: Curves.easeInOut),
+      );
+    }).toList();
+
+    // Stagger the animations
+    for (int i = 0; i < 3; i++) {
+      Future.delayed(Duration(milliseconds: i * 180), () {
+        if (mounted) _controllers[i].repeat(reverse: true);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final c in _controllers) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            backgroundColor: Colors.green[600],
+            radius: 16,
+            child: const Icon(Icons.smart_toy, color: Colors.white, size: 16),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.grey[200],
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(3, (i) {
+                return AnimatedBuilder(
+                  animation: _animations[i],
+                  builder: (context, child) {
+                    return Transform.translate(
+                      offset: Offset(0, _animations[i].value),
+                      child: child,
+                    );
+                  },
+                  child: Container(
+                    margin: EdgeInsets.only(right: i < 2 ? 4 : 0),
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[500],
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class MealProfileSummaryBubble extends StatelessWidget {
   final Map<String, dynamic> data;
-  final VoidCallback onYes;
-  final VoidCallback onNo;
 
   const MealProfileSummaryBubble({
     super.key,
     required this.data,
-    required this.onYes,
-    required this.onNo,
   });
 
   @override
@@ -516,7 +609,7 @@ class MealProfileSummaryBubble extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    "Is this information correct?",
+                    "Generating recipes with your profile:",
                     style: TextStyle(fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 8),
@@ -526,7 +619,7 @@ class MealProfileSummaryBubble extends StatelessWidget {
                   // Goals
                   Text("🎯 Goal: $dietaryGoal"),
                   Text(
-                      "🔥 Daily Calories: ${dailyCalorieGoal > 0 ? '$dailyCalorieGoal kcal' : 'Not set'}"),
+                      "🔥 Daily Calories: ${dailyCalorieGoal > 0 ? '$dailyCalorieGoal Cal' : 'Not set'}"),
                   Text("📊 Macros: P $proteinPct% • C $carbsPct% • F $fatPct%"),
                   const SizedBox(height: 4),
                   // Preferences
@@ -538,32 +631,6 @@ class MealProfileSummaryBubble extends StatelessWidget {
                       "👍 Likes: ${likes.isEmpty ? 'None' : likes.join(', ')}"),
                   Text(
                       "👎 Dislikes: ${dislikes.isEmpty ? 'None' : dislikes.join(', ')}"),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: onYes,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green[600],
-                            foregroundColor: Colors.white,
-                          ),
-                          child: const Text("Yes"),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: onNo,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red[600],
-                            foregroundColor: Colors.white,
-                          ),
-                          child: const Text("No"),
-                        ),
-                      ),
-                    ],
-                  ),
                 ],
               ),
             ),
@@ -643,6 +710,10 @@ class _RecipeCardState extends State<_RecipeCard> {
                 width: 280,
                 height: 200,
                 fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  // Silently hide image if it fails to load
+                  return const SizedBox.shrink();
+                },
               ),
             ),
           const SizedBox(height: 12),
@@ -650,7 +721,7 @@ class _RecipeCardState extends State<_RecipeCard> {
               style:
                   const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
           if (cuisine.toLowerCase() != 'world') Text('Cuisine: $cuisine'),
-          Text('Calories: $calories kcal'),
+          Text('Calories: $calories Cal'),
           Text('P: ${protein}g  |  C: ${carbs}g  |  F: ${fat}g',
               style: TextStyle(color: Colors.grey[700], fontSize: 13)),
           if (readyInMinutes != null || servings != null)

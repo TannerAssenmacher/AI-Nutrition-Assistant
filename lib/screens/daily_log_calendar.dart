@@ -12,6 +12,7 @@ import '../db/planned_food.dart';
 import 'package:nutrition_assistant/navigation/nav_helper.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
 import 'package:nutrition_assistant/services/food_search_service.dart';
+import 'package:nutrition_assistant/services/notification_service.dart';
 
 class DailyLogCalendarScreen extends ConsumerStatefulWidget {
   final bool isInPageView;
@@ -27,6 +28,13 @@ class _DailyLogCalendarScreenState
     extends ConsumerState<DailyLogCalendarScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
+  bool _notificationsChecked = false;
+
+  @override
+  void initState() {
+    super.initState();
+    NotificationService.initialize();
+  }
 
   Widget _wrapWithScaffold(Widget body) {
     if (widget.isInPageView == true) {
@@ -74,7 +82,6 @@ class _DailyLogCalendarScreenState
       DateTime day, List<PlannedFood>? scheduledMeals) {
     if (scheduledMeals == null) return [];
 
-    // Normalize both dates to midnight for consistent comparison
     final dayNormalized = DateTime(day.year, day.month, day.day);
 
     return scheduledMeals.where((meal) {
@@ -202,7 +209,6 @@ class _DailyLogCalendarScreenState
           builder: (context, scrollController) {
             return Consumer(
               builder: (context, ref, _) {
-                // Live-filter the latest stream so the sheet updates immediately after deletes
                 final logAsync = ref.watch(firestoreFoodLogProvider(userId));
                 final scheduledAsync =
                     ref.watch(firestoreScheduledMealsProvider(userId));
@@ -270,11 +276,6 @@ class _DailyLogCalendarScreenState
                                 value:
                                     '${totals['fat']?.toStringAsFixed(1) ?? 0}g',
                               ),
-                              /*_MacroSummaryItem(
-                                label: 'Fiber',
-                                value:
-                                    '${totals['fiber']?.toStringAsFixed(1) ?? 0}g',
-                              ),*/
                             ],
                           ),
                         ),
@@ -365,6 +366,58 @@ class _DailyLogCalendarScreenState
     );
   }
 
+  void _checkAndShowNotifications(
+    List<FoodItem> foodLog,
+    Map<String, double> goals,
+    String userId,
+  ) async {
+    if (_notificationsChecked) return;
+    _notificationsChecked = true;
+
+    final now = DateTime.now();
+
+    if (!NotificationService.hasLoggedToday(foodLog)) {
+      final streakAsync = ref.read(dailyStreakProvider(userId));
+      streakAsync.whenData((streak) {
+        NotificationService.showStreakReminder(streak);
+      });
+    }
+
+    if (NotificationService.isAfter6PM()) {
+      final todayLog = foodLog
+          .where((item) =>
+              item.consumedAt.year == now.year &&
+              item.consumedAt.month == now.month &&
+              item.consumedAt.day == now.day)
+          .toList();
+
+      final dayTotals = _totalsForDay(now, todayLog);
+      final remaining = NotificationService.calculateRemainingMacros(
+        currentTotals: dayTotals,
+        goals: goals,
+      );
+
+      final hasRemaining = remaining.values.any((value) => value > 10);
+      if (hasRemaining) {
+        NotificationService.showMacroReminder(remaining);
+      }
+    }
+  }
+
+  String _getMacroNotificationMessage(
+    List<FoodItem> foodLog,
+    Map<String, double> goals,
+    String userId,
+  ) {
+    final now = DateTime.now();
+    final dayTotals = _totalsForDay(now, foodLog);
+    final remaining = NotificationService.calculateRemainingMacros(
+      currentTotals: dayTotals,
+      goals: goals,
+    );
+    return NotificationService.getMacroReminderMessage(remaining);
+  }
+
   @override
   Widget build(BuildContext context) {
     final displayDate = _selectedDay ?? _focusedDay;
@@ -388,7 +441,6 @@ class _DailyLogCalendarScreenState
     final carbsGoal = goals['carbs'] ?? 200.0;
     final fatGoal = goals['fat'] ?? 65.0;
 
-    // Get the week start (Monday) for the focused day
     final weekStart =
         _focusedDay.subtract(Duration(days: _focusedDay.weekday - 1));
     final weekDays =
@@ -405,266 +457,269 @@ class _DailyLogCalendarScreenState
           child: Center(child: CircularProgressIndicator()),
         ),
       ),
-      data: (foodLog) => _wrapWithScaffold(
-        SafeArea(
-          child: Column(
-            children: [
-              // Week navigation controls
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.chevron_left),
-                      color: const Color(0xFF3E2F26),
-                      tooltip: 'Previous week',
-                      onPressed: () {
-                        setState(() {
-                          _focusedDay =
-                              _focusedDay.subtract(const Duration(days: 7));
-                        });
-                      },
-                    ),
-                    GestureDetector(
-                      onTap: _showMonthlyCalendarPicker,
-                      child: Text(
-                        '${DateFormat('MMMM yyyy').format(_focusedDay)}',
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF3E2F26),
+      data: (foodLog) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _checkAndShowNotifications(foodLog, goals, userId);
+        });
+
+        return _wrapWithScaffold(
+          SafeArea(
+            child: Column(
+              children: [
+                // Week navigation controls — FIX 1: Flexible month label
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.chevron_left),
+                        color: const Color(0xFF3E2F26),
+                        tooltip: 'Previous week',
+                        onPressed: () {
+                          setState(() {
+                            _focusedDay =
+                                _focusedDay.subtract(const Duration(days: 7));
+                          });
+                        },
+                      ),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: _showMonthlyCalendarPicker,
+                          child: Text(
+                            DateFormat('MMMM yyyy').format(_focusedDay),
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF3E2F26),
+                            ),
+                            textAlign: TextAlign.center,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ),
-                    ),
-                    Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.chevron_right),
-                          color: const Color(0xFF3E2F26),
-                          tooltip: 'Next week',
-                          onPressed: () {
-                            setState(() {
-                              _focusedDay =
-                                  _focusedDay.add(const Duration(days: 7));
-                            });
-                          },
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.add),
-                          color: Colors.redAccent,
-                          tooltip: 'Add apple to selected day',
-                          onPressed: _addPlaceholderApple,
-                        ),
-                      ],
-                    ),
-                  ],
+                      IconButton(
+                        icon: const Icon(Icons.chevron_right),
+                        color: const Color(0xFF3E2F26),
+                        tooltip: 'Next week',
+                        onPressed: () {
+                          setState(() {
+                            _focusedDay =
+                                _focusedDay.add(const Duration(days: 7));
+                          });
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.add),
+                        color: Colors.redAccent,
+                        tooltip: 'Add apple to selected day',
+                        onPressed: _addPlaceholderApple,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  children: weekDays.map((day) {
-                    final isSelected = _selectedDay != null &&
-                        day.year == _selectedDay!.year &&
-                        day.month == _selectedDay!.month &&
-                        day.day == _selectedDay!.day;
-                    final isToday = day.year == DateTime.now().year &&
-                        day.month == DateTime.now().month &&
-                        day.day == DateTime.now().day;
-                    final foods = _foodsForDay(day, foodLog);
-                    final dayTotals = _totalsForDay(day, foodLog);
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    children: weekDays.map((day) {
+                      final isSelected = _selectedDay != null &&
+                          day.year == _selectedDay!.year &&
+                          day.month == _selectedDay!.month &&
+                          day.day == _selectedDay!.day;
+                      final isToday = day.year == DateTime.now().year &&
+                          day.month == DateTime.now().month &&
+                          day.day == DateTime.now().day;
+                      final foods = _foodsForDay(day, foodLog);
+                      final dayTotals = _totalsForDay(day, foodLog);
 
-                    // Calculate average goal completion percentage
-                    final calPercentage = calorieGoal > 0
-                        ? ((dayTotals['calories'] ?? 0) / calorieGoal * 100)
-                        : 0.0;
-                    final protPercentage = proteinGoal > 0
-                        ? ((dayTotals['protein'] ?? 0) / proteinGoal * 100)
-                        : 0.0;
-                    final carbsPercentage = carbsGoal > 0
-                        ? ((dayTotals['carbs'] ?? 0) / carbsGoal * 100)
-                        : 0.0;
-                    final fatPercentage = fatGoal > 0
-                        ? ((dayTotals['fat'] ?? 0) / fatGoal * 100)
-                        : 0.0;
-                    final avgPercentage = (calPercentage +
-                            protPercentage +
-                            carbsPercentage +
-                            fatPercentage) /
-                        4;
+                      final calPercentage = calorieGoal > 0
+                          ? ((dayTotals['calories'] ?? 0) / calorieGoal * 100)
+                          : 0.0;
+                      final protPercentage = proteinGoal > 0
+                          ? ((dayTotals['protein'] ?? 0) / proteinGoal * 100)
+                          : 0.0;
+                      final carbsPercentage = carbsGoal > 0
+                          ? ((dayTotals['carbs'] ?? 0) / carbsGoal * 100)
+                          : 0.0;
+                      final fatPercentage = fatGoal > 0
+                          ? ((dayTotals['fat'] ?? 0) / fatGoal * 100)
+                          : 0.0;
+                      final avgPercentage = (calPercentage +
+                              protPercentage +
+                              carbsPercentage +
+                              fatPercentage) /
+                          4;
 
-                    // Determine color based on average
-                    Color goalIndicatorColor;
-                    if (avgPercentage >= 100) {
-                      goalIndicatorColor = Colors.green;
-                    } else if (avgPercentage >= 80) {
-                      goalIndicatorColor = Colors.orange;
-                    } else if (avgPercentage >= 50) {
-                      goalIndicatorColor = Colors.yellow.shade700;
-                    } else {
-                      goalIndicatorColor = Colors.grey;
-                    }
+                      Color goalIndicatorColor;
+                      if (avgPercentage > 130) {
+                        goalIndicatorColor = Colors.red;
+                      } else if (avgPercentage > 110) {
+                        goalIndicatorColor = Colors.yellow.shade700;
+                      } else if (avgPercentage >= 90) {
+                        goalIndicatorColor = Colors.green;
+                      } else if (avgPercentage >= 80) {
+                        goalIndicatorColor = Colors.orange;
+                      } else {
+                        goalIndicatorColor = Colors.grey;
+                      }
 
-                    return GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedDay = day;
-                        });
-                        _showFoodsSheet(day, foods, dayTotals, userId);
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(
-                            vertical: 6, horizontal: 8),
-                        padding: const EdgeInsets.fromLTRB(16, 16, 10, 16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: isSelected
-                                ? const Color(0xFF6DCFF6)
-                                : Colors.transparent,
-                            width: 2,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.05),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _selectedDay = day;
+                          });
+                          _showFoodsSheet(day, foods, dayTotals, userId);
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(
+                              vertical: 6, horizontal: 8),
+                          padding: const EdgeInsets.fromLTRB(16, 16, 10, 16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isSelected
+                                  ? const Color(0xFF6DCFF6)
+                                  : Colors.transparent,
+                              width: 2,
                             ),
-                          ],
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Day indicator
-                            Container(
-                              width: 48,
-                              child: Column(
-                                children: [
-                                  Text(
-                                    DateFormat('E').format(day),
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
-                                      color: Colors.grey.shade600,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Container(
-                                    padding: const EdgeInsets.all(6),
-                                    decoration: BoxDecoration(
-                                      color: isToday
-                                          ? const Color(0xFF6DCFF6)
-                                              .withValues(alpha: 0.2)
-                                          : Colors.grey.shade100,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Text(
-                                      '${day.day}',
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.05),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // FIX 3: Day indicator with mainAxisSize.min
+                              SizedBox(
+                                width: 48,
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      DateFormat('E').format(day),
                                       style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
                                         color: isToday
                                             ? const Color(0xFF6DCFF6)
+                                                .withValues(alpha: 0.2)
+                                            : Colors.grey.shade100,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Text(
+                                        '${day.day}',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: isToday
+                                              ? const Color(0xFF6DCFF6)
+                                              : Colors.black87,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Container(
+                                      width: 12,
+                                      height: 12,
+                                      decoration: BoxDecoration(
+                                        color: goalIndicatorColor,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: goalIndicatorColor.withValues(
+                                              alpha: 0.5),
+                                          width: 1,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              // Meals summary
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      foods.isEmpty
+                                          ? 'No meals logged'
+                                          : '${foods.length} meal${foods.length != 1 ? 's' : ''}',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: foods.isEmpty
+                                            ? FontWeight.normal
+                                            : FontWeight.w600,
+                                        color: foods.isEmpty
+                                            ? Colors.grey.shade500
                                             : Colors.black87,
+                                        fontStyle: foods.isEmpty
+                                            ? FontStyle.italic
+                                            : FontStyle.normal,
                                       ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  // Goal completion indicator circle
-                                  Container(
-                                    width: 12,
-                                    height: 12,
-                                    decoration: BoxDecoration(
-                                      color: goalIndicatorColor,
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: goalIndicatorColor.withValues(
-                                            alpha: 0.5),
-                                        width: 1,
-                                      ),
+                                    const SizedBox(height: 8),
+                                    _MacroProgressIndicator(
+                                      label: 'Cal',
+                                      current: dayTotals['calories'] ?? 0,
+                                      goal: calorieGoal,
+                                      color: const Color(0xFF5F9735),
+                                      valueLabel:
+                                          '${dayTotals['calories']?.toInt() ?? 0} Cal',
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            // Meals summary
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // Show meal count or "No meals"
-                                  Text(
-                                    foods.isEmpty
-                                        ? 'No meals logged'
-                                        : '${foods.length} meal${foods.length != 1 ? 's' : ''}',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: foods.isEmpty
-                                          ? FontWeight.normal
-                                          : FontWeight.w600,
-                                      color: foods.isEmpty
-                                          ? Colors.grey.shade500
-                                          : Colors.black87,
-                                      fontStyle: foods.isEmpty
-                                          ? FontStyle.italic
-                                          : FontStyle.normal,
+                                    const SizedBox(height: 4),
+                                    _MacroProgressIndicator(
+                                      label: 'Pro',
+                                      current: dayTotals['protein'] ?? 0,
+                                      goal: proteinGoal,
+                                      color: const Color(0xFFC2482B),
+                                      valueLabel:
+                                          '${dayTotals['protein']?.toStringAsFixed(0) ?? 0}g',
                                     ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  // Progress indicators with values (always shown)
-                                  _MacroProgressIndicator(
-                                    label: 'Cal',
-                                    current: dayTotals['calories'] ?? 0,
-                                    goal: calorieGoal,
-                                    color: const Color(0xFF5F9735),
-                                    valueLabel:
-                                        '${dayTotals['calories']?.toInt() ?? 0} kcal',
-                                  ),
-                                  const SizedBox(height: 4),
-                                  _MacroProgressIndicator(
-                                    label: 'Pro',
-                                    current: dayTotals['protein'] ?? 0,
-                                    goal: proteinGoal,
-                                    color: const Color(0xFFC2482B),
-                                    valueLabel:
-                                        '${dayTotals['protein']?.toStringAsFixed(0) ?? 0}g',
-                                  ),
-                                  const SizedBox(height: 4),
-                                  _MacroProgressIndicator(
-                                    label: 'Carb',
-                                    current: dayTotals['carbs'] ?? 0,
-                                    goal: carbsGoal,
-                                    color: const Color(0xFFE0A100),
-                                    valueLabel:
-                                        '${dayTotals['carbs']?.toStringAsFixed(0) ?? 0}g',
-                                  ),
-                                  const SizedBox(height: 4),
-                                  _MacroProgressIndicator(
-                                    label: 'Fat',
-                                    current: dayTotals['fat'] ?? 0,
-                                    goal: fatGoal,
-                                    color: const Color(0xFF3A6FB8),
-                                    valueLabel:
-                                        '${dayTotals['fat']?.toStringAsFixed(0) ?? 0}g',
-                                  ),
-                                ],
+                                    const SizedBox(height: 4),
+                                    _MacroProgressIndicator(
+                                      label: 'Carb',
+                                      current: dayTotals['carbs'] ?? 0,
+                                      goal: carbsGoal,
+                                      color: const Color(0xFFE0A100),
+                                      valueLabel:
+                                          '${dayTotals['carbs']?.toStringAsFixed(0) ?? 0}g',
+                                    ),
+                                    const SizedBox(height: 4),
+                                    _MacroProgressIndicator(
+                                      label: 'Fat',
+                                      current: dayTotals['fat'] ?? 0,
+                                      goal: fatGoal,
+                                      color: const Color(0xFF3A6FB8),
+                                      valueLabel:
+                                          '${dayTotals['fat']?.toStringAsFixed(0) ?? 0}g',
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    );
-                  }).toList(),
+                      );
+                    }).toList(),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -682,7 +737,6 @@ class _AddMealModal extends ConsumerStatefulWidget {
 class _AddMealModalState extends ConsumerState<_AddMealModal> {
   bool _isSearchMode = true;
 
-  // Manual entry controllers
   final _nameController = TextEditingController();
   final _gramsController = TextEditingController(text: '100');
   final _caloriesController = TextEditingController();
@@ -691,7 +745,6 @@ class _AddMealModalState extends ConsumerState<_AddMealModal> {
   final _fatController = TextEditingController();
   String _mealType = 'snack';
 
-  // Search state
   final _searchController = TextEditingController();
   final _searchService = FoodSearchService();
   Timer? _debounce;
@@ -792,12 +845,12 @@ class _AddMealModalState extends ConsumerState<_AddMealModal> {
       await ref
           .read(firestoreFoodLogProvider(widget.userId).notifier)
           .addFood(widget.userId, item);
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Added "$name"')),
-        );
-      }
+      if (!mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
+      Navigator.pop(context);
+      messenger.showSnackBar(
+        SnackBar(content: Text('Added "$name"')),
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -808,13 +861,15 @@ class _AddMealModalState extends ConsumerState<_AddMealModal> {
   }
 
   Future<void> _addSearchResult(FoodSearchResult result) async {
+    final rootContext = context;
     final gramsController =
         TextEditingController(text: result.servingGrams.toStringAsFixed(0));
+    final gramsFocusNode = FocusNode();
     String mealType = 'snack';
 
     await showDialog<void>(
-      context: context,
-      builder: (context) {
+      context: rootContext,
+      builder: (dialogContext) {
         return AlertDialog(
           title: Text('Add ${result.name}'),
           content: Column(
@@ -839,8 +894,22 @@ class _AddMealModalState extends ConsumerState<_AddMealModal> {
               const SizedBox(height: 8),
               TextField(
                 controller: gramsController,
-                decoration: const InputDecoration(labelText: 'Grams'),
+                focusNode: gramsFocusNode,
+                decoration: InputDecoration(
+                  labelText: 'Grams',
+                  suffixIcon: IconButton(
+                    tooltip: 'Done',
+                    icon: const Icon(Icons.check),
+                    onPressed: () =>
+                        FocusScope.of(dialogContext).unfocus(),
+                  ),
+                ),
                 keyboardType: TextInputType.number,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) =>
+                    FocusScope.of(dialogContext).unfocus(),
+                onTapOutside: (_) =>
+                    FocusScope.of(dialogContext).unfocus(),
               ),
               const SizedBox(height: 8),
               Align(
@@ -854,14 +923,14 @@ class _AddMealModalState extends ConsumerState<_AddMealModal> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text('Cancel'),
             ),
             ElevatedButton(
               onPressed: () async {
                 final grams = double.tryParse(gramsController.text.trim());
                 if (grams == null || grams <= 0) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
                     const SnackBar(
                         content: Text('Please enter a valid grams value.')),
                   );
@@ -891,18 +960,16 @@ class _AddMealModalState extends ConsumerState<_AddMealModal> {
                   await ref
                       .read(firestoreFoodLogProvider(widget.userId).notifier)
                       .addFood(widget.userId, item);
-                  if (context.mounted) {
-                    Navigator.pop(context); // Close the portion dialog
-                    if (mounted) {
-                      Navigator.pop(context); // Close the main modal
-                    }
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Added "${result.name}"')),
-                    );
-                  }
+                  if (!mounted) return;
+                  final messenger = ScaffoldMessenger.of(rootContext);
+                  Navigator.pop(dialogContext);
+                  Navigator.pop(rootContext);
+                  messenger.showSnackBar(
+                    SnackBar(content: Text('Added "${result.name}"')),
+                  );
                 } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                  if (dialogContext.mounted) {
+                    ScaffoldMessenger.of(dialogContext).showSnackBar(
                       SnackBar(content: Text('Failed to add: $e')),
                     );
                   }
@@ -914,6 +981,9 @@ class _AddMealModalState extends ConsumerState<_AddMealModal> {
         );
       },
     );
+
+    gramsController.dispose();
+    gramsFocusNode.dispose();
   }
 
   @override
@@ -932,7 +1002,6 @@ class _AddMealModalState extends ConsumerState<_AddMealModal> {
           ),
           child: Column(
             children: [
-              // Toggle buttons
               Container(
                 decoration: BoxDecoration(
                   color: Colors.brown.shade50,
@@ -1016,8 +1085,6 @@ class _AddMealModalState extends ConsumerState<_AddMealModal> {
                 ),
               ),
               const SizedBox(height: 16),
-
-              // Content
               Expanded(
                 child: SingleChildScrollView(
                   controller: scrollController,
@@ -1282,8 +1349,9 @@ class _FoodsListWidget extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 6),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 4,
                       children: [
                         Text(
                           'Cal: ${row.calories.toInt()}',
@@ -1326,6 +1394,7 @@ class _FoodsListWidget extends StatelessWidget {
   }
 }
 
+// FIX 4: Search result tile with wrapping macro text
 class _FoodSearchResultTile extends StatelessWidget {
   const _FoodSearchResultTile({required this.result, required this.onAdd});
 
@@ -1358,21 +1427,33 @@ class _FoodSearchResultTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${result.servingGrams.toStringAsFixed(0)} g · $calories kcal',
+                  '${result.servingGrams.toStringAsFixed(0)} g · $calories Cal',
                   style: TextStyle(
                     color: Colors.grey.shade700,
                     fontSize: 12,
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  'P ${(result.proteinPerGram * result.servingGrams).toStringAsFixed(1)}g · '
-                  'C ${(result.carbsPerGram * result.servingGrams).toStringAsFixed(1)}g · '
-                  'F ${(result.fatPerGram * result.servingGrams).toStringAsFixed(1)}g',
-                  style: TextStyle(
-                    color: Colors.grey.shade600,
-                    fontSize: 11,
-                  ),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 2,
+                  children: [
+                    Text(
+                      'P ${(result.proteinPerGram * result.servingGrams).toStringAsFixed(1)}g',
+                      style: TextStyle(
+                          color: Colors.grey.shade600, fontSize: 11),
+                    ),
+                    Text(
+                      'C ${(result.carbsPerGram * result.servingGrams).toStringAsFixed(1)}g',
+                      style: TextStyle(
+                          color: Colors.grey.shade600, fontSize: 11),
+                    ),
+                    Text(
+                      'F ${(result.fatPerGram * result.servingGrams).toStringAsFixed(1)}g',
+                      style: TextStyle(
+                          color: Colors.grey.shade600, fontSize: 11),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -1476,6 +1557,7 @@ class _FoodsTable extends StatelessWidget {
   }
 }
 
+// FIX 2: Value chip uses Flexible instead of fixed SizedBox(width: 70)
 class _MacroProgressIndicator extends StatelessWidget {
   const _MacroProgressIndicator({
     required this.label,
@@ -1494,13 +1576,15 @@ class _MacroProgressIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final percentage = goal > 0 ? (current / goal * 100).clamp(0, 150) : 0.0;
-    final isComplete = percentage >= 100;
-    final isClose = percentage >= 80 && percentage < 100;
 
     Color statusColor;
-    if (isComplete) {
+    if (percentage > 130) {
+      statusColor = Colors.red;
+    } else if (percentage > 110) {
+      statusColor = Colors.yellow.shade700;
+    } else if (percentage >= 90) {
       statusColor = Colors.green;
-    } else if (isClose) {
+    } else if (percentage >= 80) {
       statusColor = Colors.orange;
     } else {
       statusColor = Colors.grey;
@@ -1565,8 +1649,7 @@ class _MacroProgressIndicator extends StatelessWidget {
         ),
         if (valueLabel != null) ...[
           const SizedBox(width: 4),
-          SizedBox(
-            width: 70,
+          Flexible(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
@@ -1679,7 +1762,6 @@ class _MonthlyCalendarPickerState extends State<_MonthlyCalendarPicker> {
     final firstDay = DateTime(month.year, month.month, 1);
     final lastDay = DateTime(month.year, month.month + 1, 0);
 
-    // Start from the Monday of the first week
     final startDate = firstDay.subtract(Duration(days: firstDay.weekday - 1));
 
     final weeks = <List<DateTime?>>[];
@@ -1706,12 +1788,10 @@ class _MonthlyCalendarPickerState extends State<_MonthlyCalendarPicker> {
     return weeks;
   }
 
-  // Get the Monday of the week containing the given date
   DateTime _getMondayOfWeek(DateTime date) {
     return date.subtract(Duration(days: date.weekday - 1));
   }
 
-  // Check if the given date is in the focused week
   bool _isInFocusedWeek(DateTime date) {
     final focusedMonday = _getMondayOfWeek(widget.focusedDay);
     final dateMonday = _getMondayOfWeek(date);
@@ -1729,7 +1809,6 @@ class _MonthlyCalendarPickerState extends State<_MonthlyCalendarPicker> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Month/Year header with navigation
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -1764,7 +1843,6 @@ class _MonthlyCalendarPickerState extends State<_MonthlyCalendarPicker> {
               ],
             ),
             const SizedBox(height: 16),
-            // Day headers (Mon-Sun)
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: const [
@@ -1778,7 +1856,6 @@ class _MonthlyCalendarPickerState extends State<_MonthlyCalendarPicker> {
               ],
             ),
             const SizedBox(height: 8),
-            // Calendar weeks
             ...weeks.map((week) {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8),
@@ -1796,7 +1873,6 @@ class _MonthlyCalendarPickerState extends State<_MonthlyCalendarPicker> {
 
                     return GestureDetector(
                       onTap: () {
-                        // Select the Monday of the week
                         final monday = _getMondayOfWeek(date);
                         widget.onDateSelected(monday);
                       },
@@ -1841,7 +1917,6 @@ class _MonthlyCalendarPickerState extends State<_MonthlyCalendarPicker> {
               );
             }).toList(),
             const SizedBox(height: 16),
-            // Close button
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(

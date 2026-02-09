@@ -74,6 +74,7 @@ class _ProfilePageState extends State<ProfilePage> {
       final doc = await _firestore.collection('Users').doc(user!.uid).get();
       if (!doc.exists) return;
       final data = doc.data()!;
+      if (!mounted) return;
       setState(() {
         _firstname = data['firstname'];
         _lastname = data['lastname'];

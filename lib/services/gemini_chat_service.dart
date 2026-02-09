@@ -1,34 +1,37 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import '../config/env.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import '../providers/food_providers.dart';
 import '../providers/firestore_providers.dart';
 import '../db/firestore_helper.dart';
-import 'dart:convert';
 import 'package:nutrition_assistant/db/planned_food.dart';
 import '../models/planned_food_input.dart';
 
 part 'gemini_chat_service.g.dart';
 
+// Loading state for the chatbot
+final chatLoadingProvider = StateProvider<bool>((ref) => false);
+
 //controlling chatflow
 enum ChatStage { idle, awaitingMealType, awaitingCuisine }
 
 //chatbot service
-@riverpod
+@Riverpod(keepAlive: true)
 class GeminiChatService extends _$GeminiChatService {
-  late final GenerativeModel model;
   ChatStage stage = ChatStage.idle;
+  final FirebaseFunctions _functions =
+      FirebaseFunctions.instanceFor(region: 'us-central1');
 
   //flags
-  String? _pendingMealType;
-  String? _pendingCuisineType;
   final Map<String, int> _recipeOffsets = {};
-  final int _batchSize = 3;
   final Set<String> _shownRecipeUris = {};
+
+  /// Stores the last batch of recipes shown to the user (full details)
+  /// Used to provide context when user asks about or wants to modify recipes
+  List<Map<String, dynamic>> _lastShownRecipes = [];
 
   final nonMeals = [
     "butter",
@@ -44,18 +47,509 @@ class GeminiChatService extends _$GeminiChatService {
     "cream"
   ];
 
+  static const String _nutritionAssistantSystemInstruction =
+      '''You are a helpful nutrition assistant.
+Help users with meal planning, calorie counting, and nutrition advice.
+Be encouraging and provide practical tips.
+Do not use markdown formatting like ** or * in your responses. Use plain text only.
+
+IMPORTANT: Never generate or invent recipes from your own knowledge. Only discuss recipes that have been explicitly provided to you in the conversation. If a user asks for recipe suggestions, tell them you can help find recipes from the database - they just need to ask for meal suggestions. You can help modify or adapt recipes that have been shown, answer questions about them, and provide cooking tips.
+
+CRITICAL: When you modify, adjust, or present a recipe (e.g., adjusting servings, substituting ingredients), you MUST output it as JSON in this EXACT format:
+
+{"type":"recipe_results","recipes":[{"id":"modified_123","label":"Recipe Name","cuisine":"Italian","ingredients":["1 cup flour","2 eggs"],"calories":450,"protein":15,"carbs":60,"fat":12,"fiber":3,"sugar":5,"sodium":200,"servings":2,"readyInMinutes":30,"instructions":"Step by step instructions...","imageUrl":"https://example.com/image.jpg"}]}
+
+RULES FOR MODIFIED RECIPES:
+- Output ONLY the JSON - no other text before or after
+- Use "modified_" + original recipe id for the id field
+- IMAGE HANDLING (CRITICAL):
+  * Copy the EXACT "Image URL" value from the original recipe context
+  * NEVER generate, modify, or guess image URLs
+  * If the original has no image URL or it's empty, use an empty string: "imageUrl":""
+  * Do NOT create new URLs or search for images - only use what's provided
+- Calculate adjusted values when changing servings (multiply/divide all ingredients and macros)
+- Include all required fields: id, label, cuisine, ingredients (as array), calories, protein, carbs, fat, fiber, sugar, sodium, servings, readyInMinutes, instructions, imageUrl
+- For questions or general responses (not presenting a recipe), use plain text as normal''';
+
   //build() initial state
   @override
   List<ChatMessage> build() {
-    final apiKey = Env.require(Env.geminiApiKey, 'GEMINI_API_KEY');
-    model = GenerativeModel(
-      model: 'gemini-3-flash-preview', //fast & free
-      apiKey: apiKey,
-      systemInstruction: Content.text('''You are a helpful nutrition assistant. 
-        Help users with meal planning, calorie counting, and nutrition advice.
-        Be encouraging and provide practical tips.'''),
-    );
     return [];
+  }
+
+  /// Build conversation history for Gemini multi-turn chat.
+  /// Takes last 20 messages and converts them to role/text maps.
+  /// Recipe results are summarized to avoid token bloat.
+  List<Map<String, String>> _buildConversationHistory() {
+    final recentMessages =
+        state.length > 20 ? state.sublist(state.length - 20) : state;
+
+    return recentMessages.map((msg) {
+      String text = msg.content;
+
+      // Summarize special message types to reduce tokens
+      try {
+        final parsed = jsonDecode(msg.content);
+        if (parsed is Map && parsed['type'] == 'recipe_results') {
+          final recipes = parsed['recipes'] as List? ?? [];
+          final names = recipes.map((r) => r['label']).join(', ');
+          text = 'I showed you these recipes: $names';
+        } else if (parsed is Map && parsed['type'] == 'meal_profile_summary') {
+          text = 'I showed your meal profile for confirmation.';
+        }
+      } catch (_) {
+        // Not JSON, use as-is
+      }
+
+      return {
+        'role': msg.isUser ? 'user' : 'model',
+        'text': text,
+      };
+    }).toList();
+  }
+
+  /// Check if a message is likely about recipes we've shown.
+  /// Returns true if user might be asking about, modifying, or referencing recipes.
+  bool _isRecipeRelatedMessage(String message) {
+    if (_lastShownRecipes.isEmpty) return false;
+
+    final lower = message.toLowerCase();
+
+    // Keywords suggesting recipe modification or questions
+    const modificationKeywords = [
+      'substitute',
+      'instead of',
+      'replace',
+      'without',
+      'no ',
+      'don\'t have',
+      'dont have',
+      'change',
+      'modify',
+      'swap',
+      'less ',
+      'more ',
+      'spicier',
+      'milder',
+      'healthier',
+      'vegetarian',
+      'vegan',
+      'gluten',
+      'dairy',
+    ];
+
+    // Keywords suggesting questions about the recipe
+    const questionKeywords = [
+      'recipe',
+      'ingredients',
+      'instructions',
+      'how to make',
+      'what\'s in',
+      'whats in',
+      'tell me about',
+      'explain',
+      'calories',
+      'protein',
+      'nutrition',
+      'that dish',
+      'the dish',
+      'first one',
+      'second one',
+      'third one',
+      'which one',
+    ];
+
+    // Keywords for showing exact recipe again
+    const showAgainKeywords = [
+      'show me',
+      'give me',
+      'see',
+      'display',
+      'repeat',
+      'again',
+      'one more time',
+      'that one',
+    ];
+
+    // Check for modification keywords
+    for (final keyword in modificationKeywords) {
+      if (lower.contains(keyword)) return true;
+    }
+
+    // Check for question keywords
+    for (final keyword in questionKeywords) {
+      if (lower.contains(keyword)) return true;
+    }
+
+    // Check for show again keywords
+    for (final keyword in showAgainKeywords) {
+      if (lower.contains(keyword)) return true;
+    }
+
+    // Check if message contains any recipe name
+    for (final recipe in _lastShownRecipes) {
+      final name = (recipe['label'] as String?)?.toLowerCase() ?? '';
+      if (name.isNotEmpty && lower.contains(name.split(' ').first)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /// Check if user wants to see the exact recipe again (not modified).
+  /// Returns true for requests like "show me the first one again"
+  bool _wantsExactRecipe(String message) {
+    if (_lastShownRecipes.isEmpty) return false;
+
+    final lower = message.toLowerCase();
+
+    // Keywords suggesting user wants exact recipe displayed
+    const showAgainPatterns = [
+      'show me',
+      'give me',
+      'see the',
+      'display',
+      'repeat',
+      'again',
+      'one more time',
+      'show that',
+      'show the',
+      'can i see',
+      'let me see',
+      'pull up',
+    ];
+
+    // Keywords suggesting user wants to MODIFY (not exact)
+    const modificationKeywords = [
+      'substitute',
+      'instead of',
+      'replace',
+      'without',
+      'no ',
+      'don\'t have',
+      'dont have',
+      'change',
+      'modify',
+      'swap',
+      'less ',
+      'more ',
+      'spicier',
+      'milder',
+      'healthier',
+      'make it',
+      'but with',
+      'but without',
+    ];
+
+    // If any modification keyword is present, they don't want exact
+    for (final keyword in modificationKeywords) {
+      if (lower.contains(keyword)) return false;
+    }
+
+    // Check for show again patterns
+    for (final pattern in showAgainPatterns) {
+      if (lower.contains(pattern)) return true;
+    }
+
+    return false;
+  }
+
+  /// Extract which recipe index the user is referring to (0-indexed).
+  /// Returns null if can't determine, or list of indices for multiple.
+  List<int>? _extractRecipeIndices(String message) {
+    if (_lastShownRecipes.isEmpty) return null;
+
+    final lower = message.toLowerCase();
+    final indices = <int>[];
+
+    // Check for ordinal references
+    if (lower.contains('first') ||
+        lower.contains('1st') ||
+        lower.contains('number 1') ||
+        lower.contains('#1')) {
+      indices.add(0);
+    }
+    if (lower.contains('second') ||
+        lower.contains('2nd') ||
+        lower.contains('number 2') ||
+        lower.contains('#2')) {
+      indices.add(1);
+    }
+    if (lower.contains('third') ||
+        lower.contains('3rd') ||
+        lower.contains('number 3') ||
+        lower.contains('#3')) {
+      indices.add(2);
+    }
+
+    // Check for "all" or "all three"
+    if (lower.contains('all') ||
+        lower.contains('all three') ||
+        lower.contains('all 3')) {
+      return List.generate(_lastShownRecipes.length, (i) => i);
+    }
+
+    // Check for recipe names
+    for (int i = 0; i < _lastShownRecipes.length; i++) {
+      final name =
+          (_lastShownRecipes[i]['label'] as String?)?.toLowerCase() ?? '';
+      if (name.isNotEmpty) {
+        // Check if any significant word from recipe name is in the message
+        final words = name.split(' ').where((w) => w.length > 3).toList();
+        for (final word in words) {
+          if (lower.contains(word) && !indices.contains(i)) {
+            indices.add(i);
+            break;
+          }
+        }
+      }
+    }
+
+    return indices.isEmpty ? null : indices;
+  }
+
+  /// Return stored recipe(s) in the exact format they were shown.
+  void _returnExactRecipes(List<int> indices) {
+    final recipes = indices
+        .where((i) => i >= 0 && i < _lastShownRecipes.length)
+        .map((i) => _lastShownRecipes[i])
+        .toList();
+
+    if (recipes.isEmpty) return;
+
+    state = [
+      ...state,
+      ChatMessage(
+        content: jsonEncode({
+          "type": "recipe_results",
+          "recipes": recipes,
+        }),
+        isUser: false,
+      ),
+    ];
+  }
+
+  /// Build a compact recipe context string for the prompt.
+  /// Only includes essential info to minimize tokens.
+  String _buildRecipeContext() {
+    if (_lastShownRecipes.isEmpty) return '';
+
+    final buffer = StringBuffer();
+    buffer.writeln(
+        '\n--- RECIPES I SHOWED YOU (reference these when answering) ---');
+    buffer.writeln(
+        'IMPORTANT: When adjusting servings, calculate the multiplier as (desired servings / original servings).');
+    buffer.writeln(
+        'Example: Recipe serves 4, user wants 2 servings -> multiplier is 2/4 = 0.5 (HALVE ingredients)');
+    buffer.writeln(
+        'Example: Recipe serves 2, user wants 4 servings -> multiplier is 4/2 = 2.0 (DOUBLE ingredients)');
+    buffer.writeln('');
+
+    for (int i = 0; i < _lastShownRecipes.length; i++) {
+      final r = _lastShownRecipes[i];
+      final servings = r['servings'] ?? r['yield'] ?? 'unknown';
+      final cuisine = r['cuisine'] ?? 'General';
+      final readyInMinutes = r['readyInMinutes'] ?? 'N/A';
+      final imageUrl = r['imageUrl'] ?? '';
+      final fiber = r['fiber'];
+      final sugar = r['sugar'];
+      final sodium = r['sodium'];
+
+      buffer.writeln('Recipe ${i + 1}: ${r['label']}');
+      buffer.writeln('  Cuisine: $cuisine');
+      buffer.writeln(
+          '  SERVINGS: $servings (this is the original serving size - use for calculations!)');
+      buffer.writeln('  Ready in: $readyInMinutes minutes');
+      buffer.writeln(
+          '  Calories: ${r['calories']} | Protein: ${r['protein']}g | Carbs: ${r['carbs']}g | Fat: ${r['fat']}g');
+      if (fiber != null) {
+        buffer.writeln(
+            '  Fiber: ${fiber}g | Sugar: ${sugar}g | Sodium: ${sodium}g');
+      }
+      buffer.writeln('  Image URL: $imageUrl');
+      buffer.writeln(
+          '  Ingredients: ${(r['ingredients'] as List?)?.join(', ') ?? 'N/A'}');
+      buffer.writeln('  Instructions: ${r['instructions'] ?? 'N/A'}');
+      buffer.writeln('');
+    }
+
+    buffer.writeln('--- END RECIPES ---');
+    buffer.writeln(
+        'Use this information to answer questions about the recipes or suggest modifications.');
+    buffer.writeln(
+        'When adjusting for different serving sizes: ALWAYS check the original SERVINGS first, then multiply/divide ingredients accordingly.');
+    return buffer.toString();
+  }
+
+  /// Check if user is requesting NEW recipe suggestions (not asking about shown recipes).
+  bool _isRecipeRequest(String message) {
+    final lower = message.toLowerCase();
+
+    // Keywords indicating user wants recipe suggestions
+    const recipeRequestKeywords = [
+      'suggest',
+      'recommend',
+      'give me',
+      'show me',
+      'find me',
+      'what should i eat',
+      'what can i eat',
+      'what to eat',
+      'recipe for',
+      'recipes for',
+      'meal idea',
+      'food idea',
+      'what should i cook',
+      'what can i cook',
+      'what to cook',
+      'i want to eat',
+      'i\'m hungry',
+      'im hungry',
+      'feeling hungry',
+      'need a recipe',
+      'need recipes',
+      'need a meal',
+      'need food',
+      'looking for recipe',
+      'looking for meal',
+      'looking for food',
+      'get me a recipe',
+      'get me some',
+      'can you suggest',
+      'any ideas for',
+      'ideas for dinner',
+      'ideas for lunch',
+      'ideas for breakfast',
+      'ideas for snack',
+    ];
+
+    // Check for recipe request keywords
+    for (final keyword in recipeRequestKeywords) {
+      if (lower.contains(keyword)) return true;
+    }
+
+    // Check for meal type mentions with question context
+    const mealTypes = ['breakfast', 'lunch', 'dinner', 'snack'];
+    const questionWords = [
+      'what',
+      'any',
+      'suggest',
+      'recommend',
+      'give',
+      'show',
+      'find',
+      'need',
+      'want'
+    ];
+
+    for (final meal in mealTypes) {
+      if (lower.contains(meal)) {
+        for (final q in questionWords) {
+          if (lower.contains(q)) return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  /// Extract meal type and cuisine from user message using Gemini.
+  Future<Map<String, String>> _extractMealAndCuisine(String message) async {
+    final extractionPrompt = '''
+Extract the meal type and cuisine from this message. Return ONLY a JSON object with two keys.
+
+Message: "$message"
+
+Rules:
+- meal_type must be one of: breakfast, lunch, dinner, snack
+- If no meal type mentioned, infer from context or time of day, default to "dinner"
+- cuisine_type should be the cuisine mentioned, or "any" if not specified
+- Common cuisines: italian, mexican, chinese, indian, japanese, thai, american, mediterranean, french, korean, vietnamese, greek, middle eastern
+
+Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
+''';
+
+    try {
+      final text = await _callGemini(prompt: extractionPrompt);
+
+      // Extract JSON from response (handle potential markdown code blocks)
+      String jsonStr = text;
+      if (text.contains('{')) {
+        jsonStr = text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1);
+      }
+
+      final parsed = jsonDecode(jsonStr) as Map<String, dynamic>;
+      return {
+        'meal_type': (parsed['meal_type'] as String?) ?? 'dinner',
+        'cuisine_type': (parsed['cuisine_type'] as String?) ?? 'any',
+      };
+    } catch (e) {
+      // Default fallback
+      return {'meal_type': 'dinner', 'cuisine_type': 'any'};
+    }
+  }
+
+  Future<User> _ensureSignedInUser() async {
+    final auth = FirebaseAuth.instance;
+    var user = auth.currentUser;
+    if (user != null) {
+      return user;
+    }
+
+    try {
+      final credential = await auth.signInAnonymously();
+      user = credential.user;
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'admin-restricted-operation') {
+        throw StateError('Please sign in. Anonymous auth is disabled.');
+      }
+      rethrow;
+    }
+
+    if (user == null) {
+      throw StateError('Could not authenticate user');
+    }
+    return user;
+  }
+
+  Future<String> _callGemini({
+    required String prompt,
+    List<Map<String, String>> history = const [],
+    bool useNutritionAssistantSystemInstruction = false,
+    String? imageBase64,
+    String mimeType = 'image/jpeg',
+  }) async {
+    final user = await _ensureSignedInUser();
+    await user.getIdToken(true);
+
+    final callable = _functions.httpsCallable('callGemini');
+    final response = await callable.call({
+      'prompt': prompt,
+      'history': history,
+      'useNutritionAssistantSystemInstruction':
+          useNutritionAssistantSystemInstruction,
+      'systemInstruction': useNutritionAssistantSystemInstruction
+          ? _nutritionAssistantSystemInstruction
+          : '',
+      if (imageBase64 != null && imageBase64.isNotEmpty)
+        'imageBase64': imageBase64,
+      if (imageBase64 != null && imageBase64.isNotEmpty) 'mimeType': mimeType,
+    });
+
+    final rawData = response.data;
+    if (rawData is! Map) {
+      throw StateError(
+        'Unexpected Cloud Function response type: ${rawData.runtimeType}',
+      );
+    }
+
+    final data = Map<String, dynamic>.from(rawData);
+    final text = (data['text'] ?? '').toString();
+    if (text.trim().isEmpty) {
+      throw StateError('Gemini Cloud Function returned an empty response.');
+    }
+    return text;
   }
 
   //normal chat response
@@ -65,7 +559,29 @@ class GeminiChatService extends _$GeminiChatService {
       ChatMessage(content: userMessage, isUser: true)
     ]; //add user's message to chat
 
+    ref.read(chatLoadingProvider.notifier).state = true;
     try {
+      // First check if user is asking about recipes we already showed
+      // (e.g., "give me the first recipe again", "tell me more about that dish")
+      // This takes priority over new recipe requests
+      final isAboutShownRecipes = _isRecipeRelatedMessage(userMessage);
+
+      // If user wants exact recipe shown again (no modifications), return it directly
+      if (isAboutShownRecipes && _wantsExactRecipe(userMessage)) {
+        final indices = _extractRecipeIndices(userMessage);
+        if (indices != null && indices.isNotEmpty) {
+          _returnExactRecipes(indices);
+          return; // Exact recipe(s) returned
+        }
+      }
+
+      // Only fetch new recipes if NOT asking about already-shown recipes
+      if (!isAboutShownRecipes && _isRecipeRequest(userMessage)) {
+        final params = await _extractMealAndCuisine(userMessage);
+        await _fetchRecipes(params['meal_type']!, params['cuisine_type']!);
+        return; // Recipe results already added to state by _fetchRecipes
+      }
+
       final foodLog = ref.read(foodLogProvider); //read today's food log
 
       //create a simple nutrition calculation
@@ -93,7 +609,7 @@ class GeminiChatService extends _$GeminiChatService {
     - Sex: ${appUser.sex}, Age: ${age ?? 'unknown'}
     - Activity level: ${appUser.activityLevel}
     - Height: ${appUser.height} in, Weight: ${appUser.weight} lbs
-    - Daily calorie goal: ${mp.dailyCalorieGoal} kcal
+    - Daily calorie goal: ${mp.dailyCalorieGoal} calories
     - Dietary goal: ${mp.dietaryGoal}
     - Macro goals: Protein ${mp.macroGoals['protein']?.round() ?? 20}%, Carbs ${mp.macroGoals['carbs']?.round() ?? 50}%, Fat ${mp.macroGoals['fat']?.round() ?? 30}%
     - Dietary habits: ${mp.dietaryHabits.where((h) => h.trim().isNotEmpty && h.toLowerCase() != 'none').join(', ')}
@@ -117,14 +633,27 @@ class GeminiChatService extends _$GeminiChatService {
     User question: $userMessage
     ''';
 
-      final response = await model
-          .generateContent([Content.text(contextualPrompt)]); //call gemini
+      // If the user is asking about recipes we showed, include recipe context
+      String recipeContext = '';
+      if (isAboutShownRecipes) {
+        recipeContext = _buildRecipeContext();
+      }
+
+      final fullPrompt = '$contextualPrompt$recipeContext';
+
+      // Use multi-turn chat with conversation history for context
+      final history = _buildConversationHistory();
+      final responseText = await _callGemini(
+        prompt: fullPrompt,
+        history: history,
+        useNutritionAssistantSystemInstruction: true,
+      );
 
       //add gemini's response
       state = [
         ...state,
         ChatMessage(
-          content: response.text ?? "I couldn't process that request.",
+          content: responseText,
           isUser: false,
         )
       ];
@@ -137,6 +666,8 @@ class GeminiChatService extends _$GeminiChatService {
           isUser: false,
         )
       ];
+    } finally {
+      ref.read(chatLoadingProvider.notifier).state = false;
     }
   }
 
@@ -147,63 +678,18 @@ class GeminiChatService extends _$GeminiChatService {
     await _fetchRecipes(mealType, cuisineType);
   }
 
-  //confirmation on user profile
-  Future<void> confirmMealProfile(bool confirmed) async {
-    final notifier = ref.read(geminiChatServiceProvider.notifier);
-
-    notifier.addLocalUserMessage(confirmed ? "Yes" : "No");
-
-    if (!confirmed) {
-      // "No"
-      state = [
-        ...state,
-        ChatMessage(
-          content:
-              "Got it. Please update your dietary preferences in your profile before continuing.",
-          isUser: false,
-          timestamp: DateTime.now(),
-        ),
-      ];
-      // clear pending values so we don’t accidentally reuse them later
-      _pendingMealType = null;
-      _pendingCuisineType = null;
-      return;
-    }
-
-    // "Yes"
-    state = [
-      ...state,
-      ChatMessage(
-        content: "Perfect! Generating your personalized recipes now.",
-        isUser: false,
-        timestamp: DateTime.now(),
-      ),
-    ];
-
-    if (_pendingMealType != null && _pendingCuisineType != null) {
-      await _fetchRecipes(_pendingMealType!, _pendingCuisineType!,
-          fromConfirmation: true);
-
-      //global variables no longer needed
-      _pendingMealType = null;
-      _pendingCuisineType = null;
-    }
-  }
-
   //fetch recipes with mealType, cuisineType
   //fetch with dietary and health restrictions, likes and dislikes
   Future<void> _fetchRecipes(
     String mealType,
     String cuisineType, {
-    bool fromConfirmation = false,
     bool forceNewBatch = false,
   }) async {
+    ref.read(chatLoadingProvider.notifier).state = true;
     try {
       //user profile from user signed in
-      final user = FirebaseAuth.instance.currentUser;
+      final user = await _ensureSignedInUser();
       print('Current user: $user');
-
-      if (user == null) return;
 
       final appUser = await FirestoreHelper.getUser(user.uid);
       if (appUser == null) {
@@ -237,13 +723,11 @@ class GeminiChatService extends _$GeminiChatService {
           .where((l) => l.trim().isNotEmpty && l.toLowerCase() != 'none')
           .toList();
 
-      //user confirmation on meal profile
-      if (!fromConfirmation) {
-        _pendingMealType = mealType;
-        _pendingCuisineType = cuisineType;
+      if (!forceNewBatch) {
         _recipeOffsets["$mealType-$cuisineType"] =
             0; // reset when selection changes
 
+        // Show profile summary (informational only)
         state = [
           ...state,
           ChatMessage(
@@ -263,11 +747,6 @@ class GeminiChatService extends _$GeminiChatService {
             timestamp: DateTime.now(),
           ),
         ];
-
-        return;
-      } else {
-        _pendingMealType = mealType;
-        _pendingCuisineType = cuisineType;
       }
 
       // Prepare macro goals as percentages
@@ -301,8 +780,7 @@ class GeminiChatService extends _$GeminiChatService {
           todaysFoods.map((f) => f.mealType.toLowerCase()).toSet().toList();
 
       // Call RAG-based searchRecipes Cloud Function with full user profile
-      final functions = FirebaseFunctions.instance;
-      final callable = functions.httpsCallable('searchRecipes');
+      final callable = _functions.httpsCallable('searchRecipes');
 
       final result = await callable.call({
         // Meal context
@@ -439,6 +917,9 @@ class GeminiChatService extends _$GeminiChatService {
         });
       }
 
+      // Save recipes for later reference (recipe editing, questions, etc.)
+      _lastShownRecipes = List.from(recipeList);
+
       // If no recipes passed filtering, inform user
       if (recipeList.isEmpty) {
         state = [
@@ -471,6 +952,8 @@ class GeminiChatService extends _$GeminiChatService {
           isUser: false,
         ),
       ];
+    } finally {
+      ref.read(chatLoadingProvider.notifier).state = false;
     }
   }
 
@@ -484,7 +967,7 @@ class GeminiChatService extends _$GeminiChatService {
         Do NOT include any introductions, greetings, bold/markdown formatting, or commentary.
 
         Recipe name: $title
-        Estimated calories: $calories kcal
+        Estimated calories: $calories calories
 
         Ingredients:
         ${ingredients.map((i) => "- $i").join("\n")}
@@ -499,8 +982,9 @@ class GeminiChatService extends _$GeminiChatService {
 
     for (int attempt = 0; attempt < retries; attempt++) {
       try {
-        final response = await model.generateContent([Content.text(prompt)]);
-        return response.text?.trim() ?? "Instructions unavailable.";
+        final responseText = await _callGemini(prompt: prompt);
+        final trimmed = responseText.trim();
+        return trimmed.isEmpty ? "Instructions unavailable." : trimmed;
       } catch (e) {
         print("Attempt ${attempt + 1} failed: $e");
         if (attempt == retries - 1) {
@@ -537,15 +1021,13 @@ class GeminiChatService extends _$GeminiChatService {
       ),
     ];
 
-    await _fetchRecipes(mealType, cuisineType,
-        fromConfirmation: true, forceNewBatch: true);
+    await _fetchRecipes(mealType, cuisineType, forceNewBatch: true);
   }
 
   //call firestore provider to add scheduled meals to subcollection
   Future<void> scheduleRecipe(
       String recipeId, List<PlannedFoodInput> plannedInputs) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) throw StateError('User not logged in');
+    final user = await _ensureSignedInUser();
 
     // Add each scheduled meal to the subcollection
     for (final input in plannedInputs) {
@@ -570,20 +1052,17 @@ class GeminiChatService extends _$GeminiChatService {
   Future<void> analyzeFoodPhoto(String imagePath) async {
     try {
       final imageBytes = await File(imagePath).readAsBytes();
-
-      final response = await model.generateContent([
-        Content.multi([
-          TextPart(
+      final responseText = await _callGemini(
+        prompt:
             'Analyze this food image and estimate its nutritional content. Provide calories, protein, carbs, and fat estimates per serving. Be specific about portion size.',
-          ),
-          DataPart('image/jpeg', imageBytes),
-        ])
-      ]);
+        imageBase64: base64Encode(imageBytes),
+        mimeType: 'image/jpeg',
+      );
 
       state = [
         ...state,
         ChatMessage(
-          content: response.text ?? "Couldn't analyze the image.",
+          content: responseText,
           isUser: false,
         )
       ];

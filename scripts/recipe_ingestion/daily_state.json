@@ -1,9 +1,13 @@
 {
-  "date": "2026-01-29",
-  "offset": 0,
-  "requestsMade": 0,
-  "recipesAdded": 0,
-  "cuisineIndex": 0,
+  "date": "2026-02-07",
+  "offset": 300,
+  "requestsMade": 30,
+  "recipesAdded": 1294,
+  "cuisineIndex": 3,
   "apiKeyIndex": 7,
-  "exhaustedCombos": []
+  "exhaustedCombos": [
+    "world|all|popularity",
+    "world|all|healthiness",
+    "world|all|time"
+  ]
 }
