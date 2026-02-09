@@ -734,7 +734,7 @@ void main() {
           home: Scaffold(
             body: Column(
               children: [
-                _buildNutrientRow('Calories', '250 kcal'),
+                _buildNutrientRow('Calories', '250 Cal'),
                 _buildNutrientRow('Protein', '15g'),
                 _buildNutrientRow('Carbs', '30g'),
                 _buildNutrientRow('Fat', '8g'),
@@ -745,7 +745,7 @@ void main() {
       );
 
       expect(find.text('Calories'), findsOneWidget);
-      expect(find.text('250 kcal'), findsOneWidget);
+      expect(find.text('250 Cal'), findsOneWidget);
       expect(find.text('Protein'), findsOneWidget);
       expect(find.text('Carbs'), findsOneWidget);
       expect(find.text('Fat'), findsOneWidget);
@@ -1808,8 +1808,8 @@ void main() {
                         style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                       ),
                       SizedBox(height: 16),
-                      Text('Grilled Chicken - 250 kcal'),
-                      Text('Steamed Broccoli - 55 kcal'),
+                      Text('Grilled Chicken - 250 Cal'),
+                      Text('Steamed Broccoli - 55 Cal'),
                     ],
                   ),
                 ),
@@ -1820,7 +1820,7 @@ void main() {
       );
 
       expect(find.text('Food Items'), findsOneWidget);
-      expect(find.text('Grilled Chicken - 250 kcal'), findsOneWidget);
+      expect(find.text('Grilled Chicken - 250 Cal'), findsOneWidget);
     });
 
     testWidgets('should render meal analyzer floating action button', (tester) async {

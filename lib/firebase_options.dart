@@ -2,7 +2,8 @@
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
-import 'config/env.dart';
+
+const String _firebaseApiKey = 'AIzaSyC3ffg9dqgDmQ-FNO7O5IJ_uBdybOoCWrA';
 
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
@@ -30,7 +31,7 @@ class DefaultFirebaseOptions {
   }
 
   static final FirebaseOptions web = FirebaseOptions(
-    apiKey: Env.require(Env.googleApiKeyWeb, 'GOOGLE_API_KEY_WEB'),
+    apiKey: _firebaseApiKey,
     appId: '1:468473644377:web:13d28a9e81135191267848',
     messagingSenderId: '468473644377',
     projectId: 'ai-nutrition-assistant-e2346',
@@ -40,7 +41,7 @@ class DefaultFirebaseOptions {
   );
 
   static final FirebaseOptions android = FirebaseOptions(
-    apiKey: Env.require(Env.googleApiKeyAndroid, 'GOOGLE_API_KEY_ANDROID'),
+    apiKey: _firebaseApiKey,
     appId: '1:468473644377:android:0da8f2de23872a8f267848',
     messagingSenderId: '468473644377',
     projectId: 'ai-nutrition-assistant-e2346',
@@ -48,16 +49,16 @@ class DefaultFirebaseOptions {
   );
 
   static final FirebaseOptions ios = FirebaseOptions(
-    apiKey: Env.require(Env.googleApiKeyIos, 'GOOGLE_API_KEY_IOS'),
-    appId: '1:468473644377:ios:7686922e87701012267848',
+    apiKey: _firebaseApiKey,
+    appId: '1:468473644377:ios:5b61e9875f43caa1267848',
     messagingSenderId: '468473644377',
     projectId: 'ai-nutrition-assistant-e2346',
     storageBucket: 'ai-nutrition-assistant-e2346.firebasestorage.app',
-    iosBundleId: 'com.ainios.myapp',
+    iosBundleId: 'com.example.aiNutritionAssistant',
   );
 
   static final FirebaseOptions macos = FirebaseOptions(
-    apiKey: Env.require(Env.googleApiKeyMacos, 'GOOGLE_API_KEY_MACOS'),
+    apiKey: _firebaseApiKey,
     appId: '1:468473644377:ios:f4d65ac6e7d52171267848',
     messagingSenderId: '468473644377',
     projectId: 'ai-nutrition-assistant-e2346',
@@ -66,7 +67,7 @@ class DefaultFirebaseOptions {
   );
 
   static final FirebaseOptions windows = FirebaseOptions(
-    apiKey: Env.require(Env.googleApiKeyWeb, 'GOOGLE_API_KEY_WEB'),
+    apiKey: _firebaseApiKey,
     appId: '1:468473644377:web:c92d26cd4e74b40c267848',
     messagingSenderId: '468473644377',
     projectId: 'ai-nutrition-assistant-e2346',

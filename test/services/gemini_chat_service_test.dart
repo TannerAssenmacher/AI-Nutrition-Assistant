@@ -494,7 +494,7 @@ void main() {
     test('should handle recipe-like content', () {
       final recipeContent = '''
 🍽️ Grilled Chicken Salad
-🔥 Overall Calories: 350 kcal
+🔥 Overall Calories: 350 Cal
 
 🥕 Ingredients:
 • 200g chicken breast
@@ -830,12 +830,12 @@ void main() {
       ];
 
       final recipeText = recipes.map((r) => 
-        '🍽️ ${r['label']} (${r['cuisine']})\n🔥 ${r['calories']} kcal'
+        '🍽️ ${r['label']} (${r['cuisine']})\n🔥 ${r['calories']} Cal'
       ).join('\n\n');
 
       expect(recipeText, contains('Pasta Primavera'));
       expect(recipeText, contains('Chicken Stir Fry'));
-      expect(recipeText, contains('450 kcal'));
+      expect(recipeText, contains('450 Cal'));
     });
 
     test('should format meal type selection message', () {

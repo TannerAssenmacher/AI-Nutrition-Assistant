@@ -3,12 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
-import 'screens/home_screen.dart';
 //import 'db/user.dart';
 //import 'db/food.dart';
-import 'db/firestore_helper.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/forgot_password_screen.dart';
@@ -37,9 +34,12 @@ void main() async {
     await NotificationService.scheduleStreakReminder();
     await NotificationService.scheduleMacroCheckReminder();
 
-    // If Firebase restored a user session and email is verified, skip login
+    // Only resume an existing authenticated session.
     final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser != null && currentUser.emailVerified) {
+
+    // If we have a verified user or a persisted anonymous user, skip login.
+    if (currentUser != null &&
+        (currentUser.emailVerified || currentUser.isAnonymous)) {
       initialRoute = '/home';
     }
 

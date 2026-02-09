@@ -2,6 +2,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:nutrition_assistant/services/food_search_service.dart';
 
 enum CaptureMode { photo, barcode }
 
@@ -30,19 +31,19 @@ class CameraCaptureScreen extends StatefulWidget {
 class _CameraCaptureScreenState extends State<CameraCaptureScreen>
     with WidgetsBindingObserver {
   CaptureMode _captureMode = CaptureMode.photo;
-  
+
   // Photo mode
   CameraController? _cameraController;
   bool _isCameraInitialized = false;
   bool _isCapturing = false;
-  
+
   // Barcode mode - we let MobileScanner widget manage itself
   bool _hasDetectedBarcode = false;
-  
+
   // Shared
   bool _isSwitchingMode = false;
   String? _error;
-  
+
   // Context
   final TextEditingController _contextController = TextEditingController();
   bool _showContext = false;
@@ -58,7 +59,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (_captureMode != CaptureMode.photo) return;
-    
+
     final controller = _cameraController;
     if (controller == null || !controller.value.isInitialized) return;
 
@@ -82,7 +83,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
 
   Future<void> _initCamera() async {
     if (!mounted) return;
-    
+
     setState(() {
       _error = null;
       _isCameraInitialized = false;
@@ -107,7 +108,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
       );
 
       await controller.initialize();
-      
+
       if (!mounted) {
         controller.dispose();
         return;
@@ -124,7 +125,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
 
   Future<void> _switchMode() async {
     if (_isSwitchingMode) return;
-    
+
     setState(() => _isSwitchingMode = true);
 
     if (_captureMode == CaptureMode.photo) {
@@ -132,10 +133,10 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
       _cameraController?.dispose();
       _cameraController = null;
       _isCameraInitialized = false;
-      
+
       // Small delay for camera release
       await Future.delayed(const Duration(milliseconds: 300));
-      
+
       if (mounted) {
         setState(() {
           _captureMode = CaptureMode.barcode;
@@ -151,11 +152,11 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
         _hasDetectedBarcode = false;
         _error = null;
       });
-      
+
       // Small delay then init camera
       await Future.delayed(const Duration(milliseconds: 300));
       await _initCamera();
-      
+
       if (mounted) {
         setState(() => _isSwitchingMode = false);
       }
@@ -195,8 +196,8 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
     if (!mounted || _hasDetectedBarcode) return;
 
     for (final barcode in capture.barcodes) {
-      final value = barcode.rawValue;
-      if (value != null && value.isNotEmpty) {
+      final value = _extractScannableBarcode(barcode);
+      if (value != null) {
         _hasDetectedBarcode = true;
         Navigator.of(context).pop(
           MealCaptureResult.barcode(barcode: value),
@@ -204,6 +205,19 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
         return;
       }
     }
+  }
+
+  String? _extractScannableBarcode(Barcode barcode) {
+    final candidates = <String?>[barcode.rawValue, barcode.displayValue];
+    for (final candidate in candidates) {
+      final normalized = FoodSearchService.normalizeBarcodeInput(
+        candidate ?? '',
+      );
+      if (normalized.length >= 8 && normalized.length <= 14) {
+        return normalized;
+      }
+    }
+    return null;
   }
 
   void _onTapFocus(TapDownDetails details, BoxConstraints constraints) {
@@ -235,8 +249,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
               _buildBarcodeView(),
 
             // Overlay for barcode mode
-            if (_captureMode == CaptureMode.barcode)
-              const _ScannerOverlay(),
+            if (_captureMode == CaptureMode.barcode) const _ScannerOverlay(),
 
             // Top bar
             _buildTopBar(),
@@ -255,7 +268,9 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
     }
 
     final controller = _cameraController;
-    if (!_isCameraInitialized || controller == null || !controller.value.isInitialized) {
+    if (!_isCameraInitialized ||
+        controller == null ||
+        !controller.value.isInitialized) {
       return const Center(
         child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
       );
@@ -428,7 +443,9 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
 
                     // Capture button
                     _CaptureButton(
-                      onTap: _captureMode == CaptureMode.photo && _isCameraInitialized && !_isCapturing
+                      onTap: _captureMode == CaptureMode.photo &&
+                              _isCameraInitialized &&
+                              !_isCapturing
                           ? _takePhoto
                           : null,
                       isCapturing: _isCapturing,
@@ -439,8 +456,10 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
                     if (_captureMode == CaptureMode.photo)
                       _ControlButton(
                         icon: _showContext ? Icons.check : Icons.edit_note,
-                        onTap: () => setState(() => _showContext = !_showContext),
-                        isActive: _showContext || _contextController.text.isNotEmpty,
+                        onTap: () =>
+                            setState(() => _showContext = !_showContext),
+                        isActive:
+                            _showContext || _contextController.text.isNotEmpty,
                       )
                     else
                       const SizedBox(width: 56),
@@ -489,7 +508,8 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
                 borderSide: BorderSide.none,
               ),
               contentPadding: const EdgeInsets.all(12),
-              counterStyle: TextStyle(color: Colors.white.withValues(alpha: 0.4)),
+              counterStyle:
+                  TextStyle(color: Colors.white.withValues(alpha: 0.4)),
             ),
           ),
         ],

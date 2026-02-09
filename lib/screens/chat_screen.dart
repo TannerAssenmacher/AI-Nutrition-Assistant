@@ -619,7 +619,7 @@ class MealProfileSummaryBubble extends StatelessWidget {
                   // Goals
                   Text("🎯 Goal: $dietaryGoal"),
                   Text(
-                      "🔥 Daily Calories: ${dailyCalorieGoal > 0 ? '$dailyCalorieGoal kcal' : 'Not set'}"),
+                      "🔥 Daily Calories: ${dailyCalorieGoal > 0 ? '$dailyCalorieGoal Cal' : 'Not set'}"),
                   Text("📊 Macros: P $proteinPct% • C $carbsPct% • F $fatPct%"),
                   const SizedBox(height: 4),
                   // Preferences
@@ -721,7 +721,7 @@ class _RecipeCardState extends State<_RecipeCard> {
               style:
                   const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
           if (cuisine.toLowerCase() != 'world') Text('Cuisine: $cuisine'),
-          Text('Calories: $calories kcal'),
+          Text('Calories: $calories Cal'),
           Text('P: ${protein}g  |  C: ${carbs}g  |  F: ${fat}g',
               style: TextStyle(color: Colors.grey[700], fontSize: 13)),
           if (readyInMinutes != null || servings != null)

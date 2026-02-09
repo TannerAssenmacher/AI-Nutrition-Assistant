@@ -18,7 +18,8 @@ Stream<User?> authStateChanges(Ref ref) {
 class AuthService extends _$AuthService {
   @override
   User? build() {
-    return FirebaseAuth.instance.currentUser;
+    final authState = ref.watch(authStateChangesProvider);
+    return authState.value ?? FirebaseAuth.instance.currentUser;
   }
 
   Future<void> signInWithEmailAndPassword(String email, String password) async {
@@ -33,9 +34,11 @@ class AuthService extends _$AuthService {
     }
   }
 
-  Future<void> createUserWithEmailAndPassword(String email, String password) async {
+  Future<void> createUserWithEmailAndPassword(
+      String email, String password) async {
     try {
-      final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      final credential =
+          await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );

@@ -139,12 +139,14 @@ class _ProfilePageState extends State<ProfilePage> {
     }
     try {
       final doc = await _firestore.collection('Users').doc(user!.uid).get();
+      if (!mounted) return;
       if (!doc.exists) {
         setState(() => _isLoading = false);
         return;
       }
 
       final data = doc.data()!;
+      if (!mounted) return;
       setState(() {
         _firstname = data['firstname'];
         _lastname = data['lastname'];
@@ -186,7 +188,9 @@ class _ProfilePageState extends State<ProfilePage> {
     } catch (e) {
       print('⚠️ Error loading profile: $e');
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
