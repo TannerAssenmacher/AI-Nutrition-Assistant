@@ -20,6 +20,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   bool _isLoading = true;
   bool _isSaving = false;
+  bool _canEditDob = true; 
 
   //colors
   final Color bgColor = const Color(0xFFF5EDE2);
@@ -60,7 +61,6 @@ class _ProfilePageState extends State<ProfilePage> {
     _loadProfile();
   }
 
-  //initial "avatar"
   String _getInitials() {
     String initials = "";
     if (_firstname != null && _firstname!.isNotEmpty) initials += _firstname![0].toUpperCase();
@@ -78,7 +78,16 @@ class _ProfilePageState extends State<ProfilePage> {
         _firstname = data['firstname'];
         _lastname = data['lastname'];
         _email = user!.email;
-        _dob = (data['dob'] != null) ? data['dob'].toString().split(' ')[0] : '';
+        
+        //load dob and check if already in dob, if not then edit flag becomes true
+        if (data['dob'] != null && data['dob'].toString().trim().isNotEmpty) {
+          _dob = data['dob'].toString().split(' ')[0];
+          _canEditDob = false; 
+        } else {
+          _dob = '';
+          _canEditDob = true;
+        }
+
         _sex = data['sex'];
         _heightController.text = data['height']?.toString() ?? '';
         _weightController.text = data['weight']?.toString() ?? '';
@@ -103,28 +112,81 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  Future<void> _saveProfile() async {
-    if (!_formKey.currentState!.validate()) return;
+  Future<void> _showDobPicker() async {
+    DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime(2000),
+      firstDate: DateTime(1920),
+      lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(primary: brandColor, onPrimary: Colors.white, onSurface: Colors.black),
+          ),
+          child: child!,
+        );
+      },
+    );
 
-    setState(() => _isSaving = true);
-    try {
-      await _firestore.collection('Users').doc(user!.uid).update({
-        'height': double.tryParse(_heightController.text),
-        'weight': double.tryParse(_weightController.text),
-        'activityLevel': _activityLevel,
-        'mealProfile': {
-          'dietaryGoal': _dietaryGoal,
-          'dailyCalorieGoal': int.tryParse(_dailyCaloriesController.text),
-          'macroGoals': {'protein': _protein, 'carbs': _carbs, 'fat': _fats},
-          'dietaryHabits': _dietaryHabits,
-          'healthRestrictions': _health,
-        },
+    if (pickedDate != null) {
+      setState(() {
+        _dob = pickedDate.toString().split(' ')[0];
       });
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile saved successfully!')));
+    }
+  }
+
+  Future<void> _saveProfile() async {
+    setState(() => _isSaving = true);
+    
+    try {
+      //update with whatever is not empty
+      final Map<String, dynamic> updateData = {
+        'activityLevel': _activityLevel,
+        'dob': (_dob != null && _dob!.isNotEmpty) ? _dob : null,
+        'mealProfile.dietaryGoal': _dietaryGoal,
+        'mealProfile.macroGoals': {
+          'protein': _protein,
+          'carbs': _carbs,
+          'fat': _fats,
+        },
+        'mealProfile.dietaryHabits': _dietaryHabits,
+        'mealProfile.healthRestrictions': _health,
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      //only add numeric fields
+      if (_heightController.text.isNotEmpty) {
+        updateData['height'] = double.tryParse(_heightController.text);
+      }
+      if (_weightController.text.isNotEmpty) {
+        updateData['weight'] = double.tryParse(_weightController.text);
+      }
+      if (_dailyCaloriesController.text.isNotEmpty) {
+        updateData['mealProfile.dailyCalorieGoal'] = int.tryParse(_dailyCaloriesController.text);
+      }
+
+      //push update to firebase
+      await _firestore.collection('Users').doc(user!.uid).update(updateData);
+
+      //lock dob locally
+      if (_dob != null && _dob!.isNotEmpty) {
+        setState(() => _canEditDob = false);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile updated successfully!'))
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      debugPrint("!! SAVE ERROR: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'))
+        );
+      }
     } finally {
-      setState(() => _isSaving = false);
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
@@ -151,7 +213,6 @@ class _ProfilePageState extends State<ProfilePage> {
                 Text(_email ?? '', style: TextStyle(color: Colors.grey[600], fontSize: 14)),
                 const SizedBox(height: 25),
 
-                //boxes
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -167,7 +228,14 @@ class _ProfilePageState extends State<ProfilePage> {
                   _buildListTile(Icons.badge_outlined, "First Name", _firstname ?? ""),
                   _buildListTile(Icons.badge_outlined, "Last Name", _lastname ?? ""),
                   _buildListTile(Icons.email_outlined, "Email", _email ?? ""),
-                  _buildListTile(Icons.calendar_today, "DOB", _dob ?? "Not set"),
+                  
+                  _buildListTile(
+                    Icons.calendar_today, 
+                    "DOB", 
+                    (_dob == null || _dob!.isEmpty) ? "Not set" : _dob!,
+                    onTap: _canEditDob ? _showDobPicker : null, 
+                  ),
+                  
                   _buildListTile(Icons.wc, "Sex", _sex ?? "Not set"),
                   _buildListTile(Icons.bolt, "Activity Level", _activityLevel ?? "Select", 
                       onTap: () => _showPicker("Activity", _activityLevels, _activityLevel, (v) => setState(() => _activityLevel = v))),
@@ -283,11 +351,12 @@ class _ProfilePageState extends State<ProfilePage> {
     return ListTile(
       onTap: onTap,
       leading: Icon(icon, color: brandColor, size: 22),
-      title: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+      title: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Colors.black)),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(value, style: const TextStyle(color: Colors.grey, fontSize: 14)),
+      
           if (onTap != null) const Icon(Icons.chevron_right, size: 18, color: Colors.grey),
         ],
       ),
