@@ -105,11 +105,12 @@ class MealAnalysis {
 
 /// Service for uploading a meal photo and getting a nutrition estimate via OpenAI.
 class MealAnalysisService {
-  MealAnalysisService({FirebaseFunctions? functions})
-      : _functions =
-            functions ?? FirebaseFunctions.instanceFor(region: 'us-central1');
+  MealAnalysisService({FirebaseFunctions? functions}) : _functions = functions;
 
-  final FirebaseFunctions _functions;
+  FirebaseFunctions? _functions;
+
+  FirebaseFunctions get _functionsInstance =>
+      _functions ??= FirebaseFunctions.instanceFor(region: 'us-central1');
 
   Future<MealAnalysis> analyzeMealImage(
     File imageFile, {
@@ -132,7 +133,7 @@ class MealAnalysisService {
       final user = await _ensureSignedInUser();
       await user.getIdToken(true);
 
-      final callable = _functions.httpsCallable('analyzeMealImage');
+      final callable = _functionsInstance.httpsCallable('analyzeMealImage');
       final response = await callable.call({
         'imageBase64': imageBase64,
         'mimeType': 'image/jpeg',
