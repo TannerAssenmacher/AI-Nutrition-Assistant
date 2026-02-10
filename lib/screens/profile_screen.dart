@@ -27,14 +27,14 @@ class _ProfilePageState extends State<ProfilePage> {
   final Color brandColor = const Color(0xFF5F9735); 
   final Color deleteColor = const Color(0xFFD32F2F);
 
-  // Controllers
+  //controllers
   final _heightController = TextEditingController();
   final _weightController = TextEditingController();
   final _dailyCaloriesController = TextEditingController();
   final _likesController = TextEditingController();    
   final _dislikesController = TextEditingController(); 
 
-  // Data Lists for Bubbles
+  //data
   List<String> _likesList = [];
   List<String> _dislikesList = [];
 
@@ -66,6 +66,7 @@ class _ProfilePageState extends State<ProfilePage> {
     _loadProfile();
   }
 
+  //estimated daily calorie calculations
   int _calculateDailyCalories() {
     final height = double.tryParse(_heightController.text);
     final weight = double.tryParse(_weightController.text);
