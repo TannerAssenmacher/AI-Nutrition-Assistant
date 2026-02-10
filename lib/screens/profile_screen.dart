@@ -23,19 +23,21 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _canEditDob = true; 
   bool _isDeleting = false;
 
-  //colors
   final Color bgColor = const Color(0xFFF5EDE2);
   final Color brandColor = const Color(0xFF5F9735); 
   final Color deleteColor = const Color(0xFFD32F2F);
 
-  //controllers
+  // Controllers
   final _heightController = TextEditingController();
   final _weightController = TextEditingController();
   final _dailyCaloriesController = TextEditingController();
   final _likesController = TextEditingController();    
   final _dislikesController = TextEditingController(); 
 
-  //data
+  // Data Lists for Bubbles
+  List<String> _likesList = [];
+  List<String> _dislikesList = [];
+
   String? _firstname;
   String? _lastname;
   String? _email;
@@ -64,14 +66,10 @@ class _ProfilePageState extends State<ProfilePage> {
     _loadProfile();
   }
 
-  //daily calories calculation
   int _calculateDailyCalories() {
     final height = double.tryParse(_heightController.text);
     final weight = double.tryParse(_weightController.text);
-
-    if (height == null || weight == null || _sex == null || _activityLevel == null || _dob == null || _dob!.isEmpty) {
-      return 0;
-    }
+    if (height == null || weight == null || _sex == null || _activityLevel == null || _dob == null || _dob!.isEmpty) return 0;
 
     try {
       final heightCm = height * 2.54;
@@ -85,17 +83,9 @@ class _ProfilePageState extends State<ProfilePage> {
           ? (10 * weightKg) + (6.25 * heightCm) - (5 * age) + 5 
           : (10 * weightKg) + (6.25 * heightCm) - (5 * age) - 161;
 
-      final multipliers = {
-        'Sedentary': 1.2,
-        'Lightly Active': 1.375,
-        'Moderately Active': 1.55,
-        'Very Active': 1.725,
-      };
-
+      final multipliers = {'Sedentary': 1.2, 'Lightly Active': 1.375, 'Moderately Active': 1.55, 'Very Active': 1.725};
       return (bmr * (multipliers[_activityLevel] ?? 1.55)).round();
-    } catch (e) {
-      return 0;
-    }
+    } catch (e) { return 0; }
   }
 
   String _getInitials() {
@@ -116,7 +106,6 @@ class _ProfilePageState extends State<ProfilePage> {
         _firstname = data['firstname'];
         _lastname = data['lastname'];
         _email = user!.email;
-        
         if (data['dob'] != null && data['dob'].toString().trim().isNotEmpty) {
           _dob = data['dob'].toString().split(' ')[0];
           _canEditDob = false; 
@@ -124,7 +113,6 @@ class _ProfilePageState extends State<ProfilePage> {
           _dob = '';
           _canEditDob = true;
         }
-
         _sex = data['sex'];
         _heightController.text = data['height']?.toString() ?? '';
         _weightController.text = data['weight']?.toString() ?? '';
@@ -143,8 +131,8 @@ class _ProfilePageState extends State<ProfilePage> {
         _health = List<String>.from(mealProfile['healthRestrictions'] ?? []);
 
         final prefs = Map<String, dynamic>.from(mealProfile['preferences'] ?? {});
-        _likesController.text = (prefs['likes'] as List?)?.join(', ') ?? '';
-        _dislikesController.text = (prefs['dislikes'] as List?)?.join(', ') ?? '';
+        _likesList = List<String>.from(prefs['likes'] ?? []);
+        _dislikesList = List<String>.from(prefs['dislikes'] ?? []);
       });
     } catch (e) {
       debugPrint("Error loading profile: $e");
@@ -154,9 +142,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _saveProfile() async {
-    //fails only if data is wrong - not if empty
     if (!_formKey.currentState!.validate()) return;
-
     setState(() => _isSaving = true);
     try {
       final Map<String, dynamic> updateData = {
@@ -166,8 +152,8 @@ class _ProfilePageState extends State<ProfilePage> {
         'mealProfile.macroGoals': {'protein': _protein, 'carbs': _carbs, 'fat': _fats},
         'mealProfile.dietaryHabits': _dietaryHabits,
         'mealProfile.healthRestrictions': _health,
-        'mealProfile.preferences.likes': _likesController.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList(),
-        'mealProfile.preferences.dislikes': _dislikesController.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList(),
+        'mealProfile.preferences.likes': _likesList,
+        'mealProfile.preferences.dislikes': _dislikesList,
         'updatedAt': FieldValue.serverTimestamp(),
       };
 
@@ -177,7 +163,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
       await _firestore.collection('Users').doc(user!.uid).update(updateData);
       if (_dob != null && _dob!.isNotEmpty) setState(() => _canEditDob = false);
-
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile updated successfully!')));
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
@@ -186,6 +171,7 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  // RE-AUTHENTICATE AND DELETE ACCOUNT
   Future<void> _confirmDeleteAccount() async {
     final passwordController = TextEditingController();
     final confirmed = await showDialog<bool>(
@@ -195,14 +181,18 @@ class _ProfilePageState extends State<ProfilePage> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('To delete your account, please enter your password.'),
+            const Text('To permanently delete your account, please enter your password.'),
             const SizedBox(height: 12),
             TextField(controller: passwordController, obscureText: true, decoration: const InputDecoration(labelText: 'Password', border: OutlineInputBorder())),
           ],
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.red), onPressed: () => Navigator.pop(context, true), child: const Text('Delete Account')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: deleteColor), 
+            onPressed: () => Navigator.pop(context, true), 
+            child: const Text('Delete Account', style: TextStyle(color: Colors.white))
+          ),
         ],
       ),
     );
@@ -223,18 +213,9 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  Future<void> _showDobPicker() async {
-    DateTime? pickedDate = await showDatePicker(
-      context: context, initialDate: DateTime(2000), firstDate: DateTime(1920), lastDate: DateTime.now(),
-      builder: (context, child) => Theme(data: Theme.of(context).copyWith(colorScheme: ColorScheme.light(primary: brandColor)), child: child!),
-    );
-    if (pickedDate != null) setState(() => _dob = pickedDate.toString().split(' ')[0]);
-  }
-
   @override
   Widget build(BuildContext context) {
     if (_isLoading) return Scaffold(backgroundColor: bgColor, body: const Center(child: CircularProgressIndicator()));
-
     final estimatedCals = _calculateDailyCalories();
 
     return Scaffold(
@@ -267,7 +248,13 @@ class _ProfilePageState extends State<ProfilePage> {
                   _buildListTile(Icons.badge_outlined, "First Name", _firstname ?? ""),
                   _buildListTile(Icons.badge_outlined, "Last Name", _lastname ?? ""),
                   _buildListTile(Icons.email_outlined, "Email", _email ?? ""),
-                  _buildListTile(Icons.calendar_today, "DOB", (_dob == null || _dob!.isEmpty) ? "Not set" : _dob!, onTap: _canEditDob ? _showDobPicker : null),
+                  _buildListTile(Icons.calendar_today, "DOB", (_dob == null || _dob!.isEmpty) ? "Not set" : _dob!, onTap: _canEditDob ? () async {
+                    DateTime? pickedDate = await showDatePicker(
+                      context: context, initialDate: DateTime(2000), firstDate: DateTime(1920), lastDate: DateTime.now(),
+                      builder: (context, child) => Theme(data: Theme.of(context).copyWith(colorScheme: ColorScheme.light(primary: brandColor)), child: child!),
+                    );
+                    if (pickedDate != null) setState(() => _dob = pickedDate.toString().split(' ')[0]);
+                  } : null),
                   _buildListTile(Icons.wc, "Sex", _sex ?? "Not set"),
                   _buildListTile(Icons.bolt, "Activity Level", _activityLevel ?? "Select", onTap: () => _showPicker("Activity", _activityLevels, _activityLevel, (v) => setState(() => _activityLevel = v))),
                   _buildListTile(Icons.track_changes, "Dietary Goal", _dietaryGoal ?? "Select", onTap: () => _showPicker("Diet Goal", _dietGoals, _dietaryGoal, (v) => setState(() => _dietaryGoal = v))),
@@ -293,13 +280,12 @@ class _ProfilePageState extends State<ProfilePage> {
                   const Divider(height: 1),
                   _buildMultiSelectTile("Health Restrictions", _healthOptions, _health),
                   const Divider(height: 1),
-                  _buildInputTile("Likes", _likesController, "chicken, rice..."),
+                  _buildBubbleInput("Likes", _likesController, _likesList),
                   const Divider(height: 1),
-                  _buildInputTile("Dislikes", _dislikesController, "broccoli..."),
+                  _buildBubbleInput("Dislikes", _dislikesController, _dislikesList),
                 ]),
 
                 const SizedBox(height: 30),
-
                 SizedBox(
                   width: double.infinity, height: 55,
                   child: ElevatedButton(
@@ -327,35 +313,82 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  //helper functions
+  // --- HELPERS ---
+
+  Widget _buildBubbleInput(String title, TextEditingController controller, List<String> list) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  decoration: InputDecoration(labelText: "Add $title", hintText: "Letters only", border: InputBorder.none),
+                  onChanged: (value) {
+                    String filtered = value.replaceAll(RegExp(r'[^a-zA-Z\s]'), '');
+                    if (filtered != value) {
+                      controller.text = filtered;
+                      controller.selection = TextSelection.fromPosition(TextPosition(offset: controller.text.length));
+                    }
+                  },
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.add_circle, color: brandColor),
+                onPressed: () {
+                  if (controller.text.trim().isNotEmpty) {
+                    setState(() { list.add(controller.text.trim()); controller.clear(); });
+                  }
+                },
+              ),
+            ],
+          ),
+          Wrap(
+            spacing: 8,
+            children: list.map((item) => Chip(
+              label: Text(item, style: const TextStyle(fontSize: 12)),
+              backgroundColor: brandColor.withValues(alpha: 0.1),
+              deleteIcon: const Icon(Icons.close, size: 14),
+              onDeleted: () => setState(() => list.remove(item)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            )).toList(),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildStatBox(String label, TextEditingController controller, {bool isPrimary = false, String? helperText}) {
     return Column(
       children: [
         Container(
           width: MediaQuery.of(context).size.width * 0.28,
-          padding: const EdgeInsets.symmetric(vertical: 12), 
-          decoration: BoxDecoration(color: isPrimary ? brandColor : Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)]),
-          child: Column(
-            children: [
-              SizedBox(
-                width: 70, 
-                child: TextFormField(
-                  controller: controller, 
-                  textAlign: TextAlign.center, 
-                  keyboardType: TextInputType.number, 
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isPrimary ? Colors.white : Colors.black), 
-                  decoration: const InputDecoration(border: InputBorder.none, isDense: true, errorStyle: TextStyle(height: 0)),
-                  validator: (v) {
-                    if (v == null || v.isEmpty) return null;
-                    final n = double.tryParse(v);
-                    if (n == null || n <= 0) return ""; 
-                    return null;
-                  },
-                )
-              ),
-              Text(label, style: TextStyle(fontSize: 11, color: isPrimary ? Colors.white70 : Colors.grey)),
-            ],
+          decoration: BoxDecoration(color: isPrimary ? brandColor : Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10)]),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Column(
+              children: [
+                SizedBox(
+                  width: 75,
+                  child: TextFormField(
+                    controller: controller, textAlign: TextAlign.center, keyboardType: TextInputType.number,
+                    onChanged: (v) => setState(() {}),
+                    decoration: InputDecoration(
+                      border: InputBorder.none, isDense: true, contentPadding: const EdgeInsets.symmetric(vertical: 8), errorStyle: const TextStyle(height: 0),
+                      errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Colors.red, width: 2)),
+                      focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Colors.red, width: 2)),
+                    ),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isPrimary ? Colors.white : Colors.black),
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
+                    validator: (v) => (v != null && v.isNotEmpty && (double.tryParse(v) == null || double.parse(v) <= 0)) ? "!" : null,
+                  ),
+                ),
+                Text(label, style: TextStyle(fontSize: 11, color: isPrimary ? Colors.white70 : Colors.grey)),
+              ],
+            ),
           ),
         ),
         if (helperText != null) Padding(padding: const EdgeInsets.only(top: 4), child: Text("Est: $helperText", style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey))),
@@ -368,24 +401,11 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildCard(List<Widget> children) {
-    return Container(decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)]), child: Column(children: children));
+    return Container(decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10)]), child: Column(children: children));
   }
 
   Widget _buildListTile(IconData icon, String title, String value, {VoidCallback? onTap}) {
     return ListTile(onTap: onTap, leading: Icon(icon, color: brandColor, size: 22), title: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Colors.black)), trailing: Row(mainAxisSize: MainAxisSize.min, children: [Text(value, style: const TextStyle(color: Colors.grey, fontSize: 14)), if (onTap != null) const Icon(Icons.chevron_right, size: 18, color: Colors.grey)]));
-  }
-
-  Widget _buildInputTile(String title, TextEditingController controller, String hint) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        children: [
-          Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
-          const SizedBox(width: 16),
-          Expanded(child: TextField(controller: controller, decoration: InputDecoration(hintText: hint, border: InputBorder.none, hintStyle: const TextStyle(color: Colors.grey, fontSize: 14)))),
-        ],
-      ),
-    );
   }
 
   Widget _buildMultiSelectTile(String title, List<String> options, List<String> selected) {
@@ -395,7 +415,7 @@ class _ProfilePageState extends State<ProfilePage> {
         padding: const EdgeInsets.only(top: 10.0, bottom: 5),
         child: Wrap(spacing: 8, runSpacing: 4, children: options.map((opt) {
           final isSel = selected.contains(opt);
-          return ChoiceChip(label: Text(opt, style: TextStyle(fontSize: 12, color: isSel ? Colors.white : Colors.black87)), selected: isSel, selectedColor: brandColor, backgroundColor: bgColor.withOpacity(0.5), onSelected: (v) => setState(() => v ? selected.add(opt) : selected.remove(opt)));
+          return ChoiceChip(label: Text(opt, style: TextStyle(fontSize: 12, color: isSel ? Colors.white : Colors.black87)), selected: isSel, selectedColor: brandColor, backgroundColor: bgColor.withValues(alpha: 0.5), onSelected: (v) => setState(() => v ? selected.add(opt) : selected.remove(opt)));
         }).toList()),
       ),
     );
