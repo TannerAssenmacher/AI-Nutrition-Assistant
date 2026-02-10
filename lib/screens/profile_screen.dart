@@ -7,7 +7,6 @@ import 'package:nutrition_assistant/widgets/nav_bar.dart';
 
 class ProfilePage extends StatefulWidget {
   final bool isInPageView;
-
   const ProfilePage({super.key, this.isInPageView = false});
 
   @override
@@ -28,16 +27,14 @@ class _ProfilePageState extends State<ProfilePage> {
   final Color brandColor = const Color(0xFF5F9735); 
   final Color deleteColor = const Color(0xFFD32F2F);
 
-  //controllers
-  //controllers
+  // Controllers
   final _heightController = TextEditingController();
   final _weightController = TextEditingController();
   final _dailyCaloriesController = TextEditingController();
   final _likesController = TextEditingController();    
   final _dislikesController = TextEditingController(); 
 
-  //data
-  //data
+  // Data Lists for Bubbles
   List<String> _likesList = [];
   List<String> _dislikesList = [];
 
@@ -55,39 +52,12 @@ class _ProfilePageState extends State<ProfilePage> {
   double _carbs = 0;
   double _fats = 0;
 
-  //dropdown options
-  final _activityLevels = [
-    'Sedentary',
-    'Lightly Active',
-    'Moderately Active',
-    'Very Active'
-  ];
+  final _activityLevels = ['Sedentary', 'Lightly Active', 'Moderately Active', 'Very Active'];
   final _dietGoals = ['Lose Weight', 'Maintain Weight', 'Gain Muscle'];
-
-  //edamam api options for diet labels
-  final _dietaryHabitOptions = [
-    'balanced',
-    'high-fiber',
-    'high-protein',
-    'low-carb',
-    'low-fat',
-    'low-sodium',
-  ];
-
-  //spoonacular food options
+  final _dietaryHabitOptions = ['balanced', 'high-fiber', 'high-protein', 'low-carb', 'low-fat', 'low-sodium'];
   final _healthOptions = [
-    'vegan',
-    'vegetarian',
-    'gluten free',
-    'dairy free',
-    'ketogenic',
-    'lacto-vegetarian',
-    'ovo-vegetarian',
-    'pescetarian',
-    'paleo',
-    'primal',
-    'low FODMAP',
-    'Whole30'
+    'vegan', 'vegetarian', 'gluten free', 'dairy free', 'ketogenic', 
+    'lacto-vegetarian', 'ovo-vegetarian', 'pescetarian', 'paleo', 'primal', 'low FODMAP', 'Whole30'
   ];
 
   @override
@@ -126,18 +96,10 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _loadProfile() async {
-    if (user == null) {
-      setState(() => _isLoading = false);
-      return;
-    }
+    if (user == null) return;
     try {
       final doc = await _firestore.collection('Users').doc(user!.uid).get();
-      if (!mounted) return;
-      if (!doc.exists) {
-        setState(() => _isLoading = false);
-        return;
-      }
-
+      if (!doc.exists) return;
       final data = doc.data()!;
       if (!mounted) return;
       setState(() {
@@ -152,17 +114,15 @@ class _ProfilePageState extends State<ProfilePage> {
           _canEditDob = true;
         }
         _sex = data['sex'];
-        _heightController.text = data['height'].toString();
-        _weightController.text = data['weight'].toString();
+        _heightController.text = data['height']?.toString() ?? '';
+        _weightController.text = data['weight']?.toString() ?? '';
         _activityLevel = data['activityLevel'];
-        _dietaryGoal =
-            data['mealProfile']?['dietaryGoal'] ?? data['dietaryGoal'];
-        _dailyCaloriesController.text =
-            data['mealProfile']?['dailyCalorieGoal']?.toString() ??
-                data['dailyCalorieGoal']?.toString() ??
-                '';
-        final macroGoals = Map<String, dynamic>.from(
-            data['mealProfile']?['macroGoals'] ?? data['macroGoals'] ?? {});
+        
+        final mealProfile = data['mealProfile'] ?? {};
+        _dietaryGoal = mealProfile['dietaryGoal'];
+        _dailyCaloriesController.text = mealProfile['dailyCalorieGoal']?.toString() ?? '';
+        
+        final macroGoals = Map<String, dynamic>.from(mealProfile['macroGoals'] ?? {});
         _protein = macroGoals['protein']?.toDouble() ?? 0;
         _carbs = macroGoals['carbs']?.toDouble() ?? 0;
         _fats = (macroGoals['fat'] ?? macroGoals['fats'] ?? 0).toDouble();
@@ -175,7 +135,7 @@ class _ProfilePageState extends State<ProfilePage> {
         _dislikesList = List<String>.from(prefs['dislikes'] ?? []);
       });
     } catch (e) {
-      print('⚠️ Error loading profile: $e');
+      debugPrint("Error loading profile: $e");
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -195,7 +155,7 @@ class _ProfilePageState extends State<ProfilePage> {
         'mealProfile.preferences.likes': _likesList,
         'mealProfile.preferences.dislikes': _dislikesList,
         'updatedAt': FieldValue.serverTimestamp(),
-      });
+      };
 
       if (_heightController.text.isNotEmpty) updateData['height'] = double.tryParse(_heightController.text);
       if (_weightController.text.isNotEmpty) updateData['weight'] = double.tryParse(_weightController.text);
@@ -207,10 +167,11 @@ class _ProfilePageState extends State<ProfilePage> {
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
-      setState(() => _isDeleting = false);
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
+  // RE-AUTHENTICATE AND DELETE ACCOUNT
   Future<void> _confirmDeleteAccount() async {
     final passwordController = TextEditingController();
     final confirmed = await showDialog<bool>(
@@ -257,11 +218,11 @@ class _ProfilePageState extends State<ProfilePage> {
     if (_isLoading) return Scaffold(backgroundColor: bgColor, body: const Center(child: CircularProgressIndicator()));
     final estimatedCals = _calculateDailyCalories();
 
-    final bodyContent = SafeArea(
-      child: Scrollbar(
-        thumbVisibility: true,
+    return Scaffold(
+      backgroundColor: bgColor,
+      body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
           child: Form(
             key: _formKey,
             child: Column(
@@ -306,7 +267,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text("Macronutrients Goal", style: TextStyle(fontWeight: FontWeight.bold)),
                         const SizedBox(height: 12),
@@ -352,7 +313,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  //helpers
+  // --- HELPERS ---
 
   Widget _buildBubbleInput(String title, TextEditingController controller, List<String> list) {
     return Padding(
