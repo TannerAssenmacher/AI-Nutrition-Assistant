@@ -27,14 +27,14 @@ class _ProfilePageState extends State<ProfilePage> {
   final Color brandColor = const Color(0xFF5F9735); 
   final Color deleteColor = const Color(0xFFD32F2F);
 
-  // Controllers
+  //controllers
   final _heightController = TextEditingController();
   final _weightController = TextEditingController();
   final _dailyCaloriesController = TextEditingController();
   final _likesController = TextEditingController();    
   final _dislikesController = TextEditingController(); 
 
-  // Data Lists for Bubbles
+  //data
   List<String> _likesList = [];
   List<String> _dislikesList = [];
 
@@ -171,7 +171,6 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  // RE-AUTHENTICATE AND DELETE ACCOUNT
   Future<void> _confirmDeleteAccount() async {
     final passwordController = TextEditingController();
     final confirmed = await showDialog<bool>(
@@ -313,7 +312,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // --- HELPERS ---
+  //helpers
 
   Widget _buildBubbleInput(String title, TextEditingController controller, List<String> list) {
     return Padding(
