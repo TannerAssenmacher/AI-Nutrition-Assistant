@@ -64,7 +64,7 @@ class _ProfilePageState extends State<ProfilePage> {
     _loadProfile();
   }
 
-  //daily calorie calculation
+  //daily calories calculation
   int _calculateDailyCalories() {
     final height = double.tryParse(_heightController.text);
     final weight = double.tryParse(_weightController.text);
@@ -73,10 +73,9 @@ class _ProfilePageState extends State<ProfilePage> {
       return 0;
     }
 
-    final heightCm = height * 2.54;
-    final weightKg = weight / 2.205;
-    
     try {
+      final heightCm = height * 2.54;
+      final weightKg = weight / 2.205;
       final dobDate = DateTime.parse(_dob!);
       final now = DateTime.now();
       int age = now.year - dobDate.year;
@@ -86,14 +85,14 @@ class _ProfilePageState extends State<ProfilePage> {
           ? (10 * weightKg) + (6.25 * heightCm) - (5 * age) + 5 
           : (10 * weightKg) + (6.25 * heightCm) - (5 * age) - 161;
 
-      final activityMultipliers = {
+      final multipliers = {
         'Sedentary': 1.2,
         'Lightly Active': 1.375,
         'Moderately Active': 1.55,
         'Very Active': 1.725,
       };
 
-      return (bmr * (activityMultipliers[_activityLevel] ?? 1.55)).round();
+      return (bmr * (multipliers[_activityLevel] ?? 1.55)).round();
     } catch (e) {
       return 0;
     }
@@ -155,6 +154,9 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _saveProfile() async {
+    //fails only if data is wrong - not if empty
+    if (!_formKey.currentState!.validate()) return;
+
     setState(() => _isSaving = true);
     try {
       final Map<String, dynamic> updateData = {
@@ -193,7 +195,7 @@ class _ProfilePageState extends State<ProfilePage> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Enter your password to permanently delete your account.'),
+            const Text('To delete your account, please enter your password.'),
             const SizedBox(height: 12),
             TextField(controller: passwordController, obscureText: true, decoration: const InputDecoration(labelText: 'Password', border: OutlineInputBorder())),
           ],
@@ -214,7 +216,7 @@ class _ProfilePageState extends State<ProfilePage> {
         await user!.delete();
         if (mounted) Navigator.pushReplacementNamed(context, '/login');
       } catch (e) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to delete: ${e.toString()}')));
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
       } finally {
         if (mounted) setState(() => _isDeleting = false);
       }
@@ -315,7 +317,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     child: _isDeleting ? const CircularProgressIndicator(color: Colors.white) : const Text("Delete Account", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
                   ),
                 ),
-                const SizedBox(height: 50),
+                const SizedBox(height: 60),
               ],
             ),
           ),
@@ -336,12 +338,27 @@ class _ProfilePageState extends State<ProfilePage> {
           decoration: BoxDecoration(color: isPrimary ? brandColor : Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)]),
           child: Column(
             children: [
-              SizedBox(width: 70, child: TextFormField(controller: controller, textAlign: TextAlign.center, keyboardType: TextInputType.number, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isPrimary ? Colors.white : Colors.black), decoration: const InputDecoration(border: InputBorder.none, isDense: true, errorStyle: TextStyle(height: 0)))),
+              SizedBox(
+                width: 70, 
+                child: TextFormField(
+                  controller: controller, 
+                  textAlign: TextAlign.center, 
+                  keyboardType: TextInputType.number, 
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isPrimary ? Colors.white : Colors.black), 
+                  decoration: const InputDecoration(border: InputBorder.none, isDense: true, errorStyle: TextStyle(height: 0)),
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return null;
+                    final n = double.tryParse(v);
+                    if (n == null || n <= 0) return ""; 
+                    return null;
+                  },
+                )
+              ),
               Text(label, style: TextStyle(fontSize: 11, color: isPrimary ? Colors.white70 : Colors.grey)),
             ],
           ),
         ),
-        if (helperText != null) Padding(padding: const EdgeInsets.only(top: 4), child: Text("Est: $helperText", style: const TextStyle(fontSize: 10, color: Colors.grey))),
+        if (helperText != null) Padding(padding: const EdgeInsets.only(top: 4), child: Text("Est: $helperText", style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey))),
       ],
     );
   }
