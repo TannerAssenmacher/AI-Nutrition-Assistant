@@ -171,7 +171,6 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  // RE-AUTHENTICATE AND DELETE ACCOUNT
   Future<void> _confirmDeleteAccount() async {
     final passwordController = TextEditingController();
     final confirmed = await showDialog<bool>(
@@ -191,7 +190,7 @@ class _ProfilePageState extends State<ProfilePage> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: deleteColor), 
             onPressed: () => Navigator.pop(context, true), 
-            child: const Text('Delete Account', style: TextStyle(color: Colors.white))
+            child: const Text('Delete Account', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -253,7 +252,11 @@ class _ProfilePageState extends State<ProfilePage> {
                       context: context, initialDate: DateTime(2000), firstDate: DateTime(1920), lastDate: DateTime.now(),
                       builder: (context, child) => Theme(data: Theme.of(context).copyWith(colorScheme: ColorScheme.light(primary: brandColor)), child: child!),
                     );
-                    if (pickedDate != null) setState(() => _dob = pickedDate.toString().split(' ')[0]);
+                    if (pickedDate != null) {
+                      setState(() {
+                        _dob = pickedDate.toString().split(' ')[0];
+                      });
+                    }
                   } : null),
                   _buildListTile(Icons.wc, "Sex", _sex ?? "Not set"),
                   _buildListTile(Icons.bolt, "Activity Level", _activityLevel ?? "Select", onTap: () => _showPicker("Activity", _activityLevels, _activityLevel, (v) => setState(() => _activityLevel = v))),
