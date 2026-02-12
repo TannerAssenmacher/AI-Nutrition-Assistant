@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/cupertino.dart';
 import '../providers/user_providers.dart';
 import '../providers/food_providers.dart';
 import '../providers/auth_providers.dart';
@@ -77,6 +78,29 @@ class _DailyLogCalendarScreenState
     }
     return rows;
   }
+
+  Future<Map<String, double>> _scheduledTotals(
+  List<PlannedFood> scheduledMeals,
+  WidgetRef ref,
+) async {
+  double calories = 0, protein = 0, carbs = 0, fat = 0;
+
+  for (final meal in scheduledMeals) {
+    final recipe = await ref.read(recipeByIdProvider(meal.recipeId).future);
+    calories += (recipe['calories'] ?? 0).toDouble();
+    protein  += (recipe['protein']  ?? 0).toDouble();
+    carbs    += (recipe['carbs']    ?? 0).toDouble();
+    fat      += (recipe['fat']      ?? 0).toDouble();
+  }
+
+  return {
+    'calories': calories,
+    'protein': protein,
+    'carbs': carbs,
+    'fat': fat,
+  };
+}
+
 
   List<PlannedFood> _scheduledMealsForDay(
       DateTime day, List<PlannedFood>? scheduledMeals) {
@@ -195,6 +219,7 @@ class _DailyLogCalendarScreenState
     Map<String, double> initialTotals,
     String userId,
   ) {
+    int segment = 0; // 0 = history, 1 = scheduled
     showModalBottomSheet(
       context: context,
       showDragHandle: true,
@@ -226,135 +251,181 @@ class _DailyLogCalendarScreenState
                   orElse: () => <PlannedFood>[],
                 );
 
-                return SingleChildScrollView(
-                  controller: scrollController,
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                      left: 16,
-                      right: 16,
-                      top: 12,
-                      bottom: MediaQuery.of(context).padding.bottom + 12,
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          dateLabel,
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(height: 12),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.brown.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.brown.shade200),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: [
-                              _MacroSummaryItem(
-                                label: 'Cal',
-                                value: '${totals['calories']?.toInt() ?? 0}',
-                              ),
-                              _MacroSummaryItem(
-                                label: 'Prot',
-                                value:
-                                    '${totals['protein']?.toStringAsFixed(1) ?? 0}g',
-                              ),
-                              _MacroSummaryItem(
-                                label: 'Carbs',
-                                value:
-                                    '${totals['carbs']?.toStringAsFixed(1) ?? 0}g',
-                              ),
-                              _MacroSummaryItem(
-                                label: 'Fat',
-                                value:
-                                    '${totals['fat']?.toStringAsFixed(1) ?? 0}g',
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        // Scheduled Meals Section
-                        if (scheduledMeals.isNotEmpty) ...[
+                return StatefulBuilder(
+                builder: (context, setSheetState) {
+                  final History = segment == 0;
+                  final Scheduled = segment == 1;
+
+                  return SingleChildScrollView(
+                    controller: scrollController,
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        left: 16,
+                        right: 16,
+                        top: 12,
+                        bottom: MediaQuery.of(context).padding.bottom + 12,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           Text(
-                            'Scheduled Meals',
+                            dateLabel,
                             style: Theme.of(context)
                                 .textTheme
-                                .titleSmall
-                                ?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.blue[700]),
+                                .titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w600),
                           ),
-                          const SizedBox(height: 8),
-                          for (final meal in scheduledMeals)
-                            _ScheduledMealCard(
-                              meal: meal,
-                              onDelete: () async {
-                                if (meal.id != null) {
-                                  await ref
-                                      .read(firestoreScheduledMealsProvider(
-                                              userId)
-                                          .notifier)
-                                      .removeScheduledMeal(userId, meal.id!);
-                                }
-                              },
-                            ),
-                          const SizedBox(height: 16),
-                          const Divider(),
-                          const SizedBox(height: 8),
-                        ],
-                        // Logged Foods Section
-                        Text(
-                          'Logged Foods',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleSmall
-                              ?.copyWith(fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(height: 8),
-                        if (rows.isEmpty)
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 12),
-                            child: Text('No entries for this day'),
-                          )
-                        else
-                          _FoodsListWidget(
-                            rows: rows,
-                            onDelete: (foodId) async {
-                              debugPrint(
-                                  'UI delete tap: user=$userId foodId=$foodId day=${day.toIso8601String()}');
-                              await ref
-                                  .read(
-                                      firestoreFoodLogProvider(userId).notifier)
-                                  .removeFood(userId, foodId);
+                          const SizedBox(height: 12),
+
+                          // ✅ Segmented control
+                          CupertinoSlidingSegmentedControl<int>(
+                            groupValue: segment,
+                            children: const {
+                              0: Padding(
+                                padding: EdgeInsets.symmetric(vertical: 8, horizontal: 14),
+                                child: Text('History'),
+                              ),
+                              1: Padding(
+                                padding: EdgeInsets.symmetric(vertical: 8, horizontal: 14),
+                                child: Text('Scheduled'),
+                              ),
+                            },
+                            onValueChanged: (value) {
+                              if (value == null) return;
+                              setSheetState(() => segment = value);
                             },
                           ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            onPressed: () => _showAddMealDialog(day, userId),
-                            icon: const Icon(Icons.add),
-                            label: const Text('Add meal'),
+
+                          const SizedBox(height: 12),
+
+                          // Macro summary card
+                          FutureBuilder<Map<String, double>>(
+                            future: _scheduledTotals(scheduledMeals, ref),
+                            builder: (context, snapshot) {
+                              final scheduledTotals = snapshot.data ?? const {
+                                'calories': 0, 'protein': 0, 'carbs': 0, 'fat': 0,
+                              };
+
+                              final combined = {
+                                'calories': (totals['calories'] ?? 0) + scheduledTotals['calories']!,
+                                'protein':  (totals['protein']  ?? 0) + scheduledTotals['protein']!,
+                                'carbs':    (totals['carbs']    ?? 0) + scheduledTotals['carbs']!,
+                                'fat':      (totals['fat']      ?? 0) + scheduledTotals['fat']!,
+                              };
+
+                              return Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.brown.shade50,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.brown.shade200),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                  children: [
+                                    _MacroSummaryItem(label: 'Cal',  value: '${combined['calories']!.toInt()}'),
+                                    _MacroSummaryItem(label: 'Prot', value: '${combined['protein']!.toStringAsFixed(1)}g'),
+                                    _MacroSummaryItem(label: 'Carbs',value: '${combined['carbs']!.toStringAsFixed(1)}g'),
+                                    _MacroSummaryItem(label: 'Fat',  value: '${combined['fat']!.toStringAsFixed(1)}g'),
+                                  ],
+                                ),
+                              );
+                            },
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                      ],
+
+
+                          const SizedBox(height: 12),
+
+                          // ✅ CONTENT SWITCH
+                          if (Scheduled) ...[
+                            Text(
+                              'Scheduled Meals',
+                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.blue[700],
+                                  ),
+                            ),
+                            const SizedBox(height: 8),
+                            if (scheduledMeals.isEmpty)
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 12),
+                                child: Text('No scheduled meals for this day'),
+                              )
+                            else
+                              for (final meal in scheduledMeals)
+                                _ScheduledMealCard(
+                                  meal: meal,
+                                  onDelete: () async {
+                                    if (meal.id != null) {
+                                      await ref
+                                          .read(
+                                            firestoreScheduledMealsProvider(userId).notifier,
+                                          )
+                                          .removeScheduledMeal(userId, meal.id!);
+                                    }
+                                  },
+                                ),
+                          ] else ...[
+                            Text(
+                              'Logged Foods',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(height: 8),
+                            TextButton.icon(
+                              onPressed: () {
+                                setSheetState(() => segment = 1); // ✅ switch to Scheduled tab
+                              },
+                              icon: const Icon(Icons.schedule),
+                              label: const Text('View Scheduled Meals'),
+                            ),
+                            const SizedBox(height: 8),
+
+                            if (rows.isEmpty)
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 12),
+                                child: Text('No entries for this day'),
+                              )
+                            else
+                              _FoodsListWidget(
+                                rows: rows,
+                                onDelete: (foodId) async {
+                                  debugPrint(
+                                    'UI delete tap: user=$userId foodId=$foodId day=${day.toIso8601String()}',
+                                  );
+                                  await ref
+                                      .read(firestoreFoodLogProvider(userId).notifier)
+                                      .removeFood(userId, foodId);
+                                },
+                              ),
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                onPressed: () => _showAddMealDialog(day, userId),
+                                icon: const Icon(Icons.add),
+                                label: const Text('Add meal'),
+                              ),
+                            ),
+                          ],
+
+                          const SizedBox(height: 12),
+                        ],
+                      ),
                     ),
-                  ),
-                );
-              },
-            );
-          },
-        );
-      },
-    );
+                  );
+                },
+              );
+
+                            },
+                          );
+                        },
+                      );
+                    },
+                  );
   }
 
   Future<void> _showAddMealDialog(DateTime day, String userId) async {
@@ -1959,7 +2030,7 @@ class _DayHeader extends StatelessWidget {
   }
 }
 
-class _ScheduledMealCard extends StatelessWidget {
+class _ScheduledMealCard extends ConsumerWidget {
   final PlannedFood meal;
   final VoidCallback onDelete;
 
@@ -1969,59 +2040,89 @@ class _ScheduledMealCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.blue.shade50,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.blue.shade200),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final recipeAsync = ref.watch(recipeByIdProvider(meal.recipeId));
+
+    return recipeAsync.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.all(12),
+        child: Center(child: CircularProgressIndicator()),
       ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.blue.shade100,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              Icons.schedule,
-              color: Colors.blue.shade700,
-              size: 24,
-            ),
+      error: (e, _) => Text('Error: $e'),
+      data: (recipe) {
+          final recipeName = (recipe['label'] ?? 'Unknown').toString();
+          final calories = (recipe['calories'] ?? 0).toDouble();
+          final protein = (recipe['protein'] ?? 0).toDouble();
+          final carbs = (recipe['carbs'] ?? 0).toDouble();
+          final fat = (recipe['fat'] ?? 0).toDouble();
+
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.blue.shade50,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.blue.shade200),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Recipe ID: ${meal.recipeId}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade100,
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'Meal Type: ${meal.mealType.toUpperCase()}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade700,
-                  ),
+                child: Icon(
+                  Icons.schedule,
+                  color: Colors.blue.shade700,
+                  size: 24,
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      recipeName, // show recipe name
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Meal Type: ${meal.mealType.toUpperCase()}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        _MacroChip(label: 'Calories', value: calories, suffix: 'kcal'),
+                        _MacroChip(label: 'Protein', value: protein, suffix: 'g'),
+                        _MacroChip(label: 'Carbs', value: carbs, suffix: 'g'),
+                        _MacroChip(label: 'Fat', value: fat, suffix: 'g'),
+                      ]
+                    )
+                      
+                  ],
+                ),
+              ),
+              IconButton(
+                onPressed: onDelete,
+                icon: Icon(Icons.delete_outline, color: Colors.red.shade400),
+                tooltip: 'Remove scheduled meal',
+              ),
+            ],
           ),
-          IconButton(
-            onPressed: onDelete,
-            icon: Icon(Icons.delete_outline, color: Colors.red.shade400),
-            tooltip: 'Remove scheduled meal',
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
