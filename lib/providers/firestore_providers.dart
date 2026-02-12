@@ -182,3 +182,19 @@ final firestoreUserProfileProvider =
     return AppUser.fromJson(data, doc.id);
   });
 });
+
+
+// Recipe fetcher by ID through database
+final recipeByIdProvider =
+    FutureProvider.family<Map<String, dynamic>, String>((ref, recipeId) async {
+  final doc = await FirebaseFirestore.instance
+      .collection('recipes')
+      .doc(recipeId)
+      .get();
+
+  if (!doc.exists) {
+    throw StateError('Recipe not found: $recipeId');
+  }
+
+  return doc.data()!;
+});
