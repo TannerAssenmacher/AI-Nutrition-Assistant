@@ -47,6 +47,13 @@ class GeminiChatService extends _$GeminiChatService {
     "cream"
   ];
 
+  final recipeGreetings = [
+    "I've analyzed your profile and found these matches for your calorie goal.",
+    "Based on your nutritional targets, here are some recipes I think you'll love.",
+    "I’ve handpicked these options to align with your unique health profile.",
+    "Checking your goals... Done! Here are the best fits for your plan today.",
+  ];
+
   static const String _nutritionAssistantSystemInstruction =
       '''You are a helpful nutrition assistant.
 Help users with meal planning, calorie counting, and nutrition advice.
@@ -843,15 +850,18 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
             content:
                 "I couldn't find recipes that match all your preferences exactly. Here are some close alternatives that you might enjoy:",
             isUser: false,
+            timestamp: DateTime.now(),
           ),
         ];
       } else {
+        final randomGreeting = (List<String>.from(recipeGreetings)..shuffle()).first;
+
         state = [
           ...state,
           ChatMessage(
-            content:
-                "Here are some recipes I found that match your nutrition profile!",
+            content: randomGreeting,
             isUser: false,
+            timestamp: DateTime.now(),
           ),
         ];
       }
@@ -928,6 +938,7 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
             content:
                 "I've shown you all the matching recipes I have. Try different options or adjust your preferences for more variety!",
             isUser: false,
+            timestamp: DateTime.now(),
           )
         ];
         return;
@@ -1008,18 +1019,11 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
           content:
               "I need a meal type and cuisine before I can fetch more recipes.",
           isUser: false,
+          timestamp: DateTime.now(),
         ),
       ];
       return;
     }
-
-    state = [
-      ...state,
-      ChatMessage(
-        content: "Generating More Recipes!",
-        isUser: false,
-      ),
-    ];
 
     await _fetchRecipes(mealType, cuisineType, forceNewBatch: true);
   }
@@ -1064,6 +1068,7 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
         ChatMessage(
           content: responseText,
           isUser: false,
+          timestamp: DateTime.now(),
         )
       ];
     } catch (e) {
@@ -1072,6 +1077,7 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
         ChatMessage(
           content: "Error analyzing image: $e",
           isUser: false,
+          timestamp: DateTime.now(),
         )
       ];
     }
