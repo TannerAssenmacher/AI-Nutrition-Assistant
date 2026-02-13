@@ -7,6 +7,7 @@ import '../providers/food_providers.dart';
 import '../providers/user_providers.dart';
 import '../providers/auth_providers.dart';
 import '../widgets/top_bar.dart';
+import '../theme/app_colors.dart';
 import 'package:nutrition_assistant/navigation/nav_helper.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
 import 'package:percent_indicator/percent_indicator.dart';
@@ -110,7 +111,7 @@ class HomeScreen extends ConsumerWidget {
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: centerFont,
-                                            color: const Color(0xFF5F9735),
+                                            color: AppColors.brand,
                                           ),
                                         ),
                                         header: Text(
@@ -118,14 +119,14 @@ class HomeScreen extends ConsumerWidget {
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: headerFont,
-                                            color: const Color(0xFF5F9735),
+                                            color: AppColors.brand,
                                           ),
                                         ),
                                         circularStrokeCap:
                                             CircularStrokeCap.round,
-                                        progressColor: const Color(0xFF5F9735),
+                                        progressColor: AppColors.brand,
                                         arcBackgroundColor:
-                                            const Color(0xFFF5EDE2),
+                                            AppColors.background,
                                       ),
                                     ),
                                   ),
@@ -146,7 +147,7 @@ class HomeScreen extends ConsumerWidget {
                                         header: Text(
                                           "Protein:",
                                           style: TextStyle(
-                                            color: const Color(0xFFC2482B),
+                                            color: AppColors.protein,
                                             fontWeight: FontWeight.bold,
                                             fontSize: macroFont,
                                           ),
@@ -156,14 +157,14 @@ class HomeScreen extends ConsumerWidget {
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: macroFont,
-                                            color: const Color(0xFFC2482B),
+                                            color: AppColors.protein,
                                           ),
                                         ),
                                         circularStrokeCap:
                                             CircularStrokeCap.round,
-                                        progressColor: const Color(0xFFC2482B),
+                                        progressColor: AppColors.protein,
                                         backgroundColor:
-                                            const Color(0xFFF5EDE2),
+                                            AppColors.background,
                                       ),
                                       CircularPercentIndicator(
                                         radius: macroRadius,
@@ -175,7 +176,7 @@ class HomeScreen extends ConsumerWidget {
                                         header: Text(
                                           "Carbs:",
                                           style: TextStyle(
-                                            color: const Color(0xFFE0A100),
+                                            color: AppColors.carbs,
                                             fontWeight: FontWeight.bold,
                                             fontSize: macroFont,
                                           ),
@@ -185,14 +186,14 @@ class HomeScreen extends ConsumerWidget {
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: macroFont,
-                                            color: const Color(0xFFE0A100),
+                                            color: AppColors.carbs,
                                           ),
                                         ),
                                         circularStrokeCap:
                                             CircularStrokeCap.round,
-                                        progressColor: const Color(0xFFE0A100),
+                                        progressColor: AppColors.carbs,
                                         backgroundColor:
-                                            const Color(0xFFF5EDE2),
+                                            AppColors.background,
                                       ),
                                       CircularPercentIndicator(
                                         radius: macroRadius,
@@ -206,7 +207,7 @@ class HomeScreen extends ConsumerWidget {
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: macroFont,
-                                            color: const Color(0xFF3A6FB8),
+                                            color: AppColors.fat,
                                           ),
                                         ),
                                         footer: Text(
@@ -214,14 +215,14 @@ class HomeScreen extends ConsumerWidget {
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: macroFont,
-                                            color: const Color(0xFF3A6FB8),
+                                            color: AppColors.fat,
                                           ),
                                         ),
                                         circularStrokeCap:
                                             CircularStrokeCap.round,
-                                        progressColor: const Color(0xFF3A6FB8),
+                                        progressColor: AppColors.fat,
                                         backgroundColor:
-                                            const Color(0xFFF5EDE2),
+                                            AppColors.background,
                                       ),
                                     ],
                                   ),
@@ -273,7 +274,7 @@ class HomeScreen extends ConsumerWidget {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5EDE2),
+      backgroundColor: AppColors.background,
       body: bodyContent,
       bottomNavigationBar: NavBar(
         currentIndex: navIndexHome,
@@ -349,10 +350,10 @@ class _StreakIndicator extends StatelessWidget {
           vertical: paddingV,
         ),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFF3E0),
+          color: AppColors.streakBackground,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: const Color(0xFFE0A100),
+            color: AppColors.carbs,
             width: 3,
           ),
         ),
@@ -369,14 +370,14 @@ class _StreakIndicator extends StatelessWidget {
               style: TextStyle(
                 fontSize: countSize,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFFE0A100),
+                color: AppColors.carbs,
               ),
             ),
             Text(
               'Daily Streak',
               style: TextStyle(
                 fontSize: labelSize,
-                color: Color(0xFFE0A100),
+                color: AppColors.carbs,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.5,
               ),

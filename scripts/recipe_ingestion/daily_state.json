@@ -1,10 +1,10 @@
 {
-  "date": "2026-02-12",
-  "offset": 400,
-  "requestsMade": 30,
-  "recipesAdded": 0,
-  "cuisineIndex": 18,
-  "apiKeyIndex": 7,
+  "date": "2026-02-13",
+  "offset": 500,
+  "requestsMade": 51,
+  "recipesAdded": 149,
+  "cuisineIndex": 28,
+  "apiKeyIndex": 10,
   "exhaustedCombos": [
     "world|all|popularity",
     "world|all|healthiness",
@@ -23,6 +23,16 @@
     "world|dessert|time",
     "world|dessert|random",
     "world|appetizer|popularity",
-    "world|appetizer|healthiness"
+    "world|appetizer|healthiness",
+    "world|appetizer|time",
+    "world|appetizer|random",
+    "world|salad|popularity",
+    "world|salad|healthiness",
+    "world|salad|time",
+    "world|salad|random",
+    "world|soup|popularity",
+    "world|soup|healthiness",
+    "world|soup|time",
+    "world|soup|random"
   ]
 }

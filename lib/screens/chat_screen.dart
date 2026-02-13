@@ -8,6 +8,7 @@ import '../models/planned_food_input.dart';
 import '../db/food.dart';
 import '../providers/auth_providers.dart';
 import '../providers/firestore_providers.dart';
+import '../theme/app_colors.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:nutrition_assistant/navigation/nav_helper.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
@@ -25,9 +26,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
 
   //color palette
-  final Color bgColor = const Color(0xFFF5EDE2);
-  final Color brandColor = const Color(0xFF5F9735);
-  final Color neumorphicShadow = const Color(0xFFD9D0C3); 
+  final Color bgColor = AppColors.background;
+  final Color brandColor = AppColors.brand;
+  final Color neumorphicShadow = const Color(0xFFD9D0C3);
 
   bool _showRecipePicker = false;
   bool _showCuisinePicker = false;
@@ -424,7 +425,7 @@ class MealProfileSummaryBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color brandColor = const Color(0xFF5F9735);
+    final Color brandColor = AppColors.brand;
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 12),
       padding: const EdgeInsets.all(16),
@@ -729,7 +730,7 @@ class _TypingIndicatorState extends State<_TypingIndicator> with TickerProviderS
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
         children: [
-          CircleAvatar(backgroundColor: const Color(0xFF5F9735), radius: 12, child: const Icon(Icons.auto_awesome, color: Colors.white, size: 12)),
+          CircleAvatar(backgroundColor: AppColors.brand, radius: 12, child: const Icon(Icons.auto_awesome, color: Colors.white, size: 12)),
           const SizedBox(width: 10),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),

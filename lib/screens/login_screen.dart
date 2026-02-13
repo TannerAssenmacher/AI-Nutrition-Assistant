@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:nutrition_assistant/widgets/top_bar.dart';
+import '../theme/app_colors.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -155,7 +156,7 @@ class _LoginPageState extends State<LoginPage> {
     final linkFontSize = (screenHeight * 0.022).clamp(16.0, 22.0).toDouble();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5EDE2),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -211,7 +212,7 @@ class _LoginPageState extends State<LoginPage> {
                           style: TextStyle(
                             fontSize: titleFontSize,
                             fontWeight: FontWeight.bold,
-                            color: const Color(0xFF967460),
+                            color: AppColors.accentBrown,
                           ),
                         ),
                         const SizedBox(height: 20),
@@ -228,7 +229,7 @@ class _LoginPageState extends State<LoginPage> {
                               color: Colors.grey[400],
                             ),
                             filled: true,
-                            fillColor: const Color(0xFFF5F1E8),
+                            fillColor: AppColors.inputFill,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(16),
                               borderSide: BorderSide.none,
@@ -262,7 +263,7 @@ class _LoginPageState extends State<LoginPage> {
                               color: Colors.grey[400],
                             ),
                             filled: true,
-                            fillColor: const Color(0xFFF5F1E8),
+                            fillColor: AppColors.inputFill,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(16),
                               borderSide: BorderSide.none,
@@ -298,7 +299,7 @@ class _LoginPageState extends State<LoginPage> {
                             : ElevatedButton(
                                 onPressed: _login,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF5F9735),
+                                  backgroundColor: AppColors.brand,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
@@ -324,7 +325,7 @@ class _LoginPageState extends State<LoginPage> {
                             style: TextStyle(
                               fontSize: linkFontSize,
                               decoration: TextDecoration.underline,
-                              color: const Color(0xFF967460),
+                              color: AppColors.accentBrown,
                             ),
                           ),
                         ),
@@ -345,7 +346,7 @@ class _LoginPageState extends State<LoginPage> {
                     fontSize: linkFontSize,
                     decoration: TextDecoration.underline,
                     fontWeight: FontWeight.bold,
-                    color: const Color(0xFF967460),
+                    color: AppColors.accentBrown,
                   ),
                 ),
               ),

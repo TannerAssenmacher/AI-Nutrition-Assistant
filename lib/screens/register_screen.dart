@@ -7,6 +7,7 @@ import '../db/user.dart';
 import '../db/meal_profile.dart';
 import '../db/preferences.dart';
 import '../widgets/macro_slider.dart';
+import '../theme/app_colors.dart';
 import 'package:intl/intl.dart';
 import 'package:email_validator/email_validator.dart';
 
@@ -434,7 +435,7 @@ class _RegisterPageState extends State<RegisterPage> {
               ElevatedButton(
                 onPressed: _validatePage1AndNext,
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
+                    backgroundColor: AppColors.brand,
                     padding: const EdgeInsets.all(15)),
                 child: const Text('Next',
                     style: TextStyle(color: Colors.white, fontSize: 18)),
@@ -515,7 +516,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         : ElevatedButton(
                             onPressed: _registerUser,
                             style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
+                                backgroundColor: AppColors.brand,
                                 padding: const EdgeInsets.all(15)),
                             child: const Text('Create Account',
                                 style: TextStyle(
@@ -713,7 +714,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 onSelected: (_) => setState(() {
                   isSelected ? selected.remove(option) : selected.add(option);
                 }),
-                selectedColor: Colors.green[200],
+                selectedColor: AppColors.brand.withValues(alpha: 0.3),
               );
             }).toList(),
           ),
