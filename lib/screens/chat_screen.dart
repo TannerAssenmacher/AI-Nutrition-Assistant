@@ -226,7 +226,31 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
+  Widget _buildRecipeResults(List<Map<String, dynamic>> recipes) {
+    return Column(
+      children: [
+        ...recipes.map((r) => _RecipeCard(
+          recipe: r,
+          brandColor: brandColor,
+          onSchedule: (id, inputs) => ref.read(geminiChatServiceProvider.notifier).scheduleRecipe(id, inputs),
+        )),
+        Center(
+          child: OutlinedButton.icon(
+            onPressed: () => ref.read(geminiChatServiceProvider.notifier).requestMoreRecipes(
+              mealType: _selectedMealType ?? 'Dinner',
+              cuisineType: _selectedCuisineType ?? 'None'
+            ),
+            icon: const Icon(Icons.refresh),
+            label: const Text("More recipes"),
+            style: OutlinedButton.styleFrom(foregroundColor: brandColor, side: BorderSide(color: brandColor)),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildMessageNode(ChatMessage message) {
+    // Try parsing the entire message as JSON first
     try {
       final parsed = jsonDecode(message.content);
       if (parsed is Map && parsed['type'] == 'meal_profile_summary') {
@@ -234,28 +258,46 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       }
       if (parsed is Map && parsed['type'] == 'recipe_results') {
         final recipes = List<Map<String, dynamic>>.from(parsed['recipes'] ?? const []);
-        return Column(
-          children: [
-            ...recipes.map((r) => _RecipeCard(
-              recipe: r,
-              brandColor: brandColor,
-              onSchedule: (id, inputs) => ref.read(geminiChatServiceProvider.notifier).scheduleRecipe(id, inputs),
-            )),
-            Center(
-              child: OutlinedButton.icon(
-                onPressed: () => ref.read(geminiChatServiceProvider.notifier).requestMoreRecipes(
-                  mealType: _selectedMealType ?? 'Dinner', 
-                  cuisineType: _selectedCuisineType ?? 'None'
-                ),
-                icon: const Icon(Icons.refresh),
-                label: const Text("More recipes"),
-                style: OutlinedButton.styleFrom(foregroundColor: brandColor, side: BorderSide(color: brandColor)),
-              ),
-            ),
-          ],
-        );
+        return _buildRecipeResults(recipes);
       }
     } catch (_) {}
+
+    // Check if the message contains embedded recipe JSON within surrounding text
+    final content = message.content;
+    final jsonStart = content.indexOf('{"type":"recipe_results"');
+    if (!message.isUser && jsonStart != -1) {
+      // Find the matching closing brace for the JSON object
+      int depth = 0;
+      int? jsonEnd;
+      for (int i = jsonStart; i < content.length; i++) {
+        if (content[i] == '{') depth++;
+        if (content[i] == '}') depth--;
+        if (depth == 0) { jsonEnd = i + 1; break; }
+      }
+
+      if (jsonEnd != null) {
+        try {
+          final jsonStr = content.substring(jsonStart, jsonEnd);
+          final parsed = jsonDecode(jsonStr);
+          if (parsed is Map && parsed['type'] == 'recipe_results') {
+            final recipes = List<Map<String, dynamic>>.from(parsed['recipes'] ?? const []);
+            final textBefore = content.substring(0, jsonStart).trim();
+            final textAfter = content.substring(jsonEnd).trim();
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (textBefore.isNotEmpty)
+                  _ChatBubble(message: ChatMessage(content: textBefore, isUser: false), brandColor: brandColor),
+                _buildRecipeResults(recipes),
+                if (textAfter.isNotEmpty)
+                  _ChatBubble(message: ChatMessage(content: textAfter, isUser: false), brandColor: brandColor),
+              ],
+            );
+          }
+        } catch (_) {}
+      }
+    }
+
     return _ChatBubble(message: message, brandColor: brandColor);
   }
 
