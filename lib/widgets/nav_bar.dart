@@ -55,8 +55,8 @@ class NavBar extends StatelessWidget {
               onTap: () => onTap(3),
             ),
             NavItem(
-              icon: Icons.person,
-              label: "Profile",
+              icon: Icons.search,
+              label: "Search",
               isActive: currentIndex == 4,
               onTap: () => onTap(4),
             ),

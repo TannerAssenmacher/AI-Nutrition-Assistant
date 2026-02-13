@@ -3,7 +3,7 @@ import 'package:nutrition_assistant/screens/chat_screen.dart';
 import 'package:nutrition_assistant/screens/daily_log_calendar.dart';
 import 'package:nutrition_assistant/screens/home_screen.dart';
 import 'package:nutrition_assistant/screens/meal_analysis_screen.dart';
-import 'package:nutrition_assistant/screens/profile_screen.dart';
+import 'package:nutrition_assistant/screens/food_search_screen.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
 import 'package:nutrition_assistant/navigation/nav_helper.dart';
 
@@ -38,7 +38,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     super.dispose();
   }
 
-  // Convert nav index (1=chat, 2=history, 3=home, 4=camera, 5=profile) to page index (0-4)
+  // Convert nav index (1=chat, 2=history, 3=home, 4=search, 5=camera) to page index (0-4)
   int _navIndexToPageIndex(int navIndex) {
     return navIndex - 1;
   }
@@ -74,7 +74,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           ChatScreen(isInPageView: true),
           DailyLogCalendarScreen(isInPageView: true),
           HomeScreen(isInPageView: true),
-          ProfilePage(isInPageView: true),
+          FoodSearchScreen(isInPageView: true),
           CameraScreen(isInPageView: true),
         ],
       ),
