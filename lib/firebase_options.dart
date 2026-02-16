@@ -50,11 +50,11 @@ class DefaultFirebaseOptions {
 
   static final FirebaseOptions ios = FirebaseOptions(
     apiKey: _firebaseApiKey,
-    appId: '1:468473644377:ios:5b61e9875f43caa1267848',
+    appId: '1:468473644377:ios:08174511d0503225267848',
     messagingSenderId: '468473644377',
     projectId: 'ai-nutrition-assistant-e2346',
     storageBucket: 'ai-nutrition-assistant-e2346.firebasestorage.app',
-    iosBundleId: 'com.example.aiNutritionAssistant',
+    iosBundleId: 'com.wiserbites.app',
   );
 
   static final FirebaseOptions macos = FirebaseOptions(
