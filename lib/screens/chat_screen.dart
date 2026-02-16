@@ -120,33 +120,38 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 16),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Row(
-          children: options.map((text) => Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(15),
-                boxShadow: [
-                  BoxShadow(color: Colors.white, offset: const Offset(-3, -3), blurRadius: 8),
-                  BoxShadow(color: neumorphicShadow, offset: const Offset(3, 3), blurRadius: 8),
-                ],
-              ),
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: brandColor,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onHorizontalDragStart: (_) {}, 
+        onHorizontalDragUpdate: (_) {},
+          child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: options.map((text) => Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: [
+                    BoxShadow(color: Colors.white, offset: const Offset(-3, -3), blurRadius: 8),
+                    BoxShadow(color: neumorphicShadow, offset: const Offset(3, 3), blurRadius: 8),
+                  ],
                 ),
-                onPressed: () => onTap!(text),
-                child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold)),
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: brandColor,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  ),
+                  onPressed: () => onTap!(text),
+                  child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold)),
+                ),
               ),
-            ),
-          )).toList(),
+            )).toList(),
+          ),
         ),
       ),
     );
@@ -426,6 +431,12 @@ class MealProfileSummaryBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Color brandColor = AppColors.brand;
+    final macroGoals = Map<String, dynamic>.from(data['macroGoals'] ?? {});
+    final protein = (macroGoals['protein'] ?? 0).round();
+    final carbs = (macroGoals['carbs'] ?? 0).round();
+    final fat = (macroGoals['fat'] ?? 0).round();
+
+
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 12),
       padding: const EdgeInsets.all(16),
@@ -438,11 +449,78 @@ class MealProfileSummaryBubble extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Generating recipes with your profile:", style: TextStyle(fontWeight: FontWeight.w700)),
+          const Text(
+            "Generating Recipes with your Profile",
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+            ),
+          ),
           const Divider(height: 24),
-          _row(Icons.restaurant, "Meal", data['mealType']),
+
+          _row(Icons.restaurant_menu, "Meal", data['mealType']),
           _row(Icons.flag_outlined, "Cuisine", data['cuisineType']),
-          _row(Icons.local_fire_department_outlined, "Target", "${data['dailyCalorieGoal']} Cal"),
+
+          //const SizedBox(height: 12),
+
+          /*const Text(
+            "Goals",
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),*/
+          _row(Icons.track_changes, "Dietary Goal", data['dietaryGoal']),
+          _row(
+            Icons.local_fire_department_outlined,
+            "Daily Calories",
+            (data['dailyCalorieGoal'] ?? 0) > 0
+                ? "${data['dailyCalorieGoal']} Cal"
+                : "Not set",
+          ),
+          _row(
+            Icons.pie_chart_outline,
+            "Macros",
+            "P $protein% • "
+            "C $carbs% • "
+            "F $fat%",
+          ),
+
+          //const SizedBox(height: 12),
+
+          // Preferences Section
+          /*const Text(
+            "Preferences",
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),*/
+          _row(
+            Icons.check_circle_outline,
+            "Dietary",
+            (data['dietary'] as List?)?.isEmpty ?? true
+                ? "None"
+                : (data['dietary'] as List).join(', '),
+          ),
+          _row(
+            Icons.health_and_safety_outlined,
+            "Health",
+            (data['health'] as List?)?.isEmpty ?? true
+                ? "None"
+                : (data['health'] as List).join(', '),
+          ),
+          _row(
+            Icons.thumb_up_alt_outlined,
+            "Likes",
+            (data['likes'] as List?)?.isEmpty ?? true
+                ? "None"
+                : (data['likes'] as List).join(', '),
+          ),
+          _row(
+            Icons.thumb_down_alt_outlined,
+            "Dislikes",
+            (data['dislikes'] as List?)?.isEmpty ?? true
+                ? "None"
+                : (data['dislikes'] as List).join(', '),
+          ),
+
           const SizedBox(height: 10),
         ],
       ),
