@@ -10,11 +10,11 @@ import '../providers/firestore_providers.dart';
 import '../db/food.dart';
 import '../db/user.dart';
 import '../db/planned_food.dart';
-import '../theme/app_colors.dart';
 import 'package:nutrition_assistant/navigation/nav_helper.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
 import 'package:nutrition_assistant/services/food_search_service.dart';
 import 'package:nutrition_assistant/services/notification_service.dart';
+import '../theme/app_colors.dart';
 
 class DailyLogCalendarScreen extends ConsumerStatefulWidget {
   final bool isInPageView;
@@ -311,75 +311,102 @@ class _DailyLogCalendarScreenState
                   final History = segment == 0;
                   final Scheduled = segment == 1;
 
-                return StatefulBuilder(
-                builder: (context, setSheetState) {
-                  final History = segment == 0;
-                  final Scheduled = segment == 1;
-
-                return SingleChildScrollView(
-                  controller: scrollController,
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                      left: 16,
-                      right: 16,
-                      top: 12,
-                      bottom: MediaQuery.of(context).padding.bottom + 12,
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          dateLabel,
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(height: 12),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppColors.inputFill,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.accentBrown.withValues(alpha: 0.25)),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: [
-                              _MacroSummaryItem(
-                                label: 'Cal',
-                                value: '${totals['calories']?.toInt() ?? 0}',
-                              ),
-                              _MacroSummaryItem(
-                                label: 'Prot',
-                                value:
-                                    '${totals['protein']?.toStringAsFixed(1) ?? 0}g',
-                              ),
-                              _MacroSummaryItem(
-                                label: 'Carbs',
-                                value:
-                                    '${totals['carbs']?.toStringAsFixed(1) ?? 0}g',
-                              ),
-                              _MacroSummaryItem(
-                                label: 'Fat',
-                                value:
-                                    '${totals['fat']?.toStringAsFixed(1) ?? 0}g',
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        // Scheduled Meals Section
-                        if (scheduledMeals.isNotEmpty) ...[
+                  return SingleChildScrollView(
+                    controller: scrollController,
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        left: 16,
+                        right: 16,
+                        top: 12,
+                        bottom: MediaQuery.of(context).padding.bottom + 12,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           Text(
-                            'Scheduled Meals',
+                            dateLabel,
                             style: Theme.of(context)
                                 .textTheme
-                                .titleSmall
-                                ?.copyWith(
+                                .titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 12),
+
+                          // ✅ Segmented control
+                          CupertinoSlidingSegmentedControl<int>(
+                            groupValue: segment,
+                            children: const {
+                              0: Padding(
+                                padding: EdgeInsets.symmetric(vertical: 8, horizontal: 14),
+                                child: Text('History'),
+                              ),
+                              1: Padding(
+                                padding: EdgeInsets.symmetric(vertical: 8, horizontal: 14),
+                                child: Text('Scheduled'),
+                              ),
+                            },
+                            onValueChanged: (value) {
+                              if (value == null) return;
+                              setSheetState(() => segment = value);
+                            },
+                          ),
+
+                          const SizedBox(height: 12),
+
+                          // Macro summary card
+                          FutureBuilder<Map<String, double>>(
+                            future: _scheduledTotals(scheduledMeals, ref),
+                            builder: (context, snapshot) {
+                              final scheduledTotals = snapshot.data ?? const {
+                                'calories': 0, 'protein': 0, 'carbs': 0, 'fat': 0,
+                              };
+                              final showScheduledTotals = segment == 1;
+                              final summary = {
+                                'calories': showScheduledTotals
+                                    ? scheduledTotals['calories']!
+                                    : (totals['calories'] ?? 0),
+                                'protein': showScheduledTotals
+                                    ? scheduledTotals['protein']!
+                                    : (totals['protein'] ?? 0),
+                                'carbs': showScheduledTotals
+                                    ? scheduledTotals['carbs']!
+                                    : (totals['carbs'] ?? 0),
+                                'fat': showScheduledTotals
+                                    ? scheduledTotals['fat']!
+                                    : (totals['fat'] ?? 0),
+                              };
+
+                              return Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: AppColors.inputFill,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppColors.accentBrown.withValues(alpha: 0.3)),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                  children: [
+                                    _MacroSummaryItem(label: 'Cal',  value: '${summary['calories']!.toInt()}'),
+                                    _MacroSummaryItem(label: 'Prot', value: '${summary['protein']!.toStringAsFixed(1)}g'),
+                                    _MacroSummaryItem(label: 'Carbs',value: '${summary['carbs']!.toStringAsFixed(1)}g'),
+                                    _MacroSummaryItem(label: 'Fat',  value: '${summary['fat']!.toStringAsFixed(1)}g'),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+
+
+                          const SizedBox(height: 12),
+
+                          // ✅ CONTENT SWITCH
+                          if (Scheduled) ...[
+                            Text(
+                              'Scheduled Meals',
+                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
                                     fontWeight: FontWeight.w600,
-                                    color: Colors.blue[700],
+                                    color: AppColors.selectionColor,
                                   ),
                             ),
                             const SizedBox(height: 8),
@@ -581,7 +608,7 @@ class _DailyLogCalendarScreenState
                     children: [
                       IconButton(
                         icon: const Icon(Icons.chevron_left),
-                        color: AppColors.accentBrown,
+                        color: AppColors.navBar,
                         tooltip: 'Previous week',
                         onPressed: () {
                           setState(() {
@@ -598,7 +625,7 @@ class _DailyLogCalendarScreenState
                             style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w600,
-                              color: AppColors.accentBrown,
+                              color: AppColors.navBar,
                             ),
                             textAlign: TextAlign.center,
                             overflow: TextOverflow.ellipsis,
@@ -607,7 +634,7 @@ class _DailyLogCalendarScreenState
                       ),
                       IconButton(
                         icon: const Icon(Icons.chevron_right),
-                        color: AppColors.accentBrown,
+                        color: AppColors.navBar,
                         tooltip: 'Next week',
                         onPressed: () {
                           setState(() {
@@ -1133,7 +1160,7 @@ class _AddMealModalState extends ConsumerState<_AddMealModal> {
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           decoration: BoxDecoration(
                             color: _isSearchMode
-                                ? AppColors.brand
+                                ? AppColors.accentBrown
                                 : Colors.transparent,
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -1145,7 +1172,7 @@ class _AddMealModalState extends ConsumerState<_AddMealModal> {
                                 size: 20,
                                 color: _isSearchMode
                                     ? Colors.white
-                                    : AppColors.brand,
+                                    : AppColors.accentBrown,
                               ),
                               const SizedBox(width: 8),
                               Text(
@@ -1154,7 +1181,7 @@ class _AddMealModalState extends ConsumerState<_AddMealModal> {
                                   fontWeight: FontWeight.w600,
                                   color: _isSearchMode
                                       ? Colors.white
-                                      : AppColors.brand,
+                                      : AppColors.accentBrown,
                                 ),
                               ),
                             ],
@@ -1169,7 +1196,7 @@ class _AddMealModalState extends ConsumerState<_AddMealModal> {
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           decoration: BoxDecoration(
                             color: !_isSearchMode
-                                ? AppColors.brand
+                                ? AppColors.accentBrown
                                 : Colors.transparent,
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -1181,7 +1208,7 @@ class _AddMealModalState extends ConsumerState<_AddMealModal> {
                                 size: 20,
                                 color: !_isSearchMode
                                     ? Colors.white
-                                    : AppColors.brand,
+                                    : AppColors.accentBrown,
                               ),
                               const SizedBox(width: 8),
                               Text(
@@ -1190,7 +1217,7 @@ class _AddMealModalState extends ConsumerState<_AddMealModal> {
                                   fontWeight: FontWeight.w600,
                                   color: !_isSearchMode
                                       ? Colors.white
-                                      : AppColors.brand,
+                                      : AppColors.accentBrown,
                                 ),
                               ),
                             ],
@@ -1343,7 +1370,7 @@ class _AddMealModalState extends ConsumerState<_AddMealModal> {
           child: ElevatedButton(
             onPressed: _addManualMeal,
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.brand,
+              backgroundColor: AppColors.accentBrown,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 16),
             ),
@@ -1411,7 +1438,7 @@ class _FoodsListWidget extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.accentBrown.withValues(alpha: 0.25)),
+                  border: Border.all(color: AppColors.accentBrown.withValues(alpha: 0.3)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1527,7 +1554,7 @@ class _FoodSearchResultTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.accentBrown.withValues(alpha: 0.25)),
+        border: Border.all(color: AppColors.accentBrown.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
@@ -1638,7 +1665,7 @@ class _FoodsTable extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Table(
-          border: TableBorder.all(color: AppColors.accentBrown.withValues(alpha: 0.25)),
+          border: TableBorder.all(color: AppColors.accentBrown.withValues(alpha: 0.3)),
           columnWidths: const {
             0: FlexColumnWidth(3),
             1: FlexColumnWidth(1.5),
@@ -1943,7 +1970,7 @@ class _MonthlyCalendarPickerState extends State<_MonthlyCalendarPicker> {
               children: [
                 IconButton(
                   icon: const Icon(Icons.chevron_left),
-                  color: AppColors.accentBrown,
+                  color: AppColors.navBar,
                   onPressed: () {
                     setState(() {
                       _displayMonth =
@@ -1956,12 +1983,12 @@ class _MonthlyCalendarPickerState extends State<_MonthlyCalendarPicker> {
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.accentBrown,
+                    color: AppColors.navBar,
                   ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.chevron_right),
-                  color: AppColors.accentBrown,
+                  color: AppColors.navBar,
                   onPressed: () {
                     setState(() {
                       _displayMonth =
@@ -2051,7 +2078,7 @@ class _MonthlyCalendarPickerState extends State<_MonthlyCalendarPicker> {
               child: ElevatedButton(
                 onPressed: () => Navigator.pop(context),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.accentBrown,
+                  backgroundColor: AppColors.navBar,
                 ),
                 child: const Text(
                   'Done',
@@ -2130,21 +2157,21 @@ class _ScheduledMealCard extends ConsumerWidget {
           margin: const EdgeInsets.only(bottom: 8),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.blue.shade50,
+            color: AppColors.selectionColor.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.blue.shade200),
+            border: Border.all(color: AppColors.selectionColor.withValues(alpha: 0.4)),
           ),
           child: Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.blue.shade100,
+                  color: AppColors.selectionColor.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
                   Icons.schedule,
-                  color: Colors.blue.shade700,
+                  color: AppColors.selectionColor,
                   size: 24,
                 ),
               ),
@@ -2185,7 +2212,7 @@ class _ScheduledMealCard extends ConsumerWidget {
                       'Tap to view ingredients and instructions',
                       style: TextStyle(
                         fontSize: 11,
-                        color: Colors.blue.shade700,
+                        color: AppColors.selectionColor,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -2194,7 +2221,7 @@ class _ScheduledMealCard extends ConsumerWidget {
               ),
               Icon(
                 Icons.chevron_right,
-                color: Colors.blue.shade700,
+                color: AppColors.selectionColor,
               ),
               IconButton(
                 onPressed: onDelete,

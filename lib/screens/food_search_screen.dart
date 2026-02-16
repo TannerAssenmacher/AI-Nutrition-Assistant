@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:async';
 import '../services/food_search_service.dart';
+import '../theme/app_colors.dart';
 import '../providers/auth_providers.dart';
 import '../providers/firestore_providers.dart';
 import '../db/food.dart';
@@ -342,7 +343,7 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
             ),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [Colors.green.shade600, Colors.green.shade700],
+                colors: [AppColors.brand, AppColors.brand.withValues(alpha: 0.85)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -352,7 +353,7 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.green.shade200.withValues(alpha: 0.3),
+                  color: AppColors.brand.withValues(alpha: 0.3),
                   blurRadius: 8,
                   offset: const Offset(0, 4),
                 ),
@@ -403,16 +404,16 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                 fillColor: Colors.white,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.brown.shade200),
+                  borderSide: BorderSide(color: AppColors.accentBrown.withValues(alpha: 0.3)),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.brown.shade200),
+                  borderSide: BorderSide(color: AppColors.accentBrown.withValues(alpha: 0.3)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide:
-                      BorderSide(color: Colors.brown.shade600, width: 2),
+                      BorderSide(color: AppColors.accentBrown, width: 2),
                 ),
               ),
               onChanged: (value) {
@@ -504,7 +505,7 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5EDE2),
+      backgroundColor: AppColors.background,
       body: bodyContent,
       bottomNavigationBar: NavBar(
         currentIndex: navIndexSearch,
@@ -529,7 +530,7 @@ class _FoodSearchResultTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.brown.shade200),
+        border: Border.all(color: AppColors.accentBrown.withValues(alpha: 0.25)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
@@ -543,12 +544,12 @@ class _FoodSearchResultTile extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.green.shade50,
+              color: AppColors.brand.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
               Icons.restaurant,
-              color: Colors.green.shade700,
+              color: AppColors.brand,
               size: 24,
             ),
           ),
@@ -582,19 +583,19 @@ class _FoodSearchResultTile extends StatelessWidget {
                       label: 'P',
                       value: (result.proteinPerGram * result.servingGrams)
                           .toStringAsFixed(1),
-                      color: Colors.blue,
+                      color: AppColors.protein,
                     ),
                     _MacroChip(
                       label: 'C',
                       value: (result.carbsPerGram * result.servingGrams)
                           .toStringAsFixed(1),
-                      color: Colors.orange,
+                      color: AppColors.carbs,
                     ),
                     _MacroChip(
                       label: 'F',
                       value: (result.fatPerGram * result.servingGrams)
                           .toStringAsFixed(1),
-                      color: Colors.purple,
+                      color: AppColors.fat,
                     ),
                   ],
                 ),
@@ -613,7 +614,7 @@ class _FoodSearchResultTile extends StatelessWidget {
           ElevatedButton(
             onPressed: onAdd,
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green.shade600,
+              backgroundColor: AppColors.brand,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               shape: RoundedRectangleBorder(
@@ -637,7 +638,7 @@ class _MacroChip extends StatelessWidget {
 
   final String label;
   final String value;
-  final MaterialColor color;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
@@ -650,7 +651,7 @@ class _MacroChip extends StatelessWidget {
       child: Text(
         '$label $value g',
         style: TextStyle(
-          color: color.shade700,
+          color: color,
           fontSize: 11,
           fontWeight: FontWeight.w600,
         ),

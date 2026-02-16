@@ -11,6 +11,7 @@ import '../widgets/top_bar.dart';
 import 'package:nutrition_assistant/navigation/nav_helper.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
 import 'package:percent_indicator/percent_indicator.dart';
+import '../theme/app_colors.dart';
 import 'package:intl/intl.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -67,7 +68,7 @@ class HomeScreen extends ConsumerWidget {
                                 'Good Morning,',
                                 style: TextStyle(
                                   fontSize: 16,
-                                  color: Color(0xFF967460),
+                                  color: AppColors.accentBrown,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -76,7 +77,7 @@ class HomeScreen extends ConsumerWidget {
                                 style: const TextStyle(
                                   fontSize: 26,
                                   fontWeight: FontWeight.bold,
-                                  color: Color(0xFF5F9735),
+                                  color: AppColors.brand,
                                 ),
                               ),
                               const SizedBox(height: 8),
@@ -84,7 +85,7 @@ class HomeScreen extends ConsumerWidget {
                                 DateFormat('EEEE, MMM d').format(DateTime.now()),
                                 style: const TextStyle(
                                   fontSize: 14,
-                                  color: Color(0xFF967460),
+                                  color: AppColors.accentBrown,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -152,10 +153,10 @@ class HomeScreen extends ConsumerWidget {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            _MacroIndicator(label: 'Calories', current: currentCalories, goal: calorieGoal, color: const Color(0xFF5F9735), unit: 'kcal'),
-                            _MacroIndicator(label: 'Protein', current: currentProtein, goal: proteinGoal, color: const Color(0xFFC2482B), unit: 'g'),
-                            _MacroIndicator(label: 'Carbs', current: currentCarbs, goal: carbsGoal, color: const Color(0xFFE0A100), unit: 'g'),
-                            _MacroIndicator(label: 'Fat', current: currentFat, goal: fatGoal, color: const Color(0xFF3A6FB8), unit: 'g'),
+                            _MacroIndicator(label: 'Calories', current: currentCalories, goal: calorieGoal, color: AppColors.caloriesCircle, unit: 'kcal'),
+                            _MacroIndicator(label: 'Protein', current: currentProtein, goal: proteinGoal, color: AppColors.protein, unit: 'g'),
+                            _MacroIndicator(label: 'Carbs', current: currentCarbs, goal: carbsGoal, color: AppColors.carbs, unit: 'g'),
+                            _MacroIndicator(label: 'Fat', current: currentFat, goal: fatGoal, color: AppColors.fat, unit: 'g'),
                           ],
                         ),
                       );
@@ -176,7 +177,7 @@ class HomeScreen extends ConsumerWidget {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5EDE2),
+      backgroundColor: AppColors.background,
       body: bodyContent,
       bottomNavigationBar: NavBar(
         currentIndex: navIndexHome,
@@ -225,59 +226,7 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-class _StreakIndicator extends StatelessWidget {
-  final int streak;
-
-  const _StreakIndicator({required this.streak});
-
-  @override
-  Widget build(BuildContext context) {
-    final double screenWidth = MediaQuery.of(context).size.width;
-    final double emojiSize = (screenWidth * 0.04).clamp(14.0, 18.0).toDouble();
-    final double countSize = (screenWidth * 0.04).clamp(14.0, 18.0).toDouble();
-    final double labelSize = (screenWidth * 0.028).clamp(9.0, 12.0).toDouble();
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.background.withValues(alpha: 0.85),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text('🔥', style: TextStyle(fontSize: emojiSize)),
-          const SizedBox(width: 4),
-          Text(
-            '$streak',
-            style: TextStyle(
-              fontSize: countSize,
-              fontWeight: FontWeight.bold,
-              color: AppColors.accentBrown,
-            ),
-          ),
-          const SizedBox(width: 4),
-          Text(
-            'day streak',
-            style: TextStyle(
-              fontSize: labelSize,
-              color: AppColors.accentBrown.withValues(alpha: 0.7),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MacroColumn extends StatelessWidget {
+class _MacroIndicator extends StatelessWidget {
   final String label;
   final double current;
   final double goal;
