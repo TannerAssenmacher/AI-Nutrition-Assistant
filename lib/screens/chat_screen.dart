@@ -29,6 +29,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   String? _selectedMealType;
   String? _selectedCuisineType;
 
+  //list of cuisine
   final List<String> _cuisineTypes = [
     'No Preference',
     'African',
