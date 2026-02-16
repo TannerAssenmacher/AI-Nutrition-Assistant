@@ -29,7 +29,7 @@ class NavItem extends StatelessWidget {
           Icon(
             icon,
             color: isActive ? activeColor : Color.fromARGB(255, 109, 94, 88),
-            size: MediaQuery.of(context).size.width * 0.1,
+            size: MediaQuery.of(context).size.height * 0.05,
           ),
           const SizedBox(height: 4),
           /*Text(

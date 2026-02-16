@@ -13,8 +13,8 @@ class NavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).padding.bottom;
-    const barHeight = 64.0;
+    final bottomInset = MediaQuery.of(context).size.height * 0.02; // Adjust based on your needs
+    final barHeight = MediaQuery.of(context).size.height * 0.07;
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFF3E2F26),
