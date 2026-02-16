@@ -87,11 +87,12 @@ RULES FOR MODIFIED RECIPES:
   /// Build conversation history for Gemini multi-turn chat.
   /// Takes last 20 messages and converts them to role/text maps.
   /// Recipe results are summarized to avoid token bloat.
+  /// Gemini requires the first message to have role 'user'.
   List<Map<String, String>> _buildConversationHistory() {
     final recentMessages =
         state.length > 20 ? state.sublist(state.length - 20) : state;
 
-    return recentMessages.map((msg) {
+    final history = recentMessages.map((msg) {
       String text = msg.content;
 
       // Summarize special message types to reduce tokens
@@ -113,6 +114,13 @@ RULES FOR MODIFIED RECIPES:
         'text': text,
       };
     }).toList();
+
+    // Gemini requires the first message to have role 'user' — drop leading model messages
+    while (history.isNotEmpty && history.first['role'] == 'model') {
+      history.removeAt(0);
+    }
+
+    return history;
   }
 
   /// Check if a message is likely about recipes we've shown.

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 
 class MacroSlider extends StatefulWidget {
   final double protein;
@@ -74,13 +75,13 @@ class _MacroSliderState extends State<MacroSlider> {
               children: [
                 Text('Protein ${_proteinPercent.toStringAsFixed(0)}%',
                     style: const TextStyle(
-                        color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                        color: AppColors.protein, fontWeight: FontWeight.bold)),
                 Text('Carbs ${_carbPercent.toStringAsFixed(0)}%',
                     style: const TextStyle(
-                        color: Colors.blueAccent, fontWeight: FontWeight.bold)),
+                        color: AppColors.carbs, fontWeight: FontWeight.bold)),
                 Text('Fats ${_fatPercent.toStringAsFixed(0)}%',
                     style: const TextStyle(
-                        color: Colors.amber, fontWeight: FontWeight.bold)),
+                        color: AppColors.fat, fontWeight: FontWeight.bold)),
               ],
             ),
             const SizedBox(height: 10),
@@ -114,7 +115,7 @@ class _MacroSliderState extends State<MacroSlider> {
                         height: 10,
                         width: handle1X,
                         decoration: BoxDecoration(
-                          color: Colors.redAccent,
+                          color: AppColors.protein,
                           borderRadius: const BorderRadius.horizontal(
                               left: Radius.circular(5)),
                         ),
@@ -126,7 +127,7 @@ class _MacroSliderState extends State<MacroSlider> {
                       child: Container(
                         height: 10,
                         width: handle2X - handle1X,
-                        color: Colors.blueAccent,
+                        color: AppColors.carbs,
                       ),
                     ),
                     // Fats
@@ -136,7 +137,7 @@ class _MacroSliderState extends State<MacroSlider> {
                         height: 10,
                         width: _width - handle2X,
                         decoration: BoxDecoration(
-                          color: Colors.amber,
+                          color: AppColors.fat,
                           borderRadius: const BorderRadius.horizontal(
                               right: Radius.circular(5)),
                         ),

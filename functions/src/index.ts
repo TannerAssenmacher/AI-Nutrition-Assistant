@@ -601,6 +601,8 @@ export const callGemini = onCall(
     cors: true,
     invoker: 'public',
     secrets: [geminiApiKey],
+    timeoutSeconds: 120,
+    memory: '512MiB',
   },
   async (request) => {
     if (!request.auth) {
@@ -689,8 +691,9 @@ export const callGemini = onCall(
       if (error instanceof HttpsError) {
         throw error;
       }
-      console.error('Gemini callable failed:', error);
-      throw new HttpsError('internal', 'Gemini request failed');
+      const errMsg = error instanceof Error ? error.message : String(error);
+      console.error('Gemini callable failed:', errMsg);
+      throw new HttpsError('internal', `Gemini request failed: ${errMsg}`);
     }
   }
 );
