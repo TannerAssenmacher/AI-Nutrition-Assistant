@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 const int navIndexChat = 1;
 const int navIndexHistory = 2;
 const int navIndexHome = 3;
-const int navIndexProfile = 4;
+const int navIndexSearch = 4;
 const int navIndexCamera = 5;
+const int navIndexProfile = 6;
 
 /// Centralized navigation handler for the bottom nav bar.
 void handleNavTap(BuildContext context, int targetIndex) {
@@ -20,8 +21,8 @@ void handleNavTap(BuildContext context, int targetIndex) {
     case navIndexHome:
       targetRoute = '/home';
       break;
-    case navIndexProfile:
-      targetRoute = '/profile';
+    case navIndexSearch:
+      targetRoute = '/search';
       break;
     case navIndexCamera:
       targetRoute = '/camera';

@@ -168,6 +168,60 @@ class _DailyLogCalendarScreenState
     };
   }
 
+  double _percentError(double actual, double target) {
+    if (target <= 0) return 0;
+    return ((actual - target).abs()) / target;
+  }
+
+  _NutritionGrade _calculateNutritionGrade({
+    required Map<String, double> totals,
+    required Map<String, double> goals,
+  }) {
+    final calError =
+        _percentError(totals['calories'] ?? 0, goals['calories'] ?? 0);
+    final proteinError =
+        _percentError(totals['protein'] ?? 0, goals['protein'] ?? 0);
+    final carbsError = _percentError(totals['carbs'] ?? 0, goals['carbs'] ?? 0);
+    final fatError = _percentError(totals['fat'] ?? 0, goals['fat'] ?? 0);
+
+    // Weighted equally by 0.25 as specified.
+    final overallError = 0.25 * (calError + proteinError + carbsError + fatError);
+    final percent = overallError * 100;
+    final letter = _gradeLetterForError(overallError);
+    return _NutritionGrade(
+      letter: letter,
+      errorPercent: percent,
+      color: _gradeColor(letter),
+    );
+  }
+
+  String _gradeLetterForError(double overallError) {
+    if (overallError <= 0.05) return 'S';
+    if (overallError <= 0.10) return 'A';
+    if (overallError <= 0.15) return 'B';
+    if (overallError <= 0.20) return 'C';
+    if (overallError <= 0.25) return 'D';
+    return 'F';
+  }
+
+  Color _gradeColor(String letter) {
+    switch (letter) {
+      case 'S':
+        return const Color(0xFF2E7D32);
+      case 'A':
+        return const Color(0xFF4CAF50);
+      case 'B':
+        return const Color(0xFF8BC34A);
+      case 'C':
+        return const Color(0xFFFFB300);
+      case 'D':
+        return const Color(0xFFFF7043);
+      case 'F':
+      default:
+        return const Color(0xFFE53935);
+    }
+  }
+
   void _addPlaceholderApple() {
     final authUser = ref.read(authServiceProvider);
     final userId = authUser?.uid;
@@ -306,12 +360,20 @@ class _DailyLogCalendarScreenState
                               final scheduledTotals = snapshot.data ?? const {
                                 'calories': 0, 'protein': 0, 'carbs': 0, 'fat': 0,
                               };
-
-                              final combined = {
-                                'calories': (totals['calories'] ?? 0) + scheduledTotals['calories']!,
-                                'protein':  (totals['protein']  ?? 0) + scheduledTotals['protein']!,
-                                'carbs':    (totals['carbs']    ?? 0) + scheduledTotals['carbs']!,
-                                'fat':      (totals['fat']      ?? 0) + scheduledTotals['fat']!,
+                              final showScheduledTotals = segment == 1;
+                              final summary = {
+                                'calories': showScheduledTotals
+                                    ? scheduledTotals['calories']!
+                                    : (totals['calories'] ?? 0),
+                                'protein': showScheduledTotals
+                                    ? scheduledTotals['protein']!
+                                    : (totals['protein'] ?? 0),
+                                'carbs': showScheduledTotals
+                                    ? scheduledTotals['carbs']!
+                                    : (totals['carbs'] ?? 0),
+                                'fat': showScheduledTotals
+                                    ? scheduledTotals['fat']!
+                                    : (totals['fat'] ?? 0),
                               };
 
                               return Container(
@@ -324,10 +386,10 @@ class _DailyLogCalendarScreenState
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                                   children: [
-                                    _MacroSummaryItem(label: 'Cal',  value: '${combined['calories']!.toInt()}'),
-                                    _MacroSummaryItem(label: 'Prot', value: '${combined['protein']!.toStringAsFixed(1)}g'),
-                                    _MacroSummaryItem(label: 'Carbs',value: '${combined['carbs']!.toStringAsFixed(1)}g'),
-                                    _MacroSummaryItem(label: 'Fat',  value: '${combined['fat']!.toStringAsFixed(1)}g'),
+                                    _MacroSummaryItem(label: 'Cal',  value: '${summary['calories']!.toInt()}'),
+                                    _MacroSummaryItem(label: 'Prot', value: '${summary['protein']!.toStringAsFixed(1)}g'),
+                                    _MacroSummaryItem(label: 'Carbs',value: '${summary['carbs']!.toStringAsFixed(1)}g'),
+                                    _MacroSummaryItem(label: 'Fat',  value: '${summary['fat']!.toStringAsFixed(1)}g'),
                                   ],
                                 ),
                               );
@@ -600,39 +662,26 @@ class _DailyLogCalendarScreenState
                       final isToday = day.year == DateTime.now().year &&
                           day.month == DateTime.now().month &&
                           day.day == DateTime.now().day;
+                      final todayOnly = DateTime(
+                        DateTime.now().year,
+                        DateTime.now().month,
+                        DateTime.now().day,
+                      );
+                      final dayOnly = DateTime(day.year, day.month, day.day);
+                      final isFutureDay = dayOnly.isAfter(todayOnly);
                       final foods = _foodsForDay(day, foodLog);
                       final dayTotals = _totalsForDay(day, foodLog);
-
-                      final calPercentage = calorieGoal > 0
-                          ? ((dayTotals['calories'] ?? 0) / calorieGoal * 100)
-                          : 0.0;
-                      final protPercentage = proteinGoal > 0
-                          ? ((dayTotals['protein'] ?? 0) / proteinGoal * 100)
-                          : 0.0;
-                      final carbsPercentage = carbsGoal > 0
-                          ? ((dayTotals['carbs'] ?? 0) / carbsGoal * 100)
-                          : 0.0;
-                      final fatPercentage = fatGoal > 0
-                          ? ((dayTotals['fat'] ?? 0) / fatGoal * 100)
-                          : 0.0;
-                      final avgPercentage = (calPercentage +
-                              protPercentage +
-                              carbsPercentage +
-                              fatPercentage) /
-                          4;
-
-                      Color goalIndicatorColor;
-                      if (avgPercentage > 130) {
-                        goalIndicatorColor = Colors.red;
-                      } else if (avgPercentage > 110) {
-                        goalIndicatorColor = Colors.yellow.shade700;
-                      } else if (avgPercentage >= 90) {
-                        goalIndicatorColor = Colors.green;
-                      } else if (avgPercentage >= 80) {
-                        goalIndicatorColor = Colors.orange;
-                      } else {
-                        goalIndicatorColor = Colors.grey;
-                      }
+                      final grade = isFutureDay
+                          ? null
+                          : _calculateNutritionGrade(
+                              totals: dayTotals,
+                              goals: {
+                                'calories': calorieGoal,
+                                'protein': proteinGoal,
+                                'carbs': carbsGoal,
+                                'fat': fatGoal,
+                              },
+                            );
 
                       return GestureDetector(
                         onTap: () {
@@ -701,19 +750,31 @@ class _DailyLogCalendarScreenState
                                       ),
                                     ),
                                     const SizedBox(height: 6),
-                                    Container(
-                                      width: 12,
-                                      height: 12,
-                                      decoration: BoxDecoration(
-                                        color: goalIndicatorColor,
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: goalIndicatorColor.withValues(
-                                              alpha: 0.5),
-                                          width: 1,
+                                    if (grade != null)
+                                      Container(
+                                        width: 26,
+                                        height: 26,
+                                        alignment: Alignment.center,
+                                        decoration: BoxDecoration(
+                                          color: grade.color,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color:
+                                                grade.color.withValues(alpha: 0.45),
+                                            width: 1,
+                                          ),
                                         ),
-                                      ),
-                                    ),
+                                        child: Text(
+                                          grade.letter,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      )
+                                    else
+                                      const SizedBox(width: 26, height: 26),
                                   ],
                                 ),
                               ),
@@ -740,6 +801,17 @@ class _DailyLogCalendarScreenState
                                             : FontStyle.normal,
                                       ),
                                     ),
+                                    if (grade != null) ...[
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Grade ${grade.letter}  (${grade.errorPercent.toStringAsFixed(1)}% error)',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: grade.color,
+                                        ),
+                                      ),
+                                    ],
                                     const SizedBox(height: 8),
                                     _MacroProgressIndicator(
                                       label: 'Cal',
@@ -1769,6 +1841,18 @@ class _FoodRow {
   });
 }
 
+class _NutritionGrade {
+  final String letter;
+  final double errorPercent;
+  final Color color;
+
+  const _NutritionGrade({
+    required this.letter,
+    required this.errorPercent,
+    required this.color,
+  });
+}
+
 class _MacroChip extends StatelessWidget {
   const _MacroChip(
       {required this.label, required this.value, required this.suffix});
@@ -2050,14 +2134,25 @@ class _ScheduledMealCard extends ConsumerWidget {
       ),
       error: (e, _) => Text('Error: $e'),
       data: (recipe) {
-          final recipeName = (recipe['label'] ?? 'Unknown').toString();
-          final calories = (recipe['calories'] ?? 0).toDouble();
-          final protein = (recipe['protein'] ?? 0).toDouble();
-          final carbs = (recipe['carbs'] ?? 0).toDouble();
-          final fat = (recipe['fat'] ?? 0).toDouble();
+        final recipeName = (recipe['label'] ?? 'Unknown').toString();
+        final calories = (recipe['calories'] ?? 0).toDouble();
+        final protein = (recipe['protein'] ?? 0).toDouble();
+        final carbs = (recipe['carbs'] ?? 0).toDouble();
+        final fat = (recipe['fat'] ?? 0).toDouble();
 
-
-        return Container(
+        return InkWell(
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => _ScheduledMealDetailScreen(
+                  meal: meal,
+                  recipe: recipe,
+                ),
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
           margin: const EdgeInsets.only(bottom: 8),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -2104,15 +2199,28 @@ class _ScheduledMealCard extends ConsumerWidget {
                       spacing: 6,
                       runSpacing: 4,
                       children: [
-                        _MacroChip(label: 'Calories', value: calories, suffix: 'kcal'),
+                        _MacroChip(
+                            label: 'Calories', value: calories, suffix: 'kcal'),
                         _MacroChip(label: 'Protein', value: protein, suffix: 'g'),
                         _MacroChip(label: 'Carbs', value: carbs, suffix: 'g'),
                         _MacroChip(label: 'Fat', value: fat, suffix: 'g'),
-                      ]
-                    )
-                      
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Tap to view ingredients and instructions',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.blue.shade700,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ],
                 ),
+              ),
+              Icon(
+                Icons.chevron_right,
+                color: Colors.blue.shade700,
               ),
               IconButton(
                 onPressed: onDelete,
@@ -2121,8 +2229,315 @@ class _ScheduledMealCard extends ConsumerWidget {
               ),
             ],
           ),
-        );
+        ));
       },
+    );
+  }
+}
+
+class _ScheduledMealDetailScreen extends StatelessWidget {
+  final PlannedFood meal;
+  final Map<String, dynamic> recipe;
+
+  const _ScheduledMealDetailScreen({
+    required this.meal,
+    required this.recipe,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final recipeName = (recipe['label'] ?? 'Recipe').toString();
+    final ingredients = _parseIngredients(recipe['ingredients']);
+    final instructions = _parseInstructions(recipe['instructions']);
+    const baseColor = Color(0xFF181818);
+    const cardColor = Color.fromRGBO(255, 255, 255, 0.05);
+    const accentColor = Color(0xFF5D8A73);
+
+    return Scaffold(
+      backgroundColor: baseColor,
+      appBar: AppBar(
+        backgroundColor: baseColor,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        title: const Text('Recipe Details'),
+      ),
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Color(0xAA2A3A33),
+                      Color(0x2A2A3A33),
+                      Color(0x00181818),
+                    ],
+                    stops: [0.0, 0.34, 0.62],
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.14),
+                  ),
+                ),
+                child: ListView(
+                  padding: const EdgeInsets.all(20),
+                  children: [
+                    Text(
+                      recipeName,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 48,
+                        height: 1.1,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFFF2F4F7),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      meal.mealType.toUpperCase(),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        letterSpacing: 1.2,
+                        fontWeight: FontWeight.w700,
+                        color: accentColor,
+                      ),
+                    ),
+                    const SizedBox(height: 22),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isWide = constraints.maxWidth >= 700;
+                        if (isWide) {
+                          return IntrinsicHeight(
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: _IngredientsSection(
+                                    ingredients: ingredients,
+                                  ),
+                                ),
+                                Container(
+                                  margin: const EdgeInsets.symmetric(
+                                      horizontal: 18),
+                                  width: 1.5,
+                                  color: Colors.white.withValues(alpha: 0.18),
+                                ),
+                                Expanded(
+                                  child: _InstructionsSection(
+                                    instructions: instructions,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _IngredientsSection(ingredients: ingredients),
+                            const SizedBox(height: 16),
+                            Container(
+                              height: 1.5,
+                              color: Colors.white.withValues(alpha: 0.18),
+                            ),
+                            const SizedBox(height: 16),
+                            _InstructionsSection(instructions: instructions),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<String> _parseIngredients(dynamic rawIngredients) {
+    if (rawIngredients is List) {
+      return rawIngredients
+          .map((item) => item.toString().trim())
+          .where((item) => item.isNotEmpty)
+          .toList();
+    }
+    if (rawIngredients is String && rawIngredients.trim().isNotEmpty) {
+      return rawIngredients
+          .split('\n')
+          .map((item) => item.trim())
+          .where((item) => item.isNotEmpty)
+          .toList();
+    }
+    return const [];
+  }
+
+  List<String> _parseInstructions(dynamic rawInstructions) {
+    if (rawInstructions is! String || rawInstructions.trim().isEmpty) {
+      return const [];
+    }
+
+    final normalized = rawInstructions.replaceAll('\r\n', '\n').trim();
+    final numberedRegex = RegExp(r'^\s*(\d+)[.)]\s+', multiLine: true);
+    if (numberedRegex.hasMatch(normalized)) {
+      return normalized
+          .split(RegExp(r'\n(?=\s*\d+[.)]\s+)'))
+          .map((line) => line.replaceFirst(RegExp(r'^\s*\d+[.)]\s+'), ''))
+          .map((line) => line.trim())
+          .where((line) => line.isNotEmpty)
+          .toList();
+    }
+
+    return normalized
+        .split('\n')
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .toList();
+  }
+}
+
+class _IngredientsSection extends StatelessWidget {
+  final List<String> ingredients;
+
+  const _IngredientsSection({required this.ingredients});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _RecipeSectionTitle('Ingredients'),
+        const SizedBox(height: 12),
+        if (ingredients.isEmpty)
+          const Text(
+            'No ingredients available.',
+            style: TextStyle(color: Color(0xFFB8C0CC), fontSize: 18),
+          )
+        else
+          ...ingredients.map(
+            (ingredient) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8),
+                    child: Icon(
+                      Icons.circle,
+                      size: 10,
+                      color: Color(0xFF5D8A73),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      ingredient,
+                      style: const TextStyle(
+                        fontSize: 19,
+                        height: 1.35,
+                        color: Color(0xFFE9EDF4),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _InstructionsSection extends StatelessWidget {
+  final List<String> instructions;
+
+  const _InstructionsSection({required this.instructions});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _RecipeSectionTitle('Instructions'),
+        const SizedBox(height: 12),
+        if (instructions.isEmpty)
+          const Text(
+            'No instructions available.',
+            style: TextStyle(color: Color(0xFFB8C0CC), fontSize: 18),
+          )
+        else
+          ...instructions.asMap().entries.map(
+                (entry) => Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 34,
+                        height: 34,
+                        alignment: Alignment.center,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Color(0xFF5D8A73),
+                        ),
+                        child: Text(
+                          '${entry.key + 1}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 19,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          entry.value,
+                          style: const TextStyle(
+                            fontSize: 19,
+                            height: 1.35,
+                            color: Color(0xFFE9EDF4),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+      ],
+    );
+  }
+}
+
+class _RecipeSectionTitle extends StatelessWidget {
+  final String label;
+
+  const _RecipeSectionTitle(this.label);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: const TextStyle(
+        fontSize: 42,
+        height: 1,
+        fontWeight: FontWeight.w800,
+        color: Color(0xFF5D8A73),
+      ),
     );
   }
 }

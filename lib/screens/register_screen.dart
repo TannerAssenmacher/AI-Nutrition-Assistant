@@ -10,6 +10,14 @@ import '../widgets/macro_slider.dart';
 import '../theme/app_colors.dart';
 import 'package:intl/intl.dart';
 import 'package:email_validator/email_validator.dart';
+import '../widgets/top_bar.dart';
+
+// Global Color Variables
+const Color kAppBackgroundColor = Color(0xFFF5EDE2);
+const Color kBrandColor = Color(0xFF5F9735);
+const Color kTextColor = Color(0xFF967460);
+const Color kInputFillColor = Color(0xFFF5F1E8);
+const Color kErrorColor = Color(0xFFD32F2F);
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -395,10 +403,11 @@ class _RegisterPageState extends State<RegisterPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
+      /*appBar: AppBar(
         title: Text(_currentPage == 0 ? 'Create Account' : 'More Info'),
         centerTitle: true,
-      ),
+      ),*/
+      backgroundColor: kAppBackgroundColor,
       body: SafeArea(
         child: Form(
           key: _formKey,
@@ -419,115 +428,242 @@ class _RegisterPageState extends State<RegisterPage> {
 
   // ---- PAGE 1
   Widget _buildPage1() {
+    final mediaQuery = MediaQuery.of(context);
+    final screenHeight = mediaQuery.size.height;
+    final cardHorizontalPadding =
+        (mediaQuery.size.width * 0.1).clamp(20.0, 36.0).toDouble();
+    final linkFontSize = (screenHeight * 0.022).clamp(16.0, 22.0).toDouble();
+    final logoHeight = (screenHeight * 0.15).clamp(90.0, 140.0).toDouble();
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 500),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _textFieldRequired(_firstnameController, 'First Name'),
-              _textFieldRequired(_lastnameController, 'Last Name'),
-              _emailField(), // email with LIVE duplication check
-              _passwordField(), // single-line live hint
-              const SizedBox(height: 30),
-              ElevatedButton(
-                onPressed: _validatePage1AndNext,
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.brand,
-                    padding: const EdgeInsets.all(15)),
-                child: const Text('Next',
-                    style: TextStyle(color: Colors.white, fontSize: 18)),
-              ),
-            ],
+      padding: EdgeInsets.only(bottom: 24 + mediaQuery.viewInsets.bottom),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const top_bar(),
+          SizedBox(
+            height: (screenHeight * 0.03).clamp(16.0, 28.0).toDouble(),
           ),
-        ),
+          SizedBox(
+            height: logoHeight,
+            child: Image.asset(
+              'lib/icons/WISERBITES.png',
+              fit: BoxFit.contain,
+            ),
+          ),
+          SizedBox(
+            height: (screenHeight * 0.025).clamp(14.0, 24.0).toDouble(),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Container(
+              width: double.infinity,
+              constraints: const BoxConstraints(maxWidth: 520),
+              padding: EdgeInsets.fromLTRB(
+                cardHorizontalPadding,
+                30,
+                cardHorizontalPadding,
+                30,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(48),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withValues(alpha: 0.5),
+                    spreadRadius: 4,
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'Create Account',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: kTextColor,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  _textFieldRequired(_firstnameController, 'First Name'),
+                  _textFieldRequired(_lastnameController, 'Last Name'),
+                  _emailField(), // email with LIVE duplication check
+                  _passwordField(), // single-line live hint
+                  const SizedBox(height: 30),
+                  ElevatedButton(
+                    onPressed: _validatePage1AndNext,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: kBrandColor,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      minimumSize: const Size(double.infinity, 52),
+                    ),
+                    child: const Text(
+                      'Next',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(
+                      "Already have an account? Login",
+                      style: TextStyle(
+                        fontSize: linkFontSize,
+                        decoration: TextDecoration.underline,
+                        fontWeight: FontWeight.bold,
+                        color: kTextColor,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 30),
+        ],
       ),
     );
   }
 
   // ---- PAGE 2
   Widget _buildPage2() {
+    final mediaQuery = MediaQuery.of(context);
+    final screenHeight = mediaQuery.size.height;
+    final cardHorizontalPadding =
+        (mediaQuery.size.width * 0.1).clamp(20.0, 36.0).toDouble();
+    final logoHeight = (screenHeight * 0.15).clamp(90.0, 140.0).toDouble();
+
     // Use the primary scroll controller to avoid Scrollbar having no attached position
-    return Scrollbar(
-      thumbVisibility: true,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 500),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _dobFieldOptional(), // DOB is NOT required
-                _dropdownField('Sex', _sexOptions, (v) => _sex = v),
-                _textFieldOptional(_heightController, 'Height (inches)',
-                    keyboardType: TextInputType.number),
-                _textFieldOptional(_weightController, 'Weight (lbs)',
-                    keyboardType: TextInputType.number),
-                _dropdownField('Activity Level', _activityLevels,
-                    (v) => _activityLevel = v),
-                _dropdownField(
-                    'Dietary Goal', _dietGoals, (v) => _dietaryGoal = v),
-                _textFieldOptional(
-                    _dailyCaloriesController, 'Daily Calorie Goal',
-                    keyboardType: TextInputType.number),
-                const SizedBox(height: 20),
-                const Text('Macronutrient Goals (% of calories)',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 10),
-                MacroSlider(
-                  protein: _protein,
-                  carbs: _carbs,
-                  fats: _fats,
-                  onChanged: (p, c, f) => setState(() {
-                    _protein = p;
-                    _carbs = c;
-                    _fats = f;
-                  }),
-                ),
-                const SizedBox(height: 25),
-                _centeredMultiSelectField(
-                    'Dietary Habits', _dietaryHabitOptions, _dietaryHabits),
-                const SizedBox(height: 24),
-                _centeredMultiSelectField(
-                    'Health Restrictions', _healthOptions, _health),
-                const SizedBox(height: 24),
-                _textFieldOptional(
-                    _likesController, 'Food Likes (comma-separated)'),
-                _textFieldOptional(
-                    _dislikesController, 'Food Dislikes (comma-separated)'),
-                const SizedBox(height: 30),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    TextButton(
-                      onPressed: () {
-                        _pageController.previousPage(
-                            duration: const Duration(milliseconds: 300),
-                            curve: Curves.easeInOut);
-                        setState(() => _currentPage = 0);
-                      },
-                      child: const Text('Back'),
-                    ),
-                    _isLoading
-                        ? const CircularProgressIndicator()
-                        : ElevatedButton(
-                            onPressed: _registerUser,
-                            style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.brand,
-                                padding: const EdgeInsets.all(15)),
-                            child: const Text('Create Account',
-                                style: TextStyle(
-                                    color: Colors.white, fontSize: 18)),
-                          ),
-                  ],
-                ),
-              ],
+    return SingleChildScrollView(
+      padding: EdgeInsets.only(bottom: 24 + mediaQuery.viewInsets.bottom),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const top_bar(),
+          SizedBox(
+            height: (screenHeight * 0.03).clamp(16.0, 28.0).toDouble(),
+          ),
+          SizedBox(
+            height: logoHeight,
+            child: Image.asset(
+              'lib/icons/WISERBITES.png',
+              fit: BoxFit.contain,
             ),
           ),
-        ),
+          SizedBox(
+            height: (screenHeight * 0.025).clamp(14.0, 24.0).toDouble(),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Container(
+              width: double.infinity,
+              constraints: const BoxConstraints(maxWidth: 520),
+              padding: EdgeInsets.fromLTRB(
+                cardHorizontalPadding,
+                30,
+                cardHorizontalPadding,
+                30,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(48),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withValues(alpha: 0.5),
+                    spreadRadius: 4,
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _dobFieldOptional(), // DOB is NOT required
+                  _dropdownField('Sex', _sexOptions, (v) => _sex = v),
+                  _textFieldOptional(_heightController, 'Height (inches)',
+                      keyboardType: TextInputType.number),
+                  _textFieldOptional(_weightController, 'Weight (lbs)',
+                      keyboardType: TextInputType.number),
+                  _dropdownField('Activity Level', _activityLevels,
+                      (v) => _activityLevel = v),
+                  _dropdownField(
+                      'Dietary Goal', _dietGoals, (v) => _dietaryGoal = v),
+                  _textFieldOptional(
+                      _dailyCaloriesController, 'Daily Calorie Goal',
+                      keyboardType: TextInputType.number),
+                  const SizedBox(height: 20),
+                  const Text('Macronutrient Goals (% of calories)',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 10),
+                  MacroSlider(
+                    protein: _protein,
+                    carbs: _carbs,
+                    fats: _fats,
+                    onChanged: (p, c, f) => setState(() {
+                      _protein = p;
+                      _carbs = c;
+                      _fats = f;
+                    }),
+                  ),
+                  const SizedBox(height: 25),
+                  _centeredMultiSelectField(
+                      'Dietary Habits', _dietaryHabitOptions, _dietaryHabits),
+                  const SizedBox(height: 24),
+                  _centeredMultiSelectField(
+                      'Health Restrictions', _healthOptions, _health),
+                  const SizedBox(height: 24),
+                  _textFieldOptional(
+                      _likesController, 'Food Likes (comma-separated)'),
+                  _textFieldOptional(
+                      _dislikesController, 'Food Dislikes (comma-separated)'),
+                  const SizedBox(height: 30),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      TextButton(
+                        onPressed: () {
+                          _pageController.previousPage(
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeInOut);
+                          setState(() => _currentPage = 0);
+                        },
+                        child: const Text('Back'),
+                      ),
+                      _isLoading
+                          ? const CircularProgressIndicator()
+                          : ElevatedButton(
+                              onPressed: _registerUser,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: kBrandColor,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 24, vertical: 12),
+                              ),
+                              child: const Text('Create Account',
+                                  style: TextStyle(
+                                      color: Colors.white, fontSize: 18)),
+                            ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 30),
+        ],
       ),
     );
   }
@@ -555,7 +691,14 @@ class _RegisterPageState extends State<RegisterPage> {
         onTap: () => setState(() {}), // hide required on focus
         decoration: InputDecoration(
           labelText: label,
-          border: const OutlineInputBorder(),
+          filled: true,
+          fillColor: kInputFillColor,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
           errorText: showRequired ? 'This field is required' : null,
         ),
         validator: (val) {
@@ -585,7 +728,14 @@ class _RegisterPageState extends State<RegisterPage> {
         onTap: () => setState(() {}), // hide required on focus
         decoration: InputDecoration(
           labelText: 'Email',
-          border: const OutlineInputBorder(),
+          filled: true,
+          fillColor: kInputFillColor,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
           errorText:
               _emailError ?? (showRequired ? 'This field is required' : null),
         ),
@@ -636,7 +786,14 @@ class _RegisterPageState extends State<RegisterPage> {
         onTap: () => setState(() {}),
         decoration: InputDecoration(
           labelText: 'Password',
-          border: const OutlineInputBorder(),
+          filled: true,
+          fillColor: kInputFillColor,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
           errorText: effectiveError,
         ),
         validator: (val) {
@@ -662,7 +819,14 @@ class _RegisterPageState extends State<RegisterPage> {
         keyboardType: keyboardType,
         decoration: InputDecoration(
           labelText: label,
-          border: const OutlineInputBorder(),
+          filled: true,
+          fillColor: kInputFillColor,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         ),
       ),
     );
@@ -678,7 +842,14 @@ class _RegisterPageState extends State<RegisterPage> {
       child: DropdownButtonFormField<String>(
         decoration: InputDecoration(
           labelText: label,
-          border: const OutlineInputBorder(),
+          filled: true,
+          fillColor: kInputFillColor,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         ),
         onChanged: onChanged,
         items: options
@@ -714,7 +885,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 onSelected: (_) => setState(() {
                   isSelected ? selected.remove(option) : selected.add(option);
                 }),
-                selectedColor: AppColors.brand.withValues(alpha: 0.3),
+                selectedColor: kBrandColor.withValues(alpha: 0.4),
               );
             }).toList(),
           ),
@@ -740,7 +911,14 @@ class _RegisterPageState extends State<RegisterPage> {
         ],
         decoration: InputDecoration(
           labelText: 'Date of Birth (MM/DD/YYYY)',
-          border: const OutlineInputBorder(),
+          filled: true,
+          fillColor: kInputFillColor,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
           suffixIcon: IconButton(
             icon: const Icon(Icons.calendar_today),
             onPressed: () async {

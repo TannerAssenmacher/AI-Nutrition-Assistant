@@ -176,8 +176,8 @@ class MyApp extends StatelessWidget {
             const MainNavigationScreen(initialIndex: navIndexHistory),
         '/camera': (context) =>
             const MainNavigationScreen(initialIndex: navIndexCamera),
-        '/profile': (context) =>
-            const MainNavigationScreen(initialIndex: navIndexProfile),
+        '/search': (context) =>
+            const MainNavigationScreen(initialIndex: navIndexSearch),
       },
     );
   }
