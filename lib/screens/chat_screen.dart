@@ -188,26 +188,31 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ],
         ),
       ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: chatMessages.isEmpty
-                  ? _buildEmptyState()
-                  : ListView.builder(
-                      controller: _scrollController,
-                      padding: const EdgeInsets.all(16),
-                      itemCount: chatMessages.length + (isLoading ? 1 : 0),
-                      itemBuilder: (context, index) {
-                        if (index == chatMessages.length) return const _TypingIndicator();
-                        final message = chatMessages[index];
-                        return _buildMessageNode(message);
-                      },
-                    ),
-            ),
-            _choiceBar(),
-            _buildInputBar(),
-          ],
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: chatMessages.isEmpty
+                    ? _buildEmptyState()
+                    : ListView.builder(
+                        controller: _scrollController,
+                        //hides keyboard when swipe
+                        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                        padding: const EdgeInsets.all(16),
+                        itemCount: chatMessages.length + (isLoading ? 1 : 0),
+                        itemBuilder: (context, index) {
+                          if (index == chatMessages.length) return const _TypingIndicator();
+                          final message = chatMessages[index];
+                          return _buildMessageNode(message);
+                        },
+                      ),
+              ),
+              _choiceBar(),
+              _buildInputBar(),
+            ],
+          ),
         ),
       ),
       bottomNavigationBar: widget.isInPageView ? null : NavBar(
