@@ -168,6 +168,60 @@ class _DailyLogCalendarScreenState
     };
   }
 
+  double _percentError(double actual, double target) {
+    if (target <= 0) return 0;
+    return ((actual - target).abs()) / target;
+  }
+
+  _NutritionGrade _calculateNutritionGrade({
+    required Map<String, double> totals,
+    required Map<String, double> goals,
+  }) {
+    final calError =
+        _percentError(totals['calories'] ?? 0, goals['calories'] ?? 0);
+    final proteinError =
+        _percentError(totals['protein'] ?? 0, goals['protein'] ?? 0);
+    final carbsError = _percentError(totals['carbs'] ?? 0, goals['carbs'] ?? 0);
+    final fatError = _percentError(totals['fat'] ?? 0, goals['fat'] ?? 0);
+
+    // Weighted equally by 0.25 as specified.
+    final overallError = 0.25 * (calError + proteinError + carbsError + fatError);
+    final percent = overallError * 100;
+    final letter = _gradeLetterForError(overallError);
+    return _NutritionGrade(
+      letter: letter,
+      errorPercent: percent,
+      color: _gradeColor(letter),
+    );
+  }
+
+  String _gradeLetterForError(double overallError) {
+    if (overallError <= 0.05) return 'S';
+    if (overallError <= 0.10) return 'A';
+    if (overallError <= 0.15) return 'B';
+    if (overallError <= 0.20) return 'C';
+    if (overallError <= 0.25) return 'D';
+    return 'F';
+  }
+
+  Color _gradeColor(String letter) {
+    switch (letter) {
+      case 'S':
+        return const Color(0xFF2E7D32);
+      case 'A':
+        return const Color(0xFF4CAF50);
+      case 'B':
+        return const Color(0xFF8BC34A);
+      case 'C':
+        return const Color(0xFFFFB300);
+      case 'D':
+        return const Color(0xFFFF7043);
+      case 'F':
+      default:
+        return const Color(0xFFE53935);
+    }
+  }
+
   void _addPlaceholderApple() {
     final authUser = ref.read(authServiceProvider);
     final userId = authUser?.uid;
@@ -608,39 +662,26 @@ class _DailyLogCalendarScreenState
                       final isToday = day.year == DateTime.now().year &&
                           day.month == DateTime.now().month &&
                           day.day == DateTime.now().day;
+                      final todayOnly = DateTime(
+                        DateTime.now().year,
+                        DateTime.now().month,
+                        DateTime.now().day,
+                      );
+                      final dayOnly = DateTime(day.year, day.month, day.day);
+                      final isFutureDay = dayOnly.isAfter(todayOnly);
                       final foods = _foodsForDay(day, foodLog);
                       final dayTotals = _totalsForDay(day, foodLog);
-
-                      final calPercentage = calorieGoal > 0
-                          ? ((dayTotals['calories'] ?? 0) / calorieGoal * 100)
-                          : 0.0;
-                      final protPercentage = proteinGoal > 0
-                          ? ((dayTotals['protein'] ?? 0) / proteinGoal * 100)
-                          : 0.0;
-                      final carbsPercentage = carbsGoal > 0
-                          ? ((dayTotals['carbs'] ?? 0) / carbsGoal * 100)
-                          : 0.0;
-                      final fatPercentage = fatGoal > 0
-                          ? ((dayTotals['fat'] ?? 0) / fatGoal * 100)
-                          : 0.0;
-                      final avgPercentage = (calPercentage +
-                              protPercentage +
-                              carbsPercentage +
-                              fatPercentage) /
-                          4;
-
-                      Color goalIndicatorColor;
-                      if (avgPercentage > 130) {
-                        goalIndicatorColor = Colors.red;
-                      } else if (avgPercentage > 110) {
-                        goalIndicatorColor = Colors.yellow.shade700;
-                      } else if (avgPercentage >= 90) {
-                        goalIndicatorColor = Colors.green;
-                      } else if (avgPercentage >= 80) {
-                        goalIndicatorColor = Colors.orange;
-                      } else {
-                        goalIndicatorColor = Colors.grey;
-                      }
+                      final grade = isFutureDay
+                          ? null
+                          : _calculateNutritionGrade(
+                              totals: dayTotals,
+                              goals: {
+                                'calories': calorieGoal,
+                                'protein': proteinGoal,
+                                'carbs': carbsGoal,
+                                'fat': fatGoal,
+                              },
+                            );
 
                       return GestureDetector(
                         onTap: () {
@@ -709,19 +750,31 @@ class _DailyLogCalendarScreenState
                                       ),
                                     ),
                                     const SizedBox(height: 6),
-                                    Container(
-                                      width: 12,
-                                      height: 12,
-                                      decoration: BoxDecoration(
-                                        color: goalIndicatorColor,
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: goalIndicatorColor.withValues(
-                                              alpha: 0.5),
-                                          width: 1,
+                                    if (grade != null)
+                                      Container(
+                                        width: 26,
+                                        height: 26,
+                                        alignment: Alignment.center,
+                                        decoration: BoxDecoration(
+                                          color: grade.color,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color:
+                                                grade.color.withValues(alpha: 0.45),
+                                            width: 1,
+                                          ),
                                         ),
-                                      ),
-                                    ),
+                                        child: Text(
+                                          grade.letter,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      )
+                                    else
+                                      const SizedBox(width: 26, height: 26),
                                   ],
                                 ),
                               ),
@@ -748,6 +801,17 @@ class _DailyLogCalendarScreenState
                                             : FontStyle.normal,
                                       ),
                                     ),
+                                    if (grade != null) ...[
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Grade ${grade.letter}  (${grade.errorPercent.toStringAsFixed(1)}% error)',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: grade.color,
+                                        ),
+                                      ),
+                                    ],
                                     const SizedBox(height: 8),
                                     _MacroProgressIndicator(
                                       label: 'Cal',
@@ -1774,6 +1838,18 @@ class _FoodRow {
     required this.carbs,
     required this.fat,
     required this.fiber,
+  });
+}
+
+class _NutritionGrade {
+  final String letter;
+  final double errorPercent;
+  final Color color;
+
+  const _NutritionGrade({
+    required this.letter,
+    required this.errorPercent,
+    required this.color,
   });
 }
 
