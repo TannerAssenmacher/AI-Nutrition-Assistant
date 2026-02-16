@@ -10,6 +10,7 @@ import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/forgot_password_screen.dart';
 import 'screens/main_navigation_screen.dart';
+import 'screens/profile_screen.dart';
 import 'navigation/nav_helper.dart';
 import 'services/notification_service.dart';
 
@@ -177,6 +178,7 @@ class MyApp extends StatelessWidget {
             const MainNavigationScreen(initialIndex: navIndexCamera),
         '/search': (context) =>
             const MainNavigationScreen(initialIndex: navIndexSearch),
+        '/profile': (context) => const ProfilePage(),
       },
     );
   }
