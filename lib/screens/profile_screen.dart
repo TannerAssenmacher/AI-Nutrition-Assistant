@@ -346,8 +346,6 @@ class _ProfilePageState extends State<ProfilePage> {
                 Text('$_firstname $_lastname',
                     style: const TextStyle(
                         fontSize: 22, fontWeight: FontWeight.bold)),
-                Text(_email ?? '',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 14)),
                 const SizedBox(height: 25),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -364,10 +362,6 @@ class _ProfilePageState extends State<ProfilePage> {
                 const SizedBox(height: 30),
                 _sectionHeader("User"),
                 _buildCard([
-                  _buildListTile(
-                      Icons.badge_outlined, "First Name", _firstname ?? ""),
-                  _buildListTile(
-                      Icons.badge_outlined, "Last Name", _lastname ?? ""),
                   _buildListTile(Icons.email_outlined, "Email", _email ?? ""),
                   _buildListTile(Icons.calendar_today, "DOB",
                       (_dob == null || _dob!.isEmpty) ? "Not set" : _dob!,
