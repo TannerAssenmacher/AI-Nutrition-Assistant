@@ -7,7 +7,6 @@ import '../db/user.dart';
 import '../db/meal_profile.dart';
 import '../db/preferences.dart';
 import '../widgets/macro_slider.dart';
-import '../theme/app_colors.dart';
 import 'package:intl/intl.dart';
 import 'package:email_validator/email_validator.dart';
 import '../widgets/top_bar.dart';

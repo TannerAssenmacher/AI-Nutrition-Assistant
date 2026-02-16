@@ -8,7 +8,6 @@ import '../providers/user_providers.dart';
 import '../providers/firestore_providers.dart';
 import '../providers/auth_providers.dart';
 import '../widgets/top_bar.dart';
-import '../theme/app_colors.dart';
 import 'package:nutrition_assistant/navigation/nav_helper.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
 import 'package:percent_indicator/percent_indicator.dart';
@@ -177,7 +176,7 @@ class HomeScreen extends ConsumerWidget {
     }
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFF5EDE2),
       body: bodyContent,
       bottomNavigationBar: NavBar(
         currentIndex: navIndexHome,

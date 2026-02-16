@@ -10,7 +10,7 @@ class top_bar extends StatelessWidget {
       height: MediaQuery.of(context).size.height * 0.1,
       width: double.infinity,
       decoration: BoxDecoration(
-        color: AppColors.topBar,
+        color: const Color(0xFF4A3A2A),
         borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(32),
           bottomRight: Radius.circular(32),
