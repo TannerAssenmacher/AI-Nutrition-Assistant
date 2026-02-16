@@ -30,6 +30,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final Color brandColor = AppColors.brand;
   final Color neumorphicShadow = const Color(0xFFD9D0C3);
 
+  //data
   bool _showRecipePicker = false;
   bool _showCuisinePicker = false;
   String? _selectedMealType;
