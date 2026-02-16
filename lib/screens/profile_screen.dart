@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../widgets/macro_slider.dart';
+import '../theme/app_colors.dart';
 import 'package:nutrition_assistant/navigation/nav_helper.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
 
@@ -23,8 +24,8 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _canEditDob = true;
   bool _isDeleting = false;
 
-  final Color bgColor = const Color(0xFFF5EDE2);
-  final Color brandColor = const Color(0xFF5F9735);
+  final Color bgColor = AppColors.background;
+  final Color brandColor = AppColors.brand;
   final Color deleteColor = const Color(0xFFD32F2F);
 
   //controllers

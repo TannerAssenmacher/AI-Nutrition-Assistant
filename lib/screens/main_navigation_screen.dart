@@ -6,6 +6,7 @@ import 'package:nutrition_assistant/screens/meal_analysis_screen.dart';
 import 'package:nutrition_assistant/screens/food_search_screen.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
 import 'package:nutrition_assistant/navigation/nav_helper.dart';
+import '../theme/app_colors.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   final int initialIndex;
@@ -66,7 +67,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5EDE2),
+      backgroundColor: AppColors.background,
       body: PageView(
         controller: _pageController,
         onPageChanged: _onPageChanged,

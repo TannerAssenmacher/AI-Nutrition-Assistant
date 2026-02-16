@@ -225,7 +225,59 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-class _MacroIndicator extends StatelessWidget {
+class _StreakIndicator extends StatelessWidget {
+  final int streak;
+
+  const _StreakIndicator({required this.streak});
+
+  @override
+  Widget build(BuildContext context) {
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final double emojiSize = (screenWidth * 0.04).clamp(14.0, 18.0).toDouble();
+    final double countSize = (screenWidth * 0.04).clamp(14.0, 18.0).toDouble();
+    final double labelSize = (screenWidth * 0.028).clamp(9.0, 12.0).toDouble();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.background.withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('🔥', style: TextStyle(fontSize: emojiSize)),
+          const SizedBox(width: 4),
+          Text(
+            '$streak',
+            style: TextStyle(
+              fontSize: countSize,
+              fontWeight: FontWeight.bold,
+              color: AppColors.accentBrown,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            'day streak',
+            style: TextStyle(
+              fontSize: labelSize,
+              color: AppColors.accentBrown.withValues(alpha: 0.7),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MacroColumn extends StatelessWidget {
   final String label;
   final double current;
   final double goal;
