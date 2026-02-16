@@ -1,0 +1,32 @@
+ 
+yaml
+name: Discord Notification
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - "*"
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Discord Embed
+        run: |
+          curl -H "Content-Type: application/json" \
+          -X POST \
+          -d "{
+            \"embeds\": [{
+              \"title\": \"New Commit Pushed\",
+              \"color\": 5814783,
+              \"fields\": [
+                { \"name\": \"User\", \"value\": \"${{ github.actor }}\", \"inline\": true },
+                { \"name\": \"Branch\", \"value\": \"${{ github.ref_name }}\", \"inline\": true },
+                { \"name\": \"Commit Message\", \"value\": \"${{ github.event.head_commit.message }}\" }
+              ],
+              \"url\": \"https://github.com/${{ github.repository }}/commit/${{ github.sha }}\"
+            }]
+          }" \
+          ${{ secrets.DISCORD_WEBHOOK }}
