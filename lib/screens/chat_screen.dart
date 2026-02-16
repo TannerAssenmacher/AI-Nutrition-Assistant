@@ -467,13 +467,13 @@ class MealProfileSummaryBubble extends StatelessWidget {
           _row(Icons.restaurant_menu, "Meal", data['mealType']),
           _row(Icons.flag_outlined, "Cuisine", data['cuisineType']),
 
-          //const SizedBox(height: 12),
-
-          /*const Text(
+          //Goals Section
+          const SizedBox(height: 12),
+          const Text(
             "Goals",
             style: TextStyle(fontWeight: FontWeight.w600),
           ),
-          const SizedBox(height: 8),*/
+          const SizedBox(height: 8),
           _row(Icons.track_changes, "Dietary Goal", data['dietaryGoal']),
           _row(
             Icons.local_fire_department_outlined,
@@ -489,15 +489,13 @@ class MealProfileSummaryBubble extends StatelessWidget {
             "C $carbs% • "
             "F $fat%",
           ),
-
-          //const SizedBox(height: 12),
-
-          // Preferences Section
-          /*const Text(
+          const SizedBox(height: 12),
+          //Preferences Section
+          const Text(
             "Preferences",
             style: TextStyle(fontWeight: FontWeight.w600),
           ),
-          const SizedBox(height: 8),*/
+          const SizedBox(height: 8),
           _row(
             Icons.check_circle_outline,
             "Dietary",
