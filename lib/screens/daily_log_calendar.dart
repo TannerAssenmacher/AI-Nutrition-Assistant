@@ -63,54 +63,62 @@ class _DailyLogCalendarScreenState
         final carbs = item.carbs_g * item.mass_g;
         final fat = item.fat * item.mass_g;
 
-        rows.add(_FoodRow(
-          id: item.id,
-          meal: item.mealType,
-          name: item.name,
-          amount: '${item.mass_g.toStringAsFixed(0)} g',
-          calories: calories,
-          protein: protein,
-          carbs: carbs,
-          fat: fat,
-          fiber: 0,
-        ));
+        rows.add(
+          _FoodRow(
+            id: item.id,
+            meal: item.mealType,
+            name: item.name,
+            amount: '${item.mass_g.toStringAsFixed(0)} g',
+            calories: calories,
+            protein: protein,
+            carbs: carbs,
+            fat: fat,
+            fiber: 0,
+            massG: item.mass_g,
+            consumedAt: item.consumedAt,
+          ),
+        );
       }
     }
     return rows;
   }
 
   Future<Map<String, double>> _scheduledTotals(
-  List<PlannedFood> scheduledMeals,
-  WidgetRef ref,
-) async {
-  double calories = 0, protein = 0, carbs = 0, fat = 0;
+    List<PlannedFood> scheduledMeals,
+    WidgetRef ref,
+  ) async {
+    double calories = 0, protein = 0, carbs = 0, fat = 0;
 
-  for (final meal in scheduledMeals) {
-    final recipe = await ref.read(recipeByIdProvider(meal.recipeId).future);
-    calories += (recipe['calories'] ?? 0).toDouble();
-    protein  += (recipe['protein']  ?? 0).toDouble();
-    carbs    += (recipe['carbs']    ?? 0).toDouble();
-    fat      += (recipe['fat']      ?? 0).toDouble();
+    for (final meal in scheduledMeals) {
+      final recipe = await ref.read(recipeByIdProvider(meal.recipeId).future);
+      calories += (recipe['calories'] ?? 0).toDouble();
+      protein += (recipe['protein'] ?? 0).toDouble();
+      carbs += (recipe['carbs'] ?? 0).toDouble();
+      fat += (recipe['fat'] ?? 0).toDouble();
+    }
+
+    return {
+      'calories': calories,
+      'protein': protein,
+      'carbs': carbs,
+      'fat': fat,
+    };
   }
 
-  return {
-    'calories': calories,
-    'protein': protein,
-    'carbs': carbs,
-    'fat': fat,
-  };
-}
-
-
   List<PlannedFood> _scheduledMealsForDay(
-      DateTime day, List<PlannedFood>? scheduledMeals) {
+    DateTime day,
+    List<PlannedFood>? scheduledMeals,
+  ) {
     if (scheduledMeals == null) return [];
 
     final dayNormalized = DateTime(day.year, day.month, day.day);
 
     return scheduledMeals.where((meal) {
-      final mealDateNormalized =
-          DateTime(meal.date.year, meal.date.month, meal.date.day);
+      final mealDateNormalized = DateTime(
+        meal.date.year,
+        meal.date.month,
+        meal.date.day,
+      );
       return mealDateNormalized == dayNormalized;
     }).toList();
   }
@@ -177,15 +185,20 @@ class _DailyLogCalendarScreenState
     required Map<String, double> totals,
     required Map<String, double> goals,
   }) {
-    final calError =
-        _percentError(totals['calories'] ?? 0, goals['calories'] ?? 0);
-    final proteinError =
-        _percentError(totals['protein'] ?? 0, goals['protein'] ?? 0);
+    final calError = _percentError(
+      totals['calories'] ?? 0,
+      goals['calories'] ?? 0,
+    );
+    final proteinError = _percentError(
+      totals['protein'] ?? 0,
+      goals['protein'] ?? 0,
+    );
     final carbsError = _percentError(totals['carbs'] ?? 0, goals['carbs'] ?? 0);
     final fatError = _percentError(totals['fat'] ?? 0, goals['fat'] ?? 0);
 
     // Weighted equally by 0.25 as specified.
-    final overallError = 0.25 * (calError + proteinError + carbsError + fatError);
+    final overallError =
+        0.25 * (calError + proteinError + carbsError + fatError);
     final percent = overallError * 100;
     final letter = _gradeLetterForError(overallError);
     return _NutritionGrade(
@@ -289,8 +302,9 @@ class _DailyLogCalendarScreenState
             return Consumer(
               builder: (context, ref, _) {
                 final logAsync = ref.watch(firestoreFoodLogProvider(userId));
-                final scheduledAsync =
-                    ref.watch(firestoreScheduledMealsProvider(userId));
+                final scheduledAsync = ref.watch(
+                  firestoreScheduledMealsProvider(userId),
+                );
 
                 final rows = logAsync.maybeWhen(
                   data: (log) => _foodsForDay(day, log),
@@ -306,188 +320,254 @@ class _DailyLogCalendarScreenState
                 );
 
                 return StatefulBuilder(
-                builder: (context, setSheetState) {
-                  final History = segment == 0;
-                  final Scheduled = segment == 1;
+                  builder: (context, setSheetState) {
+                    final History = segment == 0;
+                    final Scheduled = segment == 1;
 
-                  return SingleChildScrollView(
-                    controller: scrollController,
-                    child: Padding(
-                      padding: EdgeInsets.only(
-                        left: 16,
-                        right: 16,
-                        top: 12,
-                        bottom: MediaQuery.of(context).padding.bottom + 12,
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            dateLabel,
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w600),
-                          ),
-                          const SizedBox(height: 12),
-
-                          // ✅ Segmented control
-                          CupertinoSlidingSegmentedControl<int>(
-                            groupValue: segment,
-                            children: const {
-                              0: Padding(
-                                padding: EdgeInsets.symmetric(vertical: 8, horizontal: 14),
-                                child: Text('History'),
-                              ),
-                              1: Padding(
-                                padding: EdgeInsets.symmetric(vertical: 8, horizontal: 14),
-                                child: Text('Scheduled'),
-                              ),
-                            },
-                            onValueChanged: (value) {
-                              if (value == null) return;
-                              setSheetState(() => segment = value);
-                            },
-                          ),
-
-                          const SizedBox(height: 12),
-
-                          // Macro summary card
-                          FutureBuilder<Map<String, double>>(
-                            future: _scheduledTotals(scheduledMeals, ref),
-                            builder: (context, snapshot) {
-                              final scheduledTotals = snapshot.data ?? const {
-                                'calories': 0, 'protein': 0, 'carbs': 0, 'fat': 0,
-                              };
-                              final showScheduledTotals = segment == 1;
-                              final summary = {
-                                'calories': showScheduledTotals
-                                    ? scheduledTotals['calories']!
-                                    : (totals['calories'] ?? 0),
-                                'protein': showScheduledTotals
-                                    ? scheduledTotals['protein']!
-                                    : (totals['protein'] ?? 0),
-                                'carbs': showScheduledTotals
-                                    ? scheduledTotals['carbs']!
-                                    : (totals['carbs'] ?? 0),
-                                'fat': showScheduledTotals
-                                    ? scheduledTotals['fat']!
-                                    : (totals['fat'] ?? 0),
-                              };
-
-                              return Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.brown.shade50,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.brown.shade200),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                  children: [
-                                    _MacroSummaryItem(label: 'Cal',  value: '${summary['calories']!.toInt()}'),
-                                    _MacroSummaryItem(label: 'Prot', value: '${summary['protein']!.toStringAsFixed(1)}g'),
-                                    _MacroSummaryItem(label: 'Carbs',value: '${summary['carbs']!.toStringAsFixed(1)}g'),
-                                    _MacroSummaryItem(label: 'Fat',  value: '${summary['fat']!.toStringAsFixed(1)}g'),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-
-
-                          const SizedBox(height: 12),
-
-                          // ✅ CONTENT SWITCH
-                          if (Scheduled) ...[
+                    return SingleChildScrollView(
+                      controller: scrollController,
+                      child: Padding(
+                        padding: EdgeInsets.only(
+                          left: 16,
+                          right: 16,
+                          top: 12,
+                          bottom: MediaQuery.of(context).padding.bottom + 12,
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                             Text(
-                              'Scheduled Meals',
-                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.blue[700],
-                                  ),
-                            ),
-                            const SizedBox(height: 8),
-                            if (scheduledMeals.isEmpty)
-                              const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 12),
-                                child: Text('No scheduled meals for this day'),
-                              )
-                            else
-                              for (final meal in scheduledMeals)
-                                _ScheduledMealCard(
-                                  meal: meal,
-                                  onDelete: () async {
-                                    if (meal.id != null) {
-                                      await ref
-                                          .read(
-                                            firestoreScheduledMealsProvider(userId).notifier,
-                                          )
-                                          .removeScheduledMeal(userId, meal.id!);
-                                    }
-                                  },
-                                ),
-                          ] else ...[
-                            Text(
-                              'Logged Foods',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleSmall
+                              dateLabel,
+                              style: Theme.of(context).textTheme.titleMedium
                                   ?.copyWith(fontWeight: FontWeight.w600),
                             ),
-                            const SizedBox(height: 8),
-                            TextButton.icon(
-                              onPressed: () {
-                                setSheetState(() => segment = 1); // ✅ switch to Scheduled tab
-                              },
-                              icon: const Icon(Icons.schedule),
-                              label: const Text('View Scheduled Meals'),
-                            ),
-                            const SizedBox(height: 8),
-
-                            if (rows.isEmpty)
-                              const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 12),
-                                child: Text('No entries for this day'),
-                              )
-                            else
-                              _FoodsListWidget(
-                                rows: rows,
-                                onDelete: (foodId) async {
-                                  debugPrint(
-                                    'UI delete tap: user=$userId foodId=$foodId day=${day.toIso8601String()}',
-                                  );
-                                  await ref
-                                      .read(firestoreFoodLogProvider(userId).notifier)
-                                      .removeFood(userId, foodId);
-                                },
-                              ),
                             const SizedBox(height: 12),
-                            SizedBox(
-                              width: double.infinity,
-                              child: OutlinedButton.icon(
-                                onPressed: () => _showAddMealDialog(day, userId),
-                                icon: const Icon(Icons.add),
-                                label: const Text('Add meal'),
-                              ),
+
+                            // ✅ Segmented control
+                            CupertinoSlidingSegmentedControl<int>(
+                              groupValue: segment,
+                              children: const {
+                                0: Padding(
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: 8,
+                                    horizontal: 14,
+                                  ),
+                                  child: Text('History'),
+                                ),
+                                1: Padding(
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: 8,
+                                    horizontal: 14,
+                                  ),
+                                  child: Text('Scheduled'),
+                                ),
+                              },
+                              onValueChanged: (value) {
+                                if (value == null) return;
+                                setSheetState(() => segment = value);
+                              },
                             ),
+
+                            const SizedBox(height: 12),
+
+                            // Macro summary card
+                            FutureBuilder<Map<String, double>>(
+                              future: _scheduledTotals(scheduledMeals, ref),
+                              builder: (context, snapshot) {
+                                final scheduledTotals =
+                                    snapshot.data ??
+                                    const {
+                                      'calories': 0,
+                                      'protein': 0,
+                                      'carbs': 0,
+                                      'fat': 0,
+                                    };
+                                final showScheduledTotals = segment == 1;
+                                final summary = {
+                                  'calories': showScheduledTotals
+                                      ? scheduledTotals['calories']!
+                                      : (totals['calories'] ?? 0),
+                                  'protein': showScheduledTotals
+                                      ? scheduledTotals['protein']!
+                                      : (totals['protein'] ?? 0),
+                                  'carbs': showScheduledTotals
+                                      ? scheduledTotals['carbs']!
+                                      : (totals['carbs'] ?? 0),
+                                  'fat': showScheduledTotals
+                                      ? scheduledTotals['fat']!
+                                      : (totals['fat'] ?? 0),
+                                };
+
+                                return Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.brown.shade50,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: Colors.brown.shade200,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceAround,
+                                    children: [
+                                      _MacroSummaryItem(
+                                        label: 'Cal',
+                                        value:
+                                            '${summary['calories']!.toInt()}',
+                                      ),
+                                      _MacroSummaryItem(
+                                        label: 'Prot',
+                                        value:
+                                            '${summary['protein']!.toStringAsFixed(1)}g',
+                                      ),
+                                      _MacroSummaryItem(
+                                        label: 'Carbs',
+                                        value:
+                                            '${summary['carbs']!.toStringAsFixed(1)}g',
+                                      ),
+                                      _MacroSummaryItem(
+                                        label: 'Fat',
+                                        value:
+                                            '${summary['fat']!.toStringAsFixed(1)}g',
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+
+                            const SizedBox(height: 12),
+
+                            // ✅ CONTENT SWITCH
+                            if (Scheduled) ...[
+                              Text(
+                                'Scheduled Meals',
+                                style: Theme.of(context).textTheme.titleSmall
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.blue[700],
+                                    ),
+                              ),
+                              const SizedBox(height: 8),
+                              if (scheduledMeals.isEmpty)
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                  child: Text(
+                                    'No scheduled meals for this day',
+                                  ),
+                                )
+                              else
+                                for (final meal in scheduledMeals)
+                                  _ScheduledMealCard(
+                                    meal: meal,
+                                    onDelete: () async {
+                                      if (meal.id != null) {
+                                        await ref
+                                            .read(
+                                              firestoreScheduledMealsProvider(
+                                                userId,
+                                              ).notifier,
+                                            )
+                                            .removeScheduledMeal(
+                                              userId,
+                                              meal.id!,
+                                            );
+                                      }
+                                    },
+                                  ),
+                            ] else ...[
+                              Text(
+                                'Logged Foods',
+                                style: Theme.of(context).textTheme.titleSmall
+                                    ?.copyWith(fontWeight: FontWeight.w600),
+                              ),
+                              const SizedBox(height: 8),
+                              TextButton.icon(
+                                onPressed: () {
+                                  setSheetState(
+                                    () => segment = 1,
+                                  ); // ✅ switch to Scheduled tab
+                                },
+                                icon: const Icon(Icons.schedule),
+                                label: const Text('View Scheduled Meals'),
+                              ),
+                              const SizedBox(height: 8),
+
+                              if (rows.isEmpty)
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                  child: Text('No entries for this day'),
+                                )
+                              else
+                                _FoodsListWidget(
+                                  rows: rows,
+                                  onDelete: (foodId) async {
+                                    debugPrint(
+                                      'UI delete tap: user=$userId foodId=$foodId day=${day.toIso8601String()}',
+                                    );
+                                    await ref
+                                        .read(
+                                          firestoreFoodLogProvider(
+                                            userId,
+                                          ).notifier,
+                                        )
+                                        .removeFood(userId, foodId);
+                                  },
+                                  onSave: (updatedRow) async {
+                                    final mass = updatedRow.massG > 0
+                                        ? updatedRow.massG
+                                        : 1.0;
+                                    final updatedItem = FoodItem(
+                                      id: updatedRow.id,
+                                      name: updatedRow.name,
+                                      mass_g: mass,
+                                      calories_g: updatedRow.calories / mass,
+                                      protein_g: updatedRow.protein / mass,
+                                      carbs_g: updatedRow.carbs / mass,
+                                      fat: updatedRow.fat / mass,
+                                      mealType: updatedRow.meal,
+                                      consumedAt: updatedRow.consumedAt,
+                                    );
+                                    await ref
+                                        .read(
+                                          firestoreFoodLogProvider(
+                                            userId,
+                                          ).notifier,
+                                        )
+                                        .updateFood(
+                                          userId,
+                                          updatedRow.id,
+                                          updatedItem,
+                                        );
+                                  },
+                                ),
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  onPressed: () =>
+                                      _showAddMealDialog(day, userId),
+                                  icon: const Icon(Icons.add),
+                                  label: const Text('Add meal'),
+                                ),
+                              ),
+                            ],
+
+                            const SizedBox(height: 12),
                           ],
-
-                          const SizedBox(height: 12),
-                        ],
+                        ),
                       ),
-                    ),
-                  );
-                },
-              );
-
-                            },
-                          );
-                        },
-                      );
-                    },
-                  );
+                    );
+                  },
+                );
+              },
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _showAddMealDialog(DateTime day, String userId) async {
@@ -518,10 +598,12 @@ class _DailyLogCalendarScreenState
 
     if (NotificationService.isAfter6PM()) {
       final todayLog = foodLog
-          .where((item) =>
-              item.consumedAt.year == now.year &&
-              item.consumedAt.month == now.month &&
-              item.consumedAt.day == now.day)
+          .where(
+            (item) =>
+                item.consumedAt.year == now.year &&
+                item.consumedAt.month == now.month &&
+                item.consumedAt.day == now.day,
+          )
           .toList();
 
       final dayTotals = _totalsForDay(now, todayLog);
@@ -559,9 +641,7 @@ class _DailyLogCalendarScreenState
     if (userId == null) {
       return _wrapWithScaffold(
         const SafeArea(
-          child: Center(
-            child: Text('Sign in to view your meal log.'),
-          ),
+          child: Center(child: Text('Sign in to view your meal log.')),
         ),
       );
     }
@@ -574,21 +654,20 @@ class _DailyLogCalendarScreenState
     final carbsGoal = goals['carbs'] ?? 200.0;
     final fatGoal = goals['fat'] ?? 65.0;
 
-    final weekStart =
-        _focusedDay.subtract(Duration(days: _focusedDay.weekday - 1));
-    final weekDays =
-        List.generate(7, (index) => weekStart.add(Duration(days: index)));
+    final weekStart = _focusedDay.subtract(
+      Duration(days: _focusedDay.weekday - 1),
+    );
+    final weekDays = List.generate(
+      7,
+      (index) => weekStart.add(Duration(days: index)),
+    );
 
     return foodLogAsync.when(
       error: (e, _) => _wrapWithScaffold(
-        SafeArea(
-          child: Center(child: Text('Failed to load meals: $e')),
-        ),
+        SafeArea(child: Center(child: Text('Failed to load meals: $e'))),
       ),
       loading: () => _wrapWithScaffold(
-        const SafeArea(
-          child: Center(child: CircularProgressIndicator()),
-        ),
+        const SafeArea(child: Center(child: CircularProgressIndicator())),
       ),
       data: (foodLog) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -601,8 +680,10 @@ class _DailyLogCalendarScreenState
               children: [
                 // Week navigation controls — FIX 1: Flexible month label
                 Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 8,
+                  ),
                   child: Row(
                     children: [
                       IconButton(
@@ -611,8 +692,9 @@ class _DailyLogCalendarScreenState
                         tooltip: 'Previous week',
                         onPressed: () {
                           setState(() {
-                            _focusedDay =
-                                _focusedDay.subtract(const Duration(days: 7));
+                            _focusedDay = _focusedDay.subtract(
+                              const Duration(days: 7),
+                            );
                           });
                         },
                       ),
@@ -637,8 +719,9 @@ class _DailyLogCalendarScreenState
                         tooltip: 'Next week',
                         onPressed: () {
                           setState(() {
-                            _focusedDay =
-                                _focusedDay.add(const Duration(days: 7));
+                            _focusedDay = _focusedDay.add(
+                              const Duration(days: 7),
+                            );
                           });
                         },
                       ),
@@ -655,11 +738,13 @@ class _DailyLogCalendarScreenState
                   child: ListView(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     children: weekDays.map((day) {
-                      final isSelected = _selectedDay != null &&
+                      final isSelected =
+                          _selectedDay != null &&
                           day.year == _selectedDay!.year &&
                           day.month == _selectedDay!.month &&
                           day.day == _selectedDay!.day;
-                      final isToday = day.year == DateTime.now().year &&
+                      final isToday =
+                          day.year == DateTime.now().year &&
                           day.month == DateTime.now().month &&
                           day.day == DateTime.now().day;
                       final todayOnly = DateTime(
@@ -692,7 +777,9 @@ class _DailyLogCalendarScreenState
                         },
                         child: Container(
                           margin: const EdgeInsets.symmetric(
-                              vertical: 6, horizontal: 8),
+                            vertical: 6,
+                            horizontal: 8,
+                          ),
                           padding: const EdgeInsets.fromLTRB(16, 16, 10, 16),
                           decoration: BoxDecoration(
                             color: Colors.white,
@@ -733,8 +820,9 @@ class _DailyLogCalendarScreenState
                                       padding: const EdgeInsets.all(6),
                                       decoration: BoxDecoration(
                                         color: isToday
-                                            ? const Color(0xFF6DCFF6)
-                                                .withValues(alpha: 0.2)
+                                            ? const Color(
+                                                0xFF6DCFF6,
+                                              ).withValues(alpha: 0.2)
                                             : Colors.grey.shade100,
                                         shape: BoxShape.circle,
                                       ),
@@ -759,8 +847,9 @@ class _DailyLogCalendarScreenState
                                           color: grade.color,
                                           shape: BoxShape.circle,
                                           border: Border.all(
-                                            color:
-                                                grade.color.withValues(alpha: 0.45),
+                                            color: grade.color.withValues(
+                                              alpha: 0.45,
+                                            ),
                                             width: 1,
                                           ),
                                         ),
@@ -970,8 +1059,12 @@ class _AddMealModalState extends ConsumerState<_AddMealModal> {
     final carbsTotal = carbs ?? 0;
     final fatTotal = fat ?? 0;
 
-    final consumedAt =
-        DateTime(widget.day.year, widget.day.month, widget.day.day, 12);
+    final consumedAt = DateTime(
+      widget.day.year,
+      widget.day.month,
+      widget.day.day,
+      12,
+    );
     final item = FoodItem(
       id: 'manual-${DateTime.now().microsecondsSinceEpoch}',
       name: name,
@@ -991,142 +1084,32 @@ class _AddMealModalState extends ConsumerState<_AddMealModal> {
       if (!mounted) return;
       final messenger = ScaffoldMessenger.of(context);
       Navigator.pop(context);
-      messenger.showSnackBar(
-        SnackBar(content: Text('Added "$name"')),
-      );
+      messenger.showSnackBar(SnackBar(content: Text('Added "$name"')));
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to add meal: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to add meal: $e')));
       }
     }
   }
 
   Future<void> _addSearchResult(FoodSearchResult result) async {
     final rootContext = context;
-    final gramsController =
-        TextEditingController(text: result.servingGrams.toStringAsFixed(0));
-    final gramsFocusNode = FocusNode();
-    String mealType = 'snack';
 
     await showDialog<void>(
       context: rootContext,
       builder: (dialogContext) {
-        return AlertDialog(
-          title: Text('Add ${result.name}'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<String>(
-                value: mealType,
-                decoration: const InputDecoration(labelText: 'Meal type'),
-                items: const [
-                  DropdownMenuItem(
-                      value: 'breakfast', child: Text('Breakfast')),
-                  DropdownMenuItem(value: 'lunch', child: Text('Lunch')),
-                  DropdownMenuItem(value: 'dinner', child: Text('Dinner')),
-                  DropdownMenuItem(value: 'snack', child: Text('Snack')),
-                ],
-                onChanged: (value) {
-                  if (value != null) {
-                    mealType = value;
-                  }
-                },
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: gramsController,
-                focusNode: gramsFocusNode,
-                decoration: InputDecoration(
-                  labelText: 'Grams',
-                  suffixIcon: IconButton(
-                    tooltip: 'Done',
-                    icon: const Icon(Icons.check),
-                    onPressed: () =>
-                        FocusScope.of(dialogContext).unfocus(),
-                  ),
-                ),
-                keyboardType: TextInputType.number,
-                textInputAction: TextInputAction.done,
-                onSubmitted: (_) =>
-                    FocusScope.of(dialogContext).unfocus(),
-                onTapOutside: (_) =>
-                    FocusScope.of(dialogContext).unfocus(),
-              ),
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Source: ${result.sourceLabel}',
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final grams = double.tryParse(gramsController.text.trim());
-                if (grams == null || grams <= 0) {
-                  ScaffoldMessenger.of(dialogContext).showSnackBar(
-                    const SnackBar(
-                        content: Text('Please enter a valid grams value.')),
-                  );
-                  return;
-                }
-
-                final consumedAt = DateTime(
-                  widget.day.year,
-                  widget.day.month,
-                  widget.day.day,
-                  12,
-                );
-
-                final item = FoodItem(
-                  id: 'search-${DateTime.now().microsecondsSinceEpoch}',
-                  name: result.name,
-                  mass_g: grams,
-                  calories_g: result.caloriesPerGram,
-                  protein_g: result.proteinPerGram,
-                  carbs_g: result.carbsPerGram,
-                  fat: result.fatPerGram,
-                  mealType: mealType,
-                  consumedAt: consumedAt,
-                );
-
-                try {
-                  await ref
-                      .read(firestoreFoodLogProvider(widget.userId).notifier)
-                      .addFood(widget.userId, item);
-                  if (!mounted) return;
-                  final messenger = ScaffoldMessenger.of(rootContext);
-                  Navigator.pop(dialogContext);
-                  Navigator.pop(rootContext);
-                  messenger.showSnackBar(
-                    SnackBar(content: Text('Added "${result.name}"')),
-                  );
-                } catch (e) {
-                  if (dialogContext.mounted) {
-                    ScaffoldMessenger.of(dialogContext).showSnackBar(
-                      SnackBar(content: Text('Failed to add: $e')),
-                    );
-                  }
-                }
-              },
-              child: const Text('Add'),
-            ),
-          ],
+        return _AddSearchResultDialog(
+          result: result,
+          day: widget.day,
+          userId: widget.userId,
+          onSuccess: () {
+            Navigator.pop(rootContext);
+          },
         );
       },
     );
-
-    gramsController.dispose();
-    gramsFocusNode.dispose();
   }
 
   @override
@@ -1231,8 +1214,9 @@ class _AddMealModalState extends ConsumerState<_AddMealModal> {
               Expanded(
                 child: SingleChildScrollView(
                   controller: scrollController,
-                  child:
-                      _isSearchMode ? _buildSearchMode() : _buildManualMode(),
+                  child: _isSearchMode
+                      ? _buildSearchMode()
+                      : _buildManualMode(),
                 ),
               ),
             ],
@@ -1261,9 +1245,7 @@ class _AddMealModalState extends ConsumerState<_AddMealModal> {
                       setState(() {});
                     },
                   ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
           onChanged: (value) {
             setState(() {});
@@ -1411,11 +1393,16 @@ class _MiniMacroChip extends StatelessWidget {
 }
 
 class _FoodsListWidget extends StatelessWidget {
-  const _FoodsListWidget({Key? key, required this.rows, required this.onDelete})
-      : super(key: key);
+  const _FoodsListWidget({
+    Key? key,
+    required this.rows,
+    required this.onDelete,
+    required this.onSave,
+  }) : super(key: key);
 
   final List<_FoodRow> rows;
   final Future<void> Function(String foodId) onDelete;
+  final Future<void> Function(_FoodRow updatedRow) onSave;
 
   @override
   Widget build(BuildContext context) {
@@ -1428,111 +1415,422 @@ class _FoodsListWidget extends StatelessWidget {
           itemCount: rows.length,
           itemBuilder: (context, index) {
             final row = rows[index];
-            return Material(
+            return _EditableFoodCard(
               key: ValueKey(row.id),
-              color: Colors.transparent,
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.brown.shade200),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            row.name,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        Material(
-                          color: Colors.white,
-                          child: InkWell(
-                            onTap: () async {
-                              try {
-                                debugPrint(
-                                    'Delete button pressed for row: ${row.id}');
-                                await onDelete(row.id);
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Removed "${row.name}"'),
-                                      duration: const Duration(seconds: 2),
-                                    ),
-                                  );
-                                }
-                              } catch (e) {
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Failed to remove: $e'),
-                                      duration: const Duration(seconds: 3),
-                                    ),
-                                  );
-                                }
-                              }
-                            },
-                            borderRadius: BorderRadius.circular(24),
-                            child: Padding(
-                              padding: const EdgeInsets.all(8),
-                              child: Icon(Icons.close,
-                                  size: 18, color: Colors.grey.shade700),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 4,
-                      children: [
-                        Text(
-                          'Cal: ${row.calories.toInt()}',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey.shade700,
-                          ),
-                        ),
-                        Text(
-                          'Prot: ${row.protein.toStringAsFixed(1)}g',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey.shade700,
-                          ),
-                        ),
-                        Text(
-                          'Carbs: ${row.carbs.toStringAsFixed(1)}g',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey.shade700,
-                          ),
-                        ),
-                        Text(
-                          'Fat: ${row.fat.toStringAsFixed(1)}g',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey.shade700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+              row: row,
+              onDelete: onDelete,
+              onSave: onSave,
             );
           },
         ),
       ],
+    );
+  }
+}
+
+class _EditableFoodCard extends StatefulWidget {
+  const _EditableFoodCard({
+    super.key,
+    required this.row,
+    required this.onDelete,
+    required this.onSave,
+  });
+
+  final _FoodRow row;
+  final Future<void> Function(String foodId) onDelete;
+  final Future<void> Function(_FoodRow updatedRow) onSave;
+
+  @override
+  State<_EditableFoodCard> createState() => _EditableFoodCardState();
+}
+
+class _EditableFoodCardState extends State<_EditableFoodCard> {
+  bool _isEditing = false;
+  late final TextEditingController _nameController;
+  late final TextEditingController _calController;
+  late final TextEditingController _proteinController;
+  late final TextEditingController _carbController;
+  late final TextEditingController _fatController;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController();
+    _calController = TextEditingController();
+    _proteinController = TextEditingController();
+    _carbController = TextEditingController();
+    _fatController = TextEditingController();
+    _resetControllersFromRow();
+  }
+
+  @override
+  void didUpdateWidget(covariant _EditableFoodCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.row.id != widget.row.id ||
+        (!_isEditing && oldWidget.row != widget.row)) {
+      _resetControllersFromRow();
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _calController.dispose();
+    _proteinController.dispose();
+    _carbController.dispose();
+    _fatController.dispose();
+    super.dispose();
+  }
+
+  void _resetControllersFromRow() {
+    _nameController.text = widget.row.name;
+    _calController.text = widget.row.calories.toStringAsFixed(1);
+    _proteinController.text = widget.row.protein.toStringAsFixed(1);
+    _carbController.text = widget.row.carbs.toStringAsFixed(1);
+    _fatController.text = widget.row.fat.toStringAsFixed(1);
+  }
+
+  double? _parseMacro(String raw) {
+    final value = double.tryParse(raw.trim());
+    if (value == null || value < 0) return null;
+    return value;
+  }
+
+  Future<void> _saveEdits() async {
+    final name = _nameController.text.trim();
+    final calories = _parseMacro(_calController.text);
+    final protein = _parseMacro(_proteinController.text);
+    final carbs = _parseMacro(_carbController.text);
+    final fat = _parseMacro(_fatController.text);
+
+    if (name.isEmpty ||
+        calories == null ||
+        protein == null ||
+        carbs == null ||
+        fat == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter valid name and macro values.'),
+        ),
+      );
+      return;
+    }
+
+    final updatedRow = widget.row.copyWith(
+      name: name,
+      calories: calories,
+      protein: protein,
+      carbs: carbs,
+      fat: fat,
+    );
+
+    try {
+      await widget.onSave(updatedRow);
+      if (!mounted) return;
+      setState(() => _isEditing = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Saved "${updatedRow.name}"')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to save: $e')));
+    }
+  }
+
+  Future<void> _deleteRow() async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Delete meal?'),
+          content: Text('Remove "${widget.row.name}" from this day?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldDelete != true) return;
+
+    try {
+      await widget.onDelete(widget.row.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Removed "${widget.row.name}"')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to remove: $e')));
+    }
+  }
+
+  Widget _macroChip(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        '$label $value',
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: color.withValues(alpha: 0.9),
+        ),
+      ),
+    );
+  }
+
+  Widget _macroInlineEditor({
+    required String label,
+    required TextEditingController controller,
+    required Color color,
+    required String unit,
+    required double width,
+  }) {
+    return SizedBox(
+      width: width,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          border: Border.all(color: color.withValues(alpha: 0.45), width: 1),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Row(
+          children: [
+            Text(
+              '$label ',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: color.withValues(alpha: 0.9),
+              ),
+            ),
+            Expanded(
+              child: TextField(
+                controller: controller,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                textAlign: TextAlign.right,
+                decoration: const InputDecoration(
+                  isDense: true,
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.zero,
+                  hintText: '0',
+                ),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            Text(unit, style: const TextStyle(fontSize: 11)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.white, Colors.brown.shade50.withValues(alpha: 0.65)],
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.brown.shade100),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _isEditing
+                        ? TextField(
+                            controller: _nameController,
+                            decoration: InputDecoration(
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 8,
+                              ),
+                              filled: true,
+                              fillColor: Colors.brown.shade50,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(
+                                  color: Colors.brown.shade300,
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(
+                                  color: Colors.brown.shade300,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(
+                                  color: Colors.brown.shade600,
+                                  width: 1.4,
+                                ),
+                              ),
+                              prefixIcon: const Icon(Icons.edit, size: 16),
+                              hintText: 'Meal name',
+                            ),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          )
+                        : Text(
+                            widget.row.name,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                    const SizedBox(height: 4),
+                    _macroChip(
+                      widget.row.meal.toUpperCase(),
+                      widget.row.amount,
+                      Colors.brown.shade600,
+                    ),
+                    if (_isEditing) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        'Editing mode: tap any value chip below to update',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.brown.shade600,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    onPressed: _deleteRow,
+                    icon: Icon(
+                      Icons.delete_outline,
+                      color: Colors.red.shade400,
+                    ),
+                    tooltip: 'Remove meal',
+                  ),
+                  IconButton(
+                    onPressed: _isEditing
+                        ? _saveEdits
+                        : () => setState(() => _isEditing = true),
+                    icon: Icon(
+                      _isEditing ? Icons.save : Icons.edit,
+                      size: 20,
+                      color: Colors.brown.shade700,
+                    ),
+                    tooltip: _isEditing ? 'Save meal' : 'Edit meal',
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              _isEditing
+                  ? _macroInlineEditor(
+                      label: 'Cal',
+                      controller: _calController,
+                      color: const Color(0xFF5F9735),
+                      unit: 'kcal',
+                      width: 120,
+                    )
+                  : _macroChip(
+                      'Cal',
+                      '${widget.row.calories.toStringAsFixed(0)} kcal',
+                      const Color(0xFF5F9735),
+                    ),
+              _isEditing
+                  ? _macroInlineEditor(
+                      label: 'P',
+                      controller: _proteinController,
+                      color: const Color(0xFFC2482B),
+                      unit: 'g',
+                      width: 88,
+                    )
+                  : _macroChip(
+                      'P',
+                      '${widget.row.protein.toStringAsFixed(1)}g',
+                      const Color(0xFFC2482B),
+                    ),
+              _isEditing
+                  ? _macroInlineEditor(
+                      label: 'C',
+                      controller: _carbController,
+                      color: const Color(0xFFE0A100),
+                      unit: 'g',
+                      width: 88,
+                    )
+                  : _macroChip(
+                      'C',
+                      '${widget.row.carbs.toStringAsFixed(1)}g',
+                      const Color(0xFFE0A100),
+                    ),
+              _isEditing
+                  ? _macroInlineEditor(
+                      label: 'F',
+                      controller: _fatController,
+                      color: const Color(0xFF3A6FB8),
+                      unit: 'g',
+                      width: 88,
+                    )
+                  : _macroChip(
+                      'F',
+                      '${widget.row.fat.toStringAsFixed(1)}g',
+                      const Color(0xFF3A6FB8),
+                    ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1571,10 +1869,7 @@ class _FoodSearchResultTile extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   '${result.servingGrams.toStringAsFixed(0)} g · $calories Cal',
-                  style: TextStyle(
-                    color: Colors.grey.shade700,
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
                 ),
                 const SizedBox(height: 2),
                 Wrap(
@@ -1584,36 +1879,36 @@ class _FoodSearchResultTile extends StatelessWidget {
                     Text(
                       'P ${(result.proteinPerGram * result.servingGrams).toStringAsFixed(1)}g',
                       style: TextStyle(
-                          color: Colors.grey.shade600, fontSize: 11),
+                        color: Colors.grey.shade600,
+                        fontSize: 11,
+                      ),
                     ),
                     Text(
                       'C ${(result.carbsPerGram * result.servingGrams).toStringAsFixed(1)}g',
                       style: TextStyle(
-                          color: Colors.grey.shade600, fontSize: 11),
+                        color: Colors.grey.shade600,
+                        fontSize: 11,
+                      ),
                     ),
                     Text(
                       'F ${(result.fatPerGram * result.servingGrams).toStringAsFixed(1)}g',
                       style: TextStyle(
-                          color: Colors.grey.shade600, fontSize: 11),
+                        color: Colors.grey.shade600,
+                        fontSize: 11,
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 2),
                 Text(
                   result.sourceLabel,
-                  style: TextStyle(
-                    color: Colors.grey.shade500,
-                    fontSize: 11,
-                  ),
+                  style: TextStyle(color: Colors.grey.shade500, fontSize: 11),
                 ),
               ],
             ),
           ),
           const SizedBox(width: 8),
-          OutlinedButton(
-            onPressed: onAdd,
-            child: const Text('Add'),
-          ),
+          OutlinedButton(onPressed: onAdd, child: const Text('Add')),
         ],
       ),
     );
@@ -1773,10 +2068,7 @@ class _MacroProgressIndicator extends StatelessWidget {
         Container(
           width: 8,
           height: 8,
-          decoration: BoxDecoration(
-            color: statusColor,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle),
         ),
         const SizedBox(width: 4),
         SizedBox(
@@ -1827,6 +2119,8 @@ class _FoodRow {
   final double carbs;
   final double fat;
   final double fiber;
+  final double massG;
+  final DateTime consumedAt;
 
   const _FoodRow({
     required this.id,
@@ -1838,7 +2132,31 @@ class _FoodRow {
     required this.carbs,
     required this.fat,
     required this.fiber,
+    required this.massG,
+    required this.consumedAt,
   });
+
+  _FoodRow copyWith({
+    String? name,
+    double? calories,
+    double? protein,
+    double? carbs,
+    double? fat,
+  }) {
+    return _FoodRow(
+      id: id,
+      meal: meal,
+      name: name ?? this.name,
+      amount: amount,
+      calories: calories ?? this.calories,
+      protein: protein ?? this.protein,
+      carbs: carbs ?? this.carbs,
+      fat: fat ?? this.fat,
+      fiber: fiber,
+      massG: massG,
+      consumedAt: consumedAt,
+    );
+  }
 }
 
 class _NutritionGrade {
@@ -1854,8 +2172,11 @@ class _NutritionGrade {
 }
 
 class _MacroChip extends StatelessWidget {
-  const _MacroChip(
-      {required this.label, required this.value, required this.suffix});
+  const _MacroChip({
+    required this.label,
+    required this.value,
+    required this.suffix,
+  });
 
   final String label;
   final double value;
@@ -1922,8 +2243,8 @@ class _MonthlyCalendarPickerState extends State<_MonthlyCalendarPicker> {
     final weeks = <List<DateTime?>>[];
     var currentDate = startDate;
 
-    while (
-        currentDate.isBefore(lastDay) || currentDate.month == lastDay.month) {
+    while (currentDate.isBefore(lastDay) ||
+        currentDate.month == lastDay.month) {
       final week = <DateTime?>[];
       for (int i = 0; i < 7; i++) {
         if (currentDate.month == month.month) {
@@ -1972,8 +2293,10 @@ class _MonthlyCalendarPickerState extends State<_MonthlyCalendarPicker> {
                   color: const Color(0xFF3E2F26),
                   onPressed: () {
                     setState(() {
-                      _displayMonth =
-                          DateTime(_displayMonth.year, _displayMonth.month - 1);
+                      _displayMonth = DateTime(
+                        _displayMonth.year,
+                        _displayMonth.month - 1,
+                      );
                     });
                   },
                 ),
@@ -1990,8 +2313,10 @@ class _MonthlyCalendarPickerState extends State<_MonthlyCalendarPicker> {
                   color: const Color(0xFF3E2F26),
                   onPressed: () {
                     setState(() {
-                      _displayMonth =
-                          DateTime(_displayMonth.year, _displayMonth.month + 1);
+                      _displayMonth = DateTime(
+                        _displayMonth.year,
+                        _displayMonth.month + 1,
+                      );
                     });
                   },
                 ),
@@ -2021,7 +2346,8 @@ class _MonthlyCalendarPickerState extends State<_MonthlyCalendarPicker> {
                       return const SizedBox(width: 32, height: 32);
                     }
 
-                    final isToday = date.year == now.year &&
+                    final isToday =
+                        date.year == now.year &&
                         date.month == now.month &&
                         date.day == now.day;
                     final isInFocusedWeek = _isInFocusedWeek(date);
@@ -2038,9 +2364,8 @@ class _MonthlyCalendarPickerState extends State<_MonthlyCalendarPicker> {
                           color: isInFocusedWeek
                               ? const Color(0xFF6DCFF6)
                               : isToday
-                                  ? const Color(0xFF6DCFF6)
-                                      .withValues(alpha: 0.2)
-                                  : Colors.transparent,
+                              ? const Color(0xFF6DCFF6).withValues(alpha: 0.2)
+                              : Colors.transparent,
                           shape: BoxShape.circle,
                           border: isInFocusedWeek
                               ? Border.all(
@@ -2060,8 +2385,8 @@ class _MonthlyCalendarPickerState extends State<_MonthlyCalendarPicker> {
                               color: isInFocusedWeek
                                   ? Colors.white
                                   : isToday
-                                      ? const Color(0xFF6DCFF6)
-                                      : Colors.black87,
+                                  ? const Color(0xFF6DCFF6)
+                                  : Colors.black87,
                             ),
                           ),
                         ),
@@ -2118,10 +2443,7 @@ class _ScheduledMealCard extends ConsumerWidget {
   final PlannedFood meal;
   final VoidCallback onDelete;
 
-  const _ScheduledMealCard({
-    required this.meal,
-    required this.onDelete,
-  });
+  const _ScheduledMealCard({required this.meal, required this.onDelete});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -2144,92 +2466,95 @@ class _ScheduledMealCard extends ConsumerWidget {
           onTap: () {
             Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (_) => _ScheduledMealDetailScreen(
-                  meal: meal,
-                  recipe: recipe,
-                ),
+                builder: (_) =>
+                    _ScheduledMealDetailScreen(meal: meal, recipe: recipe),
               ),
             );
           },
           borderRadius: BorderRadius.circular(12),
           child: Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.blue.shade50,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.blue.shade200),
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.blue.shade200),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.schedule,
+                    color: Colors.blue.shade700,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        recipeName, // show recipe name
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Meal Type: ${meal.mealType.toUpperCase()}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          _MacroChip(
+                            label: 'Calories',
+                            value: calories,
+                            suffix: 'kcal',
+                          ),
+                          _MacroChip(
+                            label: 'Protein',
+                            value: protein,
+                            suffix: 'g',
+                          ),
+                          _MacroChip(label: 'Carbs', value: carbs, suffix: 'g'),
+                          _MacroChip(label: 'Fat', value: fat, suffix: 'g'),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Tap to view ingredients and instructions',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.blue.shade700,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right, color: Colors.blue.shade700),
+                IconButton(
+                  onPressed: onDelete,
+                  icon: Icon(Icons.delete_outline, color: Colors.red.shade400),
+                  tooltip: 'Remove scheduled meal',
+                ),
+              ],
+            ),
           ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  Icons.schedule,
-                  color: Colors.blue.shade700,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      recipeName, // show recipe name
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Meal Type: ${meal.mealType.toUpperCase()}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade700,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 4,
-                      children: [
-                        _MacroChip(
-                            label: 'Calories', value: calories, suffix: 'kcal'),
-                        _MacroChip(label: 'Protein', value: protein, suffix: 'g'),
-                        _MacroChip(label: 'Carbs', value: carbs, suffix: 'g'),
-                        _MacroChip(label: 'Fat', value: fat, suffix: 'g'),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Tap to view ingredients and instructions',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.blue.shade700,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(
-                Icons.chevron_right,
-                color: Colors.blue.shade700,
-              ),
-              IconButton(
-                onPressed: onDelete,
-                icon: Icon(Icons.delete_outline, color: Colors.red.shade400),
-                tooltip: 'Remove scheduled meal',
-              ),
-            ],
-          ),
-        ));
+        );
       },
     );
   }
@@ -2239,10 +2564,7 @@ class _ScheduledMealDetailScreen extends StatelessWidget {
   final PlannedFood meal;
   final Map<String, dynamic> recipe;
 
-  const _ScheduledMealDetailScreen({
-    required this.meal,
-    required this.recipe,
-  });
+  const _ScheduledMealDetailScreen({required this.meal, required this.recipe});
 
   @override
   Widget build(BuildContext context) {
@@ -2330,7 +2652,8 @@ class _ScheduledMealDetailScreen extends StatelessWidget {
                                 ),
                                 Container(
                                   margin: const EdgeInsets.symmetric(
-                                      horizontal: 18),
+                                    horizontal: 18,
+                                  ),
                                   width: 1.5,
                                   color: Colors.white.withValues(alpha: 0.18),
                                 ),
@@ -2481,43 +2804,43 @@ class _InstructionsSection extends StatelessWidget {
           )
         else
           ...instructions.asMap().entries.map(
-                (entry) => Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: 34,
-                        height: 34,
-                        alignment: Alignment.center,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Color(0xFF5D8A73),
-                        ),
-                        child: Text(
-                          '${entry.key + 1}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 19,
-                          ),
-                        ),
+            (entry) => Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    alignment: Alignment.center,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Color(0xFF5D8A73),
+                    ),
+                    child: Text(
+                      '${entry.key + 1}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 19,
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          entry.value,
-                          style: const TextStyle(
-                            fontSize: 19,
-                            height: 1.35,
-                            color: Color(0xFFE9EDF4),
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      entry.value,
+                      style: const TextStyle(
+                        fontSize: 19,
+                        height: 1.35,
+                        color: Color(0xFFE9EDF4),
+                      ),
+                    ),
+                  ),
+                ],
               ),
+            ),
+          ),
       ],
     );
   }
@@ -2539,5 +2862,153 @@ class _RecipeSectionTitle extends StatelessWidget {
         color: Color(0xFF5D8A73),
       ),
     );
+  }
+}
+
+class _AddSearchResultDialog extends ConsumerStatefulWidget {
+  final FoodSearchResult result;
+  final DateTime day;
+  final String userId;
+  final VoidCallback onSuccess;
+
+  const _AddSearchResultDialog({
+    required this.result,
+    required this.day,
+    required this.userId,
+    required this.onSuccess,
+  });
+
+  @override
+  ConsumerState<_AddSearchResultDialog> createState() =>
+      _AddSearchResultDialogState();
+}
+
+class _AddSearchResultDialogState
+    extends ConsumerState<_AddSearchResultDialog> {
+  late final TextEditingController _gramsController;
+  late final FocusNode _gramsFocusNode;
+  String _mealType = 'snack';
+
+  @override
+  void initState() {
+    super.initState();
+    _gramsController = TextEditingController(
+      text: widget.result.servingGrams.toStringAsFixed(0),
+    );
+    _gramsFocusNode = FocusNode();
+  }
+
+  @override
+  void dispose() {
+    _gramsController.dispose();
+    _gramsFocusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Add ${widget.result.name}'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          DropdownButtonFormField<String>(
+            initialValue: _mealType,
+            decoration: const InputDecoration(labelText: 'Meal type'),
+            items: const [
+              DropdownMenuItem(value: 'breakfast', child: Text('Breakfast')),
+              DropdownMenuItem(value: 'lunch', child: Text('Lunch')),
+              DropdownMenuItem(value: 'dinner', child: Text('Dinner')),
+              DropdownMenuItem(value: 'snack', child: Text('Snack')),
+            ],
+            onChanged: (value) {
+              if (value != null) {
+                setState(() => _mealType = value);
+              }
+            },
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _gramsController,
+            focusNode: _gramsFocusNode,
+            decoration: InputDecoration(
+              labelText: 'Grams',
+              suffixIcon: IconButton(
+                tooltip: 'Done',
+                icon: const Icon(Icons.check),
+                onPressed: () => FocusScope.of(context).unfocus(),
+              ),
+            ),
+            keyboardType: TextInputType.number,
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => FocusScope.of(context).unfocus(),
+            onTapOutside: (_) => FocusScope.of(context).unfocus(),
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Source: ${widget.result.sourceLabel}',
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(onPressed: _handleAdd, child: const Text('Add')),
+      ],
+    );
+  }
+
+  Future<void> _handleAdd() async {
+    final grams = double.tryParse(_gramsController.text.trim());
+    if (grams == null || grams <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid grams value.')),
+      );
+      return;
+    }
+
+    final consumedAt = DateTime(
+      widget.day.year,
+      widget.day.month,
+      widget.day.day,
+      12,
+    );
+
+    final item = FoodItem(
+      id: 'search-${DateTime.now().microsecondsSinceEpoch}',
+      name: widget.result.name,
+      mass_g: grams,
+      calories_g: widget.result.caloriesPerGram,
+      protein_g: widget.result.proteinPerGram,
+      carbs_g: widget.result.carbsPerGram,
+      fat: widget.result.fatPerGram,
+      mealType: _mealType,
+      consumedAt: consumedAt,
+    );
+
+    try {
+      await ref
+          .read(firestoreFoodLogProvider(widget.userId).notifier)
+          .addFood(widget.userId, item);
+      if (!mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
+      Navigator.pop(context);
+      widget.onSuccess();
+      messenger.showSnackBar(
+        SnackBar(content: Text('Added "${widget.result.name}"')),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to add: $e')));
+      }
+    }
   }
 }

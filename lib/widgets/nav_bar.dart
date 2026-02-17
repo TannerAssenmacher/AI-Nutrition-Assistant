@@ -5,16 +5,14 @@ class NavBar extends StatelessWidget {
   final int currentIndex;
   final Function(int) onTap;
 
-  const NavBar({
-    super.key,
-    required this.currentIndex,
-    required this.onTap,
-  });
+  const NavBar({super.key, required this.currentIndex, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).size.height * 0.02; // Adjust based on your needs
-    final barHeight = MediaQuery.of(context).size.height * 0.07;
+    final mediaQuery = MediaQuery.of(context);
+    final visualBottomSpacing = mediaQuery.size.height * 0.02;
+    final bottomInset = mediaQuery.viewPadding.bottom + visualBottomSpacing;
+    final barHeight = mediaQuery.size.height * 0.07;
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFF3E2F26),
