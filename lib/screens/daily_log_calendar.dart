@@ -1449,6 +1449,8 @@ class _EditableFoodCard extends StatefulWidget {
 
 class _EditableFoodCardState extends State<_EditableFoodCard> {
   bool _isEditing = false;
+  OverlayEntry? _statusOverlay;
+  Timer? _statusTimer;
   late final TextEditingController _nameController;
   late final TextEditingController _calController;
   late final TextEditingController _proteinController;
@@ -1477,6 +1479,8 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
 
   @override
   void dispose() {
+    _statusTimer?.cancel();
+    _statusOverlay?.remove();
     _nameController.dispose();
     _calController.dispose();
     _proteinController.dispose();
@@ -1500,22 +1504,47 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
   }
 
   void _showStatusSnack(String message, {bool isError = false}) {
-    final messenger = ScaffoldMessenger.of(context);
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(message),
-          behavior: SnackBarBehavior.floating,
-          margin: EdgeInsets.only(
-            left: 0,
-            right: 0,
-            bottom: MediaQuery.of(context).padding.bottom,
+    _statusTimer?.cancel();
+    _statusOverlay?.remove();
+
+    final overlay = Overlay.of(context);
+    if (overlay == null) return;
+
+    final mediaQuery = MediaQuery.of(context);
+    final bottomInset = mediaQuery.viewPadding.bottom;
+
+    _statusOverlay = OverlayEntry(
+      builder: (context) {
+        return Positioned(
+          left: 0,
+          right: 0,
+          bottom: bottomInset,
+          child: IgnorePointer(
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                color: isError ? Colors.red.shade700 : AppColors.navBar,
+                child: Text(
+                  message,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
           ),
-          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-          backgroundColor: isError ? Colors.red.shade700 : AppColors.navBar,
-        ),
-      );
+        );
+      },
+    );
+
+    overlay.insert(_statusOverlay!);
+    _statusTimer = Timer(const Duration(seconds: 2), () {
+      _statusOverlay?.remove();
+      _statusOverlay = null;
+    });
   }
 
   Future<void> _saveEdits() async {
