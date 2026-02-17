@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../widgets/macro_slider.dart';
+import '../theme/app_colors.dart';
 import 'package:nutrition_assistant/navigation/nav_helper.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
 
@@ -23,8 +24,8 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _canEditDob = true;
   bool _isDeleting = false;
 
-  final Color bgColor = const Color(0xFFF5EDE2);
-  final Color brandColor = const Color(0xFF5F9735);
+  final Color bgColor = AppColors.background;
+  final Color brandColor = AppColors.brand;
   final Color deleteColor = const Color(0xFFD32F2F);
 
   //controllers
@@ -61,8 +62,8 @@ class _ProfilePageState extends State<ProfilePage> {
   final _dietGoals = ['Lose Weight', 'Maintain Weight', 'Gain Muscle'];
   final _dietaryHabitOptions = [
     'balanced',
-    'high-fiber',
     'high-protein',
+    'high-fiber',
     'low-carb',
     'low-fat',
     'low-sodium'
@@ -88,7 +89,19 @@ class _ProfilePageState extends State<ProfilePage> {
     _loadProfile();
   }
 
-  //estimated daily calorie calculations
+  //logout logic
+  Future<void> _logout() async {
+    try {
+      await FirebaseAuth.instance.signOut();
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/login');
+      }
+    } catch (e) {
+      debugPrint("Logout error: $e");
+    }
+  }
+
+  //calculate estimated daily calorie consumption based off user data
   int _calculateDailyCalories() {
     final height = double.tryParse(_heightController.text);
     final weight = double.tryParse(_weightController.text);
@@ -97,7 +110,9 @@ class _ProfilePageState extends State<ProfilePage> {
         _sex == null ||
         _activityLevel == null ||
         _dob == null ||
-        _dob!.isEmpty) return 0;
+        _dob!.isEmpty) {
+      return 0;
+    }
 
     try {
       final heightCm = height * 2.54;
@@ -106,7 +121,9 @@ class _ProfilePageState extends State<ProfilePage> {
       final now = DateTime.now();
       int age = now.year - dobDate.year;
       if (now.month < dobDate.month ||
-          (now.month == dobDate.month && now.day < dobDate.day)) age--;
+          (now.month == dobDate.month && now.day < dobDate.day)) {
+        age--;
+      }
 
       double bmr = (_sex == 'Male')
           ? (10 * weightKg) + (6.25 * heightCm) - (5 * age) + 5
@@ -126,10 +143,12 @@ class _ProfilePageState extends State<ProfilePage> {
 
   String _getInitials() {
     String initials = "";
-    if (_firstname != null && _firstname!.isNotEmpty)
+    if (_firstname != null && _firstname!.isNotEmpty) {
       initials += _firstname![0].toUpperCase();
-    if (_lastname != null && _lastname!.isNotEmpty)
+    }
+    if (_lastname != null && _lastname!.isNotEmpty) {
       initials += _lastname![0].toUpperCase();
+    }
     return initials.isEmpty ? "?" : initials;
   }
 
@@ -145,7 +164,8 @@ class _ProfilePageState extends State<ProfilePage> {
         _lastname = data['lastname'];
         _email = user!.email;
         if (data['dob'] != null && data['dob'].toString().trim().isNotEmpty) {
-          _dob = data['dob'].toString().split(' ')[0];
+          //only display month, day, year
+          _dob = data['dob'].toString().split('T')[0].split(' ')[0];
           _canEditDob = false;
         } else {
           _dob = '';
@@ -202,23 +222,28 @@ class _ProfilePageState extends State<ProfilePage> {
         'updatedAt': FieldValue.serverTimestamp(),
       };
 
-      if (_heightController.text.isNotEmpty)
+      if (_heightController.text.isNotEmpty) {
         updateData['height'] = double.tryParse(_heightController.text);
-      if (_weightController.text.isNotEmpty)
+      }
+      if (_weightController.text.isNotEmpty) {
         updateData['weight'] = double.tryParse(_weightController.text);
-      if (_dailyCaloriesController.text.isNotEmpty)
+      }
+      if (_dailyCaloriesController.text.isNotEmpty) {
         updateData['mealProfile.dailyCalorieGoal'] =
             int.tryParse(_dailyCaloriesController.text);
+      }
 
       await _firestore.collection('Users').doc(user!.uid).update(updateData);
       if (_dob != null && _dob!.isNotEmpty) setState(() => _canEditDob = false);
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Profile updated successfully!')));
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -267,9 +292,10 @@ class _ProfilePageState extends State<ProfilePage> {
         await user!.delete();
         if (mounted) Navigator.pushReplacementNamed(context, '/login');
       } catch (e) {
-        if (mounted)
+        if (mounted) {
           ScaffoldMessenger.of(context)
               .showSnackBar(SnackBar(content: Text('Failed: $e')));
+        }
       } finally {
         if (mounted) setState(() => _isDeleting = false);
       }
@@ -278,32 +304,37 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading)
+    if (_isLoading) {
       return Scaffold(
           backgroundColor: bgColor,
           body: const Center(child: CircularProgressIndicator()));
+    }
     final estimatedCals = _calculateDailyCalories();
 
     return Scaffold(
       backgroundColor: bgColor,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: widget.isInPageView ? null : IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black, size: 28),
+          onPressed: () => Navigator.pop(context),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.black54),
+            onPressed: _logout,
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
           child: Form(
             key: _formKey,
             child: Column(
               children: [
-                if (!widget.isInPageView)
-                  Align(
-                    alignment: Alignment.topLeft,
-                    child: IconButton(
-                      icon: const Icon(Icons.arrow_back, size: 28),
-                      onPressed: () => Navigator.pop(context),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                  ),
-                if (!widget.isInPageView) const SizedBox(height: 12),
                 CircleAvatar(
                     radius: 50,
                     backgroundColor: brandColor,
@@ -316,27 +347,22 @@ class _ProfilePageState extends State<ProfilePage> {
                 Text('$_firstname $_lastname',
                     style: const TextStyle(
                         fontSize: 22, fontWeight: FontWeight.bold)),
-                Text(_email ?? '',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 14)),
                 const SizedBox(height: 25),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildStatBox("Height", _heightController),
-                    _buildStatBox("Weight", _weightController),
-                    _buildStatBox("Daily Cal", _dailyCaloriesController,
+                    Flexible(child: _buildStatBox("Height", _heightController)),
+                    const SizedBox(width: 10),
+                    Flexible(child: _buildStatBox("Weight", _weightController)),
+                    const SizedBox(width: 10),
+                    Flexible(child: _buildStatBox("Daily Cal", _dailyCaloriesController,
                         isPrimary: true,
-                        helperText:
-                            estimatedCals > 0 ? "$estimatedCals" : null),
+                        helperText: estimatedCals > 0 ? "$estimatedCals" : null)),
                   ],
                 ),
                 const SizedBox(height: 30),
                 _sectionHeader("User"),
                 _buildCard([
-                  _buildListTile(
-                      Icons.badge_outlined, "First Name", _firstname ?? ""),
-                  _buildListTile(
-                      Icons.badge_outlined, "Last Name", _lastname ?? ""),
                   _buildListTile(Icons.email_outlined, "Email", _email ?? ""),
                   _buildListTile(Icons.calendar_today, "DOB",
                       (_dob == null || _dob!.isEmpty) ? "Not set" : _dob!,
@@ -464,8 +490,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // --- HELPERS ---
-
+ //helper functions
   Widget _buildBubbleInput(
       String title, TextEditingController controller, List<String> list) {
     return Padding(
@@ -511,7 +536,7 @@ class _ProfilePageState extends State<ProfilePage> {
             children: list
                 .map((item) => Chip(
                       label: Text(item, style: const TextStyle(fontSize: 12)),
-                      backgroundColor: brandColor.withValues(alpha: 0.1),
+                      backgroundColor: brandColor.withOpacity(0.1),
                       deleteIcon: const Icon(Icons.close, size: 14),
                       onDeleted: () => setState(() => list.remove(item)),
                       shape: RoundedRectangleBorder(
@@ -529,13 +554,13 @@ class _ProfilePageState extends State<ProfilePage> {
     return Column(
       children: [
         Container(
-          width: MediaQuery.of(context).size.width * 0.28,
+          width: double.infinity,
           decoration: BoxDecoration(
               color: isPrimary ? brandColor : Colors.white,
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.02), blurRadius: 10)
+                    color: Colors.black.withOpacity(0.02), blurRadius: 10)
               ]),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
@@ -548,31 +573,15 @@ class _ProfilePageState extends State<ProfilePage> {
                     textAlign: TextAlign.center,
                     keyboardType: TextInputType.number,
                     onChanged: (v) => setState(() {}),
-                    decoration: InputDecoration(
+                    decoration: const InputDecoration(
                       border: InputBorder.none,
                       isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                      errorStyle: const TextStyle(height: 0),
-                      errorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15),
-                          borderSide:
-                              const BorderSide(color: Colors.red, width: 2)),
-                      focusedErrorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15),
-                          borderSide:
-                              const BorderSide(color: Colors.red, width: 2)),
+                      contentPadding: EdgeInsets.symmetric(vertical: 8),
                     ),
                     style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: isPrimary ? Colors.white : Colors.black),
-                    autovalidateMode: AutovalidateMode.onUserInteraction,
-                    validator: (v) => (v != null &&
-                            v.isNotEmpty &&
-                            (double.tryParse(v) == null ||
-                                double.parse(v) <= 0))
-                        ? "!"
-                        : null,
                   ),
                 ),
                 Text(label,
@@ -583,14 +592,19 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
           ),
         ),
-        if (helperText != null)
-          Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text("Est: $helperText",
-                  style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey))),
+        // FIXED: This SizedBox keeps the boxes aligned even when no helper text is present
+        SizedBox(
+          height: 18, 
+          child: helperText != null 
+            ? Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text("Est: $helperText",
+                    style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey)))
+            : const SizedBox.shrink(),
+        ),
       ],
     );
   }
@@ -614,7 +628,7 @@ class _ProfilePageState extends State<ProfilePage> {
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.03), blurRadius: 10)
+                  color: Colors.black.withOpacity(0.03), blurRadius: 10)
             ]),
         child: Column(children: children));
   }
@@ -655,7 +669,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           color: isSel ? Colors.white : Colors.black87)),
                   selected: isSel,
                   selectedColor: brandColor,
-                  backgroundColor: bgColor.withValues(alpha: 0.5),
+                  backgroundColor: bgColor.withOpacity(0.5),
                   onSelected: (v) => setState(
                       () => v ? selected.add(opt) : selected.remove(opt)));
             }).toList()),

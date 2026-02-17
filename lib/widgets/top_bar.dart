@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:nutrition_assistant/screens/profile_screen.dart';
+import '../theme/app_colors.dart';
 
 class top_bar extends StatelessWidget {
   const top_bar({super.key});
@@ -10,7 +11,7 @@ class top_bar extends StatelessWidget {
       height: MediaQuery.of(context).size.height * 0.1,
       width: double.infinity,
       decoration: BoxDecoration(
-        color: const Color(0xFF4A3A2A),
+        color: AppColors.topBar,
         borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(32),
           bottomRight: Radius.circular(32),
@@ -33,7 +34,7 @@ class top_bar extends StatelessWidget {
                 child: Image.asset(
                   'lib/icons/WISERBITES_txt_only.png',
                   fit: BoxFit.contain,
-                  color: const Color(0xFFF5EDE2),
+                  color: AppColors.background,
                 ),
               ),
             ),
@@ -45,7 +46,7 @@ class top_bar extends StatelessWidget {
                 child: IconButton(
                   icon: const Icon(
                     Icons.account_circle,
-                    color: Color(0xFFF5EDE2),
+                    color: AppColors.background,
                     size: 32,
                   ),
                   onPressed: () {

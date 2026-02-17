@@ -40,6 +40,9 @@ const API_KEYS = [
   'b7402fac116342be927d7a98cf2a5c3d',
   '15b4096cb5c24b41aed6c1b2683444b0',
   'a80b53549c1a443787491aaa8ea68e8f',
+  '69d6f9c617114e5f895709e997d1d839',
+  'e34121418ed748f8a25eae2a2ccb1560',
+  '685de485c9664ade84583d032556cb91',
 ];
 const BASE_URL = 'https://api.spoonacular.com';
 const TARGET_COLLECTION = 'recipes';

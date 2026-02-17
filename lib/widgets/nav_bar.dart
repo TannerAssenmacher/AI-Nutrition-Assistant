@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:nutrition_assistant/widgets/nav_item.dart';
+import '../theme/app_colors.dart';
 
 class NavBar extends StatelessWidget {
   final int currentIndex;
@@ -15,7 +16,7 @@ class NavBar extends StatelessWidget {
     final barHeight = mediaQuery.size.height * 0.07;
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF3E2F26),
+        color: AppColors.navBar,
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(32),
           topRight: Radius.circular(32),

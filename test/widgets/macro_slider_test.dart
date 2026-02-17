@@ -3,6 +3,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:nutrition_assistant/theme/app_colors.dart';
 import 'package:nutrition_assistant/widgets/macro_slider.dart';
 
 void main() {
@@ -61,13 +62,13 @@ void main() {
 
       // Verify text widgets with colors exist
       final proteinText = tester.widget<Text>(find.text('Protein 33%'));
-      expect(proteinText.style?.color, Colors.redAccent);
+      expect(proteinText.style?.color, AppColors.protein);
 
       final carbsText = tester.widget<Text>(find.text('Carbs 34%'));
-      expect(carbsText.style?.color, Colors.blueAccent);
+      expect(carbsText.style?.color, AppColors.carbs);
 
       final fatsText = tester.widget<Text>(find.text('Fats 33%'));
-      expect(fatsText.style?.color, Colors.amber);
+      expect(fatsText.style?.color, AppColors.fat);
     });
 
     testWidgets('should contain gesture detector for dragging', (tester) async {

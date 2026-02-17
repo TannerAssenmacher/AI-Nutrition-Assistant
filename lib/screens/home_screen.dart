@@ -11,6 +11,7 @@ import '../widgets/top_bar.dart';
 import 'package:nutrition_assistant/navigation/nav_helper.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
 import 'package:percent_indicator/percent_indicator.dart';
+import '../theme/app_colors.dart';
 import 'package:intl/intl.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -33,87 +34,86 @@ class HomeScreen extends ConsumerWidget {
         children: [
           const top_bar(),
           Expanded(
-            child: SingleChildScrollView(
-              child: Padding(
-                padding:
-                    EdgeInsets.all(MediaQuery.of(context).size.height * 0.02),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.pushNamed(context, '/profile');
-                      },
-                      child: Container(
-                        width: double.infinity,
-                        height: MediaQuery.of(context).size.height * 0.18,
-                        padding: EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(30),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.05),
-                              blurRadius: 20,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  'Good Morning,',
-                                  style: TextStyle(
-                                    fontSize: MediaQuery.of(context).size.height * 0.02,
-                                    color: const Color(0xFF967460),
-                                    fontWeight: FontWeight.w500,
-                                  ),
+            child: Padding(
+              padding:
+                  EdgeInsets.all(MediaQuery.of(context).size.height * 0.02),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.pushNamed(context, '/profile');
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      height: MediaQuery.of(context).size.height * 0.18,
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(30),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 20,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'Good Morning,',
+                                style: TextStyle(
+                                  fontSize: MediaQuery.of(context).size.height * 0.02,
+                                  color: AppColors.accentBrown,
+                                  fontWeight: FontWeight.w500,
                                 ),
-                                Text(
-                                  '$name!',
-                                  style: TextStyle(
-                                    fontSize: MediaQuery.of(context).size.height * 0.025,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF5F9735),
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  DateFormat('EEEE, MMM d').format(DateTime.now()),
-                                  style: TextStyle(
-                                    fontSize: MediaQuery.of(context).size.height * 0.015,
-                                    color: Color(0xFF967460),
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            SizedBox(
-                              height: 80,
-                              width: 80,
-                              child: Image.asset(
-                                'lib/icons/WISERBITES_img_only.png',
-                                fit: BoxFit.contain,
                               ),
+                              Text(
+                                '$name!',
+                                style: const TextStyle(
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.brand,
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                DateFormat('EEEE, MMM d').format(DateTime.now()),
+                                style: TextStyle(
+                                  fontSize: MediaQuery.of(context).size.height * 0.015,
+                                  color: AppColors.accentBrown,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(
+                            height: 80,
+                            width: 80,
+                            child: Image.asset(
+                              'lib/icons/WISERBITES_img_only.png',
+                              fit: BoxFit.contain,
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    foodLogAsync.when(
-                      data: (foodLog) {
-                        final today = DateTime.now();
-                        double currentCalories = 0;
-                        double currentProtein = 0;
-                        double currentCarbs = 0;
-                        double currentFat = 0;
-                        final todaysFoods = <FoodItem>[];
+                  ),
+                  const SizedBox(height: 20),
+                  foodLogAsync.when(
+                    data: (foodLog) {
+                      final today = DateTime.now();
+                      double currentCalories = 0;
+                      double currentProtein = 0;
+                      double currentCarbs = 0;
+                      double currentFat = 0;
+                      final todaysFoods = <FoodItem>[];
 
                         for (final item in foodLog) {
                           if (item.consumedAt.year == today.year &&
@@ -219,8 +219,7 @@ class HomeScreen extends ConsumerWidget {
                       loading: () => const Center(child: CircularProgressIndicator()),
                       error: (e, _) => const SizedBox.shrink(),
                     ),
-                  ],
-                ),
+                ],
               ),
             ),
           ),
@@ -233,7 +232,7 @@ class HomeScreen extends ConsumerWidget {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5EDE2),
+      backgroundColor: AppColors.background,
       body: bodyContent,
       bottomNavigationBar: NavBar(
         currentIndex: navIndexHome,

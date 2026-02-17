@@ -7,6 +7,7 @@ import 'firebase_options.dart';
 //import 'db/user.dart';
 //import 'db/food.dart';
 import 'screens/login_screen.dart';
+import 'theme/app_colors.dart';
 import 'screens/register_screen.dart';
 import 'screens/forgot_password_screen.dart';
 import 'screens/main_navigation_screen.dart';
@@ -159,7 +160,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'AI Nutrition Assistant',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: AppColors.brand),
         useMaterial3: true,
       ),
       debugShowCheckedModeBanner: false,

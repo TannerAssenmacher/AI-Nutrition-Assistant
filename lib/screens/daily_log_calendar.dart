@@ -14,6 +14,7 @@ import 'package:nutrition_assistant/navigation/nav_helper.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
 import 'package:nutrition_assistant/services/food_search_service.dart';
 import 'package:nutrition_assistant/services/notification_service.dart';
+import '../theme/app_colors.dart';
 
 class DailyLogCalendarScreen extends ConsumerStatefulWidget {
   final bool isInPageView;
@@ -42,7 +43,7 @@ class _DailyLogCalendarScreenState
       return body;
     }
     return Scaffold(
-      backgroundColor: const Color(0xFFF5EDE2),
+      backgroundColor: AppColors.background,
       body: body,
       bottomNavigationBar: NavBar(
         currentIndex: navIndexHistory,
@@ -402,10 +403,12 @@ class _DailyLogCalendarScreenState
                                 return Container(
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: Colors.brown.shade50,
+                                    color: AppColors.inputFill,
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
-                                      color: Colors.brown.shade200,
+                                      color: AppColors.accentBrown.withValues(
+                                        alpha: 0.3,
+                                      ),
                                     ),
                                   ),
                                   child: Row(
@@ -447,7 +450,7 @@ class _DailyLogCalendarScreenState
                                 style: Theme.of(context).textTheme.titleSmall
                                     ?.copyWith(
                                       fontWeight: FontWeight.w600,
-                                      color: Colors.blue[700],
+                                      color: AppColors.selectionColor,
                                     ),
                               ),
                               const SizedBox(height: 8),
@@ -688,7 +691,7 @@ class _DailyLogCalendarScreenState
                     children: [
                       IconButton(
                         icon: const Icon(Icons.chevron_left),
-                        color: const Color(0xFF3E2F26),
+                        color: AppColors.navBar,
                         tooltip: 'Previous week',
                         onPressed: () {
                           setState(() {
@@ -706,7 +709,7 @@ class _DailyLogCalendarScreenState
                             style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF3E2F26),
+                              color: AppColors.navBar,
                             ),
                             textAlign: TextAlign.center,
                             overflow: TextOverflow.ellipsis,
@@ -715,7 +718,7 @@ class _DailyLogCalendarScreenState
                       ),
                       IconButton(
                         icon: const Icon(Icons.chevron_right),
-                        color: const Color(0xFF3E2F26),
+                        color: AppColors.navBar,
                         tooltip: 'Next week',
                         onPressed: () {
                           setState(() {
@@ -786,7 +789,7 @@ class _DailyLogCalendarScreenState
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                               color: isSelected
-                                  ? const Color(0xFF6DCFF6)
+                                  ? AppColors.selectionColor
                                   : Colors.transparent,
                               width: 2,
                             ),
@@ -832,7 +835,7 @@ class _DailyLogCalendarScreenState
                                           fontSize: 18,
                                           fontWeight: FontWeight.bold,
                                           color: isToday
-                                              ? const Color(0xFF6DCFF6)
+                                              ? AppColors.selectionColor
                                               : Colors.black87,
                                         ),
                                       ),
@@ -906,7 +909,7 @@ class _DailyLogCalendarScreenState
                                       label: 'Cal',
                                       current: dayTotals['calories'] ?? 0,
                                       goal: calorieGoal,
-                                      color: const Color(0xFF5F9735),
+                                      color: AppColors.caloriesCircle,
                                       valueLabel:
                                           '${dayTotals['calories']?.toInt() ?? 0} Cal',
                                     ),
@@ -915,7 +918,7 @@ class _DailyLogCalendarScreenState
                                       label: 'Pro',
                                       current: dayTotals['protein'] ?? 0,
                                       goal: proteinGoal,
-                                      color: const Color(0xFFC2482B),
+                                      color: AppColors.protein,
                                       valueLabel:
                                           '${dayTotals['protein']?.toStringAsFixed(0) ?? 0}g',
                                     ),
@@ -924,7 +927,7 @@ class _DailyLogCalendarScreenState
                                       label: 'Carb',
                                       current: dayTotals['carbs'] ?? 0,
                                       goal: carbsGoal,
-                                      color: const Color(0xFFE0A100),
+                                      color: AppColors.carbs,
                                       valueLabel:
                                           '${dayTotals['carbs']?.toStringAsFixed(0) ?? 0}g',
                                     ),
@@ -933,7 +936,7 @@ class _DailyLogCalendarScreenState
                                       label: 'Fat',
                                       current: dayTotals['fat'] ?? 0,
                                       goal: fatGoal,
-                                      color: const Color(0xFF3A6FB8),
+                                      color: AppColors.fat,
                                       valueLabel:
                                           '${dayTotals['fat']?.toStringAsFixed(0) ?? 0}g',
                                     ),
@@ -1130,7 +1133,7 @@ class _AddMealModalState extends ConsumerState<_AddMealModal> {
             children: [
               Container(
                 decoration: BoxDecoration(
-                  color: Colors.brown.shade50,
+                  color: AppColors.inputFill,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
@@ -1142,7 +1145,7 @@ class _AddMealModalState extends ConsumerState<_AddMealModal> {
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           decoration: BoxDecoration(
                             color: _isSearchMode
-                                ? Colors.brown.shade600
+                                ? AppColors.accentBrown
                                 : Colors.transparent,
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -1154,7 +1157,7 @@ class _AddMealModalState extends ConsumerState<_AddMealModal> {
                                 size: 20,
                                 color: _isSearchMode
                                     ? Colors.white
-                                    : Colors.brown.shade600,
+                                    : AppColors.accentBrown,
                               ),
                               const SizedBox(width: 8),
                               Text(
@@ -1163,7 +1166,7 @@ class _AddMealModalState extends ConsumerState<_AddMealModal> {
                                   fontWeight: FontWeight.w600,
                                   color: _isSearchMode
                                       ? Colors.white
-                                      : Colors.brown.shade600,
+                                      : AppColors.accentBrown,
                                 ),
                               ),
                             ],
@@ -1178,7 +1181,7 @@ class _AddMealModalState extends ConsumerState<_AddMealModal> {
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           decoration: BoxDecoration(
                             color: !_isSearchMode
-                                ? Colors.brown.shade600
+                                ? AppColors.accentBrown
                                 : Colors.transparent,
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -1190,7 +1193,7 @@ class _AddMealModalState extends ConsumerState<_AddMealModal> {
                                 size: 20,
                                 color: !_isSearchMode
                                     ? Colors.white
-                                    : Colors.brown.shade600,
+                                    : AppColors.accentBrown,
                               ),
                               const SizedBox(width: 8),
                               Text(
@@ -1199,7 +1202,7 @@ class _AddMealModalState extends ConsumerState<_AddMealModal> {
                                   fontWeight: FontWeight.w600,
                                   color: !_isSearchMode
                                       ? Colors.white
-                                      : Colors.brown.shade600,
+                                      : AppColors.accentBrown,
                                 ),
                               ),
                             ],
@@ -1351,7 +1354,7 @@ class _AddMealModalState extends ConsumerState<_AddMealModal> {
           child: ElevatedButton(
             onPressed: _addManualMeal,
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.brown.shade600,
+              backgroundColor: AppColors.accentBrown,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 16),
             ),
@@ -1851,7 +1854,7 @@ class _FoodSearchResultTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.brown.shade200),
+        border: Border.all(color: AppColors.accentBrown.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
@@ -1959,7 +1962,9 @@ class _FoodsTable extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Table(
-          border: TableBorder.all(color: Colors.brown.shade200),
+          border: TableBorder.all(
+            color: AppColors.accentBrown.withValues(alpha: 0.3),
+          ),
           columnWidths: const {
             0: FlexColumnWidth(3),
             1: FlexColumnWidth(1.5),
@@ -1969,7 +1974,7 @@ class _FoodsTable extends StatelessWidget {
           },
           children: [
             TableRow(
-              decoration: BoxDecoration(color: Colors.brown.shade50),
+              decoration: BoxDecoration(color: AppColors.inputFill),
               children: const [
                 _TableCellText('Food', isHeader: true),
                 _TableCellText('Cal', isHeader: true),
@@ -2186,7 +2191,7 @@ class _MacroChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Chip(
       label: Text('$label: ${value.toStringAsFixed(1)}$suffix'),
-      backgroundColor: Colors.brown.shade50,
+      backgroundColor: AppColors.inputFill,
       shape: const StadiumBorder(),
     );
   }
@@ -2205,7 +2210,7 @@ class _TableCellText extends StatelessWidget {
         text,
         style: TextStyle(
           fontWeight: isHeader ? FontWeight.bold : FontWeight.w500,
-          color: Colors.brown.shade800,
+          color: AppColors.accentBrown,
         ),
       ),
     );
@@ -2290,7 +2295,7 @@ class _MonthlyCalendarPickerState extends State<_MonthlyCalendarPicker> {
               children: [
                 IconButton(
                   icon: const Icon(Icons.chevron_left),
-                  color: const Color(0xFF3E2F26),
+                  color: AppColors.navBar,
                   onPressed: () {
                     setState(() {
                       _displayMonth = DateTime(
@@ -2305,12 +2310,12 @@ class _MonthlyCalendarPickerState extends State<_MonthlyCalendarPicker> {
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF3E2F26),
+                    color: AppColors.navBar,
                   ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.chevron_right),
-                  color: const Color(0xFF3E2F26),
+                  color: AppColors.navBar,
                   onPressed: () {
                     setState(() {
                       _displayMonth = DateTime(
@@ -2362,14 +2367,14 @@ class _MonthlyCalendarPickerState extends State<_MonthlyCalendarPicker> {
                         height: 32,
                         decoration: BoxDecoration(
                           color: isInFocusedWeek
-                              ? const Color(0xFF6DCFF6)
+                              ? AppColors.selectionColor
                               : isToday
-                              ? const Color(0xFF6DCFF6).withValues(alpha: 0.2)
+                              ? AppColors.selectionColor.withValues(alpha: 0.2)
                               : Colors.transparent,
                           shape: BoxShape.circle,
                           border: isInFocusedWeek
                               ? Border.all(
-                                  color: const Color(0xFF6DCFF6),
+                                  color: AppColors.selectionColor,
                                   width: 2,
                                 )
                               : null,
@@ -2385,7 +2390,7 @@ class _MonthlyCalendarPickerState extends State<_MonthlyCalendarPicker> {
                               color: isInFocusedWeek
                                   ? Colors.white
                                   : isToday
-                                  ? const Color(0xFF6DCFF6)
+                                  ? AppColors.selectionColor
                                   : Colors.black87,
                             ),
                           ),
@@ -2402,7 +2407,7 @@ class _MonthlyCalendarPickerState extends State<_MonthlyCalendarPicker> {
               child: ElevatedButton(
                 onPressed: () => Navigator.pop(context),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF3E2F26),
+                  backgroundColor: AppColors.navBar,
                 ),
                 child: const Text(
                   'Done',
@@ -2476,21 +2481,23 @@ class _ScheduledMealCard extends ConsumerWidget {
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.blue.shade50,
+              color: AppColors.selectionColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.blue.shade200),
+              border: Border.all(
+                color: AppColors.selectionColor.withValues(alpha: 0.4),
+              ),
             ),
             child: Row(
               children: [
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.blue.shade100,
+                    color: AppColors.selectionColor.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
                     Icons.schedule,
-                    color: Colors.blue.shade700,
+                    color: AppColors.selectionColor,
                     size: 24,
                   ),
                 ),
@@ -2538,14 +2545,14 @@ class _ScheduledMealCard extends ConsumerWidget {
                         'Tap to view ingredients and instructions',
                         style: TextStyle(
                           fontSize: 11,
-                          color: Colors.blue.shade700,
+                          color: AppColors.selectionColor,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
                   ),
                 ),
-                Icon(Icons.chevron_right, color: Colors.blue.shade700),
+                Icon(Icons.chevron_right, color: AppColors.selectionColor),
                 IconButton(
                   onPressed: onDelete,
                   icon: Icon(Icons.delete_outline, color: Colors.red.shade400),
