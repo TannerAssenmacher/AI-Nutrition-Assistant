@@ -10,13 +10,7 @@ import '../widgets/macro_slider.dart';
 import 'package:intl/intl.dart';
 import 'package:email_validator/email_validator.dart';
 import '../widgets/top_bar.dart';
-
-// Global Color Variables
-const Color kAppBackgroundColor = Color(0xFFF5EDE2);
-const Color kBrandColor = Color(0xFF5F9735);
-const Color kTextColor = Color(0xFF967460);
-const Color kInputFillColor = Color(0xFFF5F1E8);
-const Color kErrorColor = Color(0xFFD32F2F);
+import '../theme/app_colors.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -406,7 +400,7 @@ class _RegisterPageState extends State<RegisterPage> {
         title: Text(_currentPage == 0 ? 'Create Account' : 'More Info'),
         centerTitle: true,
       ),*/
-      backgroundColor: kAppBackgroundColor,
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Form(
           key: _formKey,
@@ -485,7 +479,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      color: kTextColor,
+                      color: AppColors.accentBrown,
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -497,7 +491,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   ElevatedButton(
                     onPressed: _validatePage1AndNext,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: kBrandColor,
+                      backgroundColor: AppColors.brand,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -520,7 +514,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         fontSize: linkFontSize,
                         decoration: TextDecoration.underline,
                         fontWeight: FontWeight.bold,
-                        color: kTextColor,
+                        color: AppColors.accentBrown,
                       ),
                     ),
                   ),
@@ -644,7 +638,7 @@ class _RegisterPageState extends State<RegisterPage> {
                           : ElevatedButton(
                               onPressed: _registerUser,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: kBrandColor,
+                                backgroundColor: AppColors.brand,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -691,7 +685,7 @@ class _RegisterPageState extends State<RegisterPage> {
         decoration: InputDecoration(
           labelText: label,
           filled: true,
-          fillColor: kInputFillColor,
+          fillColor: AppColors.inputFill,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none,
@@ -728,7 +722,7 @@ class _RegisterPageState extends State<RegisterPage> {
         decoration: InputDecoration(
           labelText: 'Email',
           filled: true,
-          fillColor: kInputFillColor,
+          fillColor: AppColors.inputFill,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none,
@@ -786,7 +780,7 @@ class _RegisterPageState extends State<RegisterPage> {
         decoration: InputDecoration(
           labelText: 'Password',
           filled: true,
-          fillColor: kInputFillColor,
+          fillColor: AppColors.inputFill,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none,
@@ -819,7 +813,7 @@ class _RegisterPageState extends State<RegisterPage> {
         decoration: InputDecoration(
           labelText: label,
           filled: true,
-          fillColor: kInputFillColor,
+          fillColor: AppColors.inputFill,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none,
@@ -842,7 +836,7 @@ class _RegisterPageState extends State<RegisterPage> {
         decoration: InputDecoration(
           labelText: label,
           filled: true,
-          fillColor: kInputFillColor,
+          fillColor: AppColors.inputFill,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none,
@@ -884,7 +878,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 onSelected: (_) => setState(() {
                   isSelected ? selected.remove(option) : selected.add(option);
                 }),
-                selectedColor: kBrandColor.withValues(alpha: 0.4),
+                selectedColor: AppColors.brand.withValues(alpha: 0.4),
               );
             }).toList(),
           ),
@@ -911,7 +905,7 @@ class _RegisterPageState extends State<RegisterPage> {
         decoration: InputDecoration(
           labelText: 'Date of Birth (MM/DD/YYYY)',
           filled: true,
-          fillColor: kInputFillColor,
+          fillColor: AppColors.inputFill,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none,

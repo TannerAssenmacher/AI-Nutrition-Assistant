@@ -13,6 +13,7 @@ import '../services/meal_analysis_service.dart';
 import '../db/food.dart';
 import '../providers/food_providers.dart';
 import '../providers/firestore_providers.dart';
+import '../theme/app_colors.dart';
 import 'camera_capture_screen.dart';
 
 class CameraScreen extends ConsumerStatefulWidget {
@@ -642,7 +643,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5EDE2),
+      backgroundColor: AppColors.background,
       body: bodyContent,
       bottomNavigationBar: NavBar(
         currentIndex: navIndexCamera,

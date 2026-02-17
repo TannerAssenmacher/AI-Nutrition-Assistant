@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:nutrition_assistant/widgets/top_bar.dart';
+import '../theme/app_colors.dart';
 
 // Screen to reset password with Firebase Auth functions
 
@@ -71,7 +72,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFF5EDE2),
+      backgroundColor: AppColors.background,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -82,7 +83,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             style: TextStyle(
               fontSize: MediaQuery.of(context).size.width * 0.06,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF4A3A2A),
+              color: AppColors.accentBrown,
             )
           ),
           Padding(padding: EdgeInsets.all(MediaQuery.of(context).size.height * 0.03),),
@@ -120,7 +121,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       style: TextStyle(
                         fontSize: MediaQuery.of(context).size.width * 0.05,
                         fontWeight: FontWeight.bold,
-                        color: const Color(0xFF967460),
+                        color: AppColors.accentBrown,
                       )
                     ),
 
@@ -136,7 +137,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                               color: Colors.grey[400],
                             ),
                             filled: true,
-                            fillColor: const Color(0xFFF5F1E8),
+                            fillColor: AppColors.inputFill,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(16),
                               borderSide: BorderSide.none,
@@ -169,7 +170,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                         : ElevatedButton(
                       onPressed: _resetPassword,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xFF5F9735),
+                        backgroundColor: AppColors.brand,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -197,7 +198,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               fontSize: MediaQuery.of(context).size.height * 0.03,
               fontWeight: FontWeight.bold,
               decoration: TextDecoration.underline,
-              color: Color(0xFF4A3A2A),
+              color: AppColors.accentBrown,
             )
           ),
           ),
