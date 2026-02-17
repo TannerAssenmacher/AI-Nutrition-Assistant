@@ -23,8 +23,12 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authUser = ref.watch(authServiceProvider);
     final userId = authUser?.uid;
-    final userProfileAsync = userId != null ? ref.watch(firestoreUserProfileProvider(userId)) : const AsyncValue.loading();
-    final foodLogAsync = userId != null ? ref.watch(firestoreFoodLogProvider(userId)) : const AsyncValue.loading();
+    final userProfileAsync = userId != null
+        ? ref.watch(firestoreUserProfileProvider(userId))
+        : const AsyncValue.loading();
+    final foodLogAsync = userId != null
+        ? ref.watch(firestoreFoodLogProvider(userId))
+        : const AsyncValue.loading();
     final foodSuggestionsAsync = ref.watch(foodSuggestionsProvider);
     final name = userProfileAsync.valueOrNull?.firstname ?? 'User';
 
@@ -34,86 +38,94 @@ class HomeScreen extends ConsumerWidget {
         children: [
           const top_bar(),
           Expanded(
-            child: Padding(
-              padding:
-                  EdgeInsets.all(MediaQuery.of(context).size.height * 0.02),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.pushNamed(context, '/profile');
-                    },
-                    child: Container(
-                      width: double.infinity,
-                      height: MediaQuery.of(context).size.height * 0.18,
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(30),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 20,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                'Good Morning,',
-                                style: TextStyle(
-                                  fontSize: MediaQuery.of(context).size.height * 0.02,
-                                  color: AppColors.accentBrown,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              Text(
-                                '$name!',
-                                style: const TextStyle(
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.brand,
-                                ),
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                DateFormat('EEEE, MMM d').format(DateTime.now()),
-                                style: TextStyle(
-                                  fontSize: MediaQuery.of(context).size.height * 0.015,
-                                  color: AppColors.accentBrown,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(
-                            height: 80,
-                            width: 80,
-                            child: Image.asset(
-                              'lib/icons/WISERBITES_img_only.png',
-                              fit: BoxFit.contain,
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: EdgeInsets.all(
+                  MediaQuery.of(context).size.height * 0.02,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.pushNamed(context, '/profile');
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        height: MediaQuery.of(context).size.height * 0.18,
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(30),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 20,
+                              offset: const Offset(0, 4),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  'Good Morning,',
+                                  style: TextStyle(
+                                    fontSize:
+                                        MediaQuery.of(context).size.height *
+                                        0.02,
+                                    color: AppColors.accentBrown,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                Text(
+                                  '$name!',
+                                  style: const TextStyle(
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.brand,
+                                  ),
+                                ),
+                                SizedBox(height: 8),
+                                Text(
+                                  DateFormat(
+                                    'EEEE, MMM d',
+                                  ).format(DateTime.now()),
+                                  style: TextStyle(
+                                    fontSize:
+                                        MediaQuery.of(context).size.height *
+                                        0.015,
+                                    color: AppColors.accentBrown,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(
+                              height: 80,
+                              width: 80,
+                              child: Image.asset(
+                                'lib/icons/WISERBITES_img_only.png',
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  foodLogAsync.when(
-                    data: (foodLog) {
-                      final today = DateTime.now();
-                      double currentCalories = 0;
-                      double currentProtein = 0;
-                      double currentCarbs = 0;
-                      double currentFat = 0;
-                      final todaysFoods = <FoodItem>[];
+                    const SizedBox(height: 20),
+                    foodLogAsync.when(
+                      data: (foodLog) {
+                        final today = DateTime.now();
+                        double currentCalories = 0;
+                        double currentProtein = 0;
+                        double currentCarbs = 0;
+                        double currentFat = 0;
+                        final todaysFoods = <FoodItem>[];
 
                         for (final item in foodLog) {
                           if (item.consumedAt.year == today.year &&
@@ -128,19 +140,33 @@ class HomeScreen extends ConsumerWidget {
                         }
 
                         final userProfile = userProfileAsync.valueOrNull;
-                        final calorieGoal = userProfile?.mealProfile.dailyCalorieGoal.toDouble() ?? 2000.0;
-                        final macroGoals = userProfile?.mealProfile.macroGoals ?? {};
-                        final proteinRaw = (macroGoals['protein'] ?? 0.0).toDouble();
-                        final carbsRaw = (macroGoals['carbs'] ?? 0.0).toDouble();
-                        final fatRaw = (macroGoals['fat'] ?? macroGoals['fats'] ?? 0.0).toDouble();
+                        final calorieGoal =
+                            userProfile?.mealProfile.dailyCalorieGoal
+                                .toDouble() ??
+                            2000.0;
+                        final macroGoals =
+                            userProfile?.mealProfile.macroGoals ?? {};
+                        final proteinRaw = (macroGoals['protein'] ?? 0.0)
+                            .toDouble();
+                        final carbsRaw = (macroGoals['carbs'] ?? 0.0)
+                            .toDouble();
+                        final fatRaw =
+                            (macroGoals['fat'] ?? macroGoals['fats'] ?? 0.0)
+                                .toDouble();
 
                         double proteinGoal = proteinRaw;
                         double carbsGoal = carbsRaw;
                         double fatGoal = fatRaw;
 
                         // Heuristic for percentages vs grams
-                        final values = [proteinRaw, carbsRaw, fatRaw].where((v) => v > 0).toList();
-                        final looksLikePercentages = values.isNotEmpty && values.every((v) => v <= 100.0);
+                        final values = [
+                          proteinRaw,
+                          carbsRaw,
+                          fatRaw,
+                        ].where((v) => v > 0).toList();
+                        final looksLikePercentages =
+                            values.isNotEmpty &&
+                            values.every((v) => v <= 100.0);
 
                         if (looksLikePercentages) {
                           proteinGoal = (calorieGoal * (proteinRaw / 100)) / 4;
@@ -155,7 +181,10 @@ class HomeScreen extends ConsumerWidget {
                         return Column(
                           children: [
                             Container(
-                              padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 20,
+                                horizontal: 24,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(30),
@@ -169,14 +198,36 @@ class HomeScreen extends ConsumerWidget {
                               ),
                               child: Column(
                                 children: [
-                                  _CalorieProgressBar(current: currentCalories, goal: calorieGoal),
+                                  _CalorieProgressBar(
+                                    current: currentCalories,
+                                    goal: calorieGoal,
+                                  ),
                                   const SizedBox(height: 20),
                                   Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
-                                      _MacroIndicator(label: 'Protein', current: currentProtein, goal: proteinGoal, color: const Color(0xFFC2482B), unit: 'g'),
-                                      _MacroIndicator(label: 'Carbs', current: currentCarbs, goal: carbsGoal, color: const Color(0xFFE0A100), unit: 'g'),
-                                      _MacroIndicator(label: 'Fat', current: currentFat, goal: fatGoal, color: const Color(0xFF3A6FB8), unit: 'g'),
+                                      _MacroIndicator(
+                                        label: 'Protein',
+                                        current: currentProtein,
+                                        goal: proteinGoal,
+                                        color: const Color(0xFFC2482B),
+                                        unit: 'g',
+                                      ),
+                                      _MacroIndicator(
+                                        label: 'Carbs',
+                                        current: currentCarbs,
+                                        goal: carbsGoal,
+                                        color: const Color(0xFFE0A100),
+                                        unit: 'g',
+                                      ),
+                                      _MacroIndicator(
+                                        label: 'Fat',
+                                        current: currentFat,
+                                        goal: fatGoal,
+                                        color: const Color(0xFF3A6FB8),
+                                        unit: 'g',
+                                      ),
                                     ],
                                   ),
                                 ],
@@ -186,11 +237,15 @@ class HomeScreen extends ConsumerWidget {
                             Align(
                               alignment: Alignment.centerLeft,
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 24),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                ),
                                 child: Text(
                                   "Today's Meals:",
                                   style: TextStyle(
-                                    fontSize: MediaQuery.of(context).size.height * 0.02,
+                                    fontSize:
+                                        MediaQuery.of(context).size.height *
+                                        0.02,
                                     fontWeight: FontWeight.bold,
                                     color: const Color(0xFF967460),
                                   ),
@@ -202,24 +257,32 @@ class HomeScreen extends ConsumerWidget {
                               height: MediaQuery.of(context).size.height * 0.2,
                               child: todaysFoods.isEmpty
                                   ? PageView(
-                                      controller: PageController(viewportFraction: 0.85),
+                                      controller: PageController(
+                                        viewportFraction: 0.85,
+                                      ),
                                       children: const [_NoMealsPlaceholder()],
                                     )
                                   : PageView.builder(
-                                      controller: PageController(viewportFraction: 0.85),
+                                      controller: PageController(
+                                        viewportFraction: 0.85,
+                                      ),
                                       itemCount: todaysFoods.length,
                                       itemBuilder: (context, index) {
-                                        return _FoodCarouselCard(food: todaysFoods[index]);
+                                        return _FoodCarouselCard(
+                                          food: todaysFoods[index],
+                                        );
                                       },
                                     ),
                             ),
                           ],
                         );
                       },
-                      loading: () => const Center(child: CircularProgressIndicator()),
+                      loading: () =>
+                          const Center(child: CircularProgressIndicator()),
                       error: (e, _) => const SizedBox.shrink(),
                     ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -293,7 +356,6 @@ class _CalorieProgressBar extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -400,18 +462,33 @@ class _FoodCarouselCard extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           food.name,
-          style: const TextStyle(color: Color(0xFF5F9735), fontWeight: FontWeight.bold),
+          style: const TextStyle(
+            color: Color(0xFF5F9735),
+            fontWeight: FontWeight.bold,
+          ),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _DetailRow(label: 'Calories', value: '${(food.calories_g * food.mass_g).round()} kcal'),
+            _DetailRow(
+              label: 'Calories',
+              value: '${(food.calories_g * food.mass_g).round()} kcal',
+            ),
             const SizedBox(height: 8),
-            _DetailRow(label: 'Protein', value: '${(food.protein_g * food.mass_g).toStringAsFixed(1)} g'),
+            _DetailRow(
+              label: 'Protein',
+              value: '${(food.protein_g * food.mass_g).toStringAsFixed(1)} g',
+            ),
             const SizedBox(height: 8),
-            _DetailRow(label: 'Carbs', value: '${(food.carbs_g * food.mass_g).toStringAsFixed(1)} g'),
+            _DetailRow(
+              label: 'Carbs',
+              value: '${(food.carbs_g * food.mass_g).toStringAsFixed(1)} g',
+            ),
             const SizedBox(height: 8),
-            _DetailRow(label: 'Fat', value: '${(food.fat * food.mass_g).toStringAsFixed(1)} g'),
+            _DetailRow(
+              label: 'Fat',
+              value: '${(food.fat * food.mass_g).toStringAsFixed(1)} g',
+            ),
             const SizedBox(height: 8),
             _DetailRow(label: 'Mass', value: '${food.mass_g.round()} g'),
           ],
@@ -419,7 +496,10 @@ class _FoodCarouselCard extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Close', style: TextStyle(color: Color(0xFF967460))),
+            child: const Text(
+              'Close',
+              style: TextStyle(color: Color(0xFF967460)),
+            ),
           ),
         ],
       ),
@@ -470,8 +550,14 @@ class _DetailRow extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-        Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+        ),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
       ],
     );
   }
@@ -507,7 +593,11 @@ class _MacroIndicator extends StatelessWidget {
         padding: const EdgeInsets.only(top: 6.0),
         child: Text(
           '${current.toInt()}$unit',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: color),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+            color: color,
+          ),
         ),
       ),
       progressColor: color,

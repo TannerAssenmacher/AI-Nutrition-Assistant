@@ -1499,6 +1499,25 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
     return value;
   }
 
+  void _showStatusSnack(String message, {bool isError = false}) {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.only(
+            left: 0,
+            right: 0,
+            bottom: MediaQuery.of(context).padding.bottom,
+          ),
+          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+          backgroundColor: isError ? Colors.red.shade700 : AppColors.navBar,
+        ),
+      );
+  }
+
   Future<void> _saveEdits() async {
     final name = _nameController.text.trim();
     final calories = _parseMacro(_calController.text);
@@ -1511,10 +1530,9 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
         protein == null ||
         carbs == null ||
         fat == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter valid name and macro values.'),
-        ),
+      _showStatusSnack(
+        'Please enter valid name and macro values.',
+        isError: true,
       );
       return;
     }
@@ -1531,14 +1549,10 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
       await widget.onSave(updatedRow);
       if (!mounted) return;
       setState(() => _isEditing = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Saved "${updatedRow.name}"')));
+      _showStatusSnack('Saved "${updatedRow.name}"');
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to save: $e')));
+      _showStatusSnack('Failed to save: $e', isError: true);
     }
   }
 
@@ -1569,14 +1583,10 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
     try {
       await widget.onDelete(widget.row.id);
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Removed "${widget.row.name}"')));
+      _showStatusSnack('Removed "${widget.row.name}"');
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to remove: $e')));
+      _showStatusSnack('Failed to remove: $e', isError: true);
     }
   }
 
@@ -1598,32 +1608,50 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
     );
   }
 
-  Widget _macroInlineEditor({
+  Widget _macroStatTile({
     required String label,
-    required TextEditingController controller,
     required Color color,
+    required bool isEditing,
+    required TextEditingController controller,
+    required String value,
     required String unit,
-    required double width,
   }) {
-    return SizedBox(
-      width: width,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.08),
-          border: Border.all(color: color.withValues(alpha: 0.45), width: 1),
-          borderRadius: BorderRadius.circular(999),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
+      height: 54,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: isEditing ? color.withValues(alpha: 0.12) : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isEditing
+              ? color.withValues(alpha: 0.45)
+              : Colors.brown.shade100,
         ),
-        child: Row(
-          children: [
-            Text(
-              '$label ',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: color.withValues(alpha: 0.9),
-              ),
+        boxShadow: isEditing
+            ? []
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 5,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: color.withValues(alpha: 0.9),
             ),
+          ),
+          const SizedBox(height: 2),
+          if (isEditing)
             Expanded(
               child: TextField(
                 controller: controller,
@@ -1631,21 +1659,36 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
                   decimal: true,
                 ),
                 textAlign: TextAlign.right,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   isDense: true,
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.zero,
-                  hintText: '0',
+                  hintText: '0 $unit',
+                  hintStyle: TextStyle(
+                    fontSize: 13,
+                    color: color.withValues(alpha: 0.6),
+                  ),
                 ),
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: color.withValues(alpha: 0.95),
+                ),
+              ),
+            )
+          else
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                '$value $unit',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: color.withValues(alpha: 0.95),
                 ),
               ),
             ),
-            Text(unit, style: const TextStyle(fontSize: 11)),
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -1681,68 +1724,72 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _isEditing
-                        ? TextField(
-                            controller: _nameController,
-                            decoration: InputDecoration(
-                              isDense: true,
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 8,
-                              ),
-                              filled: true,
-                              fillColor: Colors.brown.shade50,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(
-                                  color: Colors.brown.shade300,
+                    Container(
+                      height: 44,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: _isEditing
+                          ? BoxDecoration(
+                              color: Colors.brown.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.brown.shade300),
+                            )
+                          : null,
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: _isEditing
+                            ? TextField(
+                                controller: _nameController,
+                                textAlignVertical: TextAlignVertical.center,
+                                strutStyle: const StrutStyle(
+                                  fontSize: 16,
+                                  height: 1.0,
+                                  forceStrutHeight: true,
+                                ),
+                                decoration: const InputDecoration(
+                                  isDense: true,
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.zero,
+                                  hintText: 'Meal name',
+                                ),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF2E221A),
+                                ),
+                              )
+                            : Text(
+                                widget.row.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                strutStyle: const StrutStyle(
+                                  fontSize: 16,
+                                  height: 1.0,
+                                  forceStrutHeight: true,
+                                ),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF2E221A),
                                 ),
                               ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(
-                                  color: Colors.brown.shade300,
-                                ),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(
-                                  color: Colors.brown.shade600,
-                                  width: 1.4,
-                                ),
-                              ),
-                              prefixIcon: const Icon(Icons.edit, size: 16),
-                              hintText: 'Meal name',
-                            ),
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          )
-                        : Text(
-                            widget.row.name,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                    const SizedBox(height: 4),
-                    _macroChip(
-                      widget.row.meal.toUpperCase(),
-                      widget.row.amount,
-                      Colors.brown.shade600,
+                      ),
                     ),
-                    if (_isEditing) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        'Editing mode: tap any value chip below to update',
+                    const SizedBox(height: 4),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      child: Text(
+                        '${widget.row.meal.toUpperCase()} • ${widget.row.amount}',
                         style: TextStyle(
                           fontSize: 11,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.3,
                           color: Colors.brown.shade600,
                         ),
                       ),
-                    ],
+                    ),
                   ],
                 ),
               ),
@@ -1774,62 +1821,55 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
             ],
           ),
           const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 6,
+          Row(
             children: [
-              _isEditing
-                  ? _macroInlineEditor(
-                      label: 'Cal',
-                      controller: _calController,
-                      color: const Color(0xFF5F9735),
-                      unit: 'kcal',
-                      width: 120,
-                    )
-                  : _macroChip(
-                      'Cal',
-                      '${widget.row.calories.toStringAsFixed(0)} kcal',
-                      const Color(0xFF5F9735),
-                    ),
-              _isEditing
-                  ? _macroInlineEditor(
-                      label: 'P',
-                      controller: _proteinController,
-                      color: const Color(0xFFC2482B),
-                      unit: 'g',
-                      width: 88,
-                    )
-                  : _macroChip(
-                      'P',
-                      '${widget.row.protein.toStringAsFixed(1)}g',
-                      const Color(0xFFC2482B),
-                    ),
-              _isEditing
-                  ? _macroInlineEditor(
-                      label: 'C',
-                      controller: _carbController,
-                      color: const Color(0xFFE0A100),
-                      unit: 'g',
-                      width: 88,
-                    )
-                  : _macroChip(
-                      'C',
-                      '${widget.row.carbs.toStringAsFixed(1)}g',
-                      const Color(0xFFE0A100),
-                    ),
-              _isEditing
-                  ? _macroInlineEditor(
-                      label: 'F',
-                      controller: _fatController,
-                      color: const Color(0xFF3A6FB8),
-                      unit: 'g',
-                      width: 88,
-                    )
-                  : _macroChip(
-                      'F',
-                      '${widget.row.fat.toStringAsFixed(1)}g',
-                      const Color(0xFF3A6FB8),
-                    ),
+              Expanded(
+                child: _macroStatTile(
+                  label: 'Calories',
+                  color: const Color(0xFF5F9735),
+                  isEditing: _isEditing,
+                  controller: _calController,
+                  value: widget.row.calories.toStringAsFixed(0),
+                  unit: 'kcal',
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _macroStatTile(
+                  label: 'Protein',
+                  color: const Color(0xFFC2482B),
+                  isEditing: _isEditing,
+                  controller: _proteinController,
+                  value: widget.row.protein.toStringAsFixed(1),
+                  unit: 'g',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _macroStatTile(
+                  label: 'Carbs',
+                  color: const Color(0xFFE0A100),
+                  isEditing: _isEditing,
+                  controller: _carbController,
+                  value: widget.row.carbs.toStringAsFixed(1),
+                  unit: 'g',
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _macroStatTile(
+                  label: 'Fat',
+                  color: const Color(0xFF3A6FB8),
+                  isEditing: _isEditing,
+                  controller: _fatController,
+                  value: widget.row.fat.toStringAsFixed(1),
+                  unit: 'g',
+                ),
+              ),
             ],
           ),
         ],
