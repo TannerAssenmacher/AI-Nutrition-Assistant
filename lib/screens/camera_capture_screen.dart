@@ -1,6 +1,7 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:nutrition_assistant/services/food_search_service.dart';
 
@@ -13,12 +14,12 @@ class MealCaptureResult {
   final String? userContext;
 
   const MealCaptureResult({required this.photo, this.userContext})
-      : mode = CaptureMode.photo,
-        barcode = null;
+    : mode = CaptureMode.photo,
+      barcode = null;
 
   const MealCaptureResult.barcode({required this.barcode, this.photo})
-      : mode = CaptureMode.barcode,
-        userContext = null;
+    : mode = CaptureMode.barcode,
+      userContext = null;
 }
 
 class CameraCaptureScreen extends StatefulWidget {
@@ -36,6 +37,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
   CameraController? _cameraController;
   bool _isCameraInitialized = false;
   bool _isCapturing = false;
+  bool _isPickingImage = false;
 
   // Barcode mode - we let MobileScanner widget manage itself
   bool _hasDetectedBarcode = false;
@@ -47,6 +49,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
   // Context
   final TextEditingController _contextController = TextEditingController();
   bool _showContext = false;
+  final ImagePicker _imagePicker = ImagePicker();
 
   @override
   void initState() {
@@ -184,10 +187,47 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to take photo')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Failed to take photo')));
         setState(() => _isCapturing = false);
+      }
+    }
+  }
+
+  Future<void> _pickImageFromGallery() async {
+    if (_isPickingImage || _captureMode != CaptureMode.photo) {
+      return;
+    }
+
+    setState(() => _isPickingImage = true);
+
+    try {
+      final file = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 95,
+      );
+
+      if (!mounted || file == null) {
+        return;
+      }
+
+      final userContextText = _contextController.text.trim();
+      Navigator.of(context).pop(
+        MealCaptureResult(
+          photo: file,
+          userContext: userContextText.isEmpty ? null : userContextText,
+        ),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to pick image from gallery')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isPickingImage = false);
       }
     }
   }
@@ -199,9 +239,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
       final value = _extractScannableBarcode(barcode);
       if (value != null) {
         _hasDetectedBarcode = true;
-        Navigator.of(context).pop(
-          MealCaptureResult.barcode(barcode: value),
-        );
+        Navigator.of(context).pop(MealCaptureResult.barcode(barcode: value));
         return;
       }
     }
@@ -364,10 +402,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Colors.black.withValues(alpha: 0.7),
-              Colors.transparent,
-            ],
+            colors: [Colors.black.withValues(alpha: 0.7), Colors.transparent],
           ),
         ),
         child: SafeArea(
@@ -398,10 +433,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
           gradient: LinearGradient(
             begin: Alignment.bottomCenter,
             end: Alignment.topCenter,
-            colors: [
-              Colors.black.withValues(alpha: 0.85),
-              Colors.transparent,
-            ],
+            colors: [Colors.black.withValues(alpha: 0.85), Colors.transparent],
           ),
         ),
         child: SafeArea(
@@ -428,22 +460,24 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
                 ),
                 const SizedBox(height: 20),
 
-                // Control buttons
+                // Left upload + centered capture + right-side existing controls
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    // Mode toggle
+                    // Left: Gallery button
                     _ControlButton(
-                      icon: _captureMode == CaptureMode.photo
-                          ? Icons.qr_code_scanner
-                          : Icons.camera_alt,
-                      onTap: _isSwitchingMode ? null : _switchMode,
-                      isLoading: _isSwitchingMode,
+                      icon: Icons.photo_library,
+                      onTap:
+                          _captureMode == CaptureMode.photo && !_isPickingImage
+                          ? _pickImageFromGallery
+                          : null,
+                      isLoading: _isPickingImage,
                     ),
-
-                    // Capture button
+                    // Center: Capture button
                     _CaptureButton(
-                      onTap: _captureMode == CaptureMode.photo &&
+                      onTap:
+                          _captureMode == CaptureMode.photo &&
                               _isCameraInitialized &&
                               !_isCapturing
                           ? _takePhoto
@@ -451,18 +485,30 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
                       isCapturing: _isCapturing,
                       isEmpty: _captureMode == CaptureMode.barcode,
                     ),
-
-                    // Context toggle (photo only)
-                    if (_captureMode == CaptureMode.photo)
-                      _ControlButton(
-                        icon: _showContext ? Icons.check : Icons.edit_note,
-                        onTap: () =>
-                            setState(() => _showContext = !_showContext),
-                        isActive:
-                            _showContext || _contextController.text.isNotEmpty,
-                      )
-                    else
-                      const SizedBox(width: 56),
+                    // Right: QR + Context controls
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_captureMode == CaptureMode.photo) ...[
+                          _ControlButton(
+                            icon: _showContext ? Icons.check : Icons.edit_note,
+                            onTap: () =>
+                                setState(() => _showContext = !_showContext),
+                            isActive:
+                                _showContext ||
+                                _contextController.text.isNotEmpty,
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                        _ControlButton(
+                          icon: _captureMode == CaptureMode.photo
+                              ? Icons.qr_code_scanner
+                              : Icons.camera_alt,
+                          onTap: _isSwitchingMode ? null : _switchMode,
+                          isLoading: _isSwitchingMode,
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ],
@@ -508,8 +554,9 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
                 borderSide: BorderSide.none,
               ),
               contentPadding: const EdgeInsets.all(12),
-              counterStyle:
-                  TextStyle(color: Colors.white.withValues(alpha: 0.4)),
+              counterStyle: TextStyle(
+                color: Colors.white.withValues(alpha: 0.4),
+              ),
             ),
           ),
         ],
@@ -617,10 +664,7 @@ class _ScannerOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IgnorePointer(
-      child: CustomPaint(
-        painter: _OverlayPainter(),
-        size: Size.infinite,
-      ),
+      child: CustomPaint(painter: _OverlayPainter(), size: Size.infinite),
     );
   }
 }
