@@ -74,7 +74,7 @@ class _RegisterPageState extends State<RegisterPage> {
   double _fats = 30.0;
 
   // Dropdown options
-  final _sexOptions = ['Male', 'Female'];
+  final _sexOptions = ['Male', 'Female', 'Other', 'Prefer not to say'];
   final _activityLevels = [
     'Sedentary',
     'Lightly Active',
@@ -873,6 +873,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       scrollController:
                           FixedExtentScrollController(initialItem: _heightFeet ?? 0),
                       itemExtent: 32,
+                      looping: true,
                       onSelectedItemChanged: (val) {
                         setState(() {
                           _heightFeet = val;
@@ -887,6 +888,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       scrollController: FixedExtentScrollController(
                           initialItem: _heightInches ?? 0),
                       itemExtent: 32,
+                      looping: true,
                       onSelectedItemChanged: (val) {
                         setState(() {
                           _heightInches = val;

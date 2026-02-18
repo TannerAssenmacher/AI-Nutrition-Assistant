@@ -124,7 +124,7 @@ class _ProfilePageState extends State<ProfilePage> {
           _dob = '';
           _canEditDob = true;
         }
-        _sex = data['sex'];
+        _sex= data['sex'];
         _heightCm = (data['height'] as num?)?.toDouble(); 
        
         final w = data['weight'];
@@ -162,6 +162,7 @@ class _ProfilePageState extends State<ProfilePage> {
     setState(() => _isSaving = true);
     try {
       final Map<String, dynamic> updateData = {
+        'sex': _sex,
         'activityLevel': _activityLevel,
         'dob': (_dob != null && _dob!.isNotEmpty) ? _dob : null,
         'mealProfile.dietaryGoal': _dietaryGoal,
@@ -250,8 +251,8 @@ class _ProfilePageState extends State<ProfilePage> {
                     const Text("Height", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                     Expanded(
                       child: Row(children: [
-                          Expanded(child: CupertinoPicker(scrollController: FixedExtentScrollController(initialItem: currentFt - 1), itemExtent: 40, onSelectedItemChanged: (index) { currentFt = index + 1; _updateHeight(currentFt, currentIn); }, children: List.generate(8, (i) => Center(child: Text('${i + 1} ft'))))),
-                          Expanded(child: CupertinoPicker(scrollController: FixedExtentScrollController(initialItem: currentIn), itemExtent: 40, onSelectedItemChanged: (index) { currentIn = index; _updateHeight(currentFt, currentIn); }, children: List.generate(12, (i) => Center(child: Text('$i in'))))),
+                          Expanded(child: CupertinoPicker(scrollController: FixedExtentScrollController(initialItem: currentFt - 1), itemExtent: 40, looping: true, onSelectedItemChanged: (index) { currentFt = index + 1; _updateHeight(currentFt, currentIn); }, children: List.generate(8, (i) => Center(child: Text('${i + 1} ft'))))),
+                          Expanded(child: CupertinoPicker(scrollController: FixedExtentScrollController(initialItem: currentIn), itemExtent: 40,looping: true,  onSelectedItemChanged: (index) { currentIn = index; _updateHeight(currentFt, currentIn); }, children: List.generate(12, (i) => Center(child: Text('$i in'))))),
                         ]),
                     ),
                     CupertinoButton(onPressed: () => Navigator.pop(context), child: Text("Done", style: TextStyle(color: brandColor, fontWeight: FontWeight.bold))),
@@ -356,7 +357,17 @@ class _ProfilePageState extends State<ProfilePage> {
                                 );
                                 if (pickedDate != null) setState(() => _dob = pickedDate.toString().split(' ')[0]);
                               } : null),
-                    _buildListTile(Icons.wc, "Sex", _sex ?? "Not set"),
+                      _buildListTile(
+                        Icons.wc, 
+                        "Sex", 
+                        _sex ?? "Not Set", 
+                        onTap: () => _showPicker(
+                          "Sex", 
+                          ['Male', 'Female', 'Other', 'Prefer Not to Say'], 
+                          _sex, 
+                          (v) => setState(() => _sex = v)
+                        ),
+                      ),     
                     _buildListTile(Icons.bolt, "Activity Level", _activityLevel ?? "Select", onTap: () => _showPicker("Activity", _activityLevels, _activityLevel, (v) => setState(() => _activityLevel = v))),
                     _buildListTile(Icons.track_changes, "Dietary Goal", _dietaryGoal ?? "Select", onTap: () => _showPicker("Diet Goal", _dietGoals, _dietaryGoal, (v) => setState(() => _dietaryGoal = v))),
                   ]),
