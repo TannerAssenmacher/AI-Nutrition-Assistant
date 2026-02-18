@@ -17,6 +17,7 @@ class _LoginPageState extends State<LoginPage> {
   bool _isLoading = false;
   bool _showValidationErrors = false;
   String? _error;
+  bool _accountDeletedMessageShown = false;
 
   // Listener that clears the top-level Firebase error as soon as the user types
   void _clearErrorOnType() {
@@ -30,6 +31,34 @@ class _LoginPageState extends State<LoginPage> {
     // Attach listeners so the error message disappears immediately on typing
     _emailController.addListener(_clearErrorOnType);
     _passwordController.addListener(_clearErrorOnType);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_accountDeletedMessageShown) {
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args == 'accountDeleted') {
+        _accountDeletedMessageShown = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.white),
+                    SizedBox(width: 10),
+                    Text('Your account has been successfully deleted.'),
+                  ],
+                ),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 4),
+              ),
+            );
+          }
+        });
+      }
+    }
   }
 
   @override

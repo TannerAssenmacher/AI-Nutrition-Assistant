@@ -251,55 +251,87 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _confirmDeleteAccount() async {
     final passwordController = TextEditingController();
-    final confirmed = await showDialog<bool>(
+    String? passwordError;
+    bool isDeleting = false;
+    await showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Account Deletion'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-                'To permanently delete your account, please enter your password.'),
-            const SizedBox(height: 12),
-            TextField(
-                controller: passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                    labelText: 'Password', border: OutlineInputBorder())),
-          ],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: deleteColor),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete Account',
-                style: TextStyle(color: Colors.white)),
-          ),
-        ],
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: const Text('Confirm Account Deletion'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                    'To permanently delete your account, please enter your password.'),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: passwordController,
+                  obscureText: true,
+                  onChanged: (_) {
+                    if (passwordError != null) {
+                      setDialogState(() => passwordError = null);
+                    }
+                  },
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    border: const OutlineInputBorder(),
+                    errorText: passwordError,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                  onPressed: isDeleting ? null : () => Navigator.pop(context),
+                  child: const Text('Cancel')),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: deleteColor),
+                onPressed: isDeleting
+                    ? null
+                    : () async {
+                        if (passwordController.text.trim().isEmpty) {
+                          setDialogState(() => passwordError = 'Please enter your password');
+                          return;
+                        }
+                        final nav = Navigator.of(context);
+                        setDialogState(() => isDeleting = true);
+                        try {
+                          final credential = EmailAuthProvider.credential(
+                              email: user!.email!,
+                              password: passwordController.text.trim());
+                          await user!.reauthenticateWithCredential(credential);
+                          await _firestore.collection('Users').doc(user!.uid).delete();
+                          await user!.delete();
+                          if (mounted) {
+                            nav.pop();
+                            nav.pushReplacementNamed('/login',
+                                arguments: 'accountDeleted');
+                          }
+                        } catch (e) {
+                          setDialogState(() {
+                            isDeleting = false;
+                            passwordError = 'Incorrect password. Please try again.';
+                          });
+                        }
+                      },
+                child: isDeleting
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                            color: Colors.white, strokeWidth: 2),
+                      )
+                    : const Text('Delete Account',
+                        style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          );
+        },
       ),
     );
 
-    if (confirmed == true) {
-      setState(() => _isDeleting = true);
-      try {
-        final credential = EmailAuthProvider.credential(
-            email: user!.email!, password: passwordController.text.trim());
-        await user!.reauthenticateWithCredential(credential);
-        await _firestore.collection('Users').doc(user!.uid).delete();
-        await user!.delete();
-        if (mounted) Navigator.pushReplacementNamed(context, '/login');
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text('Failed: $e')));
-        }
-      } finally {
-        if (mounted) setState(() => _isDeleting = false);
-      }
-    }
   }
 
   @override
