@@ -11,10 +11,7 @@ import '../theme/app_colors.dart';
 class MainNavigationScreen extends StatefulWidget {
   final int initialIndex;
 
-  const MainNavigationScreen({
-    super.key,
-    this.initialIndex = navIndexHome,
-  });
+  const MainNavigationScreen({super.key, this.initialIndex = navIndexHome});
 
   @override
   State<MainNavigationScreen> createState() => _MainNavigationScreenState();
@@ -29,8 +26,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     super.initState();
     _currentIndex = widget.initialIndex;
     // Map nav index (1-5) to page index (0-4)
-    _pageController =
-        PageController(initialPage: _navIndexToPageIndex(_currentIndex));
+    _pageController = PageController(
+      initialPage: _navIndexToPageIndex(_currentIndex),
+    );
   }
 
   @override
@@ -76,7 +74,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           DailyLogCalendarScreen(isInPageView: true),
           HomeScreen(isInPageView: true),
           FoodSearchScreen(isInPageView: true),
-          CameraScreen(isInPageView: true),
+          CameraScreen(
+            isInPageView: true,
+            isActive: _currentIndex == navIndexCamera,
+          ),
         ],
       ),
       bottomNavigationBar: NavBar(

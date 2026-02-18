@@ -1859,7 +1859,7 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
                   isEditing: _isEditing,
                   controller: _calController,
                   value: widget.row.calories.toStringAsFixed(0),
-                  unit: 'kcal',
+                  unit: 'Cal',
                 ),
               ),
               const SizedBox(width: 8),

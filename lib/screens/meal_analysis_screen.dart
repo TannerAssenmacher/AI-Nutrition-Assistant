@@ -18,8 +18,13 @@ import 'camera_capture_screen.dart';
 
 class CameraScreen extends ConsumerStatefulWidget {
   final bool isInPageView;
+  final bool isActive;
 
-  const CameraScreen({super.key, this.isInPageView = false});
+  const CameraScreen({
+    super.key,
+    this.isInPageView = false,
+    this.isActive = true,
+  });
 
   @override
   ConsumerState<CameraScreen> createState() => _CameraScreenState();
@@ -29,6 +34,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   bool _isAnalyzing = false;
   bool _isLookingUpBarcode = false;
   bool _isSaving = false;
+  bool _hasAutoCaptureRunForCurrentActivation = false;
   MealAnalysis? _analysisResult;
   String? _errorMessage;
   AnalysisStage? _analysisStage;
@@ -37,7 +43,32 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _captureAndAnalyze());
+    _tryAutoCaptureOnActivation();
+  }
+
+  @override
+  void didUpdateWidget(covariant CameraScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!oldWidget.isActive && widget.isActive) {
+      _hasAutoCaptureRunForCurrentActivation = false;
+      _tryAutoCaptureOnActivation();
+    } else if (oldWidget.isActive && !widget.isActive) {
+      _hasAutoCaptureRunForCurrentActivation = false;
+    }
+  }
+
+  void _tryAutoCaptureOnActivation() {
+    if (!widget.isActive || _hasAutoCaptureRunForCurrentActivation) {
+      return;
+    }
+
+    _hasAutoCaptureRunForCurrentActivation = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !widget.isActive) {
+        return;
+      }
+      _captureAndAnalyze();
+    });
   }
 
   Future<void> _captureAndAnalyze() async {
@@ -96,11 +127,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
         _analysisResult = analysis;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Meal analysis complete!'),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Meal analysis complete!')));
     } on FirebaseFunctionsException catch (e) {
       if (!mounted) return;
       final message = _buildAnalyzeMealErrorMessage(e);
@@ -109,10 +138,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: Colors.red[700],
-        ),
+        SnackBar(content: Text(message), backgroundColor: Colors.red[700]),
       );
     } catch (e) {
       if (!mounted) return;
@@ -154,8 +180,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       return;
     }
     final displayBarcode = FoodSearchService.canonicalBarcode(scannedBarcode);
-    final barcodeForMessages =
-        displayBarcode.isEmpty ? scannedBarcode : displayBarcode;
+    final barcodeForMessages = displayBarcode.isEmpty
+        ? scannedBarcode
+        : displayBarcode;
 
     setState(() {
       _isLookingUpBarcode = true;
@@ -187,16 +214,15 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       );
     } on FirebaseFunctionsException catch (e) {
       if (!mounted) return;
-      final message =
-          _buildBarcodeLookupErrorMessage(e, barcodeForMessages: barcodeForMessages);
+      final message = _buildBarcodeLookupErrorMessage(
+        e,
+        barcodeForMessages: barcodeForMessages,
+      );
       setState(() {
         _errorMessage = message;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: Colors.red[700],
-        ),
+        SnackBar(content: Text(message), backgroundColor: Colors.red[700]),
       );
     } on TimeoutException {
       if (!mounted) return;
@@ -206,10 +232,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
         _errorMessage = message;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: Colors.red[700],
-        ),
+        SnackBar(content: Text(message), backgroundColor: Colors.red[700]),
       );
     } catch (e) {
       if (!mounted) return;
@@ -218,10 +241,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
         _errorMessage = message;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: Colors.red[700],
-        ),
+        SnackBar(content: Text(message), backgroundColor: Colors.red[700]),
       );
     } finally {
       if (mounted) {
@@ -332,7 +352,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     if (analysis == null || analysis.foods.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('No analysis to add. Capture a meal first.')),
+          content: Text('No analysis to add. Capture a meal first.'),
+        ),
       );
       return;
     }
@@ -351,13 +372,15 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       if (userId == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Please sign in to save meals to your calendar.')),
+            content: Text('Please sign in to save meals to your calendar.'),
+          ),
         );
         return;
       }
 
-      final firestoreLog =
-          container.read(firestoreFoodLogProvider(userId).notifier);
+      final firestoreLog = container.read(
+        firestoreFoodLogProvider(userId).notifier,
+      );
       int added = 0;
 
       for (final food in analysis.foods) {
@@ -409,9 +432,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
           ? 'Added $added item${added == 1 ? '' : 's'} to today.'
           : 'No items added (missing weights).';
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     } finally {
       if (mounted) {
         setState(() {
@@ -501,9 +524,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
           controller: controller,
           autofocus: true,
           textInputAction: TextInputAction.done,
-          decoration: const InputDecoration(
-            labelText: 'Name',
-          ),
+          decoration: const InputDecoration(labelText: 'Name'),
           onSubmitted: (_) {
             _updateItemName(index, controller.text);
             Navigator.of(context).pop();
@@ -541,7 +562,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
           controller: controller,
           autofocus: true,
           keyboardType: const TextInputType.numberWithOptions(
-              decimal: true, signed: false),
+            decimal: true,
+            signed: false,
+          ),
           textInputAction: TextInputAction.done,
           decoration: const InputDecoration(
             labelText: 'Weight in grams',
@@ -623,8 +646,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
         _isAnalyzing
             ? 'Analyzing...'
             : _isLookingUpBarcode
-                ? 'Looking up...'
-                : 'Capture meal',
+            ? 'Looking up...'
+            : 'Capture meal',
       ),
     );
 
@@ -632,12 +655,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       return Stack(
         children: [
           bodyContent,
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 16,
-            child: Center(child: fab),
-          ),
+          Positioned(left: 0, right: 0, bottom: 16, child: Center(child: fab)),
         ],
       );
     }
@@ -697,10 +715,7 @@ class _ErrorBanner extends StatelessWidget {
           Icon(Icons.error_outline, color: Colors.red[400]),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(
-              message,
-              style: TextStyle(color: Colors.red[700]),
-            ),
+            child: Text(message, style: TextStyle(color: Colors.red[700])),
           ),
         ],
       ),
@@ -712,10 +727,7 @@ class _BarcodeMacroRow extends StatelessWidget {
   final String label;
   final String value;
 
-  const _BarcodeMacroRow({
-    required this.label,
-    required this.value,
-  });
+  const _BarcodeMacroRow({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -739,9 +751,7 @@ class _BarcodeMacroRow extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.end,
-              style: const TextStyle(
-                fontWeight: FontWeight.w700,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w700),
             ),
           ),
         ],
@@ -754,10 +764,7 @@ class _BarcodeFoodDialog extends StatefulWidget {
   final FoodSearchResult result;
   final Future<void> Function(double grams, String mealType) onAdd;
 
-  const _BarcodeFoodDialog({
-    required this.result,
-    required this.onAdd,
-  });
+  const _BarcodeFoodDialog({required this.result, required this.onAdd});
 
   @override
   State<_BarcodeFoodDialog> createState() => _BarcodeFoodDialogState();
@@ -827,9 +834,9 @@ class _BarcodeFoodDialogState extends State<_BarcodeFoodDialog> {
       Navigator.of(context).pop(true);
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_errorMessage(error))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_errorMessage(error))));
     } finally {
       if (mounted) {
         setState(() {
@@ -843,7 +850,7 @@ class _BarcodeFoodDialogState extends State<_BarcodeFoodDialog> {
   Widget build(BuildContext context) {
     final previewInput =
         double.tryParse(_gramsController.text.trim()) ??
-            widget.result.servingGrams;
+        widget.result.servingGrams;
     final gramsPreview = previewInput > 0 ? previewInput : 0;
     final previewCalories = widget.result.caloriesPerGram * gramsPreview;
     final previewProtein = widget.result.proteinPerGram * gramsPreview;
@@ -881,19 +888,14 @@ class _BarcodeFoodDialogState extends State<_BarcodeFoodDialog> {
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     initialValue: _mealType,
-                    decoration: const InputDecoration(
-                      labelText: 'Meal type',
-                    ),
+                    decoration: const InputDecoration(labelText: 'Meal type'),
                     items: const [
                       DropdownMenuItem(
                         value: 'breakfast',
                         child: Text('Breakfast'),
                       ),
                       DropdownMenuItem(value: 'lunch', child: Text('Lunch')),
-                      DropdownMenuItem(
-                        value: 'dinner',
-                        child: Text('Dinner'),
-                      ),
+                      DropdownMenuItem(value: 'dinner', child: Text('Dinner')),
                       DropdownMenuItem(value: 'snack', child: Text('Snack')),
                     ],
                     onChanged: _isSaving
@@ -947,15 +949,13 @@ class _BarcodeFoodDialogState extends State<_BarcodeFoodDialog> {
                   ),
                   _BarcodeMacroRow(
                     label: 'Fat',
-                    value: '${_formatCompactNumber(previewFat, maxDecimals: 1)} g',
+                    value:
+                        '${_formatCompactNumber(previewFat, maxDecimals: 1)} g',
                   ),
                   const SizedBox(height: 8),
                   Text(
                     widget.result.sourceLabel,
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontSize: 11,
-                    ),
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 11),
                   ),
                 ],
               ),
@@ -1054,10 +1054,7 @@ class _AnalyzingState extends StatelessWidget {
         children: [
           const CircularProgressIndicator(),
           const SizedBox(height: 12),
-          Text(
-            _label,
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
+          Text(_label, style: const TextStyle(fontWeight: FontWeight.w600)),
           if (progress != null) ...[
             const SizedBox(height: 8),
             Text(
@@ -1067,10 +1064,7 @@ class _AnalyzingState extends StatelessWidget {
             const SizedBox(height: 12),
             SizedBox(
               width: 200,
-              child: LinearProgressIndicator(
-                value: progress,
-                minHeight: 6,
-              ),
+              child: LinearProgressIndicator(value: progress, minHeight: 6),
             ),
           ],
         ],
@@ -1094,16 +1088,13 @@ class _IdleState extends StatelessWidget {
         children: [
           const Icon(Icons.camera_alt, size: 60, color: Colors.grey),
           const SizedBox(height: 10),
-          Text(
-            'No photo captured yet',
-            style: textTheme.titleMedium,
-          ),
+          Text('No photo captured yet', style: textTheme.titleMedium),
           const SizedBox(height: 8),
           OutlinedButton.icon(
             onPressed: onCapture,
             icon: const Icon(Icons.camera_alt),
             label: const Text('Capture meal'),
-          )
+          ),
         ],
       ),
     );
@@ -1278,10 +1269,7 @@ class MealAnalysisResultWidget extends StatelessWidget {
                 children: [
                   const Text(
                     'Totals',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 16),
                   Row(
@@ -1306,10 +1294,7 @@ class MealAnalysisResultWidget extends StatelessWidget {
                   const SizedBox(height: 16),
                   const Text(
                     'Macronutrient Breakdown',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 12),
                   _MacroBar(
@@ -1366,11 +1351,7 @@ class _NutrientChip extends StatelessWidget {
   final String value;
   final Color? color;
 
-  const _NutrientChip({
-    required this.label,
-    required this.value,
-    this.color,
-  });
+  const _NutrientChip({required this.label, required this.value, this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -1385,18 +1366,12 @@ class _NutrientChip extends StatelessWidget {
         children: [
           Text(
             label,
-            style: TextStyle(
-              fontSize: 11,
-              color: Colors.grey.shade700,
-            ),
+            style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
           ),
           const SizedBox(height: 2),
           Text(
             value,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
           ),
         ],
       ),
@@ -1427,10 +1402,7 @@ class _TotalCard extends StatelessWidget {
         children: [
           Text(
             label,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey.shade700,
-            ),
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
@@ -1450,10 +1422,7 @@ class _TotalCard extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 3),
                 child: Text(
                   unit,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey.shade600,
-                  ),
+                  style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
                 ),
               ),
             ],
@@ -1487,17 +1456,11 @@ class _MacroBar extends StatelessWidget {
           children: [
             Text(
               label,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
             ),
             Text(
               '${grams.toStringAsFixed(1)}g (${percentage.toStringAsFixed(1)}%)',
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
             ),
           ],
         ),
