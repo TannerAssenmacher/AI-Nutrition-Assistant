@@ -363,7 +363,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         _sex ?? "Not Set", 
                         onTap: () => _showPicker(
                           "Sex", 
-                          ['Male', 'Female', 'Other', 'Prefer Not to Say'], 
+                          ['Male', 'Female'], 
                           _sex, 
                           (v) => setState(() => _sex = v)
                         ),

@@ -74,7 +74,7 @@ class _RegisterPageState extends State<RegisterPage> {
   double _fats = 30.0;
 
   // Dropdown options
-  final _sexOptions = ['Male', 'Female', 'Other', 'Prefer not to say'];
+  final _sexOptions = ['Male', 'Female'];
   final _activityLevels = [
     'Sedentary',
     'Lightly Active',
