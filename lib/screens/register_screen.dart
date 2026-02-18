@@ -27,8 +27,8 @@ class _RegisterPageState extends State<RegisterPage> {
   int _currentPage = 0;
 
   //default values
-  int? _heightFeet = 5;    
-  int? _heightInches = 6;  
+  int? _heightFeet = 5;
+  int? _heightInches = 6;
 
   // Controllers
   final _emailController = TextEditingController();
@@ -79,7 +79,7 @@ class _RegisterPageState extends State<RegisterPage> {
     'Sedentary',
     'Lightly Active',
     'Moderately Active',
-    'Very Active'
+    'Very Active',
   ];
   final _dietGoals = ['Lose Weight', 'Maintain Weight', 'Gain Muscle'];
   final _dietaryHabitOptions = [
@@ -88,7 +88,7 @@ class _RegisterPageState extends State<RegisterPage> {
     'high-protein',
     'low-carb',
     'low-fat',
-    'low-sodium'
+    'low-sodium',
   ];
   final _healthOptions = [
     'vegan',
@@ -102,7 +102,7 @@ class _RegisterPageState extends State<RegisterPage> {
     'paleo',
     'primal',
     'low FODMAP',
-    'Whole30'
+    'Whole30',
   ];
 
   @override
@@ -223,13 +223,17 @@ class _RegisterPageState extends State<RegisterPage> {
 
   // Check if user entered valid date of birth
   bool _isValidDate(String input) {
-    final regex =
-        RegExp(r'^(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/(19|20)\d{2}$');
+    final regex = RegExp(
+      r'^(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/(19|20)\d{2}$',
+    );
     if (!regex.hasMatch(input)) return false;
     try {
       final parts = input.split('/');
       final date = DateTime(
-          int.parse(parts[2]), int.parse(parts[0]), int.parse(parts[1]));
+        int.parse(parts[2]),
+        int.parse(parts[0]),
+        int.parse(parts[1]),
+      );
       return date.isBefore(DateTime.now());
     } catch (_) {
       return false;
@@ -248,7 +252,9 @@ class _RegisterPageState extends State<RegisterPage> {
     if (!validLocal) return;
 
     _pageController.nextPage(
-        duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
     setState(() => _currentPage = 1);
   }
 
@@ -262,11 +268,11 @@ class _RegisterPageState extends State<RegisterPage> {
 
     try {
       // Create user in Firebase Auth
-      final authResult =
-          await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
+      final authResult = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(
+            email: _emailController.text.trim(),
+            password: _passwordController.text.trim(),
+          );
       final userAuth = authResult.user;
       if (userAuth == null)
         throw Exception('User creation failed — no user returned.');
@@ -277,7 +283,10 @@ class _RegisterPageState extends State<RegisterPage> {
       if (_dobController.text.trim().isNotEmpty) {
         final parts = _dobController.text.split('/');
         dob = DateTime(
-            int.parse(parts[2]), int.parse(parts[0]), int.parse(parts[1]));
+          int.parse(parts[2]),
+          int.parse(parts[0]),
+          int.parse(parts[1]),
+        );
       }
 
       // Build MealProfile + Preferences objects
@@ -305,7 +314,7 @@ class _RegisterPageState extends State<RegisterPage> {
       final now = DateTime.now();
       // Convert numeric fields safely — null if blank
       double? heightCm;
-      
+
       if (_heightFeet != null && _heightInches != null) {
         heightCm = (_heightFeet! * 12 + _heightInches!) * 2.54;
       }
@@ -357,12 +366,16 @@ class _RegisterPageState extends State<RegisterPage> {
       // Send verification email
       await userAuth.sendEmailVerification();
 
+      // Fully sign out after registration so user must log in explicitly
+      await FirebaseAuth.instance.signOut();
+
       // Done
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content:
-                Text('Account created! Check your email for verification.'),
+            content: Text(
+              'Account created! Check your email for verification.',
+            ),
             duration: Duration(seconds: 5),
           ),
         );
@@ -376,8 +389,9 @@ class _RegisterPageState extends State<RegisterPage> {
       } else if (e.code == 'weak-password') {
         setState(() => _passwordError = 'Password is too weak.');
       } else {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Auth error: ${e.message}')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Auth error: ${e.message}')));
       }
 
       // Rollback Firestore if Auth user created but Firestore write fails later
@@ -387,8 +401,9 @@ class _RegisterPageState extends State<RegisterPage> {
       }
     } catch (e) {
       debugPrint('Registration general error: $e');
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
 
       // Rollback Auth user if Firestore write failed
       final currentUser = FirebaseAuth.instance.currentUser;
@@ -412,15 +427,13 @@ class _RegisterPageState extends State<RegisterPage> {
       body: SafeArea(
         child: Form(
           key: _formKey,
-          autovalidateMode:
-              _submitted ? AutovalidateMode.always : AutovalidateMode.disabled,
+          autovalidateMode: _submitted
+              ? AutovalidateMode.always
+              : AutovalidateMode.disabled,
           child: PageView(
             controller: _pageController,
             physics: const NeverScrollableScrollPhysics(),
-            children: [
-              _buildPage1(),
-              _buildPage2(),
-            ],
+            children: [_buildPage1(), _buildPage2()],
           ),
         ),
       ),
@@ -431,8 +444,9 @@ class _RegisterPageState extends State<RegisterPage> {
   Widget _buildPage1() {
     final mediaQuery = MediaQuery.of(context);
     final screenHeight = mediaQuery.size.height;
-    final cardHorizontalPadding =
-        (mediaQuery.size.width * 0.1).clamp(20.0, 36.0).toDouble();
+    final cardHorizontalPadding = (mediaQuery.size.width * 0.1)
+        .clamp(20.0, 36.0)
+        .toDouble();
     final linkFontSize = (screenHeight * 0.022).clamp(16.0, 22.0).toDouble();
     final logoHeight = (screenHeight * 0.15).clamp(90.0, 140.0).toDouble();
 
@@ -442,19 +456,12 @@ class _RegisterPageState extends State<RegisterPage> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           const top_bar(),
-          SizedBox(
-            height: (screenHeight * 0.03).clamp(16.0, 28.0).toDouble(),
-          ),
+          SizedBox(height: (screenHeight * 0.03).clamp(16.0, 28.0).toDouble()),
           SizedBox(
             height: logoHeight,
-            child: Image.asset(
-              'lib/icons/WISERBITES.png',
-              fit: BoxFit.contain,
-            ),
+            child: Image.asset('lib/icons/WISERBITES.png', fit: BoxFit.contain),
           ),
-          SizedBox(
-            height: (screenHeight * 0.025).clamp(14.0, 24.0).toDouble(),
-          ),
+          SizedBox(height: (screenHeight * 0.025).clamp(14.0, 24.0).toDouble()),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Container(
@@ -507,10 +514,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                     child: const Text(
                       'Next',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                      ),
+                      style: TextStyle(color: Colors.white, fontSize: 18),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -540,8 +544,9 @@ class _RegisterPageState extends State<RegisterPage> {
   Widget _buildPage2() {
     final mediaQuery = MediaQuery.of(context);
     final screenHeight = mediaQuery.size.height;
-    final cardHorizontalPadding =
-        (mediaQuery.size.width * 0.1).clamp(20.0, 36.0).toDouble();
+    final cardHorizontalPadding = (mediaQuery.size.width * 0.1)
+        .clamp(20.0, 36.0)
+        .toDouble();
     final logoHeight = (screenHeight * 0.15).clamp(90.0, 140.0).toDouble();
 
     // Use the primary scroll controller to avoid Scrollbar having no attached position
@@ -597,18 +602,32 @@ class _RegisterPageState extends State<RegisterPage> {
                     _dobFieldOptional(), // DOB is NOT required
                     _dropdownField('Sex', _sexOptions, (v) => _sex = v),
                     _heightPicker(),
-                    _textFieldOptional(_weightController, 'Weight',
-                        keyboardType: TextInputType.number, suffixText: "lbs"),
-                    _dropdownField('Activity Level', _activityLevels,
-                        (v) => _activityLevel = v),
-                    _dropdownField(
-                        'Dietary Goal', _dietGoals, (v) => _dietaryGoal = v),
                     _textFieldOptional(
-                        _dailyCaloriesController, 'Daily Calorie Goal',
-                        keyboardType: TextInputType.number),
+                      _weightController,
+                      'Weight',
+                      keyboardType: TextInputType.number,
+                      suffixText: "lbs",
+                    ),
+                    _dropdownField(
+                      'Activity Level',
+                      _activityLevels,
+                      (v) => _activityLevel = v,
+                    ),
+                    _dropdownField(
+                      'Dietary Goal',
+                      _dietGoals,
+                      (v) => _dietaryGoal = v,
+                    ),
+                    _textFieldOptional(
+                      _dailyCaloriesController,
+                      'Daily Calorie Goal',
+                      keyboardType: TextInputType.number,
+                    ),
                     const SizedBox(height: 20),
-                    const Text('Macronutrient Goals (% of calories)',
-                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text(
+                      'Macronutrient Goals (% of calories)',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     const SizedBox(height: 10),
                     MacroSlider(
                       protein: _protein,
@@ -622,15 +641,25 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                     const SizedBox(height: 25),
                     _centeredMultiSelectField(
-                        'Dietary Habits', _dietaryHabitOptions, _dietaryHabits),
+                      'Dietary Habits',
+                      _dietaryHabitOptions,
+                      _dietaryHabits,
+                    ),
                     const SizedBox(height: 24),
                     _centeredMultiSelectField(
-                        'Health Restrictions', _healthOptions, _health),
+                      'Health Restrictions',
+                      _healthOptions,
+                      _health,
+                    ),
                     const SizedBox(height: 24),
                     _textFieldOptional(
-                        _likesController, 'Food Likes (comma-separated)'),
+                      _likesController,
+                      'Food Likes (comma-separated)',
+                    ),
                     _textFieldOptional(
-                        _dislikesController, 'Food Dislikes (comma-separated)'),
+                      _dislikesController,
+                      'Food Dislikes (comma-separated)',
+                    ),
                     const SizedBox(height: 30),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -638,8 +667,9 @@ class _RegisterPageState extends State<RegisterPage> {
                         TextButton(
                           onPressed: () {
                             _pageController.previousPage(
-                                duration: const Duration(milliseconds: 300),
-                                curve: Curves.easeInOut);
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeInOut,
+                            );
                             setState(() => _currentPage = 0);
                           },
                           child: const Text('Back'),
@@ -654,11 +684,17 @@ class _RegisterPageState extends State<RegisterPage> {
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 24, vertical: 12),
+                                    horizontal: 24,
+                                    vertical: 12,
+                                  ),
                                 ),
-                                child: const Text('Create Account',
-                                    style: TextStyle(
-                                        color: Colors.white, fontSize: 18)),
+                                child: const Text(
+                                  'Create Account',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                  ),
+                                ),
                               ),
                       ],
                     ),
@@ -702,8 +738,10 @@ class _RegisterPageState extends State<RegisterPage> {
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none,
           ),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 10,
+            vertical: 10,
+          ),
           errorText: showRequired ? 'This field is required' : null,
         ),
         validator: (val) {
@@ -739,8 +777,10 @@ class _RegisterPageState extends State<RegisterPage> {
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none,
           ),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 10,
+            vertical: 10,
+          ),
           errorText:
               _emailError ?? (showRequired ? 'This field is required' : null),
         ),
@@ -797,8 +837,10 @@ class _RegisterPageState extends State<RegisterPage> {
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none,
           ),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 10,
+            vertical: 10,
+          ),
           errorText: effectiveError,
         ),
         validator: (val) {
@@ -832,13 +874,14 @@ class _RegisterPageState extends State<RegisterPage> {
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none,
           ),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 10,
+            vertical: 10,
+          ),
         ),
       ),
     );
   }
-
 
   Widget _heightPicker() {
     return Padding(
@@ -858,8 +901,8 @@ class _RegisterPageState extends State<RegisterPage> {
               child: Text(
                 'Height',
                 style: TextStyle(
-                  color: Colors.grey[800], 
-                  fontSize: 16,       
+                  color: Colors.grey[800],
+                  fontSize: 16,
                   fontWeight: FontWeight.normal,
                 ),
               ),
@@ -870,8 +913,9 @@ class _RegisterPageState extends State<RegisterPage> {
                 children: [
                   Expanded(
                     child: CupertinoPicker(
-                      scrollController:
-                          FixedExtentScrollController(initialItem: _heightFeet ?? 0),
+                      scrollController: FixedExtentScrollController(
+                        initialItem: _heightFeet ?? 0,
+                      ),
                       itemExtent: 32,
                       looping: true,
                       onSelectedItemChanged: (val) {
@@ -879,14 +923,17 @@ class _RegisterPageState extends State<RegisterPage> {
                           _heightFeet = val;
                         });
                       },
-                      children:
-                          List.generate(11, (i) => Center(child: Text('$i ft'))),
+                      children: List.generate(
+                        11,
+                        (i) => Center(child: Text('$i ft')),
+                      ),
                     ),
                   ),
                   Expanded(
                     child: CupertinoPicker(
                       scrollController: FixedExtentScrollController(
-                          initialItem: _heightInches ?? 0),
+                        initialItem: _heightInches ?? 0,
+                      ),
                       itemExtent: 32,
                       looping: true,
                       onSelectedItemChanged: (val) {
@@ -894,8 +941,10 @@ class _RegisterPageState extends State<RegisterPage> {
                           _heightInches = val;
                         });
                       },
-                      children:
-                          List.generate(12, (i) => Center(child: Text('$i in'))),
+                      children: List.generate(
+                        12,
+                        (i) => Center(child: Text('$i in')),
+                      ),
                     ),
                   ),
                 ],
@@ -923,8 +972,10 @@ class _RegisterPageState extends State<RegisterPage> {
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none,
           ),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 10,
+            vertical: 10,
+          ),
         ),
         onChanged: onChanged,
         items: options
@@ -944,9 +995,10 @@ class _RegisterPageState extends State<RegisterPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(label,
-              style:
-                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          ),
           const SizedBox(height: 6),
           Wrap(
             alignment: WrapAlignment.center,
@@ -992,8 +1044,10 @@ class _RegisterPageState extends State<RegisterPage> {
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none,
           ),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 10,
+            vertical: 10,
+          ),
           suffixIcon: IconButton(
             icon: const Icon(Icons.calendar_today),
             onPressed: () async {
@@ -1027,7 +1081,9 @@ class _RegisterPageState extends State<RegisterPage> {
 class _DOBFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(
-      TextEditingValue oldValue, TextEditingValue newValue) {
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
     String digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
     if (digits.length > 8) digits = digits.substring(0, 8);
     final buffer = StringBuffer();

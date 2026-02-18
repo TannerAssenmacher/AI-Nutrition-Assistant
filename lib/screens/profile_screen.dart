@@ -1,10 +1,9 @@
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
-import 'dart:ui'; 
+import 'dart:ui';
 import '../widgets/macro_slider.dart';
 import '../theme/app_colors.dart';
 import 'package:nutrition_assistant/navigation/nav_helper.dart';
@@ -37,7 +36,7 @@ class _ProfilePageState extends State<ProfilePage> {
   final _likesController = TextEditingController();
   final _dislikesController = TextEditingController();
 
-  double? _heightCm; 
+  double? _heightCm;
 
   List<String> _likesList = [];
   List<String> _dislikesList = [];
@@ -56,10 +55,35 @@ class _ProfilePageState extends State<ProfilePage> {
   double _carbs = 0;
   double _fats = 0;
 
-  final _activityLevels = ['Sedentary', 'Lightly Active', 'Moderately Active', 'Very Active'];
+  final _activityLevels = [
+    'Sedentary',
+    'Lightly Active',
+    'Moderately Active',
+    'Very Active',
+  ];
   final _dietGoals = ['Lose Weight', 'Maintain Weight', 'Gain Muscle'];
-  final _dietaryHabitOptions = ['balanced', 'high-protein', 'high-fiber', 'low-carb', 'low-fat', 'low-sodium'];
-  final _healthOptions = ['vegan', 'vegetarian', 'gluten free', 'dairy free', 'ketogenic', 'lacto-vegetarian', 'ovo-vegetarian', 'pescetarian', 'paleo', 'primal', 'low FODMAP', 'Whole30'];
+  final _dietaryHabitOptions = [
+    'balanced',
+    'high-protein',
+    'high-fiber',
+    'low-carb',
+    'low-fat',
+    'low-sodium',
+  ];
+  final _healthOptions = [
+    'vegan',
+    'vegetarian',
+    'gluten free',
+    'dairy free',
+    'ketogenic',
+    'lacto-vegetarian',
+    'ovo-vegetarian',
+    'pescetarian',
+    'paleo',
+    'primal',
+    'low FODMAP',
+    'Whole30',
+  ];
 
   @override
   void initState() {
@@ -68,6 +92,30 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _logout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sign Out'),
+        content: const Text('Are you sure you want to sign out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: brandColor),
+            child: const Text(
+              'Sign Out',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
     try {
       await FirebaseAuth.instance.signOut();
       if (mounted) Navigator.pushReplacementNamed(context, '/login');
@@ -78,31 +126,153 @@ class _ProfilePageState extends State<ProfilePage> {
 
   int _calculateDailyCalories() {
     final weight = double.tryParse(_weightController.text);
-    if (_heightCm == null || weight == null || _sex == null || _activityLevel == null || _dob == null || _dob!.isEmpty) return 0;
+    if (_heightCm == null ||
+        weight == null ||
+        _sex == null ||
+        _activityLevel == null ||
+        _dob == null ||
+        _dob!.isEmpty)
+      return 0;
 
     try {
-      final height = _heightCm!; 
+      final height = _heightCm!;
       final weightKg = weight / 2.205;
       final dobDate = DateTime.parse(_dob!);
       final now = DateTime.now();
       int age = now.year - dobDate.year;
-      if (now.month < dobDate.month || (now.month == dobDate.month && now.day < dobDate.day)) age--;
+      if (now.month < dobDate.month ||
+          (now.month == dobDate.month && now.day < dobDate.day))
+        age--;
 
       double bmr = (_sex == 'Male')
           ? (10 * weightKg) + (6.25 * height) - (5 * age) + 5
           : (10 * weightKg) + (6.25 * height) - (5 * age) - 161;
 
-      final multipliers = {'Sedentary': 1.2, 'Lightly Active': 1.375, 'Moderately Active': 1.55, 'Very Active': 1.725};
+      final multipliers = {
+        'Sedentary': 1.2,
+        'Lightly Active': 1.375,
+        'Moderately Active': 1.55,
+        'Very Active': 1.725,
+      };
       return (bmr * (multipliers[_activityLevel] ?? 1.55)).round();
     } catch (e) {
       return 0;
     }
   }
 
+  Map<String, double> _recommendedMacroGoals() {
+    double protein = 30;
+    double carbs = 40;
+    double fats = 30;
+
+    switch (_activityLevel) {
+      case 'Sedentary':
+        protein += 2;
+        carbs -= 5;
+        fats += 3;
+        break;
+      case 'Lightly Active':
+        break;
+      case 'Moderately Active':
+        protein += 2;
+        carbs += 5;
+        fats -= 7;
+        break;
+      case 'Very Active':
+        protein += 5;
+        carbs += 10;
+        fats -= 15;
+        break;
+    }
+
+    switch (_dietaryGoal) {
+      case 'Lose Weight':
+        protein += 10;
+        carbs -= 7;
+        fats -= 3;
+        break;
+      case 'Maintain Weight':
+        break;
+      case 'Gain Muscle':
+        protein += 8;
+        carbs += 8;
+        fats -= 16;
+        break;
+    }
+
+    for (final habit in _dietaryHabits) {
+      switch (habit) {
+        case 'high-protein':
+          protein += 12;
+          carbs -= 8;
+          fats -= 4;
+          break;
+        case 'high-fiber':
+          protein += 2;
+          carbs += 4;
+          fats -= 6;
+          break;
+        case 'low-carb':
+          protein += 8;
+          carbs -= 18;
+          fats += 10;
+          break;
+        case 'low-fat':
+          protein += 5;
+          carbs += 6;
+          fats -= 11;
+          break;
+        case 'balanced':
+          protein += 2;
+          carbs += 2;
+          fats += 2;
+          break;
+        case 'low-sodium':
+          break;
+      }
+    }
+
+    protein = protein.clamp(15, 55).toDouble();
+    carbs = carbs.clamp(15, 65).toDouble();
+    fats = fats.clamp(15, 45).toDouble();
+
+    final total = protein + carbs + fats;
+    if (total <= 0) {
+      return {'protein': 30, 'carbs': 40, 'fat': 30};
+    }
+
+    protein = (protein / total) * 100;
+    carbs = (carbs / total) * 100;
+    fats = 100 - protein - carbs;
+
+    return {'protein': protein, 'carbs': carbs, 'fat': fats};
+  }
+
+  void _applyRecommendedMacroGoals() {
+    final suggested = _recommendedMacroGoals();
+    setState(() {
+      _protein = suggested['protein']!;
+      _carbs = suggested['carbs']!;
+      _fats = suggested['fat']!;
+    });
+
+    if (_activityLevel == null || _dietaryGoal == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Suggestions are more accurate after selecting Activity Level and Dietary Goal.',
+          ),
+        ),
+      );
+    }
+  }
+
   String _getInitials() {
     String initials = "";
-    if (_firstname != null && _firstname!.isNotEmpty) initials += _firstname![0].toUpperCase();
-    if (_lastname != null && _lastname!.isNotEmpty) initials += _lastname![0].toUpperCase();
+    if (_firstname != null && _firstname!.isNotEmpty)
+      initials += _firstname![0].toUpperCase();
+    if (_lastname != null && _lastname!.isNotEmpty)
+      initials += _lastname![0].toUpperCase();
     return initials.isEmpty ? "?" : initials;
   }
 
@@ -124,21 +294,26 @@ class _ProfilePageState extends State<ProfilePage> {
           _dob = '';
           _canEditDob = true;
         }
-        _sex= data['sex'];
-        _heightCm = (data['height'] as num?)?.toDouble(); 
-       
+        _sex = data['sex'];
+        _heightCm = (data['height'] as num?)?.toDouble();
+
         final w = data['weight'];
         if (w != null) {
           final num weight = w;
-          _weightController.text = weight % 1 == 0 ? weight.toInt().toString() : weight.toString();
+          _weightController.text = weight % 1 == 0
+              ? weight.toInt().toString()
+              : weight.toString();
         }
 
         _activityLevel = data['activityLevel'];
         final mealProfile = data['mealProfile'] ?? {};
         _dietaryGoal = mealProfile['dietaryGoal'];
-        _dailyCaloriesController.text = mealProfile['dailyCalorieGoal']?.toString() ?? '';
+        _dailyCaloriesController.text =
+            mealProfile['dailyCalorieGoal']?.toString() ?? '';
 
-        final macroGoals = Map<String, dynamic>.from(mealProfile['macroGoals'] ?? {});
+        final macroGoals = Map<String, dynamic>.from(
+          mealProfile['macroGoals'] ?? {},
+        );
         _protein = macroGoals['protein']?.toDouble() ?? 0;
         _carbs = macroGoals['carbs']?.toDouble() ?? 0;
         _fats = (macroGoals['fat'] ?? macroGoals['fats'] ?? 0).toDouble();
@@ -146,7 +321,9 @@ class _ProfilePageState extends State<ProfilePage> {
         _dietaryHabits = List<String>.from(mealProfile['dietaryHabits'] ?? []);
         _health = List<String>.from(mealProfile['healthRestrictions'] ?? []);
 
-        final prefs = Map<String, dynamic>.from(mealProfile['preferences'] ?? {});
+        final prefs = Map<String, dynamic>.from(
+          mealProfile['preferences'] ?? {},
+        );
         _likesList = List<String>.from(prefs['likes'] ?? []);
         _dislikesList = List<String>.from(prefs['dislikes'] ?? []);
       });
@@ -166,7 +343,11 @@ class _ProfilePageState extends State<ProfilePage> {
         'activityLevel': _activityLevel,
         'dob': (_dob != null && _dob!.isNotEmpty) ? _dob : null,
         'mealProfile.dietaryGoal': _dietaryGoal,
-        'mealProfile.macroGoals': {'protein': _protein, 'carbs': _carbs, 'fat': _fats},
+        'mealProfile.macroGoals': {
+          'protein': _protein,
+          'carbs': _carbs,
+          'fat': _fats,
+        },
         'mealProfile.dietaryHabits': _dietaryHabits,
         'mealProfile.healthRestrictions': _health,
         'mealProfile.preferences.likes': _likesList,
@@ -175,16 +356,25 @@ class _ProfilePageState extends State<ProfilePage> {
       };
 
       if (_heightCm != null) updateData['height'] = _heightCm;
-      if (_weightController.text.isNotEmpty) updateData['weight'] = double.tryParse(_weightController.text);
+      if (_weightController.text.isNotEmpty)
+        updateData['weight'] = double.tryParse(_weightController.text);
       if (_dailyCaloriesController.text.isNotEmpty) {
-        updateData['mealProfile.dailyCalorieGoal'] = int.tryParse(_dailyCaloriesController.text);
+        updateData['mealProfile.dailyCalorieGoal'] = int.tryParse(
+          _dailyCaloriesController.text,
+        );
       }
 
       await _firestore.collection('Users').doc(user!.uid).update(updateData);
       if (_dob != null && _dob!.isNotEmpty) setState(() => _canEditDob = false);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile updated successfully!')));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile updated successfully!')),
+        );
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -199,14 +389,33 @@ class _ProfilePageState extends State<ProfilePage> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('To permanently delete your account, please enter your password.'),
+            const Text(
+              'To permanently delete your account, please enter your password.',
+            ),
             const SizedBox(height: 12),
-            TextField(controller: passwordController, obscureText: true, decoration: const InputDecoration(labelText: 'Password', border: OutlineInputBorder())),
+            TextField(
+              controller: passwordController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Password',
+                border: OutlineInputBorder(),
+              ),
+            ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: deleteColor), onPressed: () => Navigator.pop(context, true), child: const Text('Delete Account', style: TextStyle(color: Colors.white))),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: deleteColor),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              'Delete Account',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
         ],
       ),
     );
@@ -214,13 +423,19 @@ class _ProfilePageState extends State<ProfilePage> {
     if (confirmed == true) {
       setState(() => _isDeleting = true);
       try {
-        final credential = EmailAuthProvider.credential(email: user!.email!, password: passwordController.text.trim());
+        final credential = EmailAuthProvider.credential(
+          email: user!.email!,
+          password: passwordController.text.trim(),
+        );
         await user!.reauthenticateWithCredential(credential);
         await _firestore.collection('Users').doc(user!.uid).delete();
         await user!.delete();
         if (mounted) Navigator.pushReplacementNamed(context, '/login');
       } catch (e) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+        if (mounted)
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Failed: $e')));
       } finally {
         if (mounted) setState(() => _isDeleting = false);
       }
@@ -233,29 +448,81 @@ class _ProfilePageState extends State<ProfilePage> {
 
     showCupertinoModalPopup(
       context: context,
-      filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5), 
+      filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
       builder: (context) => GestureDetector(
-        onTap: () => Navigator.pop(context), 
+        onTap: () => Navigator.pop(context),
         child: Material(
           color: Colors.transparent,
           child: Center(
             child: GestureDetector(
-              onTap: () {}, 
+              onTap: () {},
               child: Container(
                 width: MediaQuery.of(context).size.width * 0.75,
                 height: 260,
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(25)),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(25),
+                ),
                 child: Column(
                   children: [
                     const SizedBox(height: 15),
-                    const Text("Height", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                    Expanded(
-                      child: Row(children: [
-                          Expanded(child: CupertinoPicker(scrollController: FixedExtentScrollController(initialItem: currentFt - 1), itemExtent: 40, looping: true, onSelectedItemChanged: (index) { currentFt = index + 1; _updateHeight(currentFt, currentIn); }, children: List.generate(8, (i) => Center(child: Text('${i + 1} ft'))))),
-                          Expanded(child: CupertinoPicker(scrollController: FixedExtentScrollController(initialItem: currentIn), itemExtent: 40,looping: true,  onSelectedItemChanged: (index) { currentIn = index; _updateHeight(currentFt, currentIn); }, children: List.generate(12, (i) => Center(child: Text('$i in'))))),
-                        ]),
+                    const Text(
+                      "Height",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
                     ),
-                    CupertinoButton(onPressed: () => Navigator.pop(context), child: Text("Done", style: TextStyle(color: brandColor, fontWeight: FontWeight.bold))),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: CupertinoPicker(
+                              scrollController: FixedExtentScrollController(
+                                initialItem: currentFt - 1,
+                              ),
+                              itemExtent: 40,
+                              looping: true,
+                              onSelectedItemChanged: (index) {
+                                currentFt = index + 1;
+                                _updateHeight(currentFt, currentIn);
+                              },
+                              children: List.generate(
+                                8,
+                                (i) => Center(child: Text('${i + 1} ft')),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: CupertinoPicker(
+                              scrollController: FixedExtentScrollController(
+                                initialItem: currentIn,
+                              ),
+                              itemExtent: 40,
+                              looping: true,
+                              onSelectedItemChanged: (index) {
+                                currentIn = index;
+                                _updateHeight(currentFt, currentIn);
+                              },
+                              children: List.generate(
+                                12,
+                                (i) => Center(child: Text('$i in')),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    CupertinoButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(
+                        "Done",
+                        style: TextStyle(
+                          color: brandColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 10),
                   ],
                 ),
@@ -275,8 +542,13 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) return Scaffold(backgroundColor: bgColor, body: const Center(child: CircularProgressIndicator()));
+    if (_isLoading)
+      return Scaffold(
+        backgroundColor: bgColor,
+        body: const Center(child: CircularProgressIndicator()),
+      );
     final estimatedCals = _calculateDailyCalories();
+    final suggestedMacros = _recommendedMacroGoals();
 
     String ftText = "5";
     String inText = "7";
@@ -291,8 +563,23 @@ class _ProfilePageState extends State<ProfilePage> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: widget.isInPageView ? null : IconButton(icon: const Icon(Icons.arrow_back, color: Colors.black, size: 28), onPressed: () => Navigator.pop(context)),
-        actions: [IconButton(icon: const Icon(Icons.logout, color: Colors.black54), onPressed: _logout), const SizedBox(width: 8)],
+        leading: widget.isInPageView
+            ? null
+            : IconButton(
+                icon: const Icon(
+                  Icons.arrow_back,
+                  color: Colors.black,
+                  size: 28,
+                ),
+                onPressed: () => Navigator.pop(context),
+              ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.black54),
+            onPressed: _logout,
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -304,12 +591,29 @@ class _ProfilePageState extends State<ProfilePage> {
               key: _formKey,
               child: Column(
                 children: [
-                  CircleAvatar(radius: 50, backgroundColor: brandColor, child: Text(_getInitials(), style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white))),
+                  CircleAvatar(
+                    radius: 50,
+                    backgroundColor: brandColor,
+                    child: Text(
+                      _getInitials(),
+                      style: const TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 12),
-                  Text('$_firstname $_lastname', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  Text(
+                    '$_firstname $_lastname',
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   const SizedBox(height: 25),
-                  
-                 Row(
+
+                  Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
@@ -320,76 +624,137 @@ class _ProfilePageState extends State<ProfilePage> {
                             child: Padding(
                               padding: const EdgeInsets.symmetric(vertical: 4),
                               child: Text(
-                                _heightCm != null 
-                                  ? "${(_heightCm! / 2.54 ~/ 12)}'${(_heightCm! / 2.54).round() % 12}\"" 
-                                  : "5'7\"",
-                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+                                _heightCm != null
+                                    ? "${(_heightCm! / 2.54 ~/ 12)}'${(_heightCm! / 2.54).round() % 12}\""
+                                    : "5'7\"",
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
+                                ),
                               ),
                             ),
                           ),
                         ),
                       ),
                       const SizedBox(width: 10),
-            
-                      Expanded(
-                        child: _buildStatBox("Weight", controller: _weightController, suffixText: "lbs"),
-                      ),
-                      const SizedBox(width: 10),
-                 
+
                       Expanded(
                         child: _buildStatBox(
-                          "Daily Cal", 
-                          controller: _dailyCaloriesController, 
-                          isPrimary: true, 
-                          helperText: estimatedCals > 0 ? "$estimatedCals" : null
+                          "Weight",
+                          controller: _weightController,
+                          suffixText: "lbs",
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+
+                      Expanded(
+                        child: _buildStatBox(
+                          "Daily Cal",
+                          controller: _dailyCaloriesController,
+                          isPrimary: true,
+                          helperText: estimatedCals > 0
+                              ? "$estimatedCals"
+                              : null,
                         ),
                       ),
                     ],
                   ),
-                  
+
                   const SizedBox(height: 30),
                   _sectionHeader("User"),
                   _buildCard([
                     _buildListTile(Icons.email_outlined, "Email", _email ?? ""),
-                    _buildListTile(Icons.calendar_today, "DOB", (_dob == null || _dob!.isEmpty) ? "Not set" : _dob!,
-                        onTap: _canEditDob ? () async {
-                                DateTime? pickedDate = await showDatePicker(context: context, initialDate: DateTime(2000), firstDate: DateTime(1920), lastDate: DateTime.now(), builder: (context, child) => Theme(data: Theme.of(context).copyWith(colorScheme: ColorScheme.light(primary: brandColor)), child: child!),
+                    _buildListTile(
+                      Icons.calendar_today,
+                      "DOB",
+                      (_dob == null || _dob!.isEmpty) ? "Not set" : _dob!,
+                      onTap: _canEditDob
+                          ? () async {
+                              DateTime? pickedDate = await showDatePicker(
+                                context: context,
+                                initialDate: DateTime(2000),
+                                firstDate: DateTime(1920),
+                                lastDate: DateTime.now(),
+                                builder: (context, child) => Theme(
+                                  data: Theme.of(context).copyWith(
+                                    colorScheme: ColorScheme.light(
+                                      primary: brandColor,
+                                    ),
+                                  ),
+                                  child: child!,
+                                ),
+                              );
+                              if (pickedDate != null)
+                                setState(
+                                  () => _dob = pickedDate.toString().split(
+                                    ' ',
+                                  )[0],
                                 );
-                                if (pickedDate != null) setState(() => _dob = pickedDate.toString().split(' ')[0]);
-                              } : null),
-                      _buildListTile(
-                        Icons.wc, 
-                        "Sex", 
-                        _sex ?? "Not Set", 
-                        onTap: () => _showPicker(
-                          "Sex", 
-                          ['Male', 'Female'], 
-                          _sex, 
-                          (v) => setState(() => _sex = v)
-                        ),
-                      ),     
-                    _buildListTile(Icons.bolt, "Activity Level", _activityLevel ?? "Select", onTap: () => _showPicker("Activity", _activityLevels, _activityLevel, (v) => setState(() => _activityLevel = v))),
-                    _buildListTile(Icons.track_changes, "Dietary Goal", _dietaryGoal ?? "Select", onTap: () => _showPicker("Diet Goal", _dietGoals, _dietaryGoal, (v) => setState(() => _dietaryGoal = v))),
+                            }
+                          : null,
+                    ),
+                    _buildListTile(
+                      Icons.wc,
+                      "Sex",
+                      _sex ?? "Not Set",
+                      onTap: () => _showPicker(
+                        "Sex",
+                        ['Male', 'Female'],
+                        _sex,
+                        (v) => setState(() => _sex = v),
+                      ),
+                    ),
+                    _buildListTile(
+                      Icons.bolt,
+                      "Activity Level",
+                      _activityLevel ?? "Select",
+                      onTap: () => _showPicker(
+                        "Activity",
+                        _activityLevels,
+                        _activityLevel,
+                        (v) => setState(() => _activityLevel = v),
+                      ),
+                    ),
+                    _buildListTile(
+                      Icons.track_changes,
+                      "Dietary Goal",
+                      _dietaryGoal ?? "Select",
+                      onTap: () => _showPicker(
+                        "Diet Goal",
+                        _dietGoals,
+                        _dietaryGoal,
+                        (v) => setState(() => _dietaryGoal = v),
+                      ),
+                    ),
                   ]),
                   const SizedBox(height: 25),
                   _sectionHeader("Meal Profile"),
                   _buildCard([
                     Padding(
-                      padding: const EdgeInsets.only(top: 20.0, left: 16.0, right: 16.0, bottom: 8.0),
+                      padding: const EdgeInsets.only(
+                        top: 20.0,
+                        left: 16.0,
+                        right: 16.0,
+                        bottom: 8.0,
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            "Macronutrients Goal", 
+                            "Macronutrients Goal",
                             style: const TextStyle(
-                              fontSize: 15,       
-                              fontWeight: FontWeight.w500, 
-                              color: Colors.black,    
-                              letterSpacing: 0.7,   
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black,
+                              letterSpacing: 0.7,
                             ),
                           ),
-                          const SizedBox(height: 16), 
+                          const SizedBox(height: 16),
                           MacroSlider(
+                            key: ValueKey(
+                              'macro-${_protein.toStringAsFixed(2)}-${_carbs.toStringAsFixed(2)}-${_fats.toStringAsFixed(2)}',
+                            ),
                             protein: _protein,
                             carbs: _carbs,
                             fats: _fats,
@@ -399,22 +764,95 @@ class _ProfilePageState extends State<ProfilePage> {
                               _fats = f;
                             }),
                           ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Suggested values:\nP ${suggestedMacros['protein']!.round()}% • C ${suggestedMacros['carbs']!.round()}% • F ${suggestedMacros['fat']!.round()}%',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.black54,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton(
+                              onPressed: _applyRecommendedMacroGoals,
+                              child: const Text('Use Suggested'),
+                            ),
+                          ),
                         ],
                       ),
                     ),
                     const Divider(height: 1),
-                    _buildMultiSelectTile("Dietary Habits", _dietaryHabitOptions, _dietaryHabits),
+                    _buildMultiSelectTile(
+                      "Dietary Habits",
+                      _dietaryHabitOptions,
+                      _dietaryHabits,
+                    ),
                     const Divider(height: 1),
-                    _buildMultiSelectTile("Health Restrictions", _healthOptions, _health),
+                    _buildMultiSelectTile(
+                      "Health Restrictions",
+                      _healthOptions,
+                      _health,
+                    ),
                     const Divider(height: 1),
                     _buildBubbleInput("Likes", _likesController, _likesList),
                     const Divider(height: 1),
-                    _buildBubbleInput("Dislikes", _dislikesController, _dislikesList),
+                    _buildBubbleInput(
+                      "Dislikes",
+                      _dislikesController,
+                      _dislikesList,
+                    ),
                   ]),
                   const SizedBox(height: 30),
-                  SizedBox(width: double.infinity, height: 55, child: ElevatedButton(onPressed: _saveProfile, style: ElevatedButton.styleFrom(backgroundColor: brandColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))), child: _isSaving ? const CircularProgressIndicator(color: Colors.white) : const Text("Save Changes", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)))),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 55,
+                    child: ElevatedButton(
+                      onPressed: _saveProfile,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: brandColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                      ),
+                      child: _isSaving
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text(
+                              "Save Changes",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                    ),
+                  ),
                   const SizedBox(height: 12),
-                  SizedBox(width: double.infinity, height: 55, child: ElevatedButton(onPressed: _confirmDeleteAccount, style: ElevatedButton.styleFrom(backgroundColor: deleteColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)), elevation: 0), child: _isDeleting ? const CircularProgressIndicator(color: Colors.white) : const Text("Delete Account", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)))),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 55,
+                    child: ElevatedButton(
+                      onPressed: _confirmDeleteAccount,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: deleteColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: _isDeleting
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text(
+                              "Delete Account",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                    ),
+                  ),
                   const SizedBox(height: 60),
                 ],
               ),
@@ -422,94 +860,308 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ),
       ),
-      bottomNavigationBar: widget.isInPageView ? NavBar(currentIndex: navIndexProfile, onTap: (index) => handleNavTap(context, index)) : null,
+      bottomNavigationBar: widget.isInPageView
+          ? NavBar(
+              currentIndex: navIndexProfile,
+              onTap: (index) => handleNavTap(context, index),
+            )
+          : null,
     );
   }
 
-  Widget _buildBubbleInput(String title, TextEditingController controller, List<String> list) {
-    return Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-              Expanded(child: TextField(controller: controller, decoration: InputDecoration(labelText: "Add $title", hintText: "Letters only", border: InputBorder.none), onChanged: (value) {
-                    String filtered = value.replaceAll(RegExp(r'[^a-zA-Z\s]'), '');
-                    if (filtered != value) { controller.text = filtered; controller.selection = TextSelection.fromPosition(TextPosition(offset: controller.text.length)); }
-                  })),
-              IconButton(icon: Icon(Icons.add_circle, color: brandColor), onPressed: () { if (controller.text.trim().isNotEmpty) setState(() { list.add(controller.text.trim()); controller.clear(); }); }),
-            ]),
-          Wrap(spacing: 8, children: list.map((item) => Chip(label: Text(item, style: const TextStyle(fontSize: 12)), backgroundColor: brandColor.withOpacity(0.1), deleteIcon: const Icon(Icons.close, size: 14), onDeleted: () => setState(() => list.remove(item)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)))).toList()),
-        ]));
-  }
-
-  Widget _buildStatBox(String label, {
-    TextEditingController? controller, 
-    Widget? child, 
-    bool isPrimary = false, 
-    String? helperText, 
-    String? suffixText
-  }) {
-    return Column(children: [
-        Container(
-          height: 80, 
-          width: double.infinity, 
-          decoration: BoxDecoration(
-            color: isPrimary ? brandColor : Colors.white, 
-            borderRadius: BorderRadius.circular(20), 
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)]
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center, 
+  Widget _buildBubbleInput(
+    String title,
+    TextEditingController controller,
+    List<String> list,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-                child ?? SizedBox(
-                  width: 75, 
-                  child: TextFormField(
-                    controller: controller, 
-                    textAlign: TextAlign.center, 
-                    keyboardType: label == "Weight" ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.number, 
-                    inputFormatters: label == "Weight" ? [FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d*'))] : [FilteringTextInputFormatter.digitsOnly], 
-                    onChanged: (v) => setState(() {}),
-                    decoration: InputDecoration(
-                      border: InputBorder.none, 
-                      isDense: true, 
-                      contentPadding: const EdgeInsets.symmetric(vertical: 4), 
-                      suffixText: suffixText, 
-                      suffixStyle: TextStyle(fontSize: 12, color: isPrimary ? Colors.white70 : Colors.grey, fontWeight: FontWeight.bold)
-                    ),
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isPrimary ? Colors.white : Colors.black)
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  decoration: InputDecoration(
+                    labelText: "Add $title",
+                    hintText: "Letters only",
+                    border: InputBorder.none,
                   ),
+                  onChanged: (value) {
+                    String filtered = value.replaceAll(
+                      RegExp(r'[^a-zA-Z\s]'),
+                      '',
+                    );
+                    if (filtered != value) {
+                      controller.text = filtered;
+                      controller.selection = TextSelection.fromPosition(
+                        TextPosition(offset: controller.text.length),
+                      );
+                    }
+                  },
                 ),
-                Text(label, style: TextStyle(fontSize: 11, color: isPrimary ? Colors.white70 : Colors.grey)),
-              ]
-          )
-        ),
-        SizedBox(height: 18, child: helperText != null ? Padding(padding: const EdgeInsets.only(top: 4), child: Text("Est: $helperText", style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey))) : const SizedBox.shrink()),
-      ]);
-  }
-
-  Widget _sectionHeader(String title) {
-    return Align(alignment: Alignment.centerLeft, child: Padding(padding: const EdgeInsets.only(bottom: 8, left: 4), child: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black54))));
-  }
-
-  Widget _buildCard(List<Widget> children) {
-    return Container(decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)]), child: Column(children: children));
-  }
-
-  Widget _buildListTile(IconData icon, String title, String value, {VoidCallback? onTap}) {
-    return ListTile(onTap: onTap, leading: Icon(icon, color: brandColor, size: 22), title: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Colors.black)), trailing: Row(mainAxisSize: MainAxisSize.min, children: [Text(value, style: const TextStyle(color: Colors.grey, fontSize: 14)), if (onTap != null) const Icon(Icons.chevron_right, size: 18, color: Colors.grey)]));
-  }
-
-  Widget _buildMultiSelectTile(String title, List<String> options, List<String> selected) {
-    return ListTile(
-      title: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
-      subtitle: Padding(
-        padding: const EdgeInsets.only(top: 10.0, bottom: 5),
-        child: Wrap(spacing: 8, runSpacing: 4, children: options.map((opt) {
-          final isSel = selected.contains(opt);
-          return ChoiceChip(label: Text(opt, style: TextStyle(fontSize: 12, color: isSel ? Colors.white : Colors.black87)), selected: isSel, selectedColor: brandColor, backgroundColor: bgColor.withOpacity(0.5), onSelected: (v) => setState(() => v ? selected.add(opt) : selected.remove(opt)));
-        }).toList()),
+              ),
+              IconButton(
+                icon: Icon(Icons.add_circle, color: brandColor),
+                onPressed: () {
+                  if (controller.text.trim().isNotEmpty)
+                    setState(() {
+                      list.add(controller.text.trim());
+                      controller.clear();
+                    });
+                },
+              ),
+            ],
+          ),
+          Wrap(
+            spacing: 8,
+            children: list
+                .map(
+                  (item) => Chip(
+                    label: Text(item, style: const TextStyle(fontSize: 12)),
+                    backgroundColor: brandColor.withOpacity(0.1),
+                    deleteIcon: const Icon(Icons.close, size: 14),
+                    onDeleted: () => setState(() => list.remove(item)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+        ],
       ),
     );
   }
 
-  void _showPicker(String title, List<String> options, String? current, Function(String) onSelect) {
-    showModalBottomSheet(context: context, backgroundColor: Colors.white, shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(25))), builder: (context) => Container(padding: const EdgeInsets.symmetric(vertical: 20), child: Column(mainAxisSize: MainAxisSize.min, children: [Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)), const SizedBox(height: 10), const Divider(), Flexible(child: ListView(shrinkWrap: true, children: options.map((o) => ListTile(title: Text(o, textAlign: TextAlign.center), onTap: () { onSelect(o); Navigator.pop(context); })).toList())), const SizedBox(height: 20)])));
+  Widget _buildStatBox(
+    String label, {
+    TextEditingController? controller,
+    Widget? child,
+    bool isPrimary = false,
+    String? helperText,
+    String? suffixText,
+  }) {
+    return Column(
+      children: [
+        Container(
+          height: 80,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: isPrimary ? brandColor : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10),
+            ],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              child ??
+                  SizedBox(
+                    width: 75,
+                    child: TextFormField(
+                      controller: controller,
+                      textAlign: TextAlign.center,
+                      keyboardType: label == "Weight"
+                          ? const TextInputType.numberWithOptions(decimal: true)
+                          : TextInputType.number,
+                      inputFormatters: label == "Weight"
+                          ? [
+                              FilteringTextInputFormatter.allow(
+                                RegExp(r'^\d+\.?\d*'),
+                              ),
+                            ]
+                          : [FilteringTextInputFormatter.digitsOnly],
+                      onChanged: (v) => setState(() {}),
+                      decoration: InputDecoration(
+                        border: InputBorder.none,
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                        suffixText: suffixText,
+                        suffixStyle: TextStyle(
+                          fontSize: 12,
+                          color: isPrimary ? Colors.white70 : Colors.grey,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: isPrimary ? Colors.white : Colors.black,
+                      ),
+                    ),
+                  ),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: isPrimary ? Colors.white70 : Colors.grey,
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(
+          height: 18,
+          child: helperText != null
+              ? Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    "Est: $helperText",
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey,
+                    ),
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
+      ],
+    );
+  }
+
+  Widget _sectionHeader(String title) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 8, left: 4),
+        child: Text(
+          title,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Colors.black54,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCard(List<Widget> children) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10),
+        ],
+      ),
+      child: Column(children: children),
+    );
+  }
+
+  Widget _buildListTile(
+    IconData icon,
+    String title,
+    String value, {
+    VoidCallback? onTap,
+  }) {
+    return ListTile(
+      onTap: onTap,
+      leading: Icon(icon, color: brandColor, size: 22),
+      title: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w500,
+          color: Colors.black,
+        ),
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(value, style: const TextStyle(color: Colors.grey, fontSize: 14)),
+          if (onTap != null)
+            const Icon(Icons.chevron_right, size: 18, color: Colors.grey),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMultiSelectTile(
+    String title,
+    List<String> options,
+    List<String> selected,
+  ) {
+    return ListTile(
+      title: Text(
+        title,
+        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+      ),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 10.0, bottom: 5),
+        child: Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          children: options.map((opt) {
+            final isSel = selected.contains(opt);
+            return ChoiceChip(
+              label: Text(
+                opt,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isSel ? Colors.white : Colors.black87,
+                ),
+              ),
+              selected: isSel,
+              selectedColor: brandColor,
+              backgroundColor: bgColor.withOpacity(0.5),
+              onSelected: (v) =>
+                  setState(() => v ? selected.add(opt) : selected.remove(opt)),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  void _showPicker(
+    String title,
+    List<String> options,
+    String? current,
+    Function(String) onSelect,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            const Divider(),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                children: options
+                    .map(
+                      (o) => ListTile(
+                        title: Text(o, textAlign: TextAlign.center),
+                        onTap: () {
+                          onSelect(o);
+                          Navigator.pop(context);
+                        },
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
   }
 }

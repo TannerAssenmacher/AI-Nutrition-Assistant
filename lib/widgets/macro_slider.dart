@@ -32,6 +32,20 @@ class _MacroSliderState extends State<MacroSlider> {
     _fatPercent = widget.fats;
   }
 
+  @override
+  void didUpdateWidget(covariant MacroSlider oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.protein != widget.protein ||
+        oldWidget.carbs != widget.carbs ||
+        oldWidget.fats != widget.fats) {
+      setState(() {
+        _proteinPercent = widget.protein;
+        _carbPercent = widget.carbs;
+        _fatPercent = widget.fats;
+      });
+    }
+  }
+
   double _width = 0;
   bool _isDraggingFirst = false;
 
@@ -73,15 +87,27 @@ class _MacroSliderState extends State<MacroSlider> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Protein ${_proteinPercent.toStringAsFixed(0)}%',
-                    style: const TextStyle(
-                        color: AppColors.protein, fontWeight: FontWeight.bold)),
-                Text('Carbs ${_carbPercent.toStringAsFixed(0)}%',
-                    style: const TextStyle(
-                        color: AppColors.carbs, fontWeight: FontWeight.bold)),
-                Text('Fats ${_fatPercent.toStringAsFixed(0)}%',
-                    style: const TextStyle(
-                        color: AppColors.fat, fontWeight: FontWeight.bold)),
+                Text(
+                  'Protein ${_proteinPercent.toStringAsFixed(0)}%',
+                  style: const TextStyle(
+                    color: AppColors.protein,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'Carbs ${_carbPercent.toStringAsFixed(0)}%',
+                  style: const TextStyle(
+                    color: AppColors.carbs,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'Fats ${_fatPercent.toStringAsFixed(0)}%',
+                  style: const TextStyle(
+                    color: AppColors.fat,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 10),
@@ -117,7 +143,8 @@ class _MacroSliderState extends State<MacroSlider> {
                         decoration: BoxDecoration(
                           color: AppColors.protein,
                           borderRadius: const BorderRadius.horizontal(
-                              left: Radius.circular(5)),
+                            left: Radius.circular(5),
+                          ),
                         ),
                       ),
                     ),
@@ -139,7 +166,8 @@ class _MacroSliderState extends State<MacroSlider> {
                         decoration: BoxDecoration(
                           color: AppColors.fat,
                           borderRadius: const BorderRadius.horizontal(
-                              right: Radius.circular(5)),
+                            right: Radius.circular(5),
+                          ),
                         ),
                       ),
                     ),

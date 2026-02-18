@@ -36,7 +36,7 @@ class HomeScreen extends ConsumerWidget {
       top: false,
       child: Column(
         children: [
-          const top_bar(),
+          const top_bar(showProfileButton: true),
           Expanded(
             child: SingleChildScrollView(
               child: Padding(
