@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -24,6 +25,10 @@ class _RegisterPageState extends State<RegisterPage> {
   final _scrollController = ScrollController();
   final _pageController = PageController();
   int _currentPage = 0;
+
+  //default values
+  int? _heightFeet = 5;    
+  int? _heightInches = 6;  
 
   // Controllers
   final _emailController = TextEditingController();
@@ -299,9 +304,12 @@ class _RegisterPageState extends State<RegisterPage> {
       // Build your AppUser model (use UID instead of random ID)
       final now = DateTime.now();
       // Convert numeric fields safely — null if blank
-      final heightValue = _heightController.text.trim().isEmpty
-          ? null
-          : double.tryParse(_heightController.text);
+      double? heightCm;
+      
+      if (_heightFeet != null && _heightInches != null) {
+        heightCm = (_heightFeet! * 12 + _heightInches!) * 2.54;
+      }
+
       final weightValue = _weightController.text.trim().isEmpty
           ? null
           : double.tryParse(_weightController.text);
@@ -316,7 +324,7 @@ class _RegisterPageState extends State<RegisterPage> {
         lastname: _lastnameController.text.trim(),
         dob: dob ?? DateTime(1900, 1, 1),
         sex: _sex ?? '',
-        height: heightValue ?? 0.0, // still required by your model constructor
+        height: heightCm ?? 0.0, // still required by your model constructor
         weight: weightValue ?? 0.0,
         activityLevel: _activityLevel ?? '',
         mealProfile: mealProfile.copyWith(
@@ -331,7 +339,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
       // Replace placeholder values with null before saving
       if (dob == null) userData['dob'] = null;
-      if (heightValue == null) userData['height'] = null;
+      if (heightCm == null) userData['height'] = null;
       if (weightValue == null) userData['weight'] = null;
       if (dailyCaloriesValue == null) {
         // drill down into nested structure
@@ -537,126 +545,130 @@ class _RegisterPageState extends State<RegisterPage> {
     final logoHeight = (screenHeight * 0.15).clamp(90.0, 140.0).toDouble();
 
     // Use the primary scroll controller to avoid Scrollbar having no attached position
-    return SingleChildScrollView(
-      padding: EdgeInsets.only(bottom: 24 + mediaQuery.viewInsets.bottom),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          const top_bar(),
-          SizedBox(
-            height: (screenHeight * 0.03).clamp(16.0, 28.0).toDouble(),
-          ),
-          SizedBox(
-            height: logoHeight,
-            child: Image.asset(
-              'lib/icons/WISERBITES.png',
-              fit: BoxFit.contain,
+    return GestureDetector(
+      onTap: () {
+        FocusScope.of(context).unfocus(); // removes focus from any TextField
+      },
+      child: SingleChildScrollView(
+        padding: EdgeInsets.only(bottom: 24 + mediaQuery.viewInsets.bottom),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const top_bar(),
+            SizedBox(
+              height: (screenHeight * 0.03).clamp(16.0, 28.0).toDouble(),
             ),
-          ),
-          SizedBox(
-            height: (screenHeight * 0.025).clamp(14.0, 24.0).toDouble(),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Container(
-              width: double.infinity,
-              constraints: const BoxConstraints(maxWidth: 520),
-              padding: EdgeInsets.fromLTRB(
-                cardHorizontalPadding,
-                30,
-                cardHorizontalPadding,
-                30,
+            SizedBox(
+              height: logoHeight,
+              child: Image.asset(
+                'lib/icons/WISERBITES.png',
+                fit: BoxFit.contain,
               ),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(48),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withValues(alpha: 0.5),
-                    spreadRadius: 4,
-                    blurRadius: 10,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _dobFieldOptional(), // DOB is NOT required
-                  _dropdownField('Sex', _sexOptions, (v) => _sex = v),
-                  _textFieldOptional(_heightController, 'Height (inches)',
-                      keyboardType: TextInputType.number),
-                  _textFieldOptional(_weightController, 'Weight (lbs)',
-                      keyboardType: TextInputType.number),
-                  _dropdownField('Activity Level', _activityLevels,
-                      (v) => _activityLevel = v),
-                  _dropdownField(
-                      'Dietary Goal', _dietGoals, (v) => _dietaryGoal = v),
-                  _textFieldOptional(
-                      _dailyCaloriesController, 'Daily Calorie Goal',
-                      keyboardType: TextInputType.number),
-                  const SizedBox(height: 20),
-                  const Text('Macronutrient Goals (% of calories)',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 10),
-                  MacroSlider(
-                    protein: _protein,
-                    carbs: _carbs,
-                    fats: _fats,
-                    onChanged: (p, c, f) => setState(() {
-                      _protein = p;
-                      _carbs = c;
-                      _fats = f;
-                    }),
-                  ),
-                  const SizedBox(height: 25),
-                  _centeredMultiSelectField(
-                      'Dietary Habits', _dietaryHabitOptions, _dietaryHabits),
-                  const SizedBox(height: 24),
-                  _centeredMultiSelectField(
-                      'Health Restrictions', _healthOptions, _health),
-                  const SizedBox(height: 24),
-                  _textFieldOptional(
-                      _likesController, 'Food Likes (comma-separated)'),
-                  _textFieldOptional(
-                      _dislikesController, 'Food Dislikes (comma-separated)'),
-                  const SizedBox(height: 30),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      TextButton(
-                        onPressed: () {
-                          _pageController.previousPage(
-                              duration: const Duration(milliseconds: 300),
-                              curve: Curves.easeInOut);
-                          setState(() => _currentPage = 0);
-                        },
-                        child: const Text('Back'),
-                      ),
-                      _isLoading
-                          ? const CircularProgressIndicator()
-                          : ElevatedButton(
-                              onPressed: _registerUser,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.brand,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+            ),
+            SizedBox(
+              height: (screenHeight * 0.025).clamp(14.0, 24.0).toDouble(),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                width: double.infinity,
+                constraints: const BoxConstraints(maxWidth: 520),
+                padding: EdgeInsets.fromLTRB(
+                  cardHorizontalPadding,
+                  30,
+                  cardHorizontalPadding,
+                  30,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(48),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withValues(alpha: 0.5),
+                      spreadRadius: 4,
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _dobFieldOptional(), // DOB is NOT required
+                    _dropdownField('Sex', _sexOptions, (v) => _sex = v),
+                    _heightPicker(),
+                    _textFieldOptional(_weightController, 'Weight',
+                        keyboardType: TextInputType.number, suffixText: "lbs"),
+                    _dropdownField('Activity Level', _activityLevels,
+                        (v) => _activityLevel = v),
+                    _dropdownField(
+                        'Dietary Goal', _dietGoals, (v) => _dietaryGoal = v),
+                    _textFieldOptional(
+                        _dailyCaloriesController, 'Daily Calorie Goal',
+                        keyboardType: TextInputType.number),
+                    const SizedBox(height: 20),
+                    const Text('Macronutrient Goals (% of calories)',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 10),
+                    MacroSlider(
+                      protein: _protein,
+                      carbs: _carbs,
+                      fats: _fats,
+                      onChanged: (p, c, f) => setState(() {
+                        _protein = p;
+                        _carbs = c;
+                        _fats = f;
+                      }),
+                    ),
+                    const SizedBox(height: 25),
+                    _centeredMultiSelectField(
+                        'Dietary Habits', _dietaryHabitOptions, _dietaryHabits),
+                    const SizedBox(height: 24),
+                    _centeredMultiSelectField(
+                        'Health Restrictions', _healthOptions, _health),
+                    const SizedBox(height: 24),
+                    _textFieldOptional(
+                        _likesController, 'Food Likes (comma-separated)'),
+                    _textFieldOptional(
+                        _dislikesController, 'Food Dislikes (comma-separated)'),
+                    const SizedBox(height: 30),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        TextButton(
+                          onPressed: () {
+                            _pageController.previousPage(
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut);
+                            setState(() => _currentPage = 0);
+                          },
+                          child: const Text('Back'),
+                        ),
+                        _isLoading
+                            ? const CircularProgressIndicator()
+                            : ElevatedButton(
+                                onPressed: _registerUser,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.brand,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 24, vertical: 12),
                                 ),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 24, vertical: 12),
+                                child: const Text('Create Account',
+                                    style: TextStyle(
+                                        color: Colors.white, fontSize: 18)),
                               ),
-                              child: const Text('Create Account',
-                                  style: TextStyle(
-                                      color: Colors.white, fontSize: 18)),
-                            ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 30),
-        ],
+            const SizedBox(height: 30),
+          ],
+        ),
       ),
     );
   }
@@ -804,6 +816,7 @@ class _RegisterPageState extends State<RegisterPage> {
     TextEditingController c,
     String label, {
     TextInputType? keyboardType,
+    String? suffixText,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -814,12 +827,79 @@ class _RegisterPageState extends State<RegisterPage> {
           labelText: label,
           filled: true,
           fillColor: AppColors.inputFill,
+          suffixText: suffixText,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none,
           ),
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        ),
+      ),
+    );
+  }
+
+
+  Widget _heightPicker() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.inputFill,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Label
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              child: Text(
+                'Height',
+                style: TextStyle(
+                  color: Colors.grey[800], 
+                  fontSize: 16,       
+                  fontWeight: FontWeight.normal,
+                ),
+              ),
+            ),
+            SizedBox(
+              height: 120,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: CupertinoPicker(
+                      scrollController:
+                          FixedExtentScrollController(initialItem: _heightFeet ?? 0),
+                      itemExtent: 32,
+                      onSelectedItemChanged: (val) {
+                        setState(() {
+                          _heightFeet = val;
+                        });
+                      },
+                      children:
+                          List.generate(11, (i) => Center(child: Text('$i ft'))),
+                    ),
+                  ),
+                  Expanded(
+                    child: CupertinoPicker(
+                      scrollController: FixedExtentScrollController(
+                          initialItem: _heightInches ?? 0),
+                      itemExtent: 32,
+                      onSelectedItemChanged: (val) {
+                        setState(() {
+                          _heightInches = val;
+                        });
+                      },
+                      children:
+                          List.generate(12, (i) => Center(child: Text('$i in'))),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
