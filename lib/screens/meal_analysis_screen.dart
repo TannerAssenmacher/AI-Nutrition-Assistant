@@ -611,6 +611,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       return MealAnalysisResultWidget(
         key: const ValueKey('analysis_result'),
         analysis: _analysisResult!,
+        onCapture: _captureAndAnalyze,
         onEditName: _promptEditName,
         onEditWeight: _promptEditWeight,
         onAddToCalendar: _addMealToCalendar,
@@ -627,37 +628,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   @override
   Widget build(BuildContext context) {
     final bodyContent = _buildCameraContent(context);
-    final isBusy = _isAnalyzing || _isLookingUpBarcode;
-
-    final fab = FloatingActionButton.extended(
-      onPressed: isBusy ? null : _captureAndAnalyze,
-      backgroundColor: Colors.green[700],
-      icon: isBusy
-          ? const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 3,
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-              ),
-            )
-          : const Icon(Icons.camera_alt),
-      label: Text(
-        _isAnalyzing
-            ? 'Analyzing...'
-            : _isLookingUpBarcode
-            ? 'Looking up...'
-            : 'Capture meal',
-      ),
-    );
 
     if (widget.isInPageView == true) {
-      return Stack(
-        children: [
-          bodyContent,
-          Positioned(left: 0, right: 0, bottom: 16, child: Center(child: fab)),
-        ],
-      );
+      return bodyContent;
     }
 
     return Scaffold(
@@ -667,15 +640,13 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
         currentIndex: navIndexCamera,
         onTap: (index) => handleNavTap(context, index),
       ),
-      floatingActionButton: fab,
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 
   Widget _buildCameraContent(BuildContext context) {
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 110),
+        padding: const EdgeInsets.all(16),
         child: Column(
           children: [
             if (_errorMessage != null) ...[
@@ -1160,6 +1131,7 @@ class _EditableChip extends StatelessWidget {
 // Widget to display the meal analysis results.
 class MealAnalysisResultWidget extends StatelessWidget {
   final MealAnalysis analysis;
+  final VoidCallback onCapture;
   final void Function(int) onEditName;
   final void Function(int) onEditWeight;
   final Future<void> Function() onAddToCalendar;
@@ -1168,6 +1140,7 @@ class MealAnalysisResultWidget extends StatelessWidget {
   const MealAnalysisResultWidget({
     super.key,
     required this.analysis,
+    required this.onCapture,
     required this.onEditName,
     required this.onEditWeight,
     required this.onAddToCalendar,
@@ -1176,90 +1149,13 @@ class MealAnalysisResultWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final topInset = MediaQuery.of(context).padding.top;
+
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ...analysis.foods.asMap().entries.map((entry) {
-                    final idx = entry.key;
-                    final food = entry.value;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  '${idx + 1}. ${food.name}',
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.edit, size: 18),
-                                tooltip: 'Edit name',
-                                onPressed: () => onEditName(idx),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              _EditableChip(
-                                label: 'Weight',
-                                value: '${food.mass.toStringAsFixed(0)} g',
-                                onTap: () => onEditWeight(idx),
-                              ),
-                              _NutrientChip(
-                                label: 'Calories',
-                                value:
-                                    '${food.calories.toStringAsFixed(0)} Cal',
-                              ),
-                              _NutrientChip(
-                                label: 'Protein',
-                                value: '${food.protein.toStringAsFixed(1)} g',
-                                color: Colors.blue.shade50,
-                              ),
-                              _NutrientChip(
-                                label: 'Carbs',
-                                value: '${food.carbs.toStringAsFixed(1)} g',
-                                color: Colors.orange.shade50,
-                              ),
-                              _NutrientChip(
-                                label: 'Fat',
-                                value: '${food.fat.toStringAsFixed(1)} g',
-                                color: Colors.green.shade50,
-                              ),
-                            ],
-                          ),
-                          if (idx < analysis.foods.length - 1)
-                            const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 12),
-                              child: Divider(),
-                            ),
-                        ],
-                      ),
-                    );
-                  }),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
+          SizedBox(height: topInset + 8),
           Card(
             color: Theme.of(context).colorScheme.primaryContainer,
             child: Padding(
@@ -1317,27 +1213,129 @@ class MealAnalysisResultWidget extends StatelessWidget {
                     percentage: analysis.fatPercentage,
                     color: Colors.green,
                   ),
-                  const SizedBox(height: 16),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: FilledButton.icon(
-                      onPressed: isSavingToCalendar ? null : onAddToCalendar,
-                      icon: isSavingToCalendar
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.calendar_month),
-                      label: Text(
-                        isSavingToCalendar
-                            ? 'Adding...'
-                            : 'Add to today\'s calendar',
-                      ),
-                    ),
-                  ),
                 ],
               ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              FilledButton.icon(
+                onPressed: isSavingToCalendar ? null : onAddToCalendar,
+                icon: isSavingToCalendar
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.calendar_month),
+                label: Text(
+                  isSavingToCalendar ? 'Adding...' : 'Add to today\'s calendar',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ...analysis.foods.asMap().entries.map((entry) {
+                    final idx = entry.key;
+                    final food = entry.value;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '${idx + 1}. ${food.name}',
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.edit, size: 18),
+                                tooltip: 'Edit name',
+                                onPressed: () => onEditName(idx),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Align(
+                            alignment: Alignment.center,
+                            child: _EditableChip(
+                              label: 'Weight',
+                              value: '${food.mass.toStringAsFixed(0)} g',
+                              onTap: () => onEditWeight(idx),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _NutrientChip(
+                                  label: 'Calories',
+                                  value:
+                                      '${food.calories.toStringAsFixed(0)} Cal',
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: _NutrientChip(
+                                  label: 'Protein',
+                                  value: '${food.protein.toStringAsFixed(1)} g',
+                                  color: Colors.blue.shade50,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: _NutrientChip(
+                                  label: 'Carbs',
+                                  value: '${food.carbs.toStringAsFixed(1)} g',
+                                  color: Colors.orange.shade50,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: _NutrientChip(
+                                  label: 'Fat',
+                                  value: '${food.fat.toStringAsFixed(1)} g',
+                                  color: Colors.green.shade50,
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (idx < analysis.foods.length - 1)
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                              child: Divider(),
+                            ),
+                        ],
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.center,
+            child: FilledButton.icon(
+              onPressed: onCapture,
+              icon: const Icon(Icons.camera_alt),
+              label: const Text('Capture another meal'),
             ),
           ),
         ],
@@ -1369,9 +1367,16 @@ class _NutrientChip extends StatelessWidget {
             style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
           ),
           const SizedBox(height: 2),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.visible,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
           ),
         ],
       ),
