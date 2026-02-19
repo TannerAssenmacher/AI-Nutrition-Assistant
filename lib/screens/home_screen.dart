@@ -413,7 +413,7 @@ class _FoodCarouselCard extends StatelessWidget {
             ),
           ],
           image: const DecorationImage(
-            image: AssetImage('assets/images/image.png'),
+            image: AssetImage('lib/icons/testimage.png'),
             fit: BoxFit.cover,
           ),
         ),
