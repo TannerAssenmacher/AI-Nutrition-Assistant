@@ -62,3 +62,8 @@ flutter:
 
   assets:
     - lib/icons/
+    
+dependency_overrides:
+  # Keep iOS stable: 2.6.0 introduces FFI native-asset objective_c.framework,
+  # which is failing signature verification on this setup.
+  path_provider_foundation: 2.5.1
