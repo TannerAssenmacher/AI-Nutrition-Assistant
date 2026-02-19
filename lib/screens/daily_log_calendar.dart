@@ -2645,8 +2645,7 @@ class _ScheduledMealDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final recipeName = (recipe['label'] ?? 'Recipe').toString();
-    final ingredients =
-      meal.ingredientLines.isNotEmpty
+    final ingredients = meal.ingredientLines.isNotEmpty
         ? meal.ingredientLines
         : _parseIngredients(recipe['ingredients']);
     final instructions = _parseInstructions(recipe['instructions']);

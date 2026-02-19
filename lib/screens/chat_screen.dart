@@ -165,6 +165,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final chatMessages = ref.watch(geminiChatServiceProvider);
     final isLoading = ref.watch(chatLoadingProvider);
 
+    ref.listen<List<ChatMessage>>(geminiChatServiceProvider, (prev, next) {
+      final prevLength = prev?.length ?? 0;
+      if (next.length > prevLength) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+      }
+    });
+
     ref.listen(chatLoadingProvider, (prev, next) {
       if (next) WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
     });
