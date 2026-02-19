@@ -46,7 +46,11 @@ class HomeScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    GestureDetector(
+                    Semantics(
+                      button: true,
+                      label: 'Go to profile. Good Morning, $name!',
+                      excludeSemantics: true,
+                      child: GestureDetector(
                       onTap: () {
                         Navigator.pushNamed(context, '/profile');
                       },
@@ -117,6 +121,7 @@ class HomeScreen extends ConsumerWidget {
                         ),
                       ),
                     ),
+                    ), // closes Semantics
                     const SizedBox(height: 20),
                     foodLogAsync.when(
                       data: (foodLog) {
@@ -378,14 +383,18 @@ class _CalorieProgressBar extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 8),
-        LinearPercentIndicator(
-          lineHeight: 18.0,
-          percent: percent,
-          backgroundColor: const Color(0xFF5F9735).withValues(alpha: 0.2),
-          progressColor: const Color(0xFF5F9735),
-          barRadius: const Radius.circular(10),
-          animation: true,
-          padding: EdgeInsets.zero,
+        Semantics(
+          label: 'Calories: ${current.round()} of ${goal.round()} kilocalories',
+          value: '${(percent * 100).round()}%',
+          child: LinearPercentIndicator(
+            lineHeight: 18.0,
+            percent: percent,
+            backgroundColor: const Color(0xFF5F9735).withValues(alpha: 0.2),
+            progressColor: const Color(0xFF5F9735),
+            barRadius: const Radius.circular(10),
+            animation: true,
+            padding: EdgeInsets.zero,
+          ),
         ),
       ],
     );
@@ -399,7 +408,12 @@ class _FoodCarouselCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    final calories = (food.calories_g * food.mass_g).round();
+    return Semantics(
+      button: true,
+      label: '${food.name}, $calories calories, ${food.mealType}. Tap for details.',
+      excludeSemantics: true,
+      child: GestureDetector(
       onTap: () => _showFoodDetails(context, food),
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 8),
@@ -450,6 +464,7 @@ class _FoodCarouselCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
       ),
     );
   }
@@ -581,7 +596,9 @@ class _MacroIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final double percent = goal > 0 ? (current / goal).clamp(0.0, 1.0) : 0.0;
-    return CircularPercentIndicator(
+    return Semantics(
+      label: '$label: ${current.toInt()} of ${goal.toInt()} grams',
+      child: CircularPercentIndicator(
       radius: MediaQuery.of(context).size.width * 0.1,
       lineWidth: 12,
       percent: percent,
@@ -604,6 +621,7 @@ class _MacroIndicator extends StatelessWidget {
       backgroundColor: color.withValues(alpha: 0.25),
       //circularStrokeCap: CircularStrokeCap.round,
       animation: true,
+      ),
     );
   }
 }

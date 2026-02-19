@@ -295,4 +295,51 @@ void main() {
       expect((lastProtein + lastCarbs + lastFats).round(), 100);
     });
   });
+
+  group('MacroSlider accessibility', () {
+    testWidgets('meets Android tap target guideline', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 500,
+              height: 100,
+              child: MacroSlider(
+                protein: 30.0,
+                carbs: 40.0,
+                fats: 30.0,
+                onChanged: (_, __, ___) {},
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+    });
+
+    testWidgets('has semantic label with current macro values', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 500,
+              height: 100,
+              child: MacroSlider(
+                protein: 30.0,
+                carbs: 40.0,
+                fats: 30.0,
+                onChanged: (_, __, ___) {},
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(
+        find.bySemanticsLabel(RegExp(r'Protein.*30%.*Carbs.*40%.*Fats.*30%')),
+        findsOneWidget,
+      );
+    });
+  });
 }

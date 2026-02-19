@@ -85,7 +85,11 @@ class _MacroSliderState extends State<MacroSlider> {
               ],
             ),
             const SizedBox(height: 10),
-            GestureDetector(
+            Semantics(
+              label: 'Macro split slider. Protein: ${_proteinPercent.toStringAsFixed(0)}%, Carbs: ${_carbPercent.toStringAsFixed(0)}%, Fats: ${_fatPercent.toStringAsFixed(0)}%.',
+              hint: 'Drag to adjust',
+              slider: true,
+              child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onHorizontalDragDown: (details) {
                 final dx = details.localPosition.dx;
@@ -159,6 +163,7 @@ class _MacroSliderState extends State<MacroSlider> {
                   ],
                 ),
               ),
+            ),
             ),
           ],
         );

@@ -35,6 +35,7 @@ class top_bar extends StatelessWidget {
                   'lib/icons/WISERBITES_txt_only.png',
                   fit: BoxFit.contain,
                   color: AppColors.background,
+                  semanticLabel: 'WiserBites',
                 ),
               ),
             ),
@@ -44,6 +45,7 @@ class top_bar extends StatelessWidget {
               bottom: 0,
               child: Center(
                 child: IconButton(
+                  tooltip: 'Profile',
                   icon: const Icon(
                     Icons.account_circle,
                     color: AppColors.background,

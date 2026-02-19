@@ -621,7 +621,7 @@ class _FoodSearchResultTile extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
-            child: const Text('Add'),
+            child: Text('Add', semanticsLabel: 'Add ${result.name}'),
           ),
         ],
       ),
@@ -640,20 +640,33 @@ class _MacroChip extends StatelessWidget {
   final String value;
   final Color color;
 
+  static String _fullLabel(String abbr) {
+    switch (abbr) {
+      case 'P': return 'Protein';
+      case 'C': return 'Carbs';
+      case 'F': return 'Fat';
+      default: return abbr;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        '$label $value g',
-        style: TextStyle(
-          color: color,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
+    return Semantics(
+      label: '${_fullLabel(label)} $value grams',
+      excludeSemantics: true,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(
+          '$label $value g',
+          style: TextStyle(
+            color: color,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
     );
