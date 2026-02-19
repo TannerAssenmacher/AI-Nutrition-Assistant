@@ -2645,7 +2645,10 @@ class _ScheduledMealDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final recipeName = (recipe['label'] ?? 'Recipe').toString();
-    final ingredients = _parseIngredients(recipe['ingredients']);
+    final ingredients =
+      meal.ingredientLines.isNotEmpty
+        ? meal.ingredientLines
+        : _parseIngredients(recipe['ingredients']);
     final instructions = _parseInstructions(recipe['instructions']);
     const baseColor = Color(0xFF181818);
     const cardColor = Color.fromRGBO(255, 255, 255, 0.05);

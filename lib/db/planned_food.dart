@@ -15,12 +15,14 @@ class PlannedFood {
   final DateTime date;
 
   final String mealType; // breakfast/lunch/dinner/snack
+  final List<String> ingredientLines;
 
   PlannedFood({
     this.id,
     required this.recipeId,
     required this.date, //what day
     required this.mealType,
+    this.ingredientLines = const [],
   });
 
   factory PlannedFood.fromJson(Map<String, dynamic> json) =>

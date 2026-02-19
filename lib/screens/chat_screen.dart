@@ -246,7 +246,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ...recipes.map((r) => _RecipeCard(
           recipe: r,
           brandColor: brandColor,
-          onSchedule: (id, inputs) => ref.read(geminiChatServiceProvider.notifier).scheduleRecipe(id, inputs),
+          onSchedule: (id, inputs, ingredientLines) =>
+              ref
+                  .read(geminiChatServiceProvider.notifier)
+                  .scheduleRecipe(id, inputs, ingredientLines),
         )),
         Center(
           child: OutlinedButton.icon(
@@ -541,7 +544,7 @@ class MealProfileSummaryBubble extends StatelessWidget {
 class _RecipeCard extends StatefulWidget {
   final Map<String, dynamic> recipe;
   final Color brandColor;
-  final Function(String, List<PlannedFoodInput>) onSchedule;
+  final Function(String, List<PlannedFoodInput>, List<String>) onSchedule;
 
   const _RecipeCard({
     super.key,
@@ -763,7 +766,7 @@ class _RecipeCardState extends State<_RecipeCard> {
                       .map((e) => PlannedFoodInput(date: e.key, mealType: e.value))
                       .toList();
                   
-                  widget.onSchedule(r['id'].toString(), inputs);
+                  widget.onSchedule(r['id'].toString(), inputs, ingredients);
                   
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
