@@ -154,7 +154,13 @@ class _ProfilePageState extends State<ProfilePage> {
         'Moderately Active': 1.55,
         'Very Active': 1.725,
       };
-      return (bmr * (multipliers[_activityLevel] ?? 1.55)).round();
+
+      final weightfactor = {
+        'Lose Weight': -500,
+        'Maintain Weight': 0,
+        'Gain Muscle': 500,
+      };
+      return (bmr * (multipliers[_activityLevel] ?? 1.375) + weightfactor[_dietaryGoal]!).round();
     } catch (e) {
       return 0;
     }
@@ -248,7 +254,7 @@ class _ProfilePageState extends State<ProfilePage> {
     return {'protein': protein, 'carbs': carbs, 'fat': fats};
   }
 
-  void _applyRecommendedMacroGoals() {
+  void _applyRecommendedMacroGoals({bool silent = false}) {
     final suggested = _recommendedMacroGoals();
     setState(() {
       _protein = suggested['protein']!;
@@ -256,7 +262,7 @@ class _ProfilePageState extends State<ProfilePage> {
       _fats = suggested['fat']!;
     });
 
-    if (_activityLevel == null || _dietaryGoal == null) {
+    if (!silent && (_activityLevel == null || _dietaryGoal == null)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -713,7 +719,10 @@ class _ProfilePageState extends State<ProfilePage> {
                         "Activity",
                         _activityLevels,
                         _activityLevel,
-                        (v) => setState(() => _activityLevel = v),
+                        (v) {
+                          setState(() => _activityLevel = v);
+                          _applyRecommendedMacroGoals(silent: true);
+                        },
                       ),
                     ),
                     _buildListTile(
@@ -724,7 +733,10 @@ class _ProfilePageState extends State<ProfilePage> {
                         "Diet Goal",
                         _dietGoals,
                         _dietaryGoal,
-                        (v) => setState(() => _dietaryGoal = v),
+                        (v) {
+                          setState(() => _dietaryGoal = v);
+                          _applyRecommendedMacroGoals(silent: true);
+                        },
                       ),
                     ),
                   ]),
@@ -742,7 +754,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            "Macronutrients Goal",
+                            "Macronutrient Goals",
                             style: const TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w500,
@@ -765,7 +777,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             }),
                           ),
                           const SizedBox(height: 8),
-                          Text(
+                          /*Text(
                             'Suggested values:\nP ${suggestedMacros['protein']!.round()}% • C ${suggestedMacros['carbs']!.round()}% • F ${suggestedMacros['fat']!.round()}%',
                             style: const TextStyle(
                               fontSize: 12,
@@ -779,19 +791,20 @@ class _ProfilePageState extends State<ProfilePage> {
                               onPressed: _applyRecommendedMacroGoals,
                               child: const Text('Use Suggested'),
                             ),
-                          ),
+                          ),*/
                         ],
                       ),
                     ),
                     const Divider(height: 1),
                     _buildMultiSelectTile(
-                      "Dietary Habits",
+                      "Macronutrient Goal Presets",
                       _dietaryHabitOptions,
                       _dietaryHabits,
+                      onChanged: () => _applyRecommendedMacroGoals(silent: true),
                     ),
                     const Divider(height: 1),
                     _buildMultiSelectTile(
-                      "Health Restrictions",
+                      "Health & Dietary Restrictions",
                       _healthOptions,
                       _health,
                     ),
@@ -1086,6 +1099,7 @@ class _ProfilePageState extends State<ProfilePage> {
     String title,
     List<String> options,
     List<String> selected,
+    {VoidCallback? onChanged}
   ) {
     return ListTile(
       title: Text(
@@ -1110,8 +1124,10 @@ class _ProfilePageState extends State<ProfilePage> {
               selected: isSel,
               selectedColor: brandColor,
               backgroundColor: bgColor.withOpacity(0.5),
-              onSelected: (v) =>
-                  setState(() => v ? selected.add(opt) : selected.remove(opt)),
+              onSelected: (v) {
+                setState(() => v ? selected.add(opt) : selected.remove(opt));
+                onChanged?.call();
+              },
             );
           }).toList(),
         ),

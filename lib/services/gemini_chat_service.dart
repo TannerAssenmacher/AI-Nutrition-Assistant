@@ -1038,8 +1038,15 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
 
   //call firestore provider to add scheduled meals to subcollection
   Future<void> scheduleRecipe(
-      String recipeId, List<PlannedFoodInput> plannedInputs) async {
+      String recipeId,
+      List<PlannedFoodInput> plannedInputs,
+      List<String> ingredientLines) async {
     final user = await _ensureSignedInUser();
+
+    final normalizedIngredientLines = ingredientLines
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
 
     // Add each scheduled meal to the subcollection
     for (final input in plannedInputs) {
@@ -1051,6 +1058,7 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
         recipeId: recipeId,
         date: normalizedDate,
         mealType: input.mealType,
+        ingredientLines: normalizedIngredientLines,
       );
 
       // Use the provider notifier to add to Firestore
