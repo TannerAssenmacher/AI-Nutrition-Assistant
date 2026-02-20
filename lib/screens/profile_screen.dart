@@ -61,7 +61,7 @@ class _ProfilePageState extends State<ProfilePage> {
     'Moderately Active',
     'Very Active',
   ];
-  final _dietGoals = ['Lose Weight (1lb./wk)', 'Maintain Weight', 'Gain Muscle'];
+  final _dietGoals = ['Lose Weight', 'Maintain Weight', 'Gain Muscle'];
   final _dietaryHabitOptions = [
     'balanced',
     'high-protein',
