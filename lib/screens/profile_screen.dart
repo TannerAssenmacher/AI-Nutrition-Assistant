@@ -61,7 +61,7 @@ class _ProfilePageState extends State<ProfilePage> {
     'Moderately Active',
     'Very Active',
   ];
-  final _dietGoals = ['Lose Weight', 'Maintain Weight', 'Gain Muscle'];
+  final _dietGoals = ['Lose Weight (1lb./wk)', 'Maintain Weight', 'Gain Muscle'];
   final _dietaryHabitOptions = [
     'balanced',
     'high-protein',
@@ -154,7 +154,13 @@ class _ProfilePageState extends State<ProfilePage> {
         'Moderately Active': 1.55,
         'Very Active': 1.725,
       };
-      return (bmr * (multipliers[_activityLevel] ?? 1.55)).round();
+
+      final weightfactor = {
+        'Lose Weight': -500,
+        'Maintain Weight': 0,
+        'Gain Muscle': 500,
+      };
+      return (bmr * (multipliers[_activityLevel] ?? 1.375) + weightfactor[_dietaryGoal]!).round();
     } catch (e) {
       return 0;
     }
