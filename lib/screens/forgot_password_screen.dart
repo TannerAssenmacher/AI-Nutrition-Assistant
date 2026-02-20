@@ -100,11 +100,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     MediaQuery.of(context).size.height * 0.05,
                     ),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: AppColors.surface,
                     borderRadius: BorderRadius.circular(100),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.grey.withValues(alpha: 0.5),
+                        color: AppColors.statusNone.withValues(alpha: 0.5),
                         spreadRadius: 4,
                         blurRadius: 10,
                         offset: const Offset(0, 3),
@@ -132,9 +132,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                         decoration: InputDecoration(
                             
                             hintText: 'Email',
-                            prefixIcon: Icon(Icons.email, color: Colors.grey[600],),
+                            prefixIcon: Icon(Icons.email, color: AppColors.textHint,),
                             hintStyle: TextStyle(
-                              color: Colors.grey[400],
+                              color: AppColors.divider,
                             ),
                             filled: true,
                             fillColor: AppColors.inputFill,
@@ -161,7 +161,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       Text(
                         _error!,
                         style: const TextStyle(
-                          color: Colors.red,
+                          color: AppColors.error,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -180,7 +180,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                         'Send Reset Email',
                         style: TextStyle(
                           fontSize: MediaQuery.of(context).size.width * 0.05,
-                          color: Colors.white,
+                          color: AppColors.surface,
                         ),
                       ),),
                       Padding(padding: EdgeInsets.all(MediaQuery.of(context).size.height * 0.02),),

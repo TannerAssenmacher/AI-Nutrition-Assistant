@@ -46,12 +46,12 @@ class _LoginPageState extends State<LoginPage> {
               const SnackBar(
                 content: Row(
                   children: [
-                    Icon(Icons.check_circle, color: Colors.white),
+                    Icon(Icons.check_circle, color: AppColors.surface),
                     SizedBox(width: 10),
                     Text('Your account has been successfully deleted.'),
                   ],
                 ),
-                backgroundColor: Colors.green,
+                backgroundColor: AppColors.success,
                 duration: Duration(seconds: 4),
               ),
             );
@@ -219,11 +219,11 @@ class _LoginPageState extends State<LoginPage> {
                     20,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: AppColors.surface,
                     borderRadius: BorderRadius.circular(48),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.grey.withValues(alpha: 0.5),
+                        color: AppColors.statusNone.withValues(alpha: 0.5),
                         spreadRadius: 4,
                         blurRadius: 10,
                         offset: const Offset(0, 3),
@@ -252,10 +252,10 @@ class _LoginPageState extends State<LoginPage> {
                             hintText: 'Email',
                             prefixIcon: Icon(
                               Icons.email,
-                              color: Colors.grey[600],
+                              color: AppColors.textHint,
                             ),
                             hintStyle: TextStyle(
-                              color: Colors.grey[400],
+                              color: AppColors.divider,
                             ),
                             filled: true,
                             fillColor: AppColors.inputFill,
@@ -286,10 +286,10 @@ class _LoginPageState extends State<LoginPage> {
                             hintText: 'Password',
                             prefixIcon: Icon(
                               Icons.lock,
-                              color: Colors.grey[600],
+                              color: AppColors.textHint,
                             ),
                             hintStyle: TextStyle(
-                              color: Colors.grey[400],
+                              color: AppColors.divider,
                             ),
                             filled: true,
                             fillColor: AppColors.inputFill,
@@ -315,7 +315,7 @@ class _LoginPageState extends State<LoginPage> {
                             _error!,
                             textAlign: TextAlign.center,
                             style: const TextStyle(
-                              color: Colors.red,
+                              color: AppColors.error,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -340,7 +340,7 @@ class _LoginPageState extends State<LoginPage> {
                                     fontSize: (screenHeight * 0.024)
                                         .clamp(18.0, 24.0)
                                         .toDouble(),
-                                    color: Colors.white,
+                                    color: AppColors.surface,
                                   ),
                                 ),
                               ),

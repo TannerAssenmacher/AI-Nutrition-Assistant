@@ -108,7 +108,7 @@ class _MacroSliderState extends State<MacroSlider> {
                     Container(
                       height: 10,
                       decoration: BoxDecoration(
-                        color: Colors.grey[300],
+                        color: AppColors.borderLight,
                         borderRadius: BorderRadius.circular(5),
                       ),
                     ),
@@ -175,11 +175,11 @@ class _MacroSliderState extends State<MacroSlider> {
     return Container(
       width: 16,
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: Colors.black26),
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.borderLight),
         borderRadius: BorderRadius.circular(4),
-        boxShadow: const [
-          BoxShadow(color: Colors.black26, blurRadius: 3, offset: Offset(0, 1)),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 3, offset: const Offset(0, 1)),
         ],
       ),
     );

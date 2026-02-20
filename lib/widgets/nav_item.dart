@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 
 class NavItem extends StatelessWidget {
   final IconData icon;
@@ -16,8 +17,6 @@ class NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeColor = const Color.fromARGB(255, 255, 253, 250);
-
     return Semantics(
       label: label,
       button: true,
@@ -34,7 +33,7 @@ class NavItem extends StatelessWidget {
               Padding(padding: EdgeInsets.all(MediaQuery.of(context).size.height * 0.005)),
               Icon(
                 icon,
-                color: isActive ? activeColor : Color.fromARGB(255, 109, 94, 88),
+                color: isActive ? AppColors.navIconActive : AppColors.navIconInactive,
                 size: MediaQuery.of(context).size.height * 0.05,
               ),
               const SizedBox(height: 4),

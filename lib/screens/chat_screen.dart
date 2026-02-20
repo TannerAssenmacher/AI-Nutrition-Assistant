@@ -28,7 +28,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   //color palette
   final Color bgColor = AppColors.background;
   final Color brandColor = AppColors.brand;
-  final Color neumorphicShadow = const Color(0xFFD9D0C3);
+  final Color neumorphicShadow = AppColors.neumorphicShadow;
 
   //data
   bool _showRecipePicker = false;
@@ -137,14 +137,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(15),
                   boxShadow: [
-                    BoxShadow(color: Colors.white, offset: const Offset(-3, -3), blurRadius: 8),
+                    BoxShadow(color: AppColors.surface, offset: const Offset(-3, -3), blurRadius: 8),
                     BoxShadow(color: neumorphicShadow, offset: const Offset(3, 3), blurRadius: 8),
                   ],
                 ),
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: brandColor,
-                    foregroundColor: Colors.white,
+                    foregroundColor: AppColors.surface,
                     elevation: 0,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -187,7 +187,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         title: Column(
           children: [
             Text("NutriCoach", style: TextStyle(color: brandColor, fontWeight: FontWeight.bold, fontSize: 18)),
-            const Text("AI NUTRITION ASSISTANT", style: TextStyle(color: Colors.grey, fontSize: 9, letterSpacing: 1.2)),
+            const Text("AI NUTRITION ASSISTANT", style: TextStyle(color: AppColors.statusNone, fontSize: 9, letterSpacing: 1.2)),
           ],
         ),
       ),
@@ -232,9 +232,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         children: [
           Icon(Icons.chat_bubble_outline, size: 64, color: brandColor.withValues(alpha: 0.2)),
           const SizedBox(height: 16),
-          const Text('Ask me anything about nutrition!', style: TextStyle(fontSize: 18, color: Colors.grey)),
+          const Text('Ask me anything about nutrition!', style: TextStyle(fontSize: 18, color: AppColors.statusNone)),
           const SizedBox(height: 8),
-          Text('Try: "What should I eat for dinner?"', style: TextStyle(fontSize: 14, color: Colors.grey)),
+          Text('Try: "What should I eat for dinner?"', style: TextStyle(fontSize: 14, color: AppColors.statusNone)),
         ],
       ),
     );
@@ -361,7 +361,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         shape: BoxShape.circle,
                         boxShadow: [BoxShadow(color: brandColor.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))],
                       ),
-                      child: const Icon(Icons.send, color: Colors.white, size: 22),
+                      child: const Icon(Icons.send, color: AppColors.surface, size: 22),
                     ),
                   ),
                 ],
@@ -389,13 +389,13 @@ class _ChatBubble extends StatelessWidget {
         children: [
           Padding(
             padding: EdgeInsets.only(left: isUser ? 0 : 40, right: isUser ? 10 : 0, bottom: 4),
-            child: Text(isUser ? "You" : "NutriCoach", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey[600])),
+            child: Text(isUser ? "You" : "NutriCoach", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textHint)),
           ),
           Row(
             mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              if (!isUser) CircleAvatar(backgroundColor: brandColor, radius: 12, child: const Icon(Icons.auto_awesome, color: Colors.white, size: 12)),
+              if (!isUser) CircleAvatar(backgroundColor: brandColor, radius: 12, child: const Icon(Icons.auto_awesome, color: AppColors.surface, size: 12)),
               const SizedBox(width: 10),
               Flexible(
                 child: ClipRRect(
@@ -415,9 +415,9 @@ class _ChatBubble extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(message.content, style: TextStyle(color: isUser ? Colors.white : Colors.black87, fontSize: 14)),
+                          Text(message.content, style: TextStyle(color: isUser ? AppColors.surface : AppColors.textPrimary, fontSize: 14)),
                           const SizedBox(height: 4),
-                          Text(message.formattedTime, style: TextStyle(fontSize: 9, color: isUser ? Colors.white70 : Colors.grey[500])),
+                          Text(message.formattedTime, style: TextStyle(fontSize: 9, color: isUser ? AppColors.surface.withValues(alpha: 0.7) : AppColors.statusNone)),
                         ],
                       ),
                     ),
@@ -535,7 +535,7 @@ class MealProfileSummaryBubble extends StatelessWidget {
 
   Widget _row(IconData icon, String label, dynamic val) => Padding(
     padding: const EdgeInsets.only(bottom: 6),
-    child: Row(children: [Icon(icon, size: 14, color: Colors.grey), const SizedBox(width: 8), Text("$label: ", style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)), Text("$val", style: const TextStyle(fontSize: 13))]),
+    child: Row(children: [Icon(icon, size: 14, color: AppColors.statusNone), const SizedBox(width: 8), Text("$label: ", style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)), Text("$val", style: const TextStyle(fontSize: 13))]),
   );
 }
 class _RecipeCard extends StatefulWidget {
@@ -573,7 +573,7 @@ class _RecipeCardState extends State<_RecipeCard> {
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(25),
         boxShadow: [
           BoxShadow(
@@ -621,7 +621,7 @@ class _RecipeCardState extends State<_RecipeCard> {
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Row(
                   children: [
-                    Icon(Icons.timer_outlined, size: 16, color: Colors.grey[600]),
+                    Icon(Icons.timer_outlined, size: 16, color: AppColors.textHint),
                     const SizedBox(width: 6),
                     Text(
                       [
@@ -629,7 +629,7 @@ class _RecipeCardState extends State<_RecipeCard> {
                         if (servings != null) 'Serves: $servings',
                       ].join('  |  '),
                       style: TextStyle(
-                        color: Colors.grey[700],
+                        color: AppColors.textSecondary,
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                       ),
@@ -679,7 +679,7 @@ class _RecipeCardState extends State<_RecipeCard> {
               r['instructions'] ?? 'No instructions available.',
               style: const TextStyle(
                 fontSize: 13,
-                color: Colors.black87,
+                color: AppColors.textPrimary,
                 height: 1.5,
               ),
             ),
@@ -692,8 +692,8 @@ class _RecipeCardState extends State<_RecipeCard> {
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: widget.brandColor,
-                  foregroundColor: Colors.white,
-                  iconColor: Colors.white,
+                  foregroundColor: AppColors.surface,
+                  iconColor: AppColors.surface,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(15),
                   ),
@@ -814,16 +814,16 @@ class _TypingIndicatorState extends State<_TypingIndicator> with TickerProviderS
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
         children: [
-          CircleAvatar(backgroundColor: AppColors.brand, radius: 12, child: const Icon(Icons.auto_awesome, color: Colors.white, size: 12)),
+          CircleAvatar(backgroundColor: AppColors.brand, radius: 12, child: const Icon(Icons.auto_awesome, color: AppColors.surface, size: 12)),
           const SizedBox(width: 10),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.8), borderRadius: BorderRadius.circular(15)),
+            decoration: BoxDecoration(color: AppColors.surface.withValues(alpha: 0.8), borderRadius: BorderRadius.circular(15)),
             child: Row(
               children: List.generate(3, (i) => AnimatedBuilder(
                 animation: _controllers[i],
                 builder: (context, child) => Transform.translate(offset: Offset(0, -4 * _controllers[i].value), child: child),
-                child: Container(margin: const EdgeInsets.symmetric(horizontal: 2), width: 6, height: 6, decoration: const BoxDecoration(color: Colors.grey, shape: BoxShape.circle)),
+                child: Container(margin: const EdgeInsets.symmetric(horizontal: 2), width: 6, height: 6, decoration: const BoxDecoration(color: AppColors.statusNone, shape: BoxShape.circle)),
               )),
             ),
           ),

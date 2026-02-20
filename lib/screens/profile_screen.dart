@@ -26,7 +26,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   final Color bgColor = AppColors.background;
   final Color brandColor = AppColors.brand;
-  final Color deleteColor = const Color(0xFFD32F2F);
+  final Color deleteColor = AppColors.deleteRed;
 
   //controllers
   final _heightController = TextEditingController();
@@ -321,10 +321,10 @@ class _ProfilePageState extends State<ProfilePage> {
                         width: 18,
                         height: 18,
                         child: CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 2),
+                            color: AppColors.surface, strokeWidth: 2),
                       )
                     : const Text('Delete Account',
-                        style: TextStyle(color: Colors.white)),
+                        style: TextStyle(color: AppColors.surface)),
               ),
             ],
           );
@@ -349,12 +349,12 @@ class _ProfilePageState extends State<ProfilePage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: widget.isInPageView ? null : IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black, size: 28),
+          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary, size: 28),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout, color: Colors.black54),
+            icon: const Icon(Icons.logout, color: AppColors.textSecondary),
             onPressed: _logout,
           ),
           const SizedBox(width: 8),
@@ -374,7 +374,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         style: const TextStyle(
                             fontSize: 32,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white))),
+                            color: AppColors.surface))),
                 const SizedBox(height: 12),
                 Text('$_firstname $_lastname',
                     style: const TextStyle(
@@ -480,10 +480,10 @@ class _ProfilePageState extends State<ProfilePage> {
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(15))),
                     child: _isSaving
-                        ? const CircularProgressIndicator(color: Colors.white)
+                        ? const CircularProgressIndicator(color: AppColors.surface)
                         : const Text("Save Changes",
                             style: TextStyle(
-                                color: Colors.white,
+                                color: AppColors.surface,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16)),
                   ),
@@ -500,10 +500,10 @@ class _ProfilePageState extends State<ProfilePage> {
                             borderRadius: BorderRadius.circular(15)),
                         elevation: 0),
                     child: _isDeleting
-                        ? const CircularProgressIndicator(color: Colors.white)
+                        ? const CircularProgressIndicator(color: AppColors.surface)
                         : const Text("Delete Account",
                             style: TextStyle(
-                                color: Colors.white,
+                                color: AppColors.surface,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16)),
                   ),
@@ -588,7 +588,7 @@ class _ProfilePageState extends State<ProfilePage> {
         Container(
           width: double.infinity,
           decoration: BoxDecoration(
-              color: isPrimary ? brandColor : Colors.white,
+              color: isPrimary ? brandColor : AppColors.surface,
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
@@ -613,13 +613,13 @@ class _ProfilePageState extends State<ProfilePage> {
                     style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: isPrimary ? Colors.white : Colors.black),
+                        color: isPrimary ? AppColors.surface : AppColors.textPrimary),
                   ),
                 ),
                 Text(label,
                     style: TextStyle(
                         fontSize: 11,
-                        color: isPrimary ? Colors.white70 : Colors.grey)),
+                        color: isPrimary ? AppColors.surface.withValues(alpha: 0.7) : AppColors.textHint)),
               ],
             ),
           ),
@@ -634,7 +634,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     style: const TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
-                        color: Colors.grey)))
+                        color: AppColors.textHint)))
             : const SizedBox.shrink(),
         ),
       ],
@@ -650,13 +650,13 @@ class _ProfilePageState extends State<ProfilePage> {
                 style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black54))));
+                    color: AppColors.textSecondary))));
   }
 
   Widget _buildCard(List<Widget> children) {
     return Container(
         decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.surface,
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
@@ -674,11 +674,11 @@ class _ProfilePageState extends State<ProfilePage> {
             style: const TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w500,
-                color: Colors.black)),
+                color: AppColors.textPrimary)),
         trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-          Text(value, style: const TextStyle(color: Colors.grey, fontSize: 14)),
+          Text(value, style: const TextStyle(color: AppColors.textHint, fontSize: 14)),
           if (onTap != null)
-            const Icon(Icons.chevron_right, size: 18, color: Colors.grey)
+            const Icon(Icons.chevron_right, size: 18, color: AppColors.textHint)
         ]));
   }
 
@@ -698,7 +698,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   label: Text(opt,
                       style: TextStyle(
                           fontSize: 12,
-                          color: isSel ? Colors.white : Colors.black87)),
+                          color: isSel ? AppColors.surface : AppColors.textPrimary)),
                   selected: isSel,
                   selectedColor: brandColor,
                   backgroundColor: bgColor.withOpacity(0.5),
@@ -713,7 +713,7 @@ class _ProfilePageState extends State<ProfilePage> {
       Function(String) onSelect) {
     showModalBottomSheet(
         context: context,
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.surface,
         shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(top: Radius.circular(25))),
         builder: (context) => Container(

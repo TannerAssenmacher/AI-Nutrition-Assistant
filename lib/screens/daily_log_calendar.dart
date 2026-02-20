@@ -221,18 +221,18 @@ class _DailyLogCalendarScreenState
   Color _gradeColor(String letter) {
     switch (letter) {
       case 'S':
-        return const Color(0xFF2E7D32);
+        return AppColors.gradeS;
       case 'A':
-        return const Color(0xFF4CAF50);
+        return AppColors.gradeA;
       case 'B':
-        return const Color(0xFF8BC34A);
+        return AppColors.gradeB;
       case 'C':
-        return const Color(0xFFFFB300);
+        return AppColors.gradeC;
       case 'D':
-        return const Color(0xFFFF7043);
+        return AppColors.gradeD;
       case 'F':
       default:
-        return const Color(0xFFE53935);
+        return AppColors.gradeF;
     }
   }
 
@@ -730,7 +730,7 @@ class _DailyLogCalendarScreenState
                       ),
                       IconButton(
                         icon: const Icon(Icons.add),
-                        color: Colors.redAccent,
+                        color: AppColors.error,
                         tooltip: 'Add apple to selected day',
                         onPressed: _addPlaceholderApple,
                       ),
@@ -785,7 +785,7 @@ class _DailyLogCalendarScreenState
                           ),
                           padding: const EdgeInsets.fromLTRB(16, 16, 10, 16),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: AppColors.surface,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                               color: isSelected
@@ -815,7 +815,7 @@ class _DailyLogCalendarScreenState
                                       style: TextStyle(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w500,
-                                        color: Colors.grey.shade600,
+                                        color: AppColors.textHint,
                                       ),
                                     ),
                                     const SizedBox(height: 2),
@@ -823,10 +823,8 @@ class _DailyLogCalendarScreenState
                                       padding: const EdgeInsets.all(6),
                                       decoration: BoxDecoration(
                                         color: isToday
-                                            ? const Color(
-                                                0xFF6DCFF6,
-                                              ).withValues(alpha: 0.2)
-                                            : Colors.grey.shade100,
+                                            ? AppColors.selectionColor.withValues(alpha: 0.2)
+                                            : AppColors.surfaceVariant,
                                         shape: BoxShape.circle,
                                       ),
                                       child: Text(
@@ -836,7 +834,7 @@ class _DailyLogCalendarScreenState
                                           fontWeight: FontWeight.bold,
                                           color: isToday
                                               ? AppColors.selectionColor
-                                              : Colors.black87,
+                                              : AppColors.textPrimary,
                                         ),
                                       ),
                                     ),
@@ -859,7 +857,7 @@ class _DailyLogCalendarScreenState
                                         child: Text(
                                           grade.letter,
                                           style: const TextStyle(
-                                            color: Colors.white,
+                                            color: AppColors.surface,
                                             fontSize: 11,
                                             fontWeight: FontWeight.w800,
                                           ),
@@ -886,8 +884,8 @@ class _DailyLogCalendarScreenState
                                             ? FontWeight.normal
                                             : FontWeight.w600,
                                         color: foods.isEmpty
-                                            ? Colors.grey.shade500
-                                            : Colors.black87,
+                                            ? AppColors.statusNone
+                                            : AppColors.textPrimary,
                                         fontStyle: foods.isEmpty
                                             ? FontStyle.italic
                                             : FontStyle.normal,
@@ -1156,7 +1154,7 @@ class _AddMealModalState extends ConsumerState<_AddMealModal> {
                                 Icons.search,
                                 size: 20,
                                 color: _isSearchMode
-                                    ? Colors.white
+                                    ? AppColors.surface
                                     : AppColors.accentBrown,
                               ),
                               const SizedBox(width: 8),
@@ -1165,7 +1163,7 @@ class _AddMealModalState extends ConsumerState<_AddMealModal> {
                                 style: TextStyle(
                                   fontWeight: FontWeight.w600,
                                   color: _isSearchMode
-                                      ? Colors.white
+                                      ? AppColors.surface
                                       : AppColors.accentBrown,
                                 ),
                               ),
@@ -1192,7 +1190,7 @@ class _AddMealModalState extends ConsumerState<_AddMealModal> {
                                 Icons.edit,
                                 size: 20,
                                 color: !_isSearchMode
-                                    ? Colors.white
+                                    ? AppColors.surface
                                     : AppColors.accentBrown,
                               ),
                               const SizedBox(width: 8),
@@ -1201,7 +1199,7 @@ class _AddMealModalState extends ConsumerState<_AddMealModal> {
                                 style: TextStyle(
                                   fontWeight: FontWeight.w600,
                                   color: !_isSearchMode
-                                      ? Colors.white
+                                      ? AppColors.surface
                                       : AppColors.accentBrown,
                                 ),
                               ),
@@ -1266,7 +1264,7 @@ class _AddMealModalState extends ConsumerState<_AddMealModal> {
             padding: const EdgeInsets.only(top: 8),
             child: Text(
               _error!,
-              style: TextStyle(color: Colors.red.shade400, fontSize: 12),
+              style: TextStyle(color: AppColors.error, fontSize: 12),
             ),
           ),
         if (_results.isNotEmpty)
@@ -1355,7 +1353,7 @@ class _AddMealModalState extends ConsumerState<_AddMealModal> {
             onPressed: _addManualMeal,
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.accentBrown,
-              foregroundColor: Colors.white,
+              foregroundColor: AppColors.surface,
               padding: const EdgeInsets.symmetric(vertical: 16),
             ),
             child: const Text(
@@ -1524,11 +1522,11 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
               color: Colors.transparent,
               child: Container(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                color: isError ? Colors.red.shade700 : AppColors.navBar,
+                color: isError ? AppColors.error : AppColors.navBar,
                 child: Text(
                   message,
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: AppColors.surface,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1599,7 +1597,7 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              style: FilledButton.styleFrom(backgroundColor: AppColors.deleteRed),
               child: const Text('Delete'),
             ),
           ],
@@ -1650,12 +1648,12 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
       height: 54,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: isEditing ? color.withValues(alpha: 0.12) : Colors.white,
+        color: isEditing ? color.withValues(alpha: 0.12) : AppColors.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isEditing
               ? color.withValues(alpha: 0.45)
-              : Colors.brown.shade100,
+              : AppColors.warmBorder,
         ),
         boxShadow: isEditing
             ? []
@@ -1731,10 +1729,10 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Colors.white, Colors.brown.shade50.withValues(alpha: 0.65)],
+          colors: [AppColors.surface, AppColors.warmLight.withValues(alpha: 0.65)],
         ),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.brown.shade100),
+        border: Border.all(color: AppColors.warmBorder),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -1761,9 +1759,9 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
                       ),
                       decoration: _isEditing
                           ? BoxDecoration(
-                              color: Colors.brown.shade50,
+                              color: AppColors.warmLight,
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.brown.shade300),
+                              border: Border.all(color: AppColors.warmMid),
                             )
                           : null,
                       child: Align(
@@ -1786,7 +1784,7 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w800,
-                                  color: Color(0xFF2E221A),
+                                  color: AppColors.mealText,
                                 ),
                               )
                             : Text(
@@ -1801,7 +1799,7 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w800,
-                                  color: Color(0xFF2E221A),
+                                  color: AppColors.mealText,
                                 ),
                               ),
                       ),
@@ -1815,7 +1813,7 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 0.3,
-                          color: Colors.brown.shade600,
+                          color: AppColors.warmDark,
                         ),
                       ),
                     ),
@@ -1830,7 +1828,7 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
                     onPressed: _deleteRow,
                     icon: Icon(
                       Icons.delete_outline,
-                      color: Colors.red.shade400,
+                      color: AppColors.error,
                     ),
                     tooltip: 'Remove meal',
                   ),
@@ -1841,7 +1839,7 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
                     icon: Icon(
                       _isEditing ? Icons.save : Icons.edit,
                       size: 20,
-                      color: Colors.brown.shade700,
+                      color: AppColors.warmDarker,
                     ),
                     tooltip: _isEditing ? 'Save meal' : 'Edit meal',
                   ),
@@ -1855,7 +1853,7 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
               Expanded(
                 child: _macroStatTile(
                   label: 'Calories',
-                  color: const Color(0xFF5F9735),
+                  color: AppColors.caloriesCircle,
                   isEditing: _isEditing,
                   controller: _calController,
                   value: widget.row.calories.toStringAsFixed(0),
@@ -1866,7 +1864,7 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
               Expanded(
                 child: _macroStatTile(
                   label: 'Protein',
-                  color: const Color(0xFFC2482B),
+                  color: AppColors.protein,
                   isEditing: _isEditing,
                   controller: _proteinController,
                   value: widget.row.protein.toStringAsFixed(1),
@@ -1881,7 +1879,7 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
               Expanded(
                 child: _macroStatTile(
                   label: 'Carbs',
-                  color: const Color(0xFFE0A100),
+                  color: AppColors.carbs,
                   isEditing: _isEditing,
                   controller: _carbController,
                   value: widget.row.carbs.toStringAsFixed(1),
@@ -1892,7 +1890,7 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
               Expanded(
                 child: _macroStatTile(
                   label: 'Fat',
-                  color: const Color(0xFF3A6FB8),
+                  color: AppColors.fat,
                   isEditing: _isEditing,
                   controller: _fatController,
                   value: widget.row.fat.toStringAsFixed(1),
@@ -1921,7 +1919,7 @@ class _FoodSearchResultTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: AppColors.accentBrown.withValues(alpha: 0.3)),
       ),
@@ -1941,7 +1939,7 @@ class _FoodSearchResultTile extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   '${result.servingGrams.toStringAsFixed(0)} g · $calories Cal',
-                  style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
                 ),
                 const SizedBox(height: 2),
                 Wrap(
@@ -1951,21 +1949,21 @@ class _FoodSearchResultTile extends StatelessWidget {
                     Text(
                       'P ${(result.proteinPerGram * result.servingGrams).toStringAsFixed(1)}g',
                       style: TextStyle(
-                        color: Colors.grey.shade600,
+                        color: AppColors.textHint,
                         fontSize: 11,
                       ),
                     ),
                     Text(
                       'C ${(result.carbsPerGram * result.servingGrams).toStringAsFixed(1)}g',
                       style: TextStyle(
-                        color: Colors.grey.shade600,
+                        color: AppColors.textHint,
                         fontSize: 11,
                       ),
                     ),
                     Text(
                       'F ${(result.fatPerGram * result.servingGrams).toStringAsFixed(1)}g',
                       style: TextStyle(
-                        color: Colors.grey.shade600,
+                        color: AppColors.textHint,
                         fontSize: 11,
                       ),
                     ),
@@ -1974,7 +1972,7 @@ class _FoodSearchResultTile extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   result.sourceLabel,
-                  style: TextStyle(color: Colors.grey.shade500, fontSize: 11),
+                  style: TextStyle(color: AppColors.statusNone, fontSize: 11),
                 ),
               ],
             ),
@@ -2002,7 +2000,7 @@ class _MacroSummaryItem extends StatelessWidget {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w500,
-            color: Colors.grey.shade600,
+            color: AppColors.textHint,
           ),
         ),
         const SizedBox(height: 4),
@@ -2011,7 +2009,7 @@ class _MacroSummaryItem extends StatelessWidget {
           style: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.bold,
-            color: Colors.black87,
+            color: AppColors.textPrimary,
           ),
         ),
       ],
@@ -2091,15 +2089,15 @@ class _MacroProgressIndicator extends StatelessWidget {
 
     Color statusColor;
     if (percentage > 130) {
-      statusColor = Colors.red;
+      statusColor = AppColors.statusOver;
     } else if (percentage > 110) {
-      statusColor = Colors.yellow.shade700;
+      statusColor = AppColors.statusNear;
     } else if (percentage >= 90) {
-      statusColor = Colors.green;
+      statusColor = AppColors.statusGood;
     } else if (percentage >= 80) {
-      statusColor = Colors.orange;
+      statusColor = AppColors.statusUnder;
     } else {
-      statusColor = Colors.grey;
+      statusColor = AppColors.statusNone;
     }
 
     return Row(
@@ -2111,7 +2109,7 @@ class _MacroProgressIndicator extends StatelessWidget {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              color: Colors.grey.shade700,
+              color: AppColors.textSecondary,
             ),
           ),
         ),
@@ -2121,7 +2119,7 @@ class _MacroProgressIndicator extends StatelessWidget {
               Container(
                 height: 10,
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
+                  color: AppColors.progressTrack,
                   borderRadius: BorderRadius.circular(5),
                 ),
               ),
@@ -2457,10 +2455,10 @@ class _MonthlyCalendarPickerState extends State<_MonthlyCalendarPicker> {
                                   ? FontWeight.bold
                                   : FontWeight.normal,
                               color: isInFocusedWeek
-                                  ? Colors.white
+                                  ? AppColors.surface
                                   : isToday
                                   ? AppColors.selectionColor
-                                  : Colors.black87,
+                                  : AppColors.textPrimary,
                             ),
                           ),
                         ),
@@ -2480,7 +2478,7 @@ class _MonthlyCalendarPickerState extends State<_MonthlyCalendarPicker> {
                 ),
                 child: const Text(
                   'Done',
-                  style: TextStyle(color: Colors.white),
+                  style: TextStyle(color: AppColors.surface),
                 ),
               ),
             ),
@@ -2506,7 +2504,7 @@ class _DayHeader extends StatelessWidget {
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w600,
-          color: Colors.grey.shade600,
+          color: AppColors.textHint,
         ),
       ),
     );
@@ -2587,7 +2585,7 @@ class _ScheduledMealCard extends ConsumerWidget {
                         'Meal Type: ${meal.mealType.toUpperCase()}',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey.shade700,
+                          color: AppColors.textSecondary,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -2624,7 +2622,7 @@ class _ScheduledMealCard extends ConsumerWidget {
                 Icon(Icons.chevron_right, color: AppColors.selectionColor),
                 IconButton(
                   onPressed: onDelete,
-                  icon: Icon(Icons.delete_outline, color: Colors.red.shade400),
+                  icon: Icon(Icons.delete_outline, color: AppColors.error),
                   tooltip: 'Remove scheduled meal',
                 ),
               ],
@@ -2647,15 +2645,15 @@ class _ScheduledMealDetailScreen extends StatelessWidget {
     final recipeName = (recipe['label'] ?? 'Recipe').toString();
     final ingredients = _parseIngredients(recipe['ingredients']);
     final instructions = _parseInstructions(recipe['instructions']);
-    const baseColor = Color(0xFF181818);
-    const cardColor = Color.fromRGBO(255, 255, 255, 0.05);
-    const accentColor = Color(0xFF5D8A73);
+    const baseColor = AppColors.recipeSurface;
+    final cardColor = AppColors.surface.withValues(alpha: 0.05);
+    const accentColor = AppColors.recipeAccent;
 
     return Scaffold(
       backgroundColor: baseColor,
       appBar: AppBar(
         backgroundColor: baseColor,
-        foregroundColor: Colors.white,
+        foregroundColor: AppColors.surface,
         elevation: 0,
         title: const Text('Recipe Details'),
       ),
@@ -2669,9 +2667,9 @@ class _ScheduledMealDetailScreen extends StatelessWidget {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      Color(0xAA2A3A33),
-                      Color(0x2A2A3A33),
-                      Color(0x00181818),
+                      AppColors.recipeOverlayHigh,
+                      AppColors.recipeOverlayMid,
+                      AppColors.recipeOverlayFade,
                     ],
                     stops: [0.0, 0.34, 0.62],
                   ),
@@ -2698,7 +2696,7 @@ class _ScheduledMealDetailScreen extends StatelessWidget {
                         fontSize: 48,
                         height: 1.1,
                         fontWeight: FontWeight.w800,
-                        color: Color(0xFFF2F4F7),
+                        color: AppColors.recipeText,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -2824,7 +2822,7 @@ class _IngredientsSection extends StatelessWidget {
         if (ingredients.isEmpty)
           const Text(
             'No ingredients available.',
-            style: TextStyle(color: Color(0xFFB8C0CC), fontSize: 18),
+            style: TextStyle(color: AppColors.recipeSubtext, fontSize: 18),
           )
         else
           ...ingredients.map(
@@ -2838,7 +2836,7 @@ class _IngredientsSection extends StatelessWidget {
                     child: Icon(
                       Icons.circle,
                       size: 10,
-                      color: Color(0xFF5D8A73),
+                      color: AppColors.recipeAccent,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -2848,7 +2846,7 @@ class _IngredientsSection extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 19,
                         height: 1.35,
-                        color: Color(0xFFE9EDF4),
+                        color: AppColors.recipeBody,
                       ),
                     ),
                   ),
@@ -2876,7 +2874,7 @@ class _InstructionsSection extends StatelessWidget {
         if (instructions.isEmpty)
           const Text(
             'No instructions available.',
-            style: TextStyle(color: Color(0xFFB8C0CC), fontSize: 18),
+            style: TextStyle(color: AppColors.recipeSubtext, fontSize: 18),
           )
         else
           ...instructions.asMap().entries.map(
@@ -2891,12 +2889,12 @@ class _InstructionsSection extends StatelessWidget {
                     alignment: Alignment.center,
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Color(0xFF5D8A73),
+                      color: AppColors.recipeAccent,
                     ),
                     child: Text(
                       '${entry.key + 1}',
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: AppColors.surface,
                         fontWeight: FontWeight.w700,
                         fontSize: 19,
                       ),
@@ -2909,7 +2907,7 @@ class _InstructionsSection extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 19,
                         height: 1.35,
-                        color: Color(0xFFE9EDF4),
+                        color: AppColors.recipeBody,
                       ),
                     ),
                   ),
@@ -2935,7 +2933,7 @@ class _RecipeSectionTitle extends StatelessWidget {
         fontSize: 42,
         height: 1,
         fontWeight: FontWeight.w800,
-        color: Color(0xFF5D8A73),
+        color: AppColors.recipeAccent,
       ),
     );
   }
@@ -3025,7 +3023,7 @@ class _AddSearchResultDialogState
             alignment: Alignment.centerLeft,
             child: Text(
               'Source: ${widget.result.sourceLabel}',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+              style: TextStyle(color: AppColors.textHint, fontSize: 12),
             ),
           ),
         ],

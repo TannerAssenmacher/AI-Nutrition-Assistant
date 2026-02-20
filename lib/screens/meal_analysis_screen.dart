@@ -111,7 +111,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(message),
-          backgroundColor: Colors.red[700],
+          backgroundColor: AppColors.error,
         ),
       );
     } catch (e) {
@@ -124,7 +124,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Analysis failed: $e'),
-          backgroundColor: Colors.red[700],
+          backgroundColor: AppColors.error,
         ),
       );
     } finally {
@@ -195,7 +195,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(message),
-          backgroundColor: Colors.red[700],
+          backgroundColor: AppColors.error,
         ),
       );
     } on TimeoutException {
@@ -208,7 +208,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(message),
-          backgroundColor: Colors.red[700],
+          backgroundColor: AppColors.error,
         ),
       );
     } catch (e) {
@@ -220,7 +220,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(message),
-          backgroundColor: Colors.red[700],
+          backgroundColor: AppColors.error,
         ),
       );
     } finally {
@@ -608,14 +608,14 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
 
     final fab = FloatingActionButton.extended(
       onPressed: isBusy ? null : _captureAndAnalyze,
-      backgroundColor: Colors.green[700],
+      backgroundColor: AppColors.success,
       icon: isBusy
           ? const SizedBox(
               width: 20,
               height: 20,
               child: CircularProgressIndicator(
                 strokeWidth: 3,
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.surface),
               ),
             )
           : const Icon(Icons.camera_alt),
@@ -688,18 +688,18 @@ class _ErrorBanner extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.red[50],
+        color: AppColors.error.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.red[200]!),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
-          Icon(Icons.error_outline, color: Colors.red[400]),
+          Icon(Icons.error_outline, color: AppColors.error),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               message,
-              style: TextStyle(color: Colors.red[700]),
+              style: TextStyle(color: AppColors.error),
             ),
           ),
         ],
@@ -727,7 +727,7 @@ class _BarcodeMacroRow extends StatelessWidget {
             child: Text(
               label,
               style: TextStyle(
-                color: Colors.grey.shade700,
+                color: AppColors.textSecondary,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -873,7 +873,7 @@ class _BarcodeFoodDialogState extends State<_BarcodeFoodDialog> {
                     Text(
                       widget.result.brand!,
                       style: TextStyle(
-                        color: Colors.grey.shade700,
+                        color: AppColors.textSecondary,
                         fontSize: 12,
                       ),
                     ),
@@ -953,7 +953,7 @@ class _BarcodeFoodDialogState extends State<_BarcodeFoodDialog> {
                   Text(
                     widget.result.sourceLabel,
                     style: TextStyle(
-                      color: Colors.grey.shade600,
+                      color: AppColors.textHint,
                       fontSize: 11,
                     ),
                   ),
@@ -992,10 +992,10 @@ class _BarcodeFoodDialogState extends State<_BarcodeFoodDialog> {
               duration: const Duration(milliseconds: 150),
               opacity: keyboardVisible ? 1 : 0,
               child: Material(
-                color: Colors.black87,
+                color: AppColors.textPrimary,
                 shape: const CircleBorder(),
                 child: IconButton(
-                  icon: const Icon(Icons.check, color: Colors.white),
+                  icon: const Icon(Icons.check, color: AppColors.surface),
                   onPressed: _dismissKeyboard,
                   tooltip: 'Done',
                 ),
@@ -1062,7 +1062,7 @@ class _AnalyzingState extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               'Step ${(progress * 3).clamp(1, 3).round()} of 3',
-              style: TextStyle(color: Colors.grey.shade600),
+              style: TextStyle(color: AppColors.textHint),
             ),
             const SizedBox(height: 12),
             SizedBox(
@@ -1092,7 +1092,7 @@ class _IdleState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.camera_alt, size: 60, color: Colors.grey),
+          const Icon(Icons.camera_alt, size: 60, color: AppColors.statusNone),
           const SizedBox(height: 10),
           Text(
             'No photo captured yet',
@@ -1129,9 +1129,9 @@ class _EditableChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.grey.shade100,
+          color: AppColors.surfaceVariant,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.grey.shade300),
+          border: Border.all(color: AppColors.borderLight),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -1140,7 +1140,7 @@ class _EditableChip extends StatelessWidget {
               label,
               style: TextStyle(
                 fontSize: 12,
-                color: Colors.grey.shade700,
+                color: AppColors.textSecondary,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -1156,7 +1156,7 @@ class _EditableChip extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 4),
-                const Icon(Icons.edit, size: 14, color: Colors.black54),
+                const Icon(Icons.edit, size: 14, color: AppColors.textSecondary),
               ],
             ),
           ],
@@ -1241,17 +1241,17 @@ class MealAnalysisResultWidget extends StatelessWidget {
                               _NutrientChip(
                                 label: 'Protein',
                                 value: '${food.protein.toStringAsFixed(1)} g',
-                                color: Colors.blue.shade50,
+                                color: AppColors.protein.withValues(alpha: 0.1),
                               ),
                               _NutrientChip(
                                 label: 'Carbs',
                                 value: '${food.carbs.toStringAsFixed(1)} g',
-                                color: Colors.orange.shade50,
+                                color: AppColors.carbs.withValues(alpha: 0.1),
                               ),
                               _NutrientChip(
                                 label: 'Fat',
                                 value: '${food.fat.toStringAsFixed(1)} g',
-                                color: Colors.green.shade50,
+                                color: AppColors.fat.withValues(alpha: 0.1),
                               ),
                             ],
                           ),
@@ -1316,21 +1316,21 @@ class MealAnalysisResultWidget extends StatelessWidget {
                     label: 'Protein',
                     grams: analysis.totalProtein,
                     percentage: analysis.proteinPercentage,
-                    color: Colors.blue,
+                    color: AppColors.protein,
                   ),
                   const SizedBox(height: 8),
                   _MacroBar(
                     label: 'Carbs',
                     grams: analysis.totalCarbs,
                     percentage: analysis.carbsPercentage,
-                    color: Colors.orange,
+                    color: AppColors.carbs,
                   ),
                   const SizedBox(height: 8),
                   _MacroBar(
                     label: 'Fat',
                     grams: analysis.totalFat,
                     percentage: analysis.fatPercentage,
-                    color: Colors.green,
+                    color: AppColors.fat,
                   ),
                   const SizedBox(height: 16),
                   Align(
@@ -1377,7 +1377,7 @@ class _NutrientChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: color ?? Colors.grey.shade100,
+        color: color ?? AppColors.surfaceVariant,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -1387,7 +1387,7 @@ class _NutrientChip extends StatelessWidget {
             label,
             style: TextStyle(
               fontSize: 11,
-              color: Colors.grey.shade700,
+              color: AppColors.textSecondary,
             ),
           ),
           const SizedBox(height: 2),
@@ -1420,7 +1420,7 @@ class _TotalCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -1429,7 +1429,7 @@ class _TotalCard extends StatelessWidget {
             label,
             style: TextStyle(
               fontSize: 12,
-              color: Colors.grey.shade700,
+              color: AppColors.textSecondary,
             ),
             textAlign: TextAlign.center,
           ),
@@ -1452,7 +1452,7 @@ class _TotalCard extends StatelessWidget {
                   unit,
                   style: TextStyle(
                     fontSize: 14,
-                    color: Colors.grey.shade600,
+                    color: AppColors.textHint,
                   ),
                 ),
               ),
@@ -1506,7 +1506,7 @@ class _MacroBar extends StatelessWidget {
           borderRadius: BorderRadius.circular(4),
           child: LinearProgressIndicator(
             value: (percentage / 100).clamp(0.0, 1.0),
-            backgroundColor: Colors.grey.shade300,
+            backgroundColor: AppColors.progressTrack,
             valueColor: AlwaysStoppedAnimation<Color>(color),
             minHeight: 8,
           ),
