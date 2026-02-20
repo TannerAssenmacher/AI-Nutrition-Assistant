@@ -1090,15 +1090,16 @@ class _DailyLogCalendarScreenState
                                       ),
                                     ),
                                     if (grade != null) ...[
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'Grade ${grade.letter}  (${grade.errorPercent.toStringAsFixed(1)}% error)',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: grade.color,
-                                        ),
-                                      ),
+                                      // Shows calculated grade for the day based on nutrition quality but idk if needed
+                                      // const SizedBox(height: 4),
+                                      // Text(
+                                      //   'Grade ${grade.letter}  (${grade.errorPercent.toStringAsFixed(1)}% error)',
+                                      //   style: TextStyle(
+                                      //     fontSize: 12,
+                                      //     fontWeight: FontWeight.w600,
+                                      //     color: grade.color,
+                                      //   ),
+                                      // ),
                                     ],
                                     const SizedBox(height: 8),
                                     _MacroProgressIndicator(
@@ -2736,6 +2737,7 @@ class _ScheduledMealCard extends ConsumerWidget {
         final protein = (recipe['protein'] ?? 0).toDouble();
         final carbs = (recipe['carbs'] ?? 0).toDouble();
         final fat = (recipe['fat'] ?? 0).toDouble();
+        final dayLabel = DateFormat('MMMM d, yyyy').format(meal.date);
 
         return InkWell(
           onTap: () {
@@ -2751,93 +2753,281 @@ class _ScheduledMealCard extends ConsumerWidget {
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppColors.selectionColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: AppColors.selectionColor.withValues(alpha: 0.4),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white,
+                  Colors.brown.shade50.withValues(alpha: 0.65),
+                ],
               ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.selectionColor.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    Icons.schedule,
-                    color: AppColors.selectionColor,
-                    size: 24,
-                  ),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.brown.shade100),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        recipeName, // show recipe name
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Meal Type: ${meal.mealType.toUpperCase()}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade700,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 4,
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _MacroChip(
-                            label: 'Calories',
-                            value: calories,
-                            suffix: 'kcal',
+                          Text(
+                            recipeName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF2E221A),
+                            ),
                           ),
-                          _MacroChip(
-                            label: 'Protein',
-                            value: protein,
-                            suffix: 'g',
+                          const SizedBox(height: 4),
+                          Text(
+                            '${meal.mealType.toUpperCase()} • $dayLabel',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.3,
+                              color: Colors.brown.shade600,
+                            ),
                           ),
-                          _MacroChip(label: 'Carbs', value: carbs, suffix: 'g'),
-                          _MacroChip(label: 'Fat', value: fat, suffix: 'g'),
                         ],
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Tap to view ingredients and instructions',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.selectionColor,
-                          fontWeight: FontWeight.w500,
+                    ),
+                    const SizedBox(width: 8),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          onPressed: () => _confirmAndLogScheduledMeal(
+                            context: context,
+                            ref: ref,
+                            recipeName: recipeName,
+                            calories: calories,
+                            protein: protein,
+                            carbs: carbs,
+                            fat: fat,
+                            dayLabel: dayLabel,
+                          ),
+                          icon: Icon(
+                            Icons.playlist_add_check_rounded,
+                            color: AppColors.accentBrown,
+                          ),
+                          tooltip: 'Log meal',
                         ),
+                        IconButton(
+                          onPressed: onEdit,
+                          icon: Icon(
+                            Icons.edit,
+                            size: 20,
+                            color: Colors.brown.shade700,
+                          ),
+                          tooltip: 'Edit scheduled meal',
+                        ),
+                        IconButton(
+                          onPressed: onDelete,
+                          icon: Icon(
+                            Icons.delete_outline,
+                            color: Colors.red.shade400,
+                          ),
+                          tooltip: 'Remove scheduled meal',
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _scheduledMacroStatTile(
+                        label: 'Calories',
+                        value: calories.toStringAsFixed(0),
+                        unit: 'Cal',
+                        color: AppColors.caloriesCircle,
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _scheduledMacroStatTile(
+                        label: 'Protein',
+                        value: protein.toStringAsFixed(1),
+                        unit: 'g',
+                        color: AppColors.protein,
+                      ),
+                    ),
+                  ],
                 ),
-                Icon(Icons.chevron_right, color: AppColors.selectionColor),
-                IconButton(
-                  onPressed: onEdit,
-                  icon: Icon(Icons.edit_outlined, color: AppColors.selectionColor),
-                  tooltip: 'Edit scheduled meal',
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _scheduledMacroStatTile(
+                        label: 'Carbs',
+                        value: carbs.toStringAsFixed(1),
+                        unit: 'g',
+                        color: AppColors.carbs,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _scheduledMacroStatTile(
+                        label: 'Fat',
+                        value: fat.toStringAsFixed(1),
+                        unit: 'g',
+                        color: AppColors.fat,
+                      ),
+                    ),
+                  ],
                 ),
-                IconButton(
-                  onPressed: onDelete,
-                  icon: Icon(Icons.delete_outline, color: Colors.red.shade400),
-                  tooltip: 'Remove scheduled meal',
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.chevron_right,
+                      size: 18,
+                      color: AppColors.selectionColor,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Tap to view ingredients and instructions',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.selectionColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
         );
       },
+    );
+  }
+
+  Future<void> _confirmAndLogScheduledMeal({
+    required BuildContext context,
+    required WidgetRef ref,
+    required String recipeName,
+    required double calories,
+    required double protein,
+    required double carbs,
+    required double fat,
+    required String dayLabel,
+  }) async {
+    final shouldLog = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Log scheduled meal?'),
+          content: Text(
+            'Are you sure you want to add meal "$recipeName" scheduled for day $dayLabel?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Yes, log meal'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldLog != true) return;
+
+    final userId = ref.read(authServiceProvider)?.uid;
+    if (userId == null) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please sign in to log meals.')),
+        );
+      }
+      return;
+    }
+
+    final item = FoodItem(
+      id: 'scheduled-${DateTime.now().microsecondsSinceEpoch}',
+      name: recipeName,
+      mass_g: 1.0,
+      calories_g: calories,
+      protein_g: protein,
+      carbs_g: carbs,
+      fat: fat,
+      mealType: meal.mealType.toLowerCase(),
+      consumedAt: DateTime(meal.date.year, meal.date.month, meal.date.day, 12),
+    );
+
+    await ref.read(firestoreFoodLogProvider(userId).notifier).addFood(userId, item);
+
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('"$recipeName" logged to your food history.')),
+    );
+  }
+
+  Widget _scheduledMacroStatTile({
+    required String label,
+    required String value,
+    required String unit,
+    required Color color,
+  }) {
+    return Container(
+      height: 54,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.brown.shade100),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 5,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: color.withValues(alpha: 0.9),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              '$value $unit',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: color.withValues(alpha: 0.95),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
