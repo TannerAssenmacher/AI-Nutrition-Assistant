@@ -105,8 +105,6 @@ class FirestoreScheduledMeals extends _$FirestoreScheduledMeals {
           'FirestoreScheduledMeals stream: user=$userId docs=${snapshot.docs.length}');
       return snapshot.docs.map((doc) {
         final data = doc.data();
-        // Always prefer the Firestore document id for deletes/updates to succeed
-        data['id'] = doc.id;
         // Normalize date to DateTime for JSON parser
         final date = data['date'];
         if (date is Timestamp) {
@@ -115,7 +113,14 @@ class FirestoreScheduledMeals extends _$FirestoreScheduledMeals {
           data['date'] = DateTime.tryParse(date) ?? DateTime.now();
         }
 
-        return PlannedFood.fromJson(data);
+        // PlannedFood.fromJson does not populate id, so attach doc.id manually.
+        final parsed = PlannedFood.fromJson(data);
+        return PlannedFood(
+          id: doc.id,
+          recipeId: parsed.recipeId,
+          date: parsed.date,
+          mealType: parsed.mealType,
+        );
       }).toList();
     });
   }

@@ -465,19 +465,63 @@ class _DailyLogCalendarScreenState
                                 for (final meal in scheduledMeals)
                                   _ScheduledMealCard(
                                     meal: meal,
+                                    onEdit: () async {
+                                      await _showEditScheduledMealDialog(
+                                        userId,
+                                        meal,
+                                      );
+                                    },
                                     onDelete: () async {
-                                      if (meal.id != null) {
-                                        await ref
-                                            .read(
-                                              firestoreScheduledMealsProvider(
-                                                userId,
-                                              ).notifier,
-                                            )
-                                            .removeScheduledMeal(
+                                      if (meal.id == null) return;
+
+                                      final shouldDelete =
+                                          await showDialog<bool>(
+                                            context: context,
+                                            builder: (context) {
+                                              return AlertDialog(
+                                                title: const Text(
+                                                  'Delete scheduled meal?',
+                                                ),
+                                                content: const Text(
+                                                  'Remove this scheduled meal from this day?',
+                                                ),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed: () =>
+                                                        Navigator.of(
+                                                          context,
+                                                        ).pop(false),
+                                                    child: const Text('Cancel'),
+                                                  ),
+                                                  FilledButton(
+                                                    onPressed: () =>
+                                                        Navigator.of(
+                                                          context,
+                                                        ).pop(true),
+                                                    style:
+                                                        FilledButton.styleFrom(
+                                                          backgroundColor:
+                                                              Colors.red,
+                                                        ),
+                                                    child: const Text('Delete'),
+                                                  ),
+                                                ],
+                                              );
+                                            },
+                                          );
+
+                                      if (shouldDelete != true) return;
+
+                                      await ref
+                                          .read(
+                                            firestoreScheduledMealsProvider(
                                               userId,
-                                              meal.id!,
-                                            );
-                                      }
+                                            ).notifier,
+                                          )
+                                          .removeScheduledMeal(
+                                            userId,
+                                            meal.id!,
+                                          );
                                     },
                                   ),
                             ] else ...[
@@ -580,6 +624,158 @@ class _DailyLogCalendarScreenState
       showDragHandle: true,
       builder: (context) => _AddMealModal(day: day, userId: userId),
     );
+  }
+
+  Future<void> _showEditScheduledMealDialog(
+    String userId,
+    PlannedFood meal,
+  ) async {
+    if (meal.id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to edit this scheduled meal.')),
+      );
+      return;
+    }
+
+    final result = await showModalBottomSheet<_ScheduledMealEditResult>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) {
+        final mealTypes = ['breakfast', 'lunch', 'dinner', 'snack'];
+        var selectedDate = DateTime(meal.date.year, meal.date.month, meal.date.day);
+        var selectedMealType = meal.mealType.toLowerCase();
+        if (!mealTypes.contains(selectedMealType)) {
+          selectedMealType = 'snack';
+        }
+
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 12,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Edit Scheduled Meal',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Date',
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
+                  const SizedBox(height: 6),
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final now = DateTime.now();
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: selectedDate,
+                        firstDate: DateTime(now.year - 1, 1, 1),
+                        lastDate: DateTime(now.year + 2, 12, 31),
+                      );
+                      if (picked == null) return;
+                      setSheetState(() {
+                        selectedDate = DateTime(
+                          picked.year,
+                          picked.month,
+                          picked.day,
+                        );
+                      });
+                    },
+                    icon: const Icon(Icons.calendar_today),
+                    label: Text(DateFormat('MMMM d, yyyy').format(selectedDate)),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Meal Type',
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedMealType,
+                    items: mealTypes
+                        .map(
+                          (type) => DropdownMenuItem<String>(
+                            value: type,
+                            child: Text(_capitalizeMealType(type)),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setSheetState(() {
+                        selectedMealType = value;
+                      });
+                    },
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: const Text('Cancel'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.of(context).pop(
+                              _ScheduledMealEditResult(
+                                date: selectedDate,
+                                mealType: selectedMealType,
+                              ),
+                            );
+                          },
+                          child: const Text('Save'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (result == null) return;
+
+    final updatedMeal = PlannedFood(
+      id: meal.id,
+      recipeId: meal.recipeId,
+      date: result.date,
+      mealType: result.mealType,
+    );
+
+    await ref
+        .read(firestoreScheduledMealsProvider(userId).notifier)
+        .updateScheduledMeal(userId, meal.id!, updatedMeal);
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Scheduled meal updated.')),
+    );
+  }
+
+  static String _capitalizeMealType(String value) {
+    if (value.isEmpty) return value;
+    return value[0].toUpperCase() + value.substring(1).toLowerCase();
   }
 
   void _checkAndShowNotifications(
@@ -2515,9 +2711,14 @@ class _DayHeader extends StatelessWidget {
 
 class _ScheduledMealCard extends ConsumerWidget {
   final PlannedFood meal;
+  final VoidCallback onEdit;
   final VoidCallback onDelete;
 
-  const _ScheduledMealCard({required this.meal, required this.onDelete});
+  const _ScheduledMealCard({
+    required this.meal,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -2623,6 +2824,11 @@ class _ScheduledMealCard extends ConsumerWidget {
                 ),
                 Icon(Icons.chevron_right, color: AppColors.selectionColor),
                 IconButton(
+                  onPressed: onEdit,
+                  icon: Icon(Icons.edit_outlined, color: AppColors.selectionColor),
+                  tooltip: 'Edit scheduled meal',
+                ),
+                IconButton(
                   onPressed: onDelete,
                   icon: Icon(Icons.delete_outline, color: Colors.red.shade400),
                   tooltip: 'Remove scheduled meal',
@@ -2648,39 +2854,20 @@ class _ScheduledMealDetailScreen extends StatelessWidget {
     final ingredients = _parseIngredients(recipe['ingredients']);
     final instructions = _parseInstructions(recipe['instructions']);
     const baseColor = Color(0xFF181818);
-    const cardColor = Color.fromRGBO(255, 255, 255, 0.05);
-    const accentColor = Color(0xFF5D8A73);
+    const cardColor = AppColors.background;
 
     return Scaffold(
       backgroundColor: baseColor,
       appBar: AppBar(
-        backgroundColor: baseColor,
+        backgroundColor: AppColors.topBar,
         foregroundColor: Colors.white,
         elevation: 0,
         title: const Text('Recipe Details'),
       ),
       body: SafeArea(
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Color(0xAA2A3A33),
-                      Color(0x2A2A3A33),
-                      Color(0x00181818),
-                    ],
-                    stops: [0.0, 0.34, 0.62],
-                  ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Container(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Container(
                 decoration: BoxDecoration(
                   color: cardColor,
                   borderRadius: BorderRadius.circular(24),
@@ -2698,7 +2885,7 @@ class _ScheduledMealDetailScreen extends StatelessWidget {
                         fontSize: 48,
                         height: 1.1,
                         fontWeight: FontWeight.w800,
-                        color: Color(0xFFF2F4F7),
+                        color: AppColors.navBar,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -2709,7 +2896,7 @@ class _ScheduledMealDetailScreen extends StatelessWidget {
                         fontSize: 12,
                         letterSpacing: 1.2,
                         fontWeight: FontWeight.w700,
-                        color: accentColor,
+                        color: AppColors.navBar,
                       ),
                     ),
                     const SizedBox(height: 22),
@@ -2731,7 +2918,7 @@ class _ScheduledMealDetailScreen extends StatelessWidget {
                                     horizontal: 18,
                                   ),
                                   width: 1.5,
-                                  color: Colors.white.withValues(alpha: 0.18),
+                                  color: Colors.black.withValues(alpha: 0.18),
                                 ),
                                 Expanded(
                                   child: _InstructionsSection(
@@ -2762,8 +2949,6 @@ class _ScheduledMealDetailScreen extends StatelessWidget {
                 ),
               ),
             ),
-          ],
-        ),
       ),
     );
   }
@@ -2838,7 +3023,7 @@ class _IngredientsSection extends StatelessWidget {
                     child: Icon(
                       Icons.circle,
                       size: 10,
-                      color: Color(0xFF5D8A73),
+                      color: AppColors.navBar,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -2848,7 +3033,7 @@ class _IngredientsSection extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 19,
                         height: 1.35,
-                        color: Color(0xFFE9EDF4),
+                        color: Color.fromARGB(255, 0, 0, 0),
                       ),
                     ),
                   ),
@@ -2876,7 +3061,7 @@ class _InstructionsSection extends StatelessWidget {
         if (instructions.isEmpty)
           const Text(
             'No instructions available.',
-            style: TextStyle(color: Color(0xFFB8C0CC), fontSize: 18),
+            style: TextStyle(color: Color.fromARGB(255, 0, 0, 0), fontSize: 18),
           )
         else
           ...instructions.asMap().entries.map(
@@ -2891,12 +3076,12 @@ class _InstructionsSection extends StatelessWidget {
                     alignment: Alignment.center,
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Color(0xFF5D8A73),
+                      color: AppColors.navBar,
                     ),
                     child: Text(
                       '${entry.key + 1}',
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: Color.fromARGB(255, 255, 255, 255),
                         fontWeight: FontWeight.w700,
                         fontSize: 19,
                       ),
@@ -2909,7 +3094,7 @@ class _InstructionsSection extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 19,
                         height: 1.35,
-                        color: Color(0xFFE9EDF4),
+                        color: Color.fromARGB(255, 0, 0, 0),
                       ),
                     ),
                   ),
@@ -2935,10 +3120,20 @@ class _RecipeSectionTitle extends StatelessWidget {
         fontSize: 42,
         height: 1,
         fontWeight: FontWeight.w800,
-        color: Color(0xFF5D8A73),
+        color: AppColors.navBar,
       ),
     );
   }
+}
+
+class _ScheduledMealEditResult {
+  final DateTime date;
+  final String mealType;
+
+  const _ScheduledMealEditResult({
+    required this.date,
+    required this.mealType,
+  });
 }
 
 class _AddSearchResultDialog extends ConsumerStatefulWidget {
