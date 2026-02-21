@@ -1,6 +1,28 @@
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+class FoodServingOption {
+  final String id;
+  final String description;
+  final double grams;
+  final double caloriesPerGram;
+  final double proteinPerGram;
+  final double carbsPerGram;
+  final double fatPerGram;
+  final bool isDefault;
+
+  const FoodServingOption({
+    required this.id,
+    required this.description,
+    required this.grams,
+    required this.caloriesPerGram,
+    required this.proteinPerGram,
+    required this.carbsPerGram,
+    required this.fatPerGram,
+    required this.isDefault,
+  });
+}
+
 class FoodSearchResult {
   final String id;
   final String name;
@@ -13,6 +35,7 @@ class FoodSearchResult {
   final String? barcode;
   final String? brand;
   final String? imageUrl;
+  final List<FoodServingOption> servingOptions;
 
   const FoodSearchResult({
     required this.id,
@@ -26,19 +49,39 @@ class FoodSearchResult {
     this.barcode,
     this.brand,
     this.imageUrl,
+    this.servingOptions = const [],
   });
 
   String get sourceLabel => switch (source) {
-        'usda' => 'USDA FoodData Central',
-        'open_food_facts' => 'Open Food Facts',
-        _ => 'Spoonacular',
-      };
+    'fatsecret' => 'FatSecret',
+    _ => 'FatSecret',
+  };
+
+  FoodServingOption get defaultServingOption {
+    if (servingOptions.isEmpty) {
+      return FoodServingOption(
+        id: 'default',
+        description: 'Default serving',
+        grams: servingGrams,
+        caloriesPerGram: caloriesPerGram,
+        proteinPerGram: proteinPerGram,
+        carbsPerGram: carbsPerGram,
+        fatPerGram: fatPerGram,
+        isDefault: true,
+      );
+    }
+
+    return servingOptions.firstWhere(
+      (option) => option.isDefault,
+      orElse: () => servingOptions.first,
+    );
+  }
 }
 
 class FoodSearchService {
   FoodSearchService({FirebaseFunctions? functions})
-      : _functions =
-            functions ?? FirebaseFunctions.instanceFor(region: 'us-central1');
+    : _functions =
+          functions ?? FirebaseFunctions.instanceFor(region: 'us-central1');
 
   final FirebaseFunctions _functions;
   static final RegExp _nonDigitsRegex = RegExp(r'\D');
@@ -53,6 +96,46 @@ class FoodSearchService {
       return normalized.substring(1);
     }
     return normalized;
+  }
+
+  Future<List<String>> autocompleteFoods(
+    String expression, {
+    int maxResults = 6,
+  }) async {
+    final trimmed = expression.trim();
+    if (trimmed.length < 2) return const [];
+
+    await _ensureAuthenticatedUser();
+    final callable = _functions.httpsCallable('autocompleteFoods');
+    final result = await callable.call({
+      'expression': trimmed,
+      'maxResults': maxResults,
+    });
+
+    final rawData = result.data;
+    if (rawData is! Map) {
+      throw StateError(
+        'Unexpected Cloud Function response type: ${rawData.runtimeType}',
+      );
+    }
+
+    final data = Map<String, dynamic>.from(rawData);
+    final suggestionsRaw = data['suggestions'];
+    final suggestions = suggestionsRaw is List ? suggestionsRaw : const [];
+    final seen = <String>{};
+    final parsed = <String>[];
+
+    for (final item in suggestions) {
+      final suggestion = item.toString().trim();
+      if (suggestion.isEmpty) continue;
+      final key = suggestion.toLowerCase();
+      if (!seen.add(key)) continue;
+      parsed.add(suggestion);
+      if (parsed.length >= maxResults) {
+        break;
+      }
+    }
+    return parsed;
   }
 
   Future<List<FoodSearchResult>> searchFoods(String query) async {
@@ -158,6 +241,60 @@ class FoodSearchService {
           ? null
           : (map['brand'] ?? '').toString(),
       imageUrl: imageUrl,
+      servingOptions: _parseServingOptions(map),
+    );
+  }
+
+  List<FoodServingOption> _parseServingOptions(Map<String, dynamic> map) {
+    final raw = map['servingOptions'];
+    final items = raw is List ? raw : const [];
+    final parsed = <FoodServingOption>[];
+
+    for (final item in items) {
+      if (item is! Map) continue;
+      final option = _parseServingOption(Map<String, dynamic>.from(item));
+      if (option == null) continue;
+      parsed.add(option);
+    }
+
+    if (parsed.isNotEmpty) {
+      final hasDefault = parsed.any((option) => option.isDefault);
+      if (hasDefault) return parsed;
+      return [parsed.first.copyWith(isDefault: true), ...parsed.skip(1)];
+    }
+
+    final fallbackGrams = (map['servingGrams'] as num?)?.toDouble() ?? 100;
+    return [
+      FoodServingOption(
+        id: 'default',
+        description: 'Default serving',
+        grams: fallbackGrams > 0 ? fallbackGrams : 100,
+        caloriesPerGram: (map['caloriesPerGram'] as num?)?.toDouble() ?? 0,
+        proteinPerGram: (map['proteinPerGram'] as num?)?.toDouble() ?? 0,
+        carbsPerGram: (map['carbsPerGram'] as num?)?.toDouble() ?? 0,
+        fatPerGram: (map['fatPerGram'] as num?)?.toDouble() ?? 0,
+        isDefault: true,
+      ),
+    ];
+  }
+
+  FoodServingOption? _parseServingOption(Map<String, dynamic> map) {
+    final grams = (map['grams'] as num?)?.toDouble();
+    if (grams == null || grams <= 0) {
+      return null;
+    }
+
+    final id = (map['id'] ?? '').toString().trim();
+    final description = (map['description'] ?? '').toString().trim();
+    return FoodServingOption(
+      id: id.isEmpty ? description : id,
+      description: description.isEmpty ? 'Serving' : description,
+      grams: grams,
+      caloriesPerGram: (map['caloriesPerGram'] as num?)?.toDouble() ?? 0,
+      proteinPerGram: (map['proteinPerGram'] as num?)?.toDouble() ?? 0,
+      carbsPerGram: (map['carbsPerGram'] as num?)?.toDouble() ?? 0,
+      fatPerGram: (map['fatPerGram'] as num?)?.toDouble() ?? 0,
+      isDefault: map['isDefault'] == true,
     );
   }
 
@@ -168,5 +305,29 @@ class FoodSearchService {
     if (uri == null || !uri.hasScheme) return null;
     if (uri.scheme != 'http' && uri.scheme != 'https') return null;
     return trimmed;
+  }
+}
+
+extension on FoodServingOption {
+  FoodServingOption copyWith({
+    String? id,
+    String? description,
+    double? grams,
+    double? caloriesPerGram,
+    double? proteinPerGram,
+    double? carbsPerGram,
+    double? fatPerGram,
+    bool? isDefault,
+  }) {
+    return FoodServingOption(
+      id: id ?? this.id,
+      description: description ?? this.description,
+      grams: grams ?? this.grams,
+      caloriesPerGram: caloriesPerGram ?? this.caloriesPerGram,
+      proteinPerGram: proteinPerGram ?? this.proteinPerGram,
+      carbsPerGram: carbsPerGram ?? this.carbsPerGram,
+      fatPerGram: fatPerGram ?? this.fatPerGram,
+      isDefault: isDefault ?? this.isDefault,
+    );
   }
 }

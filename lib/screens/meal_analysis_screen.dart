@@ -271,7 +271,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       builder: (dialogContext) {
         return _BarcodeFoodDialog(
           result: result,
-          onAdd: (grams, mealType) async {
+          onAdd: (grams, mealType, servingOption) async {
             final userId = FirebaseAuth.instance.currentUser?.uid;
             if (userId == null) {
               throw StateError('Please sign in to save scanned foods.');
@@ -282,10 +282,10 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
               id: 'barcode-${DateTime.now().microsecondsSinceEpoch}',
               name: result.name,
               mass_g: grams,
-              calories_g: result.caloriesPerGram,
-              protein_g: result.proteinPerGram,
-              carbs_g: result.carbsPerGram,
-              fat: result.fatPerGram,
+              calories_g: servingOption.caloriesPerGram,
+              protein_g: servingOption.proteinPerGram,
+              carbs_g: servingOption.carbsPerGram,
+              fat: servingOption.fatPerGram,
               mealType: mealType,
               consumedAt: consumedAt,
             );
@@ -771,7 +771,12 @@ class _BarcodeMacroRow extends StatelessWidget {
 
 class _BarcodeFoodDialog extends StatefulWidget {
   final FoodSearchResult result;
-  final Future<void> Function(double grams, String mealType) onAdd;
+  final Future<void> Function(
+    double grams,
+    String mealType,
+    FoodServingOption servingOption,
+  )
+  onAdd;
 
   const _BarcodeFoodDialog({required this.result, required this.onAdd});
 
@@ -780,16 +785,30 @@ class _BarcodeFoodDialog extends StatefulWidget {
 }
 
 class _BarcodeFoodDialogState extends State<_BarcodeFoodDialog> {
+  late final List<FoodServingOption> _availableServings;
+  late FoodServingOption _selectedServing;
   late final TextEditingController _gramsController;
   late final FocusNode _gramsFocusNode;
   String _mealType = 'snack';
+  int _quantity = 1;
+  bool _useCustomGrams = false;
   bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
+    _availableServings = widget.result.servingOptions.isEmpty
+        ? [widget.result.defaultServingOption]
+        : widget.result.servingOptions;
+    _selectedServing = _availableServings.firstWhere(
+      (option) => option.isDefault,
+      orElse: () => _availableServings.first,
+    );
     _gramsController = TextEditingController(
-      text: _formatCompactNumber(widget.result.servingGrams, maxDecimals: 0),
+      text: _formatCompactNumber(
+        _selectedServing.grams * _quantity,
+        maxDecimals: 0,
+      ),
     );
     _gramsFocusNode = FocusNode();
   }
@@ -825,7 +844,9 @@ class _BarcodeFoodDialogState extends State<_BarcodeFoodDialog> {
   }
 
   Future<void> _handleAdd() async {
-    final grams = double.tryParse(_gramsController.text.trim());
+    final grams = _useCustomGrams
+        ? double.tryParse(_gramsController.text.trim())
+        : (_selectedServing.grams * _quantity);
     if (grams == null || grams <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a valid grams amount.')),
@@ -838,7 +859,7 @@ class _BarcodeFoodDialogState extends State<_BarcodeFoodDialog> {
     });
 
     try {
-      await widget.onAdd(grams, _mealType);
+      await widget.onAdd(grams, _mealType, _selectedServing);
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } catch (error) {
@@ -857,14 +878,15 @@ class _BarcodeFoodDialogState extends State<_BarcodeFoodDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final previewInput =
-        double.tryParse(_gramsController.text.trim()) ??
-        widget.result.servingGrams;
+    final defaultGrams = _selectedServing.grams * _quantity;
+    final previewInput = _useCustomGrams
+        ? (double.tryParse(_gramsController.text.trim()) ?? defaultGrams)
+        : defaultGrams;
     final gramsPreview = previewInput > 0 ? previewInput : 0;
-    final previewCalories = widget.result.caloriesPerGram * gramsPreview;
-    final previewProtein = widget.result.proteinPerGram * gramsPreview;
-    final previewCarbs = widget.result.carbsPerGram * gramsPreview;
-    final previewFat = widget.result.fatPerGram * gramsPreview;
+    final previewCalories = _selectedServing.caloriesPerGram * gramsPreview;
+    final previewProtein = _selectedServing.proteinPerGram * gramsPreview;
+    final previewCarbs = _selectedServing.carbsPerGram * gramsPreview;
+    final previewFat = _selectedServing.fatPerGram * gramsPreview;
     final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
 
     return Stack(
@@ -917,29 +939,121 @@ class _BarcodeFoodDialogState extends State<_BarcodeFoodDialog> {
                           },
                   ),
                   const SizedBox(height: 10),
-                  TextField(
-                    controller: _gramsController,
-                    focusNode: _gramsFocusNode,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
+                  DropdownButtonFormField<FoodServingOption>(
+                    initialValue: _selectedServing,
+                    decoration: const InputDecoration(
+                      labelText: 'Serving size',
                     ),
-                    textInputAction: TextInputAction.done,
-                    decoration: InputDecoration(
-                      labelText: 'Grams',
-                      helperText:
-                          'USDA reference: ${_formatCompactNumber(widget.result.servingGrams, maxDecimals: 0)} g',
-                      suffixIcon: IconButton(
-                        tooltip: 'Done',
-                        icon: const Icon(Icons.check),
-                        onPressed: _dismissKeyboard,
+                    items: _availableServings
+                        .map(
+                          (option) => DropdownMenuItem<FoodServingOption>(
+                            value: option,
+                            child: Text(
+                              '${option.description} (${_formatCompactNumber(option.grams, maxDecimals: 0)} g)',
+                            ),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: _isSaving
+                        ? null
+                        : (value) {
+                            if (value == null) return;
+                            setState(() {
+                              _selectedServing = value;
+                              if (!_useCustomGrams) {
+                                _gramsController.text = _formatCompactNumber(
+                                  _selectedServing.grams * _quantity,
+                                  maxDecimals: 0,
+                                );
+                              }
+                            });
+                          },
+                  ),
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<int>(
+                    initialValue: _quantity,
+                    decoration: const InputDecoration(labelText: 'Quantity'),
+                    items: List.generate(
+                      6,
+                      (index) => DropdownMenuItem<int>(
+                        value: index + 1,
+                        child: Text('${index + 1}'),
                       ),
                     ),
-                    onChanged: (_) {
-                      setState(() {});
-                    },
-                    onSubmitted: (_) => _dismissKeyboard(),
-                    onTapOutside: (_) => _dismissKeyboard(),
+                    onChanged: _isSaving
+                        ? null
+                        : (value) {
+                            if (value == null) return;
+                            setState(() {
+                              _quantity = value;
+                              if (!_useCustomGrams) {
+                                _gramsController.text = _formatCompactNumber(
+                                  _selectedServing.grams * _quantity,
+                                  maxDecimals: 0,
+                                );
+                              }
+                            });
+                          },
                   ),
+                  const SizedBox(height: 10),
+                  SwitchListTile.adaptive(
+                    contentPadding: EdgeInsets.zero,
+                    value: _useCustomGrams,
+                    title: const Text('Override grams'),
+                    subtitle: Text(
+                      _useCustomGrams
+                          ? 'Custom grams will be used.'
+                          : 'Using ${_formatCompactNumber(defaultGrams, maxDecimals: 0)} g from serving × quantity.',
+                    ),
+                    onChanged: _isSaving
+                        ? null
+                        : (value) {
+                            setState(() {
+                              _useCustomGrams = value;
+                              if (!_useCustomGrams) {
+                                _gramsController.text = _formatCompactNumber(
+                                  _selectedServing.grams * _quantity,
+                                  maxDecimals: 0,
+                                );
+                              }
+                            });
+                          },
+                  ),
+                  if (_useCustomGrams) ...[
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: _gramsController,
+                      focusNode: _gramsFocusNode,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      textInputAction: TextInputAction.done,
+                      decoration: InputDecoration(
+                        labelText: 'Custom grams',
+                        helperText:
+                            'FatSecret reference: ${_formatCompactNumber(defaultGrams, maxDecimals: 0)} g',
+                        suffixIcon: IconButton(
+                          tooltip: 'Done',
+                          icon: const Icon(Icons.check),
+                          onPressed: _dismissKeyboard,
+                        ),
+                      ),
+                      onChanged: (_) {
+                        setState(() {});
+                      },
+                      onSubmitted: (_) => _dismissKeyboard(),
+                      onTapOutside: (_) => _dismissKeyboard(),
+                    ),
+                  ] else ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'FatSecret reference: ${_formatCompactNumber(defaultGrams, maxDecimals: 0)} g',
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   _BarcodeMacroRow(
                     label: 'Calories',
