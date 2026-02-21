@@ -107,7 +107,7 @@ class _ProfilePageState extends State<ProfilePage> {
             style: ElevatedButton.styleFrom(backgroundColor: brandColor),
             child: const Text(
               'Sign Out',
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(color: AppColors.surface),
             ),
           ),
         ],
@@ -489,7 +489,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 width: MediaQuery.of(context).size.width * 0.75,
                 height: 260,
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppColors.surface,
                   borderRadius: BorderRadius.circular(25),
                 ),
                 child: Column(
@@ -597,7 +597,7 @@ class _ProfilePageState extends State<ProfilePage> {
             : IconButton(
                 icon: const Icon(
                   Icons.arrow_back,
-                  color: Colors.black,
+                  color: AppColors.textPrimary,
                   size: 28,
                 ),
                 onPressed: () => Navigator.pop(context),
@@ -628,7 +628,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       style: const TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: AppColors.surface,
                       ),
                     ),
                   ),
@@ -659,7 +659,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                 style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.black,
+                                  color: AppColors.textPrimary,
                                 ),
                               ),
                             ),
@@ -781,7 +781,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             style: const TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w500,
-                              color: Colors.black,
+                              color: AppColors.textPrimary,
                               letterSpacing: 0.7,
                             ),
                           ),
@@ -853,11 +853,11 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                       ),
                       child: _isSaving
-                          ? const CircularProgressIndicator(color: Colors.white)
+                          ? const CircularProgressIndicator(color: AppColors.surface)
                           : const Text(
                               "Save Changes",
                               style: TextStyle(
-                                color: Colors.white,
+                                color: AppColors.surface,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
                               ),
@@ -986,10 +986,10 @@ class _ProfilePageState extends State<ProfilePage> {
           height: 80,
           width: double.infinity,
           decoration: BoxDecoration(
-            color: isPrimary ? brandColor : Colors.white,
+            color: isPrimary ? brandColor : AppColors.surface,
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10),
+              BoxShadow(color: AppColors.black.withValues(alpha: 0.02), blurRadius: 10),
             ],
           ),
           child: Column(
@@ -1019,7 +1019,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         suffixText: suffixText,
                         suffixStyle: TextStyle(
                           fontSize: 12,
-                          color: isPrimary ? Colors.white70 : Colors.grey,
+                          color: isPrimary ? AppColors.surface.withValues(alpha: 0.7) : AppColors.statusNone,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -1036,7 +1036,6 @@ class _ProfilePageState extends State<ProfilePage> {
               ],
             ),
           ),
-        ),
         // FIXED: This SizedBox keeps the boxes aligned even when no helper text is present
         SizedBox(
           height: 18,
@@ -1078,7 +1077,7 @@ class _ProfilePageState extends State<ProfilePage> {
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10),
+          BoxShadow(color: AppColors.black.withValues(alpha: 0.03), blurRadius: 10),
         ],
       ),
       child: Column(children: children),

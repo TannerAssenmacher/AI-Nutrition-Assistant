@@ -533,7 +533,7 @@ class _FoodSearchResultTile extends StatelessWidget {
         border: Border.all(color: AppColors.accentBrown.withValues(alpha: 0.25)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: AppColors.black.withValues(alpha: 0.03),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),

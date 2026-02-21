@@ -179,7 +179,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
-        backgroundColor: Colors.white.withValues(alpha: 0.8),
+        backgroundColor: AppColors.surface.withValues(alpha: 0.8),
         elevation: 0,
         centerTitle: true,
         flexibleSpace: ClipRect(
@@ -332,9 +332,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         child: Container(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 30),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.7),
+            color: AppColors.surface.withValues(alpha: 0.7),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(35)),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+            border: Border.all(color: AppColors.surface.withValues(alpha: 0.2)),
           ),
           child: Column(
             children: [
@@ -415,12 +415,12 @@ class _ChatBubble extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: isUser ? brandColor : Colors.white.withValues(alpha: 0.8),
+                        color: isUser ? brandColor : AppColors.surface.withValues(alpha: 0.8),
                         borderRadius: BorderRadius.only(
                           topLeft: const Radius.circular(20), topRight: const Radius.circular(20),
                           bottomLeft: Radius.circular(isUser ? 20 : 0), bottomRight: Radius.circular(isUser ? 0 : 20),
                         ),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                        border: Border.all(color: AppColors.surface.withValues(alpha: 0.2)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -459,7 +459,7 @@ class MealProfileSummaryBubble extends StatelessWidget {
       margin: const EdgeInsets.symmetric(vertical: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.9),
+        color: AppColors.surface.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(25),
         border: Border.all(color: brandColor.withValues(alpha: 0.1)),
         boxShadow: [BoxShadow(color: brandColor.withValues(alpha: 0.05), blurRadius: 15)],
@@ -587,7 +587,7 @@ class _RecipeCardState extends State<_RecipeCard> {
         borderRadius: BorderRadius.circular(25),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: AppColors.black.withValues(alpha: 0.04),
             blurRadius: 20,
             offset: const Offset(0, 10),
           )

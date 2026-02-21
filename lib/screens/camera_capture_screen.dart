@@ -362,13 +362,13 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
             Icon(
               Icons.error_outline,
               size: 48,
-              color: Colors.white.withValues(alpha: 0.6),
+              color: AppColors.surface.withValues(alpha: 0.6),
             ),
             const SizedBox(height: 16),
             Text(
               message,
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.8),
+                color: AppColors.surface.withValues(alpha: 0.8),
                 fontSize: 16,
               ),
               textAlign: TextAlign.center,
@@ -403,7 +403,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Colors.black.withValues(alpha: 0.7), Colors.transparent],
+            colors: [AppColors.black.withValues(alpha: 0.7), Colors.transparent],
           ),
         ),
         child: SafeArea(
@@ -434,7 +434,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
           gradient: LinearGradient(
             begin: Alignment.bottomCenter,
             end: Alignment.topCenter,
-            colors: [Colors.black.withValues(alpha: 0.85), Colors.transparent],
+            colors: [AppColors.black.withValues(alpha: 0.85), Colors.transparent],
           ),
         ),
         child: SafeArea(
@@ -454,7 +454,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
                 Text(
                   _captureMode == CaptureMode.photo ? 'Photo' : 'Barcode',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.7),
+                    color: AppColors.surface.withValues(alpha: 0.7),
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
@@ -524,7 +524,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
+        color: AppColors.surface.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -533,7 +533,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
           Text(
             'Add context',
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.9),
+              color: AppColors.surface.withValues(alpha: 0.9),
               fontSize: 14,
               fontWeight: FontWeight.w600,
             ),
@@ -547,16 +547,16 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
             cursorColor: AppColors.surface,
             decoration: InputDecoration(
               hintText: 'e.g., 200g chicken breast, grilled',
-              hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.4)),
+              hintStyle: TextStyle(color: AppColors.surface.withValues(alpha: 0.4)),
               filled: true,
-              fillColor: Colors.white.withValues(alpha: 0.1),
+              fillColor: AppColors.surface.withValues(alpha: 0.1),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
               ),
               contentPadding: const EdgeInsets.all(12),
               counterStyle: TextStyle(
-                color: Colors.white.withValues(alpha: 0.4),
+                color: AppColors.surface.withValues(alpha: 0.4),
               ),
             ),
           ),
@@ -591,8 +591,8 @@ class _ControlButton extends StatelessWidget {
           height: 56,
           decoration: BoxDecoration(
             color: isActive
-                ? Colors.white.withValues(alpha: 0.3)
-                : Colors.white.withValues(alpha: 0.15),
+                ? AppColors.surface.withValues(alpha: 0.3)
+                : AppColors.surface.withValues(alpha: 0.15),
             shape: BoxShape.circle,
           ),
           child: isLoading

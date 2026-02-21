@@ -86,6 +86,7 @@ class AppColors {
   static const Color warmDarker = Color(0xFF5D4037); // brown-700 secondary text
 
   // ── Miscellaneous ──
+  static const Color black            = Color(0xFF000000); // pure black — shadow / overlay base
   static const Color mealText         = Color(0xFF2E221A); // dark brown text in meal name fields
   static const Color deleteRed        = Color(0xFFD32F2F); // destructive action button
   static const Color neumorphicShadow = Color(0xFFD9D0C3); // chat card neumorphic shadow (dark side)

@@ -904,7 +904,7 @@ class _RegisterPageState extends State<RegisterPage> {
               child: Text(
                 'Height',
                 style: TextStyle(
-                  color: Colors.grey[800],
+                  color: AppColors.textPrimary,
                   fontSize: 16,
                   fontWeight: FontWeight.normal,
                 ),

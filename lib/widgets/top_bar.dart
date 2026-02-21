@@ -20,7 +20,7 @@ class top_bar extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.5),
+            color: AppColors.black.withValues(alpha: 0.5),
             blurRadius: 20,
             offset: Offset(0, 6),
           ),

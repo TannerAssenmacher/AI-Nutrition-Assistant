@@ -207,7 +207,7 @@ class _MacroSliderState extends State<MacroSlider> {
         border: Border.all(color: AppColors.borderLight),
         borderRadius: BorderRadius.circular(4),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 3, offset: const Offset(0, 1)),
+          BoxShadow(color: AppColors.black.withValues(alpha: 0.15), blurRadius: 3, offset: const Offset(0, 1)),
         ],
       ),
     );

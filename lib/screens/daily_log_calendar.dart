@@ -501,7 +501,7 @@ class _DailyLogCalendarScreenState
                                                     style:
                                                         FilledButton.styleFrom(
                                                           backgroundColor:
-                                                              Colors.red,
+                                                              AppColors.deleteRed,
                                                         ),
                                                     child: const Text('Delete'),
                                                   ),
@@ -991,7 +991,7 @@ class _DailyLogCalendarScreenState
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.05),
+                                color: AppColors.black.withValues(alpha: 0.05),
                                 blurRadius: 8,
                                 offset: const Offset(0, 2),
                               ),
@@ -1856,7 +1856,7 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
             ? []
             : [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.03),
+                  color: AppColors.black.withValues(alpha: 0.03),
                   blurRadius: 5,
                   offset: const Offset(0, 2),
                 ),
@@ -1932,7 +1932,7 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
         border: Border.all(color: AppColors.warmBorder),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: AppColors.black.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -2755,15 +2755,15 @@ class _ScheduledMealCard extends ConsumerWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Colors.white,
-                  Colors.brown.shade50.withValues(alpha: 0.65),
+                  AppColors.surface,
+                  AppColors.warmLight.withValues(alpha: 0.65),
                 ],
               ),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.brown.shade100),
+              border: Border.all(color: AppColors.warmBorder),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
+                  color: AppColors.black.withValues(alpha: 0.04),
                   blurRadius: 8,
                   offset: const Offset(0, 3),
                 ),
@@ -2786,7 +2786,7 @@ class _ScheduledMealCard extends ConsumerWidget {
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w800,
-                              color: Color(0xFF2E221A),
+                              color: AppColors.mealText,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -2796,7 +2796,7 @@ class _ScheduledMealCard extends ConsumerWidget {
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
                               letterSpacing: 0.3,
-                              color: Colors.brown.shade600,
+                              color: AppColors.warmDark,
                             ),
                           ),
                         ],
@@ -2828,7 +2828,7 @@ class _ScheduledMealCard extends ConsumerWidget {
                           icon: Icon(
                             Icons.edit,
                             size: 20,
-                            color: Colors.brown.shade700,
+                            color: AppColors.warmDarker,
                           ),
                           tooltip: 'Edit scheduled meal',
                         ),
@@ -2836,7 +2836,7 @@ class _ScheduledMealCard extends ConsumerWidget {
                           onPressed: onDelete,
                           icon: Icon(
                             Icons.delete_outline,
-                            color: Colors.red.shade400,
+                            color: AppColors.error,
                           ),
                           tooltip: 'Remove scheduled meal',
                         ),
@@ -2989,12 +2989,12 @@ class _ScheduledMealCard extends ConsumerWidget {
       height: 54,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.brown.shade100),
+        border: Border.all(color: AppColors.warmBorder),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: AppColors.black.withValues(alpha: 0.03),
             blurRadius: 5,
             offset: const Offset(0, 2),
           ),
@@ -3079,7 +3079,7 @@ class _ScheduledMealDetailScreen extends StatelessWidget {
                   color: cardColor,
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.14),
+                    color: AppColors.surface.withValues(alpha: 0.14),
                   ),
                 ),
                 child: ListView(
@@ -3125,7 +3125,7 @@ class _ScheduledMealDetailScreen extends StatelessWidget {
                                     horizontal: 18,
                                   ),
                                   width: 1.5,
-                                  color: Colors.black.withValues(alpha: 0.18),
+                                  color: AppColors.black.withValues(alpha: 0.18),
                                 ),
                                 Expanded(
                                   child: _InstructionsSection(
@@ -3144,7 +3144,7 @@ class _ScheduledMealDetailScreen extends StatelessWidget {
                             const SizedBox(height: 16),
                             Container(
                               height: 1.5,
-                              color: Colors.white.withValues(alpha: 0.18),
+                              color: AppColors.surface.withValues(alpha: 0.18),
                             ),
                             const SizedBox(height: 16),
                             _InstructionsSection(instructions: instructions),
@@ -3156,6 +3156,8 @@ class _ScheduledMealDetailScreen extends StatelessWidget {
                 ),
               ),
             ),
+          ],
+        ),
       ),
     );
   }

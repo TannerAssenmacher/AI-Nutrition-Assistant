@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../db/food.dart';
 import '../providers/food_providers.dart';
 import '../providers/user_providers.dart';
+import '../theme/app_colors.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -19,8 +20,8 @@ class HomeScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Nutrition Assistant'),
-        backgroundColor: Colors.green[600],
-        foregroundColor: Colors.white, 
+        backgroundColor: AppColors.success,
+        foregroundColor: AppColors.surface, 
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -70,7 +71,7 @@ class HomeScreen extends ConsumerWidget {
                       Text(
                         'Goal: ${userProfile.mealProfile.dailyCalorieGoal} calories',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Colors.grey[600],
+                              color: AppColors.textSecondary,
                             ),
                       ),
                     ],
@@ -100,17 +101,17 @@ class HomeScreen extends ConsumerWidget {
                           label: 'Protein',
                           value:
                               '${dailyMacros['protein']?.toStringAsFixed(1)}g',
-                          color: Colors.red[300]!,
+                          color: AppColors.protein,
                         ),
                         _MacroColumn(
                           label: 'Carbs',
                           value: '${dailyMacros['carbs']?.toStringAsFixed(1)}g',
-                          color: Colors.blue[300]!,
+                          color: AppColors.carbs,
                         ),
                         _MacroColumn(
                           label: 'Fat',
                           value: '${dailyMacros['fat']?.toStringAsFixed(1)}g',
-                          color: Colors.orange[300]!,
+                          color: AppColors.fat,
                         ),
                       ],
                     ),
@@ -145,7 +146,7 @@ class HomeScreen extends ConsumerWidget {
                             children: [
                               Icon(
                                 Icons.restaurant,
-                                color: Colors.green[600],
+                                color: AppColors.success,
                                 size: 32,
                               ),
                               const SizedBox(height: 8),
@@ -188,13 +189,13 @@ class HomeScreen extends ConsumerWidget {
               ...foodLog.map((food) => Card(
                     child: ListTile(
                       leading: CircleAvatar(
-                        backgroundColor: Colors.green[100],
-                        child: Icon(Icons.restaurant, color: Colors.green[600]),
+                        backgroundColor: AppColors.success.withValues(alpha: 0.15),
+                        child: Icon(Icons.restaurant, color: AppColors.success),
                       ),
                       title: Text(food.name),
                       subtitle: Text('${food.calories_g} calories'),
                       trailing: IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
+                        icon: const Icon(Icons.delete, color: AppColors.error),
                         onPressed: () {
                           ref
                               .read(foodLogProvider.notifier)
@@ -216,22 +217,22 @@ class HomeScreen extends ConsumerWidget {
             onPressed: () {
               Navigator.pushNamed(context, '/chat');
             },
-            backgroundColor: Colors.blue[600],
-            child: const Icon(Icons.chat, color: Colors.white),
+            backgroundColor: AppColors.selectionColor,
+            child: const Icon(Icons.chat, color: AppColors.surface),
           ),
           const SizedBox(height: 12),
           FloatingActionButton(
             heroTag: 'cameraFab',
             onPressed: () => _openMealAnalyzer(context),
-            backgroundColor: Colors.green[700],
-            child: const Icon(Icons.camera_alt, color: Colors.white),
+            backgroundColor: AppColors.success,
+            child: const Icon(Icons.camera_alt, color: AppColors.surface),
           ),
           const SizedBox(height: 12),
           FloatingActionButton(
             heroTag: 'addFoodFab',
             onPressed: () => _showAddFoodDialog(context, ref),
-            backgroundColor: Colors.green[600],
-            child: const Icon(Icons.add, color: Colors.white),
+            backgroundColor: AppColors.success,
+            child: const Icon(Icons.add, color: AppColors.surface),
           ),
         ],
       ),
@@ -305,7 +306,7 @@ class _MacroColumn extends StatelessWidget {
             child: Text(
               label[0],
               style: const TextStyle(
-                color: Colors.white,
+                color: AppColors.surface,
                 fontWeight: FontWeight.bold,
               ),
             ),
