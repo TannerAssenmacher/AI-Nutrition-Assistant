@@ -474,11 +474,11 @@ class _RegisterPageState extends State<RegisterPage> {
                 30,
               ),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.surface,
                 borderRadius: BorderRadius.circular(48),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.grey.withValues(alpha: 0.5),
+                    color: AppColors.statusNone.withValues(alpha: 0.5),
                     spreadRadius: 4,
                     blurRadius: 10,
                     offset: const Offset(0, 3),
@@ -514,7 +514,10 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                     child: const Text(
                       'Next',
-                      style: TextStyle(color: Colors.white, fontSize: 18),
+                      style: TextStyle(
+                        color: AppColors.surface,
+                        fontSize: 18,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -585,11 +588,11 @@ class _RegisterPageState extends State<RegisterPage> {
                   30,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppColors.surface,
                   borderRadius: BorderRadius.circular(48),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.grey.withValues(alpha: 0.5),
+                      color: AppColors.statusNone.withValues(alpha: 0.5),
                       spreadRadius: 4,
                       blurRadius: 10,
                       offset: const Offset(0, 3),
@@ -691,7 +694,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                 child: const Text(
                                   'Create Account',
                                   style: TextStyle(
-                                    color: Colors.white,
+                                    color: AppColors.surface,
                                     fontSize: 18,
                                   ),
                                 ),

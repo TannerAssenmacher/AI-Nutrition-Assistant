@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:nutrition_assistant/services/food_search_service.dart';
+import 'package:nutrition_assistant/theme/app_colors.dart';
 
 enum CaptureMode { photo, barcode }
 
@@ -276,7 +277,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
-        backgroundColor: Colors.black,
+        backgroundColor: AppColors.cameraBg,
         body: Stack(
           fit: StackFit.expand,
           children: [
@@ -310,14 +311,14 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
         controller == null ||
         !controller.value.isInitialized) {
       return const Center(
-        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+        child: CircularProgressIndicator(color: AppColors.surface, strokeWidth: 2),
       );
     }
 
     final previewSize = controller.value.previewSize;
     if (previewSize == null) {
       return const Center(
-        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+        child: CircularProgressIndicator(color: AppColors.surface, strokeWidth: 2),
       );
     }
 
@@ -383,7 +384,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
               },
               child: const Text(
                 'Try Again',
-                style: TextStyle(color: Colors.white, fontSize: 16),
+                style: TextStyle(color: AppColors.surface, fontSize: 16),
               ),
             ),
           ],
@@ -413,7 +414,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
               children: [
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close, color: Colors.white, size: 28),
+                  icon: const Icon(Icons.close, color: AppColors.surface, size: 28),
                 ),
               ],
             ),
@@ -542,8 +543,8 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
             controller: _contextController,
             maxLines: 2,
             maxLength: 500,
-            style: const TextStyle(color: Colors.white, fontSize: 15),
-            cursorColor: Colors.white,
+            style: const TextStyle(color: AppColors.surface, fontSize: 15),
+            cursorColor: AppColors.surface,
             decoration: InputDecoration(
               hintText: 'e.g., 200g chicken breast, grilled',
               hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.4)),
@@ -598,11 +599,11 @@ class _ControlButton extends StatelessWidget {
               ? const Padding(
                   padding: EdgeInsets.all(16),
                   child: CircularProgressIndicator(
-                    color: Colors.white,
+                    color: AppColors.surface,
                     strokeWidth: 2,
                   ),
                 )
-              : Icon(icon, color: Colors.white, size: 26),
+              : Icon(icon, color: AppColors.surface, size: 26),
         ),
       ),
     );
@@ -629,7 +630,7 @@ class _CaptureButton extends StatelessWidget {
         height: 80,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(color: Colors.white, width: 4),
+          border: Border.all(color: AppColors.surface, width: 4),
         ),
         padding: const EdgeInsets.all(4),
         child: Container(
@@ -637,7 +638,7 @@ class _CaptureButton extends StatelessWidget {
             shape: BoxShape.circle,
             color: isEmpty
                 ? Colors.transparent
-                : (isCapturing ? Colors.white60 : Colors.white),
+                : (isCapturing ? AppColors.surface.withValues(alpha: 0.6) : AppColors.surface),
           ),
           child: isCapturing
               ? const Center(
@@ -645,7 +646,7 @@ class _CaptureButton extends StatelessWidget {
                     width: 24,
                     height: 24,
                     child: CircularProgressIndicator(
-                      color: Colors.black,
+                      color: AppColors.cameraBg,
                       strokeWidth: 2,
                     ),
                   ),
@@ -682,7 +683,7 @@ class _OverlayPainter extends CustomPainter {
     );
 
     // Dark background with cutout
-    final bgPaint = Paint()..color = Colors.black54;
+    final bgPaint = Paint()..color = AppColors.cameraBg.withValues(alpha: 0.54);
     final path = Path()
       ..addRect(Rect.fromLTWH(0, 0, size.width, size.height))
       ..addRRect(rect)
@@ -691,7 +692,7 @@ class _OverlayPainter extends CustomPainter {
 
     // White corner brackets
     final paint = Paint()
-      ..color = Colors.white
+      ..color = AppColors.surface
       ..style = PaintingStyle.stroke
       ..strokeWidth = 4
       ..strokeCap = StrokeCap.round;

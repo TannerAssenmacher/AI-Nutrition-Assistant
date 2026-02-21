@@ -46,7 +46,11 @@ class HomeScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    GestureDetector(
+                    Semantics(
+                      button: true,
+                      label: 'Go to profile. Good Morning, $name!',
+                      excludeSemantics: true,
+                      child: GestureDetector(
                       onTap: () {
                         Navigator.pushNamed(context, '/profile');
                       },
@@ -55,7 +59,7 @@ class HomeScreen extends ConsumerWidget {
                         height: MediaQuery.of(context).size.height * 0.18,
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: AppColors.surface,
                           borderRadius: BorderRadius.circular(30),
                           boxShadow: [
                             BoxShadow(
@@ -117,6 +121,7 @@ class HomeScreen extends ConsumerWidget {
                         ),
                       ),
                     ),
+                    ), // closes Semantics
                     const SizedBox(height: 20),
                     foodLogAsync.when(
                       data: (foodLog) {
@@ -186,7 +191,7 @@ class HomeScreen extends ConsumerWidget {
                                 horizontal: 24,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: AppColors.surface,
                                 borderRadius: BorderRadius.circular(30),
                                 boxShadow: [
                                   BoxShadow(
@@ -211,21 +216,21 @@ class HomeScreen extends ConsumerWidget {
                                         label: 'Protein',
                                         current: currentProtein,
                                         goal: proteinGoal,
-                                        color: const Color(0xFFC2482B),
+                                        color: AppColors.protein,
                                         unit: 'g',
                                       ),
                                       _MacroIndicator(
                                         label: 'Carbs',
                                         current: currentCarbs,
                                         goal: carbsGoal,
-                                        color: const Color(0xFFE0A100),
+                                        color: AppColors.carbs,
                                         unit: 'g',
                                       ),
                                       _MacroIndicator(
                                         label: 'Fat',
                                         current: currentFat,
                                         goal: fatGoal,
-                                        color: const Color(0xFF3A6FB8),
+                                        color: AppColors.fat,
                                         unit: 'g',
                                       ),
                                     ],
@@ -247,7 +252,7 @@ class HomeScreen extends ConsumerWidget {
                                         MediaQuery.of(context).size.height *
                                         0.02,
                                     fontWeight: FontWeight.bold,
-                                    color: const Color(0xFF967460),
+                                    color: AppColors.accentBrown,
                                   ),
                                 ),
                               ),
@@ -364,7 +369,7 @@ class _CalorieProgressBar extends StatelessWidget {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF967460),
+                color: AppColors.accentBrown,
               ),
             ),
             Text(
@@ -372,20 +377,24 @@ class _CalorieProgressBar extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF5F9735),
+                color: AppColors.brand,
               ),
             ),
           ],
         ),
         const SizedBox(height: 8),
-        LinearPercentIndicator(
-          lineHeight: 18.0,
-          percent: percent,
-          backgroundColor: const Color(0xFF5F9735).withValues(alpha: 0.2),
-          progressColor: const Color(0xFF5F9735),
-          barRadius: const Radius.circular(10),
-          animation: true,
-          padding: EdgeInsets.zero,
+        Semantics(
+          label: 'Calories: ${current.round()} of ${goal.round()} kilocalories',
+          value: '${(percent * 100).round()}%',
+          child: LinearPercentIndicator(
+            lineHeight: 18.0,
+            percent: percent,
+            backgroundColor: AppColors.brand.withValues(alpha: 0.2),
+            progressColor: AppColors.brand,
+            barRadius: const Radius.circular(10),
+            animation: true,
+            padding: EdgeInsets.zero,
+          ),
         ),
       ],
     );
@@ -399,12 +408,17 @@ class _FoodCarouselCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    final calories = (food.calories_g * food.mass_g).round();
+    return Semantics(
+      button: true,
+      label: '${food.name}, $calories calories, ${food.mealType}. Tap for details.',
+      excludeSemantics: true,
+      child: GestureDetector(
       onTap: () => _showFoodDetails(context, food),
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 8),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
@@ -425,7 +439,7 @@ class _FoodCarouselCard extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF967460),
+                  color: AppColors.accentBrown,
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -436,20 +450,21 @@ class _FoodCarouselCard extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF5F9735),
+                  color: AppColors.brand,
                 ),
               ),
               Text(
                 food.mealType.toUpperCase(),
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.grey[600],
+                  color: AppColors.textHint,
                   fontWeight: FontWeight.w500,
                 ),
               ),
             ],
           ),
         ),
+      ),
       ),
     );
   }
@@ -458,12 +473,12 @@ class _FoodCarouselCard extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFFF5EDE2),
+        backgroundColor: AppColors.background,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           food.name,
           style: const TextStyle(
-            color: Color(0xFF5F9735),
+            color: AppColors.brand,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -498,7 +513,7 @@ class _FoodCarouselCard extends StatelessWidget {
             onPressed: () => Navigator.pop(context),
             child: const Text(
               'Close',
-              style: TextStyle(color: Color(0xFF967460)),
+              style: TextStyle(color: AppColors.accentBrown),
             ),
           ),
         ],
@@ -515,7 +530,7 @@ class _NoMealsPlaceholder extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
@@ -530,7 +545,7 @@ class _NoMealsPlaceholder extends StatelessWidget {
           "No meals logged yet",
           style: TextStyle(
             fontSize: 16,
-            color: Colors.grey[600],
+            color: AppColors.textHint,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -581,7 +596,9 @@ class _MacroIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final double percent = goal > 0 ? (current / goal).clamp(0.0, 1.0) : 0.0;
-    return CircularPercentIndicator(
+    return Semantics(
+      label: '$label: ${current.toInt()} of ${goal.toInt()} grams',
+      child: CircularPercentIndicator(
       radius: MediaQuery.of(context).size.width * 0.1,
       lineWidth: 12,
       percent: percent,
@@ -604,6 +621,7 @@ class _MacroIndicator extends StatelessWidget {
       backgroundColor: color.withValues(alpha: 0.25),
       //circularStrokeCap: CircularStrokeCap.round,
       animation: true,
+      ),
     );
   }
 }

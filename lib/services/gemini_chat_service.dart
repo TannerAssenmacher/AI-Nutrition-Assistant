@@ -707,34 +707,25 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
       print('Current user: $user');
 
       final appUser = await FirestoreHelper.getUser(user.uid);
-      if (appUser == null) {
-        state = [
-          ...state,
-          ChatMessage(
-            content:
-                "I couldn’t find your profile. Please set up your nutrition preferences before generating recipes.",
-            isUser: false,
-          ),
-        ];
-        return;
-      }
 
-      final mealProfile = appUser.mealProfile;
-      final preferences = mealProfile.preferences;
+      // Use profile data if available, otherwise fall back to empty defaults
+      // so recipe generation still works for users who haven't set up a profile.
+      final mealProfile = appUser?.mealProfile;
+      final preferences = mealProfile?.preferences;
 
-      final dietaryHabits = mealProfile.dietaryHabits
+      final dietaryHabits = (mealProfile?.dietaryHabits ?? <String>[])
           .where((h) => h.trim().isNotEmpty && h.toLowerCase() != 'none')
           .toList();
 
-      final healthRestrictions = mealProfile.healthRestrictions
+      final healthRestrictions = (mealProfile?.healthRestrictions ?? <String>[])
           .where((r) => r.trim().isNotEmpty && r.toLowerCase() != 'none')
           .toList();
 
-      final dislikes = preferences.dislikes
+      final dislikes = (preferences?.dislikes ?? <String>[])
           .where((d) => d.trim().isNotEmpty && d.toLowerCase() != 'none')
           .toList();
 
-      final likes = preferences.likes
+      final likes = (preferences?.likes ?? <String>[])
           .where((l) => l.trim().isNotEmpty && l.toLowerCase() != 'none')
           .toList();
 
@@ -754,9 +745,9 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
               "health": healthRestrictions,
               "likes": likes,
               "dislikes": dislikes,
-              "dietaryGoal": mealProfile.dietaryGoal,
-              "dailyCalorieGoal": mealProfile.dailyCalorieGoal,
-              "macroGoals": mealProfile.macroGoals,
+              "dietaryGoal": mealProfile?.dietaryGoal ?? '',
+              "dailyCalorieGoal": mealProfile?.dailyCalorieGoal ?? 0,
+              "macroGoals": mealProfile?.macroGoals ?? {},
             }),
             isUser: false,
             timestamp: DateTime.now(),
@@ -766,9 +757,9 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
 
       // Prepare macro goals as percentages
       final macroGoals = {
-        'protein': mealProfile.macroGoals['protein'] ?? 20.0,
-        'carbs': mealProfile.macroGoals['carbs'] ?? 50.0,
-        'fat': mealProfile.macroGoals['fat'] ?? 30.0,
+        'protein': mealProfile?.macroGoals['protein'] ?? 20.0,
+        'carbs': mealProfile?.macroGoals['carbs'] ?? 50.0,
+        'fat': mealProfile?.macroGoals['fat'] ?? 30.0,
       };
 
       // Compute today's consumption data for smart calorie targeting
@@ -809,10 +800,10 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
         'likes': likes,
 
         // User profile data for personalized filtering
-        'sex': appUser.sex,
-        'activityLevel': appUser.activityLevel,
-        'dietaryGoal': mealProfile.dietaryGoal,
-        'dailyCalorieGoal': mealProfile.dailyCalorieGoal,
+        'sex': appUser?.sex ?? '',
+        'activityLevel': appUser?.activityLevel ?? '',
+        'dietaryGoal': mealProfile?.dietaryGoal ?? '',
+        'dailyCalorieGoal': mealProfile?.dailyCalorieGoal ?? 0,
         'macroGoals': macroGoals,
 
         // Today's consumption data for smart calorie targeting
@@ -825,9 +816,9 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
         },
 
         // Physical profile for context
-        'dob': appUser.dob?.toIso8601String(),
-        'height': appUser.height,
-        'weight': appUser.weight,
+        'dob': appUser?.dob?.toIso8601String(),
+        'height': appUser?.height,
+        'weight': appUser?.weight,
 
         // Pagination
         'excludeIds': _shownRecipeUris.toList(),

@@ -37,6 +37,7 @@ class top_bar extends StatelessWidget {
                   'lib/icons/WISERBITES_txt_only.png',
                   fit: BoxFit.contain,
                   color: AppColors.background,
+                  semanticLabel: 'WiserBites',
                 ),
               ),
             ),

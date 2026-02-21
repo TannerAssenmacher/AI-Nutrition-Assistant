@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 
 class NotificationBanner extends StatelessWidget {
   final String title;
@@ -13,7 +14,7 @@ class NotificationBanner extends StatelessWidget {
     required this.title,
     required this.message,
     this.icon = Icons.notifications,
-    this.color = Colors.blue,
+    this.color = AppColors.selectionColor,
     this.onDismiss,
     this.onTap,
   });
@@ -63,7 +64,7 @@ class NotificationBanner extends StatelessWidget {
                       message,
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.grey.shade700,
+                        color: AppColors.textSecondary,
                       ),
                     ),
                   ],
@@ -71,7 +72,7 @@ class NotificationBanner extends StatelessWidget {
               ),
               if (onDismiss != null)
                 IconButton(
-                  icon: Icon(Icons.close, size: 18, color: Colors.grey.shade600),
+                  icon: Icon(Icons.close, size: 18, color: AppColors.textHint),
                   onPressed: onDismiss,
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),

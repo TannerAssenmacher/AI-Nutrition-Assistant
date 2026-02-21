@@ -45,6 +45,40 @@ class FirestoreHelper {
           ? List.from(data['scheduledFoodItems'])
           : [];
 
+      // Normalize fields that may be null for users who signed up with
+      // minimum information — prevents type cast errors during deserialization.
+      data['height'] = (data['height'] as num?)?.toDouble() ?? 0.0;
+      data['weight'] = (data['weight'] as num?)?.toDouble() ?? 0.0;
+      data['sex'] = data['sex'] as String? ?? '';
+      data['activityLevel'] = data['activityLevel'] as String? ?? '';
+
+      final mp = data['mealProfile'];
+      if (mp is Map<String, dynamic>) {
+        mp['dailyCalorieGoal'] =
+            (mp['dailyCalorieGoal'] as num?)?.toInt() ?? 0;
+        mp['dietaryGoal'] = mp['dietaryGoal'] as String? ?? '';
+        mp['dietaryHabits'] = mp['dietaryHabits'] ?? <String>[];
+        mp['healthRestrictions'] = mp['healthRestrictions'] ?? <String>[];
+        mp['macroGoals'] = mp['macroGoals'] ??
+            {'protein': 30.0, 'carbs': 40.0, 'fat': 30.0};
+        final prefs = mp['preferences'];
+        if (prefs is Map<String, dynamic>) {
+          prefs['likes'] = prefs['likes'] ?? <String>[];
+          prefs['dislikes'] = prefs['dislikes'] ?? <String>[];
+        } else {
+          mp['preferences'] = {'likes': <String>[], 'dislikes': <String>[]};
+        }
+      } else {
+        data['mealProfile'] = {
+          'dailyCalorieGoal': 0,
+          'dietaryGoal': '',
+          'dietaryHabits': <String>[],
+          'healthRestrictions': <String>[],
+          'macroGoals': {'protein': 30.0, 'carbs': 40.0, 'fat': 30.0},
+          'preferences': {'likes': <String>[], 'dislikes': <String>[]},
+        };
+      }
+
       return AppUser.fromJson(data, doc.id);
     } catch (e) {
       print('Error fetching user: $e');

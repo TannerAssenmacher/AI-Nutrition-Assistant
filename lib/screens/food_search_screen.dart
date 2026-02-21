@@ -160,9 +160,9 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
+                        color: AppColors.surfaceVariant,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.grey.shade300),
+                        border: Border.all(color: AppColors.borderLight),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -172,7 +172,7 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              color: Colors.grey.shade700,
+                              color: AppColors.textSecondary,
                             ),
                           ),
                           const SizedBox(height: 8),
@@ -184,7 +184,7 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                                   label: 'Calories',
                                   value: '$calories',
                                   unit: 'Cal',
-                                  color: Colors.red,
+                                  color: AppColors.error,
                                 ),
                               ),
                               const SizedBox(width: 8),
@@ -193,7 +193,7 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                                   label: 'Protein',
                                   value: protein,
                                   unit: 'g',
-                                  color: Colors.blue,
+                                  color: AppColors.protein,
                                 ),
                               ),
                             ],
@@ -207,7 +207,7 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                                   label: 'Carbs',
                                   value: carbs,
                                   unit: 'g',
-                                  color: Colors.orange,
+                                  color: AppColors.carbs,
                                 ),
                               ),
                               const SizedBox(width: 8),
@@ -216,7 +216,7 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                                   label: 'Fat',
                                   value: fat,
                                   unit: 'g',
-                                  color: Colors.purple,
+                                  color: AppColors.fat,
                                 ),
                               ),
                             ],
@@ -367,7 +367,7 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                     'Food Search',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                          color: AppColors.surface,
                         ),
                   ),
                 ),
@@ -375,7 +375,7 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                 Text(
                   'Search for any food and add it to your log',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.9),
+                    color: AppColors.surface.withValues(alpha: 0.9),
                     fontSize: 14,
                   ),
                 ),
@@ -401,7 +401,7 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                         },
                       ),
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: AppColors.surface,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide(color: AppColors.accentBrown.withValues(alpha: 0.3)),
@@ -436,13 +436,13 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
               child: Row(
                 children: [
                   Icon(Icons.info_outline,
-                      color: Colors.orange.shade700, size: 20),
+                      color: AppColors.warning, size: 20),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       _error!,
                       style: TextStyle(
-                          color: Colors.orange.shade700, fontSize: 13),
+                          color: AppColors.warning, fontSize: 13),
                     ),
                   ),
                 ],
@@ -458,7 +458,7 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                         Icon(
                           Icons.restaurant_menu,
                           size: 64,
-                          color: Colors.grey.shade400,
+                          color: AppColors.divider,
                         ),
                         const SizedBox(height: 16),
                         Text(
@@ -467,7 +467,7 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                               : 'No results found',
                           style: TextStyle(
                             fontSize: 16,
-                            color: Colors.grey.shade600,
+                            color: AppColors.textHint,
                           ),
                         ),
                         if (_searchController.text.isEmpty) ...[
@@ -476,7 +476,7 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                             'Try searching for "apple", "chicken", or "rice"',
                             style: TextStyle(
                               fontSize: 14,
-                              color: Colors.grey.shade500,
+                              color: AppColors.statusNone,
                             ),
                           ),
                         ],
@@ -528,7 +528,7 @@ class _FoodSearchResultTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.accentBrown.withValues(alpha: 0.25)),
         boxShadow: [
@@ -569,7 +569,7 @@ class _FoodSearchResultTile extends StatelessWidget {
                 Text(
                   '${result.servingGrams.toStringAsFixed(0)} g · $calories Cal',
                   style: TextStyle(
-                    color: Colors.grey.shade700,
+                    color: AppColors.textSecondary,
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
                   ),
@@ -603,7 +603,7 @@ class _FoodSearchResultTile extends StatelessWidget {
                 Text(
                   result.sourceLabel,
                   style: TextStyle(
-                    color: Colors.grey.shade500,
+                    color: AppColors.statusNone,
                     fontSize: 11,
                   ),
                 ),
@@ -615,13 +615,13 @@ class _FoodSearchResultTile extends StatelessWidget {
             onPressed: onAdd,
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.brand,
-              foregroundColor: Colors.white,
+              foregroundColor: AppColors.surface,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
-            child: const Text('Add'),
+            child: Text('Add', semanticsLabel: 'Add ${result.name}'),
           ),
         ],
       ),
@@ -640,20 +640,33 @@ class _MacroChip extends StatelessWidget {
   final String value;
   final Color color;
 
+  static String _fullLabel(String abbr) {
+    switch (abbr) {
+      case 'P': return 'Protein';
+      case 'C': return 'Carbs';
+      case 'F': return 'Fat';
+      default: return abbr;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        '$label $value g',
-        style: TextStyle(
-          color: color,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
+    return Semantics(
+      label: '${_fullLabel(label)} $value grams',
+      excludeSemantics: true,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(
+          '$label $value g',
+          style: TextStyle(
+            color: color,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
     );
@@ -671,7 +684,7 @@ class _NutritionIndicator extends StatelessWidget {
   final String label;
   final String value;
   final String unit;
-  final MaterialColor color;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
@@ -683,7 +696,7 @@ class _NutritionIndicator extends StatelessWidget {
             label,
             style: TextStyle(
               fontSize: 12,
-              color: Colors.grey.shade600,
+              color: AppColors.textHint,
               fontWeight: FontWeight.w500,
             ),
             maxLines: 1,
@@ -700,7 +713,7 @@ class _NutritionIndicator extends StatelessWidget {
               '$value$unit',
               style: TextStyle(
                 fontSize: 15,
-                color: color.shade700,
+                color: color,
                 fontWeight: FontWeight.w700,
               ),
               maxLines: 1,

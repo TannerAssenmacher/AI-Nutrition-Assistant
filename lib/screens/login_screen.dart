@@ -17,6 +17,7 @@ class _LoginPageState extends State<LoginPage> {
   bool _isLoading = false;
   bool _showValidationErrors = false;
   String? _error;
+  bool _accountDeletedMessageShown = false;
 
   // Listener that clears the top-level Firebase error as soon as the user types
   void _clearErrorOnType() {
@@ -30,6 +31,34 @@ class _LoginPageState extends State<LoginPage> {
     // Attach listeners so the error message disappears immediately on typing
     _emailController.addListener(_clearErrorOnType);
     _passwordController.addListener(_clearErrorOnType);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_accountDeletedMessageShown) {
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args == 'accountDeleted') {
+        _accountDeletedMessageShown = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Row(
+                  children: [
+                    Icon(Icons.check_circle, color: AppColors.surface),
+                    SizedBox(width: 10),
+                    Text('Your account has been successfully deleted.'),
+                  ],
+                ),
+                backgroundColor: AppColors.success,
+                duration: Duration(seconds: 4),
+              ),
+            );
+          }
+        });
+      }
+    }
   }
 
   @override
@@ -190,11 +219,11 @@ class _LoginPageState extends State<LoginPage> {
                     20,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: AppColors.surface,
                     borderRadius: BorderRadius.circular(48),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.grey.withValues(alpha: 0.5),
+                        color: AppColors.statusNone.withValues(alpha: 0.5),
                         spreadRadius: 4,
                         blurRadius: 10,
                         offset: const Offset(0, 3),
@@ -223,10 +252,10 @@ class _LoginPageState extends State<LoginPage> {
                             hintText: 'Email',
                             prefixIcon: Icon(
                               Icons.email,
-                              color: Colors.grey[600],
+                              color: AppColors.textHint,
                             ),
                             hintStyle: TextStyle(
-                              color: Colors.grey[400],
+                              color: AppColors.divider,
                             ),
                             filled: true,
                             fillColor: AppColors.inputFill,
@@ -257,10 +286,10 @@ class _LoginPageState extends State<LoginPage> {
                             hintText: 'Password',
                             prefixIcon: Icon(
                               Icons.lock,
-                              color: Colors.grey[600],
+                              color: AppColors.textHint,
                             ),
                             hintStyle: TextStyle(
-                              color: Colors.grey[400],
+                              color: AppColors.divider,
                             ),
                             filled: true,
                             fillColor: AppColors.inputFill,
@@ -286,7 +315,7 @@ class _LoginPageState extends State<LoginPage> {
                             _error!,
                             textAlign: TextAlign.center,
                             style: const TextStyle(
-                              color: Colors.red,
+                              color: AppColors.error,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -311,7 +340,7 @@ class _LoginPageState extends State<LoginPage> {
                                     fontSize: (screenHeight * 0.024)
                                         .clamp(18.0, 24.0)
                                         .toDouble(),
-                                    color: Colors.white,
+                                    color: AppColors.surface,
                                   ),
                                 ),
                               ),

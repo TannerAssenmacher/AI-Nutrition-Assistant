@@ -29,7 +29,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   final Color bgColor = AppColors.background;
   final Color brandColor = AppColors.brand;
-  final Color deleteColor = const Color(0xFFD32F2F);
+  final Color deleteColor = AppColors.deleteRed;
 
   final _weightController = TextEditingController();
   final _dailyCaloriesController = TextEditingController();
@@ -388,64 +388,87 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _confirmDeleteAccount() async {
     final passwordController = TextEditingController();
-    final confirmed = await showDialog<bool>(
+    String? passwordError;
+    bool isDeleting = false;
+    await showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Account Deletion'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'To permanently delete your account, please enter your password.',
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: const Text('Confirm Account Deletion'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                    'To permanently delete your account, please enter your password.'),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: passwordController,
+                  obscureText: true,
+                  onChanged: (_) {
+                    if (passwordError != null) {
+                      setDialogState(() => passwordError = null);
+                    }
+                  },
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    border: const OutlineInputBorder(),
+                    errorText: passwordError,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: passwordController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Password',
-                border: OutlineInputBorder(),
+            actions: [
+              TextButton(
+                  onPressed: isDeleting ? null : () => Navigator.pop(context),
+                  child: const Text('Cancel')),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: deleteColor),
+                onPressed: isDeleting
+                    ? null
+                    : () async {
+                        if (passwordController.text.trim().isEmpty) {
+                          setDialogState(() => passwordError = 'Please enter your password');
+                          return;
+                        }
+                        final nav = Navigator.of(context);
+                        setDialogState(() => isDeleting = true);
+                        try {
+                          final credential = EmailAuthProvider.credential(
+                              email: user!.email!,
+                              password: passwordController.text.trim());
+                          await user!.reauthenticateWithCredential(credential);
+                          await _firestore.collection('Users').doc(user!.uid).delete();
+                          await user!.delete();
+                          if (mounted) {
+                            nav.pop();
+                            nav.pushReplacementNamed('/login',
+                                arguments: 'accountDeleted');
+                          }
+                        } catch (e) {
+                          setDialogState(() {
+                            isDeleting = false;
+                            passwordError = 'Incorrect password. Please try again.';
+                          });
+                        }
+                      },
+                child: isDeleting
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                            color: AppColors.surface, strokeWidth: 2),
+                      )
+                    : const Text('Delete Account',
+                        style: TextStyle(color: AppColors.surface)),
               ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: deleteColor),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text(
-              'Delete Account',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
+            ],
+          );
+        },
       ),
     );
 
-    if (confirmed == true) {
-      setState(() => _isDeleting = true);
-      try {
-        final credential = EmailAuthProvider.credential(
-          email: user!.email!,
-          password: passwordController.text.trim(),
-        );
-        await user!.reauthenticateWithCredential(credential);
-        await _firestore.collection('Users').doc(user!.uid).delete();
-        await user!.delete();
-        if (mounted) Navigator.pushReplacementNamed(context, '/login');
-      } catch (e) {
-        if (mounted)
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Failed: $e')));
-      } finally {
-        if (mounted) setState(() => _isDeleting = false);
-      }
-    }
   }
 
   void _showHeightPicker() {
@@ -581,7 +604,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout, color: Colors.black54),
+            icon: const Icon(Icons.logout, color: AppColors.textSecondary),
             onPressed: _logout,
           ),
           const SizedBox(width: 8),
@@ -855,11 +878,11 @@ class _ProfilePageState extends State<ProfilePage> {
                         elevation: 0,
                       ),
                       child: _isDeleting
-                          ? const CircularProgressIndicator(color: Colors.white)
+                          ? const CircularProgressIndicator(color: AppColors.surface)
                           : const Text(
                               "Delete Account",
                               style: TextStyle(
-                                color: Colors.white,
+                                color: AppColors.surface,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
                               ),
@@ -1003,20 +1026,18 @@ class _ProfilePageState extends State<ProfilePage> {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: isPrimary ? Colors.white : Colors.black,
-                      ),
-                    ),
+                        color: isPrimary ? AppColors.surface : AppColors.textPrimary),
                   ),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: isPrimary ? Colors.white70 : Colors.grey,
                 ),
-              ),
-            ],
+                Text(label,
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: isPrimary ? AppColors.surface.withValues(alpha: 0.7) : AppColors.textHint)),
+              ],
+            ),
           ),
         ),
+        // FIXED: This SizedBox keeps the boxes aligned even when no helper text is present
         SizedBox(
           height: 18,
           child: helperText != null
@@ -1025,13 +1046,10 @@ class _ProfilePageState extends State<ProfilePage> {
                   child: Text(
                     "Est: $helperText",
                     style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey,
-                    ),
-                  ),
-                )
-              : const SizedBox.shrink(),
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textHint)))
+            : const SizedBox.shrink(),
         ),
       ],
     );
@@ -1047,7 +1065,7 @@ class _ProfilePageState extends State<ProfilePage> {
           style: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.bold,
-            color: Colors.black54,
+            color: AppColors.textSecondary,
           ),
         ),
       ),
@@ -1057,7 +1075,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildCard(List<Widget> children) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10),
@@ -1081,18 +1099,16 @@ class _ProfilePageState extends State<ProfilePage> {
         style: const TextStyle(
           fontSize: 15,
           fontWeight: FontWeight.w500,
-          color: Colors.black,
+          color: AppColors.textPrimary,
         ),
       ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(value, style: const TextStyle(color: Colors.grey, fontSize: 14)),
+          Text(value, style: const TextStyle(color: AppColors.textHint, fontSize: 14)),
           if (onTap != null)
-            const Icon(Icons.chevron_right, size: 18, color: Colors.grey),
-        ],
-      ),
-    );
+            const Icon(Icons.chevron_right, size: 18, color: AppColors.textHint)
+        ]));
   }
 
   Widget _buildMultiSelectTile(
@@ -1118,7 +1134,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 opt,
                 style: TextStyle(
                   fontSize: 12,
-                  color: isSel ? Colors.white : Colors.black87,
+                  color: isSel ? AppColors.surface : AppColors.textPrimary,
                 ),
               ),
               selected: isSel,
@@ -1143,7 +1159,7 @@ class _ProfilePageState extends State<ProfilePage> {
   ) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
       ),
