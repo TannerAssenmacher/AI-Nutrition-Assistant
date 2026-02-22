@@ -31,11 +31,59 @@ class _DailyLogCalendarScreenState
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   bool _notificationsChecked = false;
+  bool _hasAutoScrolledToToday = false;
+  final ScrollController _weekListScrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     NotificationService.initialize();
+  }
+
+  @override
+  void dispose() {
+    _weekListScrollController.dispose();
+    super.dispose();
+  }
+
+  void _autoScrollToTodayIfNeeded(List<DateTime> weekDays) {
+    if (_hasAutoScrolledToToday) return;
+
+    final now = DateTime.now();
+    final todayOnly = DateTime(now.year, now.month, now.day);
+
+    // Find the index of today in the week
+    int todayIndex = -1;
+    for (int i = 0; i < weekDays.length; i++) {
+      final dayOnly = DateTime(
+        weekDays[i].year,
+        weekDays[i].month,
+        weekDays[i].day,
+      );
+      if (dayOnly == todayOnly) {
+        todayIndex = i;
+        break;
+      }
+    }
+
+    if (todayIndex < 0) return; // Today not in current week
+
+    _hasAutoScrolledToToday = true;
+
+    // Calculate the scroll offset for the item
+    // Each item is roughly: margin(6+6) + padding(16+16) + content_height(~140-180) = ~180-220 per item
+    final itemHeight = 180.0;
+    final offset = todayIndex * itemHeight;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_weekListScrollController.hasClients) {
+        _weekListScrollController.animateTo(
+          offset,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeOutCubic,
+        );
+      }
+    });
   }
 
   Widget _wrapWithScaffold(Widget body) {
@@ -474,41 +522,37 @@ class _DailyLogCalendarScreenState
                                     onDelete: () async {
                                       if (meal.id == null) return;
 
-                                      final shouldDelete =
-                                          await showDialog<bool>(
-                                            context: context,
-                                            builder: (context) {
-                                              return AlertDialog(
-                                                title: const Text(
-                                                  'Delete scheduled meal?',
+                                      final shouldDelete = await showDialog<bool>(
+                                        context: context,
+                                        builder: (context) {
+                                          return AlertDialog(
+                                            title: const Text(
+                                              'Delete scheduled meal?',
+                                            ),
+                                            content: const Text(
+                                              'Remove this scheduled meal from this day?',
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () => Navigator.of(
+                                                  context,
+                                                ).pop(false),
+                                                child: const Text('Cancel'),
+                                              ),
+                                              FilledButton(
+                                                onPressed: () => Navigator.of(
+                                                  context,
+                                                ).pop(true),
+                                                style: FilledButton.styleFrom(
+                                                  backgroundColor:
+                                                      AppColors.deleteRed,
                                                 ),
-                                                content: const Text(
-                                                  'Remove this scheduled meal from this day?',
-                                                ),
-                                                actions: [
-                                                  TextButton(
-                                                    onPressed: () =>
-                                                        Navigator.of(
-                                                          context,
-                                                        ).pop(false),
-                                                    child: const Text('Cancel'),
-                                                  ),
-                                                  FilledButton(
-                                                    onPressed: () =>
-                                                        Navigator.of(
-                                                          context,
-                                                        ).pop(true),
-                                                    style:
-                                                        FilledButton.styleFrom(
-                                                          backgroundColor:
-                                                              AppColors.deleteRed,
-                                                        ),
-                                                    child: const Text('Delete'),
-                                                  ),
-                                                ],
-                                              );
-                                            },
+                                                child: const Text('Delete'),
+                                              ),
+                                            ],
                                           );
+                                        },
+                                      );
 
                                       if (shouldDelete != true) return;
 
@@ -643,7 +687,11 @@ class _DailyLogCalendarScreenState
       showDragHandle: true,
       builder: (context) {
         final mealTypes = ['breakfast', 'lunch', 'dinner', 'snack'];
-        var selectedDate = DateTime(meal.date.year, meal.date.month, meal.date.day);
+        var selectedDate = DateTime(
+          meal.date.year,
+          meal.date.month,
+          meal.date.day,
+        );
         var selectedMealType = meal.mealType.toLowerCase();
         if (!mealTypes.contains(selectedMealType)) {
           selectedMealType = 'snack';
@@ -669,10 +717,7 @@ class _DailyLogCalendarScreenState
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Text(
-                    'Date',
-                    style: Theme.of(context).textTheme.labelLarge,
-                  ),
+                  Text('Date', style: Theme.of(context).textTheme.labelLarge),
                   const SizedBox(height: 6),
                   OutlinedButton.icon(
                     onPressed: () async {
@@ -693,7 +738,9 @@ class _DailyLogCalendarScreenState
                       });
                     },
                     icon: const Icon(Icons.calendar_today),
-                    label: Text(DateFormat('MMMM d, yyyy').format(selectedDate)),
+                    label: Text(
+                      DateFormat('MMMM d, yyyy').format(selectedDate),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Text(
@@ -768,9 +815,9 @@ class _DailyLogCalendarScreenState
         .updateScheduledMeal(userId, meal.id!, updatedMeal);
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Scheduled meal updated.')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Scheduled meal updated.')));
   }
 
   static String _capitalizeMealType(String value) {
@@ -870,6 +917,7 @@ class _DailyLogCalendarScreenState
       ),
       data: (foodLog) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
+          _autoScrollToTodayIfNeeded(weekDays);
           _checkAndShowNotifications(foodLog, goals, userId);
         });
 
@@ -935,6 +983,7 @@ class _DailyLogCalendarScreenState
                 ),
                 Expanded(
                   child: ListView(
+                    controller: _weekListScrollController,
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     children: weekDays.map((day) {
                       final isSelected =
@@ -1019,7 +1068,8 @@ class _DailyLogCalendarScreenState
                                       padding: const EdgeInsets.all(6),
                                       decoration: BoxDecoration(
                                         color: isToday
-                                            ? AppColors.selectionColor.withValues(alpha: 0.2)
+                                            ? AppColors.selectionColor
+                                                  .withValues(alpha: 0.2)
                                             : AppColors.surfaceVariant,
                                         shape: BoxShape.circle,
                                       ),
@@ -1794,7 +1844,9 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              style: FilledButton.styleFrom(backgroundColor: AppColors.deleteRed),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.deleteRed,
+              ),
               child: const Text('Delete'),
             ),
           ],
@@ -1926,7 +1978,10 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [AppColors.surface, AppColors.warmLight.withValues(alpha: 0.65)],
+          colors: [
+            AppColors.surface,
+            AppColors.warmLight.withValues(alpha: 0.65),
+          ],
         ),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.warmBorder),
@@ -2023,10 +2078,7 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
                 children: [
                   IconButton(
                     onPressed: _deleteRow,
-                    icon: Icon(
-                      Icons.delete_outline,
-                      color: AppColors.error,
-                    ),
+                    icon: Icon(Icons.delete_outline, color: AppColors.error),
                     tooltip: 'Remove meal',
                   ),
                   IconButton(
@@ -2136,7 +2188,10 @@ class _FoodSearchResultTile extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   '${result.servingGrams.toStringAsFixed(0)} g · $calories Cal',
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Wrap(
@@ -2145,24 +2200,15 @@ class _FoodSearchResultTile extends StatelessWidget {
                   children: [
                     Text(
                       'P ${(result.proteinPerGram * result.servingGrams).toStringAsFixed(1)}g',
-                      style: TextStyle(
-                        color: AppColors.textHint,
-                        fontSize: 11,
-                      ),
+                      style: TextStyle(color: AppColors.textHint, fontSize: 11),
                     ),
                     Text(
                       'C ${(result.carbsPerGram * result.servingGrams).toStringAsFixed(1)}g',
-                      style: TextStyle(
-                        color: AppColors.textHint,
-                        fontSize: 11,
-                      ),
+                      style: TextStyle(color: AppColors.textHint, fontSize: 11),
                     ),
                     Text(
                       'F ${(result.fatPerGram * result.servingGrams).toStringAsFixed(1)}g',
-                      style: TextStyle(
-                        color: AppColors.textHint,
-                        fontSize: 11,
-                      ),
+                      style: TextStyle(color: AppColors.textHint, fontSize: 11),
                     ),
                   ],
                 ),
@@ -2971,7 +3017,9 @@ class _ScheduledMealCard extends ConsumerWidget {
       consumedAt: DateTime(meal.date.year, meal.date.month, meal.date.day, 12),
     );
 
-    await ref.read(firestoreFoodLogProvider(userId).notifier).addFood(userId, item);
+    await ref
+        .read(firestoreFoodLogProvider(userId).notifier)
+        .addFood(userId, item);
 
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -3125,7 +3173,9 @@ class _ScheduledMealDetailScreen extends StatelessWidget {
                                     horizontal: 18,
                                   ),
                                   width: 1.5,
-                                  color: AppColors.black.withValues(alpha: 0.18),
+                                  color: AppColors.black.withValues(
+                                    alpha: 0.18,
+                                  ),
                                 ),
                                 Expanded(
                                   child: _InstructionsSection(
@@ -3339,10 +3389,7 @@ class _ScheduledMealEditResult {
   final DateTime date;
   final String mealType;
 
-  const _ScheduledMealEditResult({
-    required this.date,
-    required this.mealType,
-  });
+  const _ScheduledMealEditResult({required this.date, required this.mealType});
 }
 
 class _AddSearchResultDialog extends ConsumerStatefulWidget {
