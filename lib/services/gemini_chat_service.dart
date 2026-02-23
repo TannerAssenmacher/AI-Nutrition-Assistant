@@ -569,6 +569,13 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
 
   //normal chat response
   Future<void> sendMessage(String userMessage) async {
+    // Build conversation history BEFORE adding the current message to state.
+    // Gemini's multi-turn API expects history to contain only previous turns;
+    // the current user message is sent as the prompt. If we build history after
+    // updating state, the user question ends up in both history and prompt,
+    // confusing the model.
+    final conversationHistory = _buildConversationHistory();
+
     state = [
       ...state,
       ChatMessage(content: userMessage, isUser: true)
@@ -648,19 +655,22 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
     User question: $userMessage
     ''';
 
-      // If the user is asking about recipes we showed, include recipe context
+      // Always include recipe context when recipes have been shown.
+      // Keyword-based detection was too fragile (e.g. typos, paraphrasing).
+      // The system prompt already instructs the AI not to invent recipes, so
+      // including context unconditionally ensures it can always reference them.
       String recipeContext = '';
-      if (isAboutShownRecipes) {
+      if (_lastShownRecipes.isNotEmpty) {
         recipeContext = _buildRecipeContext();
       }
 
       final fullPrompt = '$contextualPrompt$recipeContext';
 
-      // Use multi-turn chat with conversation history for context
-      final history = _buildConversationHistory();
+      // Use the pre-built conversation history (captured before the current user
+      // message was added to state) so the question is not sent twice.
       final responseText = await _callGemini(
         prompt: fullPrompt,
-        history: history,
+        history: conversationHistory,
         useNutritionAssistantSystemInstruction: true,
       );
 
@@ -926,8 +936,9 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
         });
       }
 
-      // Save recipes for later reference (recipe editing, questions, etc.)
-      _lastShownRecipes = List.from(recipeList);
+      // Accumulate all shown recipes across batches so the AI can reference
+      // any recipe shown earlier in the session (not just the latest batch).
+      _lastShownRecipes = [..._lastShownRecipes, ...recipeList];
 
       // If no recipes passed filtering, inform user
       if (recipeList.isEmpty) {
