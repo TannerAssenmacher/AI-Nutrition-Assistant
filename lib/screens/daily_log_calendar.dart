@@ -115,7 +115,7 @@ class _DailyLogCalendarScreenState
         rows.add(
           _FoodRow(
             id: item.id,
-            meal: item.mealType,
+            mealType: item.mealType,
             name: item.name,
             amount: '${item.mass_g.toStringAsFixed(0)} g',
             calories: calories,
@@ -289,7 +289,7 @@ class _DailyLogCalendarScreenState
     final userId = authUser?.uid;
     if (userId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please sign in to add meals.')),
+        const SnackBar(content: Text('Please sign in to add foods.')),
       );
       return;
     }
@@ -618,7 +618,7 @@ class _DailyLogCalendarScreenState
                                       protein_g: updatedRow.protein / mass,
                                       carbs_g: updatedRow.carbs / mass,
                                       fat: updatedRow.fat / mass,
-                                      mealType: updatedRow.meal,
+                                      mealType: updatedRow.mealType,
                                       consumedAt: updatedRow.consumedAt,
                                     );
                                     await ref
@@ -639,9 +639,9 @@ class _DailyLogCalendarScreenState
                                 width: double.infinity,
                                 child: OutlinedButton.icon(
                                   onPressed: () =>
-                                      _showAddMealDialog(day, userId),
+                                      _showAddFoodDialog(day, userId),
                                   icon: const Icon(Icons.add),
-                                  label: const Text('Add meal'),
+                                  label: const Text('Add food'),
                                 ),
                               ),
                             ],
@@ -661,12 +661,12 @@ class _DailyLogCalendarScreenState
     );
   }
 
-  Future<void> _showAddMealDialog(DateTime day, String userId) async {
+  Future<void> _showAddFoodDialog(DateTime day, String userId) async {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (context) => _AddMealModal(day: day, userId: userId),
+      builder: (context) => _AddFoodModal(day: day, userId: userId),
     );
   }
 
@@ -1115,15 +1115,15 @@ class _DailyLogCalendarScreenState
                                 ),
                               ),
                               const SizedBox(width: 10),
-                              // Meals summary
+                              // Foods summary
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       foods.isEmpty
-                                          ? 'No meals logged'
-                                          : '${foods.length} meal${foods.length != 1 ? 's' : ''}',
+                                          ? 'No foods logged'
+                                          : '${foods.length} food${foods.length != 1 ? 's' : ''}',
                                       style: TextStyle(
                                         fontSize: 14,
                                         fontWeight: foods.isEmpty
@@ -1204,17 +1204,17 @@ class _DailyLogCalendarScreenState
   }
 }
 
-class _AddMealModal extends ConsumerStatefulWidget {
+class _AddFoodModal extends ConsumerStatefulWidget {
   final DateTime day;
   final String userId;
 
-  const _AddMealModal({required this.day, required this.userId});
+  const _AddFoodModal({required this.day, required this.userId});
 
   @override
-  ConsumerState<_AddMealModal> createState() => _AddMealModalState();
+  ConsumerState<_AddFoodModal> createState() => _AddFoodModalState();
 }
 
-class _AddMealModalState extends ConsumerState<_AddMealModal> {
+class _AddFoodModalState extends ConsumerState<_AddFoodModal> {
   bool _isSearchMode = true;
 
   final _nameController = TextEditingController();
@@ -1337,7 +1337,7 @@ class _AddMealModalState extends ConsumerState<_AddMealModal> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Failed to add meal: $e')));
+        ).showSnackBar(SnackBar(content: Text('Failed to add food: $e')));
       }
     }
   }
@@ -1835,7 +1835,7 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Delete meal?'),
+          title: const Text('Delete food?'),
           content: Text('Remove "${widget.row.name}" from this day?'),
           actions: [
             TextButton(
@@ -2060,7 +2060,7 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 10),
                       child: Text(
-                        '${widget.row.meal.toUpperCase()} • ${widget.row.amount}',
+                        '${widget.row.mealType.toUpperCase()} • ${widget.row.amount}',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
@@ -2079,7 +2079,7 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
                   IconButton(
                     onPressed: _deleteRow,
                     icon: Icon(Icons.delete_outline, color: AppColors.error),
-                    tooltip: 'Remove meal',
+                    tooltip: 'Remove food',
                   ),
                   IconButton(
                     onPressed: _isEditing
@@ -2426,7 +2426,7 @@ class _MacroProgressIndicator extends StatelessWidget {
 
 class _FoodRow {
   final String id;
-  final String meal;
+  final String mealType;
   final String name;
   final String amount;
   final double calories;
@@ -2439,7 +2439,7 @@ class _FoodRow {
 
   const _FoodRow({
     required this.id,
-    required this.meal,
+    required this.mealType,
     required this.name,
     required this.amount,
     required this.calories,
@@ -2460,7 +2460,7 @@ class _FoodRow {
   }) {
     return _FoodRow(
       id: id,
-      meal: meal,
+      mealType: mealType,
       name: name ?? this.name,
       amount: amount,
       calories: calories ?? this.calories,
