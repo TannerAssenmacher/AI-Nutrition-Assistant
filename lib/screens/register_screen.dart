@@ -274,8 +274,9 @@ class _RegisterPageState extends State<RegisterPage> {
             password: _passwordController.text.trim(),
           );
       final userAuth = authResult.user;
-      if (userAuth == null)
+      if (userAuth == null) {
         throw Exception('User creation failed — no user returned.');
+      }
       final uid = userAuth.uid;
 
       // Prepare DOB (optional)
@@ -415,14 +416,38 @@ class _RegisterPageState extends State<RegisterPage> {
     }
   }
 
+  //update macros accordingly if text is too big
+  void _updateMacros(String type, double newValue) {
+    setState(() {
+      // We clamp to 0-100 so they don't go negative or over 100
+      double clampedValue = newValue.clamp(0.0, 100.0);
+
+      if (type == 'Protein') {
+        double change =
+            clampedValue - _protein; // This will be exactly 1.0 or -1.0
+        _protein = clampedValue;
+        _carbs = (_carbs - change).clamp(0.0, 100.0);
+      } else if (type == 'Fats') {
+        double change = clampedValue - _fats;
+        _fats = clampedValue;
+        _carbs = (_carbs - change).clamp(0.0, 100.0);
+      } else if (type == 'Carbs') {
+        // If they adjust Carbs directly, it just moves by 1
+        _carbs = clampedValue;
+      }
+
+      // Final Safety: Ensure the total is exactly 100
+      double total = _protein + _carbs + _fats;
+      if (total != 100.0) {
+        _carbs = (100.0 - _protein - _fats).clamp(0.0, 100.0);
+      }
+    });
+  }
+
   // ---- BUILD
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      /*appBar: AppBar(
-        title: Text(_currentPage == 0 ? 'Create Account' : 'More Info'),
-        centerTitle: true,
-      ),*/
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Form(
@@ -500,8 +525,8 @@ class _RegisterPageState extends State<RegisterPage> {
                   const SizedBox(height: 20),
                   _textFieldRequired(_firstnameController, 'First Name'),
                   _textFieldRequired(_lastnameController, 'Last Name'),
-                  _emailField(), // email with LIVE duplication check
-                  _passwordField(), // single-line live hint
+                  _emailField(),
+                  _passwordField(),
                   const SizedBox(height: 30),
                   ElevatedButton(
                     onPressed: _validatePage1AndNext,
@@ -514,24 +539,44 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                     child: const Text(
                       'Next',
-                      style: TextStyle(
-                        color: AppColors.surface,
-                        fontSize: 18,
-                      ),
+                      style: TextStyle(color: AppColors.surface, fontSize: 18),
                     ),
                   ),
                   const SizedBox(height: 16),
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text(
-                      "Already have an account? Login",
-                      style: TextStyle(
-                        fontSize: linkFontSize,
-                        decoration: TextDecoration.underline,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.accentBrown,
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 4,
+                    runSpacing: 4,
+                    children: [
+                      Text(
+                        "Have an account? ",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: linkFontSize,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.accentBrown,
+                        ),
                       ),
-                    ),
+                      TextButton(
+                        onPressed: () => Navigator.pushNamed(context, '/login'),
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          minimumSize: const Size(0, 0),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: Text(
+                          "Login.",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: linkFontSize,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.blueLink,
+                            decorationColor: AppColors.blueLink,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -547,15 +592,14 @@ class _RegisterPageState extends State<RegisterPage> {
   Widget _buildPage2() {
     final mediaQuery = MediaQuery.of(context);
     final screenHeight = mediaQuery.size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
     final cardHorizontalPadding = (mediaQuery.size.width * 0.1)
         .clamp(20.0, 36.0)
         .toDouble();
     final logoHeight = (screenHeight * 0.15).clamp(90.0, 140.0).toDouble();
-
-    // Use the primary scroll controller to avoid Scrollbar having no attached position
     return GestureDetector(
       onTap: () {
-        FocusScope.of(context).unfocus(); // removes focus from any TextField
+        FocusScope.of(context).unfocus();
       },
       child: SingleChildScrollView(
         padding: EdgeInsets.only(bottom: 24 + mediaQuery.viewInsets.bottom),
@@ -632,15 +676,49 @@ class _RegisterPageState extends State<RegisterPage> {
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 10),
-                    MacroSlider(
-                      protein: _protein,
-                      carbs: _carbs,
-                      fats: _fats,
-                      onChanged: (p, c, f) => setState(() {
-                        _protein = p;
-                        _carbs = c;
-                        _fats = f;
-                      }),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final textScale =
+                            MediaQuery.textScalerOf(context).scale(1) > 1.2;
+                        if (textScale) {
+                          return Column(
+                            children: [
+                              _buildMacroCard(
+                                "Protein",
+                                _protein,
+                                Colors.blue,
+                                (v) => _updateMacros('Protein', v),
+                              ),
+                              const SizedBox(height: 12),
+                              _buildMacroCard(
+                                "Carbs",
+                                _carbs,
+                                Colors.green,
+                                (v) => _updateMacros('Carbs', v),
+                              ),
+                              const SizedBox(height: 12),
+                              _buildMacroCard(
+                                "Fats",
+                                _fats,
+                                Colors.orange,
+                                (v) => _updateMacros('Fats', v),
+                              ),
+                            ],
+                          );
+                        } else {
+                          //standard slider
+                          return MacroSlider(
+                            protein: _protein,
+                            carbs: _carbs,
+                            fats: _fats,
+                            onChanged: (p, c, f) => setState(() {
+                              _protein = p;
+                              _carbs = c;
+                              _fats = f;
+                            }),
+                          );
+                        }
+                      },
                     ),
                     const SizedBox(height: 25),
                     _centeredMultiSelectField(
@@ -664,38 +742,52 @@ class _RegisterPageState extends State<RegisterPage> {
                       'Food Dislikes (comma-separated)',
                     ),
                     const SizedBox(height: 30),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      runSpacing: 16,
                       children: [
-                        TextButton(
-                          onPressed: () {
-                            _pageController.previousPage(
-                              duration: const Duration(milliseconds: 300),
-                              curve: Curves.easeInOut,
-                            );
-                            setState(() => _currentPage = 0);
-                          },
-                          child: const Text('Back'),
+                        SizedBox(
+                          width: screenWidth > 400 ? null : double.infinity,
+                          child: TextButton(
+                            onPressed: () {
+                              _pageController.previousPage(
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut,
+                              );
+                              setState(() => _currentPage = 0);
+                            },
+                            child: const Text(
+                              'Back',
+                              style: TextStyle(fontSize: 18),
+                            ),
+                          ),
                         ),
+
                         _isLoading
-                            ? const CircularProgressIndicator()
-                            : ElevatedButton(
-                                onPressed: _registerUser,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.brand,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
+                            ? const Center(child: CircularProgressIndicator())
+                            : SizedBox(
+                                width: screenWidth > 400
+                                    ? null
+                                    : double.infinity,
+                                child: ElevatedButton(
+                                  onPressed: _registerUser,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.brand,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 24,
+                                      vertical: 12,
+                                    ),
                                   ),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 24,
-                                    vertical: 12,
-                                  ),
-                                ),
-                                child: const Text(
-                                  'Create Account',
-                                  style: TextStyle(
-                                    color: AppColors.surface,
-                                    fontSize: 18,
+                                  child: const Text(
+                                    'Create Account',
+                                    style: TextStyle(
+                                      color: AppColors.surface,
+                                      fontSize: 18,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -713,7 +805,6 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   // ---- UI helpers (Page 1 required fields)
-
   Widget _textFieldRequired(
     TextEditingController c,
     String label, {
@@ -856,7 +947,83 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  // ---- Optional text field
+  //accessibility widget if text is too big
+  Widget _buildMacroCard(
+    String label,
+    double value,
+    Color color,
+    Function(double) onUpdate,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Row(
+        children: [
+          // 1. Icon & Label
+          Expanded(
+            flex: 2,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: color,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+                Text(
+                  "${value.toInt()}%",
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // 2. Control Buttons
+          Row(
+            children: [
+              _macroButton(
+                Icons.remove,
+                () => onUpdate((value - 1).clamp(0, 100)),
+              ),
+              const SizedBox(width: 15),
+              _macroButton(
+                Icons.add,
+                () => onUpdate((value + 1).clamp(0, 100)),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _macroButton(IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4),
+          ],
+        ),
+        child: Icon(icon, color: AppColors.accentBrown, size: 28),
+      ),
+    );
+  }
+
   Widget _textFieldOptional(
     TextEditingController c,
     String label, {
@@ -898,7 +1065,6 @@ class _RegisterPageState extends State<RegisterPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Label
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               child: Text(
@@ -1024,7 +1190,6 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  // ---- DOB (NOT required)
   Widget _dobFieldOptional() {
     final c = _dobController;
     final node = _focusMap[c];
@@ -1069,7 +1234,6 @@ class _RegisterPageState extends State<RegisterPage> {
           ),
         ),
         validator: (val) {
-          // NOT required; only validate format if non-empty
           if (val != null && val.isNotEmpty && !_isValidDate(val)) {
             return 'Enter a valid date (MM/DD/YYYY)';
           }

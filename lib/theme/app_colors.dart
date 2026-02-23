@@ -104,4 +104,7 @@ class AppColors {
 
   // ── Camera screen ──
   static const Color cameraBg = Color(0xFF000000); // pure black camera viewfinder background
+
+  // Link for Login & Sign Up Page
+  static const Color blueLink = Color(0xFF3797EF);
 }
