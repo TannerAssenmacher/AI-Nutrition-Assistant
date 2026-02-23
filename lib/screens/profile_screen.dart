@@ -26,6 +26,7 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _isSaving = false;
   bool _canEditDob = true;
   bool _isDeleting = false;
+  bool _isEdited = false;
 
   final Color bgColor = AppColors.background;
   final Color brandColor = AppColors.brand;
@@ -131,8 +132,9 @@ class _ProfilePageState extends State<ProfilePage> {
         _sex == null ||
         _activityLevel == null ||
         _dob == null ||
-        _dob!.isEmpty)
+        _dob!.isEmpty) {
       return 0;
+    }
 
     try {
       final height = _heightCm!;
@@ -141,8 +143,9 @@ class _ProfilePageState extends State<ProfilePage> {
       final now = DateTime.now();
       int age = now.year - dobDate.year;
       if (now.month < dobDate.month ||
-          (now.month == dobDate.month && now.day < dobDate.day))
+          (now.month == dobDate.month && now.day < dobDate.day)) {
         age--;
+      }
 
       double bmr = (_sex == 'Male')
           ? (10 * weightKg) + (6.25 * height) - (5 * age) + 5
@@ -160,7 +163,9 @@ class _ProfilePageState extends State<ProfilePage> {
         'Maintain Weight': 0,
         'Gain Muscle': 500,
       };
-      return (bmr * (multipliers[_activityLevel] ?? 1.375) + weightfactor[_dietaryGoal]!).round();
+      return (bmr * (multipliers[_activityLevel] ?? 1.375) +
+              weightfactor[_dietaryGoal]!)
+          .round();
     } catch (e) {
       return 0;
     }
@@ -275,10 +280,12 @@ class _ProfilePageState extends State<ProfilePage> {
 
   String _getInitials() {
     String initials = "";
-    if (_firstname != null && _firstname!.isNotEmpty)
+    if (_firstname != null && _firstname!.isNotEmpty) {
       initials += _firstname![0].toUpperCase();
-    if (_lastname != null && _lastname!.isNotEmpty)
+    }
+    if (_lastname != null && _lastname!.isNotEmpty) {
       initials += _lastname![0].toUpperCase();
+    }
     return initials.isEmpty ? "?" : initials;
   }
 
@@ -362,8 +369,9 @@ class _ProfilePageState extends State<ProfilePage> {
       };
 
       if (_heightCm != null) updateData['height'] = _heightCm;
-      if (_weightController.text.isNotEmpty)
+      if (_weightController.text.isNotEmpty) {
         updateData['weight'] = double.tryParse(_weightController.text);
+      }
       if (_dailyCaloriesController.text.isNotEmpty) {
         updateData['mealProfile.dailyCalorieGoal'] = int.tryParse(
           _dailyCaloriesController.text,
@@ -372,18 +380,72 @@ class _ProfilePageState extends State<ProfilePage> {
 
       await _firestore.collection('Users').doc(user!.uid).update(updateData);
       if (_dob != null && _dob!.isNotEmpty) setState(() => _canEditDob = false);
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Profile updated successfully!')),
         );
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
     } finally {
-      if (mounted) setState(() => _isSaving = false);
+      if (mounted)
+        setState(() {
+          _isSaving = false;
+          _isEdited = false;
+        });
     }
+  }
+
+  //save changes when user presses back arrow
+  Future<bool> _showSaveDialog() async {
+    return await showDialog<bool>(
+          context: context,
+          barrierColor: Colors.black.withOpacity(0.2),
+          builder: (context) => BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+            child: AlertDialog(
+              title: const Text('Save Changes', textAlign: TextAlign.center),
+              content: const Text(
+                'You have unsaved changes. Would you like to save them before leaving?',
+                textAlign: TextAlign.center,
+              ),
+              actionsAlignment: MainAxisAlignment.center,
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text(
+                    'Discard',
+                    style: TextStyle(color: Colors.black),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: () async {
+                    await _saveProfile();
+                    if (context.mounted) {
+                      Navigator.pop(context, true);
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: brandColor,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'Save',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ) ??
+        false;
   }
 
   Future<void> _confirmDeleteAccount() async {
@@ -401,7 +463,8 @@ class _ProfilePageState extends State<ProfilePage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Text(
-                    'To permanently delete your account, please enter your password.'),
+                  'To permanently delete your account, please enter your password.',
+                ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: passwordController,
@@ -421,35 +484,45 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             actions: [
               TextButton(
-                  onPressed: isDeleting ? null : () => Navigator.pop(context),
-                  child: const Text('Cancel')),
+                onPressed: isDeleting ? null : () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(backgroundColor: deleteColor),
                 onPressed: isDeleting
                     ? null
                     : () async {
                         if (passwordController.text.trim().isEmpty) {
-                          setDialogState(() => passwordError = 'Please enter your password');
+                          setDialogState(
+                            () => passwordError = 'Please enter your password',
+                          );
                           return;
                         }
                         final nav = Navigator.of(context);
                         setDialogState(() => isDeleting = true);
                         try {
                           final credential = EmailAuthProvider.credential(
-                              email: user!.email!,
-                              password: passwordController.text.trim());
+                            email: user!.email!,
+                            password: passwordController.text.trim(),
+                          );
                           await user!.reauthenticateWithCredential(credential);
-                          await _firestore.collection('Users').doc(user!.uid).delete();
+                          await _firestore
+                              .collection('Users')
+                              .doc(user!.uid)
+                              .delete();
                           await user!.delete();
                           if (mounted) {
                             nav.pop();
-                            nav.pushReplacementNamed('/login',
-                                arguments: 'accountDeleted');
+                            nav.pushReplacementNamed(
+                              '/login',
+                              arguments: 'accountDeleted',
+                            );
                           }
                         } catch (e) {
                           setDialogState(() {
                             isDeleting = false;
-                            passwordError = 'Incorrect password. Please try again.';
+                            passwordError =
+                                'Incorrect password. Please try again.';
                           });
                         }
                       },
@@ -458,17 +531,20 @@ class _ProfilePageState extends State<ProfilePage> {
                         width: 18,
                         height: 18,
                         child: CircularProgressIndicator(
-                            color: AppColors.surface, strokeWidth: 2),
+                          color: AppColors.surface,
+                          strokeWidth: 2,
+                        ),
                       )
-                    : const Text('Delete Account',
-                        style: TextStyle(color: AppColors.surface)),
+                    : const Text(
+                        'Delete Account',
+                        style: TextStyle(color: AppColors.surface),
+                      ),
               ),
             ],
           );
         },
       ),
     );
-
   }
 
   void _showHeightPicker() {
@@ -517,7 +593,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                 _updateHeight(currentFt, currentIn);
                               },
                               children: List.generate(
-                                8,
+                                10,
                                 (i) => Center(child: Text('${i + 1} ft')),
                               ),
                             ),
@@ -571,11 +647,12 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading)
+    if (_isLoading) {
       return Scaffold(
         backgroundColor: bgColor,
         body: const Center(child: CircularProgressIndicator()),
       );
+    }
     final estimatedCals = _calculateDailyCalories();
     final suggestedMacros = _recommendedMacroGoals();
 
@@ -587,321 +664,363 @@ class _ProfilePageState extends State<ProfilePage> {
       inText = (totalInches.round() % 12).toString();
     }
 
-    return Scaffold(
-      backgroundColor: bgColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: widget.isInPageView
-            ? null
-            : IconButton(
-                icon: const Icon(
-                  Icons.arrow_back,
-                  color: AppColors.textPrimary,
-                  size: 28,
+    return PopScope(
+      canPop: !_isEdited,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+
+        final shouldPop = await _showSaveDialog();
+        if (shouldPop && context.mounted) {
+          Navigator.pop(context);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: bgColor,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: widget.isInPageView
+              ? null
+              : IconButton(
+                  icon: const Icon(
+                    Icons.arrow_back,
+                    color: AppColors.accentBrown,
+                    size: 28,
+                  ),
+                  onPressed: () async {
+                    if (_isEdited) {
+                      final shouldPop = await _showSaveDialog();
+                      if (shouldPop && context.mounted) Navigator.pop(context);
+                    } else {
+                      Navigator.pop(context);
+                    }
+                  },
                 ),
-                onPressed: () => Navigator.pop(context),
-              ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout, color: AppColors.textSecondary),
-            onPressed: _logout,
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                children: [
-                  CircleAvatar(
-                    radius: 50,
-                    backgroundColor: brandColor,
-                    child: Text(
-                      _getInitials(),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.logout, color: AppColors.accentBrown),
+              onPressed: _logout,
+            ),
+            const SizedBox(width: 8),
+          ],
+        ),
+        body: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+          child: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    CircleAvatar(
+                      radius: 50,
+                      backgroundColor: brandColor,
+                      child: Text(
+                        _getInitials(),
+                        style: const TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.surface,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      '$_firstname $_lastname',
                       style: const TextStyle(
-                        fontSize: 32,
+                        fontSize: 22,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.surface,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    '$_firstname $_lastname',
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 25),
+                    const SizedBox(height: 25),
 
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: _showHeightPicker,
-                          child: _buildStatBox(
-                            "Height",
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 4),
-                              child: Text(
-                                _heightCm != null
-                                    ? "${(_heightCm! / 2.54 ~/ 12)}'${(_heightCm! / 2.54).round() % 12}\""
-                                    : "5'7\"",
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.textPrimary,
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              _showHeightPicker();
+                              setState(() => _isEdited = true);
+                            },
+                            child: _buildStatBox(
+                              "Height",
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 4,
                                 ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-
-                      Expanded(
-                        child: _buildStatBox(
-                          "Weight",
-                          controller: _weightController,
-                          suffixText: "lbs",
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-
-                      Expanded(
-                        child: _buildStatBox(
-                          "Daily Cal",
-                          controller: _dailyCaloriesController,
-                          isPrimary: true,
-                          helperText: estimatedCals > 0
-                              ? "$estimatedCals"
-                              : null,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 30),
-                  _sectionHeader("User"),
-                  _buildCard([
-                    _buildListTile(Icons.email_outlined, "Email", _email ?? ""),
-                    _buildListTile(
-                      Icons.calendar_today,
-                      "DOB",
-                      (_dob == null || _dob!.isEmpty) ? "Not set" : _dob!,
-                      onTap: _canEditDob
-                          ? () async {
-                              DateTime? pickedDate = await showDatePicker(
-                                context: context,
-                                initialDate: DateTime(2000),
-                                firstDate: DateTime(1920),
-                                lastDate: DateTime.now(),
-                                builder: (context, child) => Theme(
-                                  data: Theme.of(context).copyWith(
-                                    colorScheme: ColorScheme.light(
-                                      primary: brandColor,
-                                    ),
+                                child: Text(
+                                  _heightCm != null
+                                      ? "${(_heightCm! / 2.54 ~/ 12)}'${(_heightCm! / 2.54).round() % 12}\""
+                                      : "5'7\"",
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.textPrimary,
                                   ),
-                                  child: child!,
                                 ),
-                              );
-                              if (pickedDate != null)
-                                setState(
-                                  () => _dob = pickedDate.toString().split(
-                                    ' ',
-                                  )[0],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+
+                        Expanded(
+                          child: _buildStatBox(
+                            "Weight",
+                            controller: _weightController,
+                            suffixText: "lbs",
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+
+                        Expanded(
+                          child: _buildStatBox(
+                            "Daily Cal",
+                            controller: _dailyCaloriesController,
+                            isPrimary: true,
+                            helperText: estimatedCals > 0
+                                ? "$estimatedCals"
+                                : null,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 30),
+                    _sectionHeader("User"),
+                    _buildCard([
+                      _buildListTile(
+                        Icons.email_outlined,
+                        "Email",
+                        _email ?? "",
+                      ),
+                      _buildListTile(
+                        Icons.calendar_today,
+                        "DOB",
+                        (_dob == null || _dob!.isEmpty) ? "" : _dob!,
+                        onTap: _canEditDob
+                            ? () async {
+                                DateTime initialDate;
+                                if (_dob != null && _dob!.isNotEmpty) {
+                                  try {
+                                    initialDate = DateTime.parse(_dob!);
+                                  } catch (e) {
+                                    initialDate = DateTime(2000, 1, 1);
+                                  }
+                                } else {
+                                  initialDate = DateTime(2000, 1, 1);
+                                }
+
+                                DateTime? pickedDate = await showDatePicker(
+                                  context: context,
+                                  initialDate: initialDate,
+                                  firstDate: DateTime(1920),
+                                  lastDate: DateTime.now(),
+                                  builder: (context, child) => Theme(
+                                    data: Theme.of(context).copyWith(
+                                      colorScheme: ColorScheme.light(
+                                        primary: brandColor,
+                                      ),
+                                    ),
+                                    child: child!,
+                                  ),
                                 );
-                            }
-                          : null,
-                    ),
-                    _buildListTile(
-                      Icons.wc,
-                      "Sex",
-                      _sex ?? "Not Set",
-                      onTap: () => _showPicker(
+
+                                if (pickedDate != null) {
+                                  setState(() {
+                                    _dob = pickedDate.toString().split(' ')[0];
+                                    _isEdited = true;
+                                  });
+                                }
+                              }
+                            : null,
+                      ),
+                      _buildListTile(
+                        Icons.wc,
                         "Sex",
-                        ['Male', 'Female'],
-                        _sex,
-                        (v) => setState(() => _sex = v),
-                      ),
-                    ),
-                    _buildListTile(
-                      Icons.bolt,
-                      "Activity Level",
-                      _activityLevel ?? "Select",
-                      onTap: () => _showPicker(
-                        "Activity",
-                        _activityLevels,
-                        _activityLevel,
-                        (v) {
-                          setState(() => _activityLevel = v);
-                          _applyRecommendedMacroGoals(silent: true);
-                        },
-                      ),
-                    ),
-                    _buildListTile(
-                      Icons.track_changes,
-                      "Dietary Goal",
-                      _dietaryGoal ?? "Select",
-                      onTap: () => _showPicker(
-                        "Diet Goal",
-                        _dietGoals,
-                        _dietaryGoal,
-                        (v) {
-                          setState(() => _dietaryGoal = v);
-                          _applyRecommendedMacroGoals(silent: true);
-                        },
-                      ),
-                    ),
-                  ]),
-                  const SizedBox(height: 25),
-                  _sectionHeader("Meal Profile"),
-                  _buildCard([
-                    Padding(
-                      padding: const EdgeInsets.only(
-                        top: 20.0,
-                        left: 16.0,
-                        right: 16.0,
-                        bottom: 8.0,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Macronutrient Goals",
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.textPrimary,
-                              letterSpacing: 0.7,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          MacroSlider(
-                            key: ValueKey(
-                              'macro-${_protein.toStringAsFixed(2)}-${_carbs.toStringAsFixed(2)}-${_fats.toStringAsFixed(2)}',
-                            ),
-                            protein: _protein,
-                            carbs: _carbs,
-                            fats: _fats,
-                            onChanged: (p, c, f) => setState(() {
-                              _protein = p;
-                              _carbs = c;
-                              _fats = f;
-                            }),
-                          ),
-                          const SizedBox(height: 8),
-                          /*Text(
-                            'Suggested values:\nP ${suggestedMacros['protein']!.round()}% • C ${suggestedMacros['carbs']!.round()}% • F ${suggestedMacros['fat']!.round()}%',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.black54,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton(
-                              onPressed: _applyRecommendedMacroGoals,
-                              child: const Text('Use Suggested'),
-                            ),
-                          ),*/
-                        ],
-                      ),
-                    ),
-                    const Divider(height: 1),
-                    _buildMultiSelectTile(
-                      "Macronutrient Goal Presets",
-                      _dietaryHabitOptions,
-                      _dietaryHabits,
-                      onChanged: () => _applyRecommendedMacroGoals(silent: true),
-                    ),
-                    const Divider(height: 1),
-                    _buildMultiSelectTile(
-                      "Health & Dietary Restrictions",
-                      _healthOptions,
-                      _health,
-                    ),
-                    const Divider(height: 1),
-                    _buildBubbleInput("Likes", _likesController, _likesList),
-                    const Divider(height: 1),
-                    _buildBubbleInput(
-                      "Dislikes",
-                      _dislikesController,
-                      _dislikesList,
-                    ),
-                  ]),
-                  const SizedBox(height: 30),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 55,
-                    child: ElevatedButton(
-                      onPressed: _saveProfile,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: brandColor,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
+                        _sex ?? "Not Set",
+                        onTap: () => _showPicker(
+                          "Sex",
+                          ['Male', 'Female'],
+                          _sex,
+                          (v) => setState(() {
+                            _sex = v;
+                            _isEdited = true;
+                          }),
                         ),
                       ),
-                      child: _isSaving
-                          ? const CircularProgressIndicator(color: AppColors.surface)
-                          : const Text(
-                              "Save Changes",
-                              style: TextStyle(
-                                color: AppColors.surface,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 55,
-                    child: ElevatedButton(
-                      onPressed: _confirmDeleteAccount,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: deleteColor,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
+                      _buildListTile(
+                        Icons.bolt,
+                        "Activity Level",
+                        _activityLevel ?? "Select",
+                        onTap: () => _showPicker(
+                          "Activity",
+                          _activityLevels,
+                          _activityLevel,
+                          (v) {
+                            setState(() {
+                              _activityLevel = v;
+                              _isEdited = true;
+                            });
+                            _applyRecommendedMacroGoals(silent: true);
+                          },
                         ),
-                        elevation: 0,
                       ),
-                      child: _isDeleting
-                          ? const CircularProgressIndicator(color: AppColors.surface)
-                          : const Text(
-                              "Delete Account",
-                              style: TextStyle(
-                                color: AppColors.surface,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
+                      _buildListTile(
+                        Icons.track_changes,
+                        "Dietary Goal",
+                        _dietaryGoal ?? "Select",
+                        onTap: () => _showPicker(
+                          "Diet Goal",
+                          _dietGoals,
+                          _dietaryGoal,
+                          (v) {
+                            setState(() {
+                              _dietaryGoal = v;
+                              _isEdited = true;
+                            });
+                            _applyRecommendedMacroGoals(silent: true);
+                          },
+                        ),
+                      ),
+                    ]),
+                    const SizedBox(height: 25),
+                    _sectionHeader("Meal Profile"),
+                    _buildCard([
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          top: 20.0,
+                          left: 16.0,
+                          right: 16.0,
+                          bottom: 8.0,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Macronutrient Goals",
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.textPrimary,
+                                letterSpacing: 0.7,
                               ),
                             ),
+                            const SizedBox(height: 16),
+                            MacroSlider(
+                              key: ValueKey(
+                                'macro-${_protein.toStringAsFixed(2)}-${_carbs.toStringAsFixed(2)}-${_fats.toStringAsFixed(2)}',
+                              ),
+                              protein: _protein,
+                              carbs: _carbs,
+                              fats: _fats,
+                              onChanged: (p, c, f) => setState(() {
+                                _protein = p;
+                                _carbs = c;
+                                _fats = f;
+                                _isEdited = true;
+                              }),
+                            ),
+                            const SizedBox(height: 8),
+                          ],
+                        ),
+                      ),
+                      const Divider(height: 1),
+                      _buildMultiSelectTile(
+                        "Macronutrient Goal Presets",
+                        _dietaryHabitOptions,
+                        _dietaryHabits,
+                        onChanged: () {
+                          _applyRecommendedMacroGoals(silent: true);
+                          setState(() => _isEdited = true);
+                        },
+                      ),
+                      const Divider(height: 1),
+                      _buildMultiSelectTile(
+                        "Health & Dietary Restrictions",
+                        _healthOptions,
+                        _health,
+                        onChanged: () => setState(() => _isEdited = true),
+                      ),
+                      const Divider(height: 1),
+                      _buildBubbleInput("Likes", _likesController, _likesList),
+                      const Divider(height: 1),
+                      _buildBubbleInput(
+                        "Dislikes",
+                        _dislikesController,
+                        _dislikesList,
+                      ),
+                    ]),
+                    const SizedBox(height: 30),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 55,
+                      child: ElevatedButton(
+                        onPressed: _saveProfile,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: brandColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                        ),
+                        child: _isSaving
+                            ? const CircularProgressIndicator(
+                                color: AppColors.surface,
+                              )
+                            : const Text(
+                                "Save Changes",
+                                style: TextStyle(
+                                  color: AppColors.surface,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 60),
-                ],
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 55,
+                      child: ElevatedButton(
+                        onPressed: _confirmDeleteAccount,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: deleteColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: _isDeleting
+                            ? const CircularProgressIndicator(
+                                color: AppColors.surface,
+                              )
+                            : const Text(
+                                "Delete Account",
+                                style: TextStyle(
+                                  color: AppColors.surface,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 60),
+                  ],
+                ),
               ),
             ),
           ),
         ),
+        bottomNavigationBar: widget.isInPageView
+            ? NavBar(
+                currentIndex: navIndexProfile,
+                onTap: (index) => handleNavTap(context, index),
+              )
+            : null,
       ),
-      bottomNavigationBar: widget.isInPageView
-          ? NavBar(
-              currentIndex: navIndexProfile,
-              onTap: (index) => handleNavTap(context, index),
-            )
-          : null,
     );
   }
 
@@ -942,11 +1061,13 @@ class _ProfilePageState extends State<ProfilePage> {
               IconButton(
                 icon: Icon(Icons.add_circle, color: brandColor),
                 onPressed: () {
-                  if (controller.text.trim().isNotEmpty)
+                  if (controller.text.trim().isNotEmpty) {
                     setState(() {
                       list.add(controller.text.trim());
                       controller.clear();
+                      _isEdited = true;
                     });
+                  }
                 },
               ),
             ],
@@ -989,7 +1110,10 @@ class _ProfilePageState extends State<ProfilePage> {
             color: isPrimary ? brandColor : AppColors.surface,
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
-              BoxShadow(color: AppColors.black.withValues(alpha: 0.02), blurRadius: 10),
+              BoxShadow(
+                color: AppColors.black.withValues(alpha: 0.02),
+                blurRadius: 10,
+              ),
             ],
           ),
           child: Column(
@@ -1011,7 +1135,11 @@ class _ProfilePageState extends State<ProfilePage> {
                               ),
                             ]
                           : [FilteringTextInputFormatter.digitsOnly],
-                      onChanged: (v) => setState(() {}),
+                      onChanged: (v) {
+                        setState(() {
+                          _isEdited = true;
+                        });
+                      },
                       decoration: InputDecoration(
                         border: InputBorder.none,
                         isDense: true,
@@ -1019,24 +1147,33 @@ class _ProfilePageState extends State<ProfilePage> {
                         suffixText: suffixText,
                         suffixStyle: TextStyle(
                           fontSize: 12,
-                          color: isPrimary ? AppColors.surface.withValues(alpha: 0.7) : AppColors.statusNone,
+                          color: isPrimary
+                              ? AppColors.surface.withValues(alpha: 0.7)
+                              : AppColors.statusNone,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: isPrimary ? AppColors.surface : AppColors.textPrimary),
+                        color: isPrimary
+                            ? AppColors.surface
+                            : AppColors.textPrimary,
+                      ),
+                    ),
                   ),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: isPrimary
+                      ? AppColors.surface.withValues(alpha: 0.7)
+                      : AppColors.textHint,
                 ),
-                Text(label,
-                    style: TextStyle(
-                        fontSize: 11,
-                        color: isPrimary ? AppColors.surface.withValues(alpha: 0.7) : AppColors.textHint)),
-              ],
-            ),
+              ),
+            ],
           ),
-        // FIXED: This SizedBox keeps the boxes aligned even when no helper text is present
+        ),
         SizedBox(
           height: 18,
           child: helperText != null
@@ -1045,10 +1182,13 @@ class _ProfilePageState extends State<ProfilePage> {
                   child: Text(
                     "Est: $helperText",
                     style: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textHint)))
-            : const SizedBox.shrink(),
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textHint,
+                    ),
+                  ),
+                )
+              : const SizedBox.shrink(),
         ),
       ],
     );
@@ -1077,7 +1217,10 @@ class _ProfilePageState extends State<ProfilePage> {
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(color: AppColors.black.withValues(alpha: 0.03), blurRadius: 10),
+          BoxShadow(
+            color: AppColors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+          ),
         ],
       ),
       child: Column(children: children),
@@ -1104,18 +1247,27 @@ class _ProfilePageState extends State<ProfilePage> {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(value, style: const TextStyle(color: AppColors.textHint, fontSize: 14)),
+          Text(
+            value,
+            style: const TextStyle(color: AppColors.textHint, fontSize: 14),
+          ),
           if (onTap != null)
-            const Icon(Icons.chevron_right, size: 18, color: AppColors.textHint)
-        ]));
+            const Icon(
+              Icons.chevron_right,
+              size: 18,
+              color: AppColors.textHint,
+            ),
+        ],
+      ),
+    );
   }
 
   Widget _buildMultiSelectTile(
     String title,
     List<String> options,
-    List<String> selected,
-    {VoidCallback? onChanged}
-  ) {
+    List<String> selected, {
+    VoidCallback? onChanged,
+  }) {
     return ListTile(
       title: Text(
         title,
