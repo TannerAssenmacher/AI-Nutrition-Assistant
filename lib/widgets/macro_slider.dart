@@ -84,30 +84,30 @@ class _MacroSliderState extends State<MacroSlider> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Wrap(
-              spacing: 12,
-              runSpacing: 6,
-              alignment: WrapAlignment.spaceBetween,
+            Row(
               children: [
-                Text(
-                  'Protein ${_proteinPercent.toStringAsFixed(0)}%',
-                  style: const TextStyle(
+                Expanded(
+                  child: _buildMacroLabel(
+                    macroKey: 'protein',
+                    label: 'Protein',
+                    percentage: _proteinPercent,
                     color: AppColors.protein,
-                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                Text(
-                  'Carbs ${_carbPercent.toStringAsFixed(0)}%',
-                  style: const TextStyle(
+                Expanded(
+                  child: _buildMacroLabel(
+                    macroKey: 'carbs',
+                    label: 'Carbs',
+                    percentage: _carbPercent,
                     color: AppColors.carbs,
-                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                Text(
-                  'Fats ${_fatPercent.toStringAsFixed(0)}%',
-                  style: const TextStyle(
+                Expanded(
+                  child: _buildMacroLabel(
+                    macroKey: 'fats',
+                    label: 'Fats',
+                    percentage: _fatPercent,
                     color: AppColors.fat,
-                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
@@ -199,6 +199,50 @@ class _MacroSliderState extends State<MacroSlider> {
           ],
         );
       },
+    );
+  }
+
+  Widget _buildMacroLabel({
+    required String macroKey,
+    required String label,
+    required double percentage,
+    required Color color,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            key: ValueKey('macro-$macroKey-label'),
+            label,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+              height: 1.1,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            key: ValueKey('macro-$macroKey-value'),
+            '${percentage.toStringAsFixed(0)}%',
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              height: 1.1,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

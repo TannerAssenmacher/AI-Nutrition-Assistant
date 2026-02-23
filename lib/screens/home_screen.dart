@@ -218,6 +218,14 @@ class HomeScreen extends ConsumerWidget {
                         if (proteinGoal <= 0) proteinGoal = 150;
                         if (carbsGoal <= 0) carbsGoal = 200;
                         if (fatGoal <= 0) fatGoal = 65;
+                        final textScale = MediaQuery.textScalerOf(
+                          context,
+                        ).scale(1.0).clamp(1.0, 1.35).toDouble();
+                        final mealsCarouselHeight =
+                            ((MediaQuery.of(context).size.height * 0.21) *
+                                    textScale)
+                                .clamp(150.0, 220.0)
+                                .toDouble();
 
                         return Column(
                           children: [
@@ -307,7 +315,7 @@ class HomeScreen extends ConsumerWidget {
                             ),
                             const SizedBox(height: 12),
                             SizedBox(
-                              height: MediaQuery.of(context).size.height * 0.2,
+                              height: mealsCarouselHeight,
                               child: todaysFoods.isEmpty
                                   ? PageView(
                                       controller: PageController(
@@ -451,6 +459,9 @@ class _FoodCarouselCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final calories = (food.calories_g * food.mass_g).round();
+    final textScale = MediaQuery.textScalerOf(
+      context,
+    ).scale(1.0).clamp(1.0, 1.3).toDouble();
     return Semantics(
       button: true,
       label:
@@ -473,38 +484,52 @@ class _FoodCarouselCard extends StatelessWidget {
           ),
           child: Padding(
             padding: const EdgeInsets.all(16.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  food.name,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.accentBrown,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '${(food.calories_g * food.mass_g).round()} Cal',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.brand,
-                  ),
-                ),
-                Text(
-                  food.mealType.toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textHint,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final compact = constraints.maxHeight < 145 || textScale > 1.15;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.topLeft,
+                        child: Text(
+                          food.name,
+                          style: TextStyle(
+                            fontSize: compact ? 16 : 18,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.accentBrown,
+                            height: 1.15,
+                          ),
+                          maxLines: compact ? 1 : 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '$calories Cal',
+                      style: TextStyle(
+                        fontSize: compact ? 14 : 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.brand,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      food.mealType.toUpperCase(),
+                      style: TextStyle(
+                        fontSize: compact ? 11 : 12,
+                        color: AppColors.textHint,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         ),
@@ -584,12 +609,18 @@ class _NoMealsPlaceholder extends StatelessWidget {
         ],
       ),
       child: Center(
-        child: Text(
-          "No meals logged yet",
-          style: TextStyle(
-            fontSize: 16,
-            color: AppColors.textHint,
-            fontWeight: FontWeight.w500,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Text(
+            "No meals logged yet",
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 16,
+              color: AppColors.textHint,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
       ),

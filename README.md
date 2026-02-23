@@ -14,3 +14,22 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
+
+## FatSecret Functions Deploy
+
+Use the guarded deploy script to deploy only FatSecret-backed functions:
+
+```bash
+./scripts/deploy_fatsecret_functions.sh
+```
+
+What it checks before deploy:
+- You are not on `main` (unless `--allow-main`).
+- Your branch is not behind `origin/main`.
+- Working tree is clean (unless `--allow-dirty`).
+- GitHub check runs for the current commit are passing (unless `--skip-ci`).
+
+Useful flags:
+- `--dry-run`
+- `--skip-ci`
+- `--project ai-nutrition-assistant-e2346`

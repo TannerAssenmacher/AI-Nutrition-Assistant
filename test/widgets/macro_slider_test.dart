@@ -22,9 +22,27 @@ void main() {
         ),
       );
 
-      expect(find.text('Protein 30%'), findsOneWidget);
-      expect(find.text('Carbs 40%'), findsOneWidget);
-      expect(find.text('Fats 30%'), findsOneWidget);
+      expect(find.text('Protein'), findsOneWidget);
+      expect(find.text('Carbs'), findsOneWidget);
+      expect(find.text('Fats'), findsOneWidget);
+      expect(
+        tester
+            .widget<Text>(find.byKey(const ValueKey('macro-protein-value')))
+            .data,
+        '30%',
+      );
+      expect(
+        tester
+            .widget<Text>(find.byKey(const ValueKey('macro-carbs-value')))
+            .data,
+        '40%',
+      );
+      expect(
+        tester
+            .widget<Text>(find.byKey(const ValueKey('macro-fats-value')))
+            .data,
+        '30%',
+      );
     });
 
     testWidgets('should display custom macro values', (tester) async {
@@ -41,9 +59,24 @@ void main() {
         ),
       );
 
-      expect(find.text('Protein 25%'), findsOneWidget);
-      expect(find.text('Carbs 50%'), findsOneWidget);
-      expect(find.text('Fats 25%'), findsOneWidget);
+      expect(
+        tester
+            .widget<Text>(find.byKey(const ValueKey('macro-protein-value')))
+            .data,
+        '25%',
+      );
+      expect(
+        tester
+            .widget<Text>(find.byKey(const ValueKey('macro-carbs-value')))
+            .data,
+        '50%',
+      );
+      expect(
+        tester
+            .widget<Text>(find.byKey(const ValueKey('macro-fats-value')))
+            .data,
+        '25%',
+      );
     });
 
     testWidgets('should render with correct colors', (tester) async {
@@ -61,13 +94,19 @@ void main() {
       );
 
       // Verify text widgets with colors exist
-      final proteinText = tester.widget<Text>(find.text('Protein 33%'));
+      final proteinText = tester.widget<Text>(
+        find.byKey(const ValueKey('macro-protein-value')),
+      );
       expect(proteinText.style?.color, AppColors.protein);
 
-      final carbsText = tester.widget<Text>(find.text('Carbs 34%'));
+      final carbsText = tester.widget<Text>(
+        find.byKey(const ValueKey('macro-carbs-value')),
+      );
       expect(carbsText.style?.color, AppColors.carbs);
 
-      final fatsText = tester.widget<Text>(find.text('Fats 33%'));
+      final fatsText = tester.widget<Text>(
+        find.byKey(const ValueKey('macro-fats-value')),
+      );
       expect(fatsText.style?.color, AppColors.fat);
     });
 
@@ -105,7 +144,7 @@ void main() {
       // Should use LayoutBuilder for responsive sizing
       expect(find.byType(LayoutBuilder), findsOneWidget);
       // Should have a Column for layout
-      expect(find.byType(Column), findsOneWidget);
+      expect(find.byType(Column), findsAtLeast(1));
       // Should have a Row for macro labels
       expect(find.byType(Row), findsOneWidget);
       // Should use Stack for layered bar visualization (at least one)
@@ -142,7 +181,7 @@ void main() {
 
       // Find the gesture detector
       final gestureDetector = find.byType(GestureDetector);
-      
+
       // Perform a drag gesture
       await tester.drag(gestureDetector, const Offset(20, 0));
       await tester.pump();
@@ -167,9 +206,24 @@ void main() {
         ),
       );
 
-      expect(find.text('Protein 0%'), findsOneWidget);
-      expect(find.text('Carbs 100%'), findsOneWidget);
-      expect(find.text('Fats 0%'), findsOneWidget);
+      expect(
+        tester
+            .widget<Text>(find.byKey(const ValueKey('macro-protein-value')))
+            .data,
+        '0%',
+      );
+      expect(
+        tester
+            .widget<Text>(find.byKey(const ValueKey('macro-carbs-value')))
+            .data,
+        '100%',
+      );
+      expect(
+        tester
+            .widget<Text>(find.byKey(const ValueKey('macro-fats-value')))
+            .data,
+        '0%',
+      );
     });
 
     testWidgets('should handle decimal values correctly', (tester) async {
@@ -187,9 +241,24 @@ void main() {
       );
 
       // Values should be rounded for display
-      expect(find.text('Protein 33%'), findsOneWidget);
-      expect(find.text('Carbs 33%'), findsOneWidget);
-      expect(find.text('Fats 33%'), findsOneWidget);
+      expect(
+        tester
+            .widget<Text>(find.byKey(const ValueKey('macro-protein-value')))
+            .data,
+        '33%',
+      );
+      expect(
+        tester
+            .widget<Text>(find.byKey(const ValueKey('macro-carbs-value')))
+            .data,
+        '33%',
+      );
+      expect(
+        tester
+            .widget<Text>(find.byKey(const ValueKey('macro-fats-value')))
+            .data,
+        '33%',
+      );
     });
 
     testWidgets('should maintain text styling', (tester) async {
@@ -206,14 +275,20 @@ void main() {
         ),
       );
 
-      // All macro texts should be bold
-      final proteinText = tester.widget<Text>(find.text('Protein 30%'));
+      // Percentage values should be bold
+      final proteinText = tester.widget<Text>(
+        find.byKey(const ValueKey('macro-protein-value')),
+      );
       expect(proteinText.style?.fontWeight, FontWeight.bold);
 
-      final carbsText = tester.widget<Text>(find.text('Carbs 40%'));
+      final carbsText = tester.widget<Text>(
+        find.byKey(const ValueKey('macro-carbs-value')),
+      );
       expect(carbsText.style?.fontWeight, FontWeight.bold);
 
-      final fatsText = tester.widget<Text>(find.text('Fats 30%'));
+      final fatsText = tester.widget<Text>(
+        find.byKey(const ValueKey('macro-fats-value')),
+      );
       expect(fatsText.style?.fontWeight, FontWeight.bold);
     });
   });
@@ -251,7 +326,7 @@ void main() {
 
       // Should have received updates
       expect(values.isNotEmpty, isTrue);
-      
+
       // Each update should have values summing to 100
       for (final v in values) {
         expect((v[0] + v[1] + v[2]).round(), 100);
