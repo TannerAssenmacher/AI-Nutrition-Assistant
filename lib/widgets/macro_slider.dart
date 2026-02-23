@@ -85,117 +85,164 @@ class _MacroSliderState extends State<MacroSlider> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Protein ${_proteinPercent.toStringAsFixed(0)}%',
-                  style: const TextStyle(
+                Expanded(
+                  child: _buildMacroLabel(
+                    macroKey: 'protein',
+                    label: 'Protein',
+                    percentage: _proteinPercent,
                     color: AppColors.protein,
-                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                Text(
-                  'Carbs ${_carbPercent.toStringAsFixed(0)}%',
-                  style: const TextStyle(
+                Expanded(
+                  child: _buildMacroLabel(
+                    macroKey: 'carbs',
+                    label: 'Carbs',
+                    percentage: _carbPercent,
                     color: AppColors.carbs,
-                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                Text(
-                  'Fats ${_fatPercent.toStringAsFixed(0)}%',
-                  style: const TextStyle(
+                Expanded(
+                  child: _buildMacroLabel(
+                    macroKey: 'fats',
+                    label: 'Fats',
+                    percentage: _fatPercent,
                     color: AppColors.fat,
-                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 10),
             Semantics(
-              label: 'Macro split slider. Protein: ${_proteinPercent.toStringAsFixed(0)}%, Carbs: ${_carbPercent.toStringAsFixed(0)}%, Fats: ${_fatPercent.toStringAsFixed(0)}%.',
+              label:
+                  'Macro split slider. Protein: ${_proteinPercent.toStringAsFixed(0)}%, Carbs: ${_carbPercent.toStringAsFixed(0)}%, Fats: ${_fatPercent.toStringAsFixed(0)}%.',
               hint: 'Drag to adjust',
               slider: true,
               child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onHorizontalDragDown: (details) {
-                final dx = details.localPosition.dx;
-                final dist1 = (dx - handle1X).abs();
-                final dist2 = (dx - handle2X).abs();
-                _isDraggingFirst = dist1 < dist2;
-              },
-              onHorizontalDragUpdate: (details) {
-                _onDrag(details.localPosition, _isDraggingFirst);
-              },
-              child: SizedBox(
-                height: 50,
-                child: Stack(
-                  children: [
-                    // Base bar
-                    Container(
-                      height: 10,
-                      decoration: BoxDecoration(
-                        color: AppColors.borderLight,
-                        borderRadius: BorderRadius.circular(5),
-                      ),
-                    ),
-                    // Protein
-                    Positioned(
-                      left: 0,
-                      child: Container(
+                behavior: HitTestBehavior.opaque,
+                onHorizontalDragDown: (details) {
+                  final dx = details.localPosition.dx;
+                  final dist1 = (dx - handle1X).abs();
+                  final dist2 = (dx - handle2X).abs();
+                  _isDraggingFirst = dist1 < dist2;
+                },
+                onHorizontalDragUpdate: (details) {
+                  _onDrag(details.localPosition, _isDraggingFirst);
+                },
+                child: SizedBox(
+                  height: 50,
+                  child: Stack(
+                    children: [
+                      // Base bar
+                      Container(
                         height: 10,
-                        width: handle1X,
                         decoration: BoxDecoration(
-                          color: AppColors.protein,
-                          borderRadius: const BorderRadius.horizontal(
-                            left: Radius.circular(5),
+                          color: AppColors.borderLight,
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                      ),
+                      // Protein
+                      Positioned(
+                        left: 0,
+                        child: Container(
+                          height: 10,
+                          width: handle1X,
+                          decoration: BoxDecoration(
+                            color: AppColors.protein,
+                            borderRadius: const BorderRadius.horizontal(
+                              left: Radius.circular(5),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    // Carbs
-                    Positioned(
-                      left: handle1X,
-                      child: Container(
-                        height: 10,
-                        width: handle2X - handle1X,
-                        color: AppColors.carbs,
+                      // Carbs
+                      Positioned(
+                        left: handle1X,
+                        child: Container(
+                          height: 10,
+                          width: handle2X - handle1X,
+                          color: AppColors.carbs,
+                        ),
                       ),
-                    ),
-                    // Fats
-                    Positioned(
-                      left: handle2X,
-                      child: Container(
-                        height: 10,
-                        width: _width - handle2X,
-                        decoration: BoxDecoration(
-                          color: AppColors.fat,
-                          borderRadius: const BorderRadius.horizontal(
-                            right: Radius.circular(5),
+                      // Fats
+                      Positioned(
+                        left: handle2X,
+                        child: Container(
+                          height: 10,
+                          width: _width - handle2X,
+                          decoration: BoxDecoration(
+                            color: AppColors.fat,
+                            borderRadius: const BorderRadius.horizontal(
+                              right: Radius.circular(5),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    // Handles
-                    Positioned(
-                      left: handle1X - 8,
-                      top: 0,
-                      bottom: 0,
-                      child: _buildHandle(),
-                    ),
-                    Positioned(
-                      left: handle2X - 8,
-                      top: 0,
-                      bottom: 0,
-                      child: _buildHandle(),
-                    ),
-                  ],
+                      // Handles
+                      Positioned(
+                        left: handle1X - 8,
+                        top: 0,
+                        bottom: 0,
+                        child: _buildHandle(),
+                      ),
+                      Positioned(
+                        left: handle2X - 8,
+                        top: 0,
+                        bottom: 0,
+                        child: _buildHandle(),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
             ),
           ],
         );
       },
+    );
+  }
+
+  Widget _buildMacroLabel({
+    required String macroKey,
+    required String label,
+    required double percentage,
+    required Color color,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            key: ValueKey('macro-$macroKey-label'),
+            label,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+              height: 1.1,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            key: ValueKey('macro-$macroKey-value'),
+            '${percentage.toStringAsFixed(0)}%',
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              height: 1.1,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -207,7 +254,11 @@ class _MacroSliderState extends State<MacroSlider> {
         border: Border.all(color: AppColors.borderLight),
         borderRadius: BorderRadius.circular(4),
         boxShadow: [
-          BoxShadow(color: AppColors.black.withValues(alpha: 0.15), blurRadius: 3, offset: const Offset(0, 1)),
+          BoxShadow(
+            color: AppColors.black.withValues(alpha: 0.15),
+            blurRadius: 3,
+            offset: const Offset(0, 1),
+          ),
         ],
       ),
     );

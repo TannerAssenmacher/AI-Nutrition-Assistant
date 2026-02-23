@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/cupertino.dart';
-import '../providers/user_providers.dart';
 import '../providers/food_providers.dart';
 import '../providers/auth_providers.dart';
 import '../providers/firestore_providers.dart';
@@ -284,34 +283,6 @@ class _DailyLogCalendarScreenState
     }
   }
 
-  void _addPlaceholderApple() {
-    final authUser = ref.read(authServiceProvider);
-    final userId = authUser?.uid;
-    if (userId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please sign in to add foods.')),
-      );
-      return;
-    }
-
-    final firestoreLog = ref.read(firestoreFoodLogProvider(userId).notifier);
-    final day = _selectedDay ?? _focusedDay;
-    final consumedAt = DateTime(day.year, day.month, day.day, 12);
-    final item = FoodItem(
-      id: 'apple-${DateTime.now().microsecondsSinceEpoch}',
-      name: 'Apple',
-      mass_g: 150,
-      calories_g: 0.52,
-      protein_g: 0.0027,
-      carbs_g: 0.14,
-      fat: 0.0013,
-      mealType: 'snack',
-      consumedAt: consumedAt,
-    );
-
-    firestoreLog.addFood(userId, item);
-  }
-
   void _showMonthlyCalendarPicker() {
     showDialog(
       context: context,
@@ -367,11 +338,14 @@ class _DailyLogCalendarScreenState
                   data: (meals) => _scheduledMealsForDay(day, meals),
                   orElse: () => <PlannedFood>[],
                 );
+                final scheduledTotalsFuture = _scheduledTotals(
+                  scheduledMeals,
+                  ref,
+                );
 
                 return StatefulBuilder(
                   builder: (context, setSheetState) {
-                    final History = segment == 0;
-                    final Scheduled = segment == 1;
+                    final isScheduled = segment == 1;
 
                     return SingleChildScrollView(
                       controller: scrollController,
@@ -422,7 +396,7 @@ class _DailyLogCalendarScreenState
 
                             // Macro summary card
                             FutureBuilder<Map<String, double>>(
-                              future: _scheduledTotals(scheduledMeals, ref),
+                              future: scheduledTotalsFuture,
                               builder: (context, snapshot) {
                                 final scheduledTotals =
                                     snapshot.data ??
@@ -492,7 +466,7 @@ class _DailyLogCalendarScreenState
                             const SizedBox(height: 12),
 
                             // ✅ CONTENT SWITCH
-                            if (Scheduled) ...[
+                            if (isScheduled) ...[
                               Text(
                                 'Scheduled Meals',
                                 style: Theme.of(context).textTheme.titleSmall
@@ -749,7 +723,7 @@ class _DailyLogCalendarScreenState
                   ),
                   const SizedBox(height: 6),
                   DropdownButtonFormField<String>(
-                    initialValue: selectedMealType,
+                    value: selectedMealType,
                     items: mealTypes
                         .map(
                           (type) => DropdownMenuItem<String>(
@@ -825,7 +799,7 @@ class _DailyLogCalendarScreenState
     return value[0].toUpperCase() + value.substring(1).toLowerCase();
   }
 
-  void _checkAndShowNotifications(
+  Future<void> _checkAndShowNotifications(
     List<FoodItem> foodLog,
     Map<String, double> goals,
     String userId,
@@ -865,23 +839,8 @@ class _DailyLogCalendarScreenState
     }
   }
 
-  String _getMacroNotificationMessage(
-    List<FoodItem> foodLog,
-    Map<String, double> goals,
-    String userId,
-  ) {
-    final now = DateTime.now();
-    final dayTotals = _totalsForDay(now, foodLog);
-    final remaining = NotificationService.calculateRemainingMacros(
-      currentTotals: dayTotals,
-      goals: goals,
-    );
-    return NotificationService.getMacroReminderMessage(remaining);
-  }
-
   @override
   Widget build(BuildContext context) {
-    final displayDate = _selectedDay ?? _focusedDay;
     final authUser = ref.watch(authServiceProvider);
     final userId = authUser?.uid;
     if (userId == null) {
@@ -918,7 +877,7 @@ class _DailyLogCalendarScreenState
       data: (foodLog) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _autoScrollToTodayIfNeeded(weekDays);
-          _checkAndShowNotifications(foodLog, goals, userId);
+          unawaited(_checkAndShowNotifications(foodLog, goals, userId));
         });
 
         return _wrapWithScaffold(
@@ -971,12 +930,6 @@ class _DailyLogCalendarScreenState
                             );
                           });
                         },
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.add),
-                        color: AppColors.error,
-                        tooltip: 'Add apple to selected day',
-                        onPressed: _addPlaceholderApple,
                       ),
                     ],
                   ),
@@ -1230,6 +1183,8 @@ class _AddFoodModalState extends ConsumerState<_AddFoodModal> {
   Timer? _debounce;
   bool _isLoading = false;
   String? _error;
+  int _searchRequestId = 0;
+  List<String> _suggestions = const [];
   List<FoodSearchResult> _results = const [];
 
   @override
@@ -1252,10 +1207,14 @@ class _AddFoodModalState extends ConsumerState<_AddFoodModal> {
     });
   }
 
-  Future<void> _runSearch(String query) async {
+  Future<void> _runSearch(
+    String query, {
+    bool includeSuggestions = true,
+  }) async {
     final trimmed = query.trim();
     if (trimmed.length < 2) {
       setState(() {
+        _suggestions = const [];
         _results = const [];
         _error = null;
         _isLoading = false;
@@ -1263,28 +1222,59 @@ class _AddFoodModalState extends ConsumerState<_AddFoodModal> {
       return;
     }
 
+    final requestId = ++_searchRequestId;
     setState(() {
       _isLoading = true;
       _error = null;
     });
 
     try {
-      final results = await _searchService.searchFoods(trimmed);
-      if (!mounted) return;
+      final resultsFuture = _searchService.searchFoods(trimmed);
+      Future<List<String>>? suggestionsFuture;
+      if (includeSuggestions) {
+        suggestionsFuture = _searchService.autocompleteFoods(
+          trimmed,
+          maxResults: 5,
+        );
+      }
+      final results = await resultsFuture;
+
+      List<String> suggestions = const [];
+      if (suggestionsFuture != null) {
+        try {
+          suggestions = await suggestionsFuture;
+        } catch (_) {
+          suggestions = const [];
+        }
+      }
+
+      if (!mounted || requestId != _searchRequestId) return;
       setState(() {
+        _suggestions = includeSuggestions ? suggestions : const [];
         _results = results;
         _isLoading = false;
-        _error = results.isEmpty
-            ? 'No results found from USDA or Spoonacular.'
-            : null;
+        _error = results.isEmpty ? 'No results found from FatSecret.' : null;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || requestId != _searchRequestId) return;
       setState(() {
         _isLoading = false;
         _error = 'Search failed: $e';
       });
     }
+  }
+
+  void _applySuggestion(String suggestion) {
+    _debounce?.cancel();
+    _searchController.value = TextEditingValue(
+      text: suggestion,
+      selection: TextSelection.collapsed(offset: suggestion.length),
+    );
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _suggestions = const [];
+    });
+    _runSearch(suggestion, includeSuggestions: false);
   }
 
   Future<void> _addManualMeal() async {
@@ -1345,19 +1335,30 @@ class _AddFoodModalState extends ConsumerState<_AddFoodModal> {
   Future<void> _addSearchResult(FoodSearchResult result) async {
     final rootContext = context;
 
-    await showDialog<void>(
+    final added = await showDialog<bool>(
       context: rootContext,
       builder: (dialogContext) {
         return _AddSearchResultDialog(
           result: result,
           day: widget.day,
           userId: widget.userId,
-          onSuccess: () {
-            Navigator.pop(rootContext);
-          },
         );
       },
     );
+
+    if (added != true || !mounted || !rootContext.mounted) {
+      return;
+    }
+
+    FocusManager.instance.primaryFocus?.unfocus();
+    await Future<void>.delayed(Duration.zero);
+    if (!mounted || !rootContext.mounted) {
+      return;
+    }
+
+    final messenger = ScaffoldMessenger.of(rootContext);
+    Navigator.pop(rootContext);
+    messenger.showSnackBar(SnackBar(content: Text('Added "${result.name}"')));
   }
 
   @override
@@ -1481,7 +1482,7 @@ class _AddFoodModalState extends ConsumerState<_AddFoodModal> {
         TextField(
           controller: _searchController,
           decoration: InputDecoration(
-            hintText: 'Search USDA foods (Spoonacular fallback)...',
+            hintText: 'Search foods (FatSecret)...',
             prefixIcon: const Icon(Icons.search),
             suffixIcon: _searchController.text.isEmpty
                 ? null
@@ -1499,8 +1500,38 @@ class _AddFoodModalState extends ConsumerState<_AddFoodModal> {
             setState(() {});
             _onSearchQueryChanged(value);
           },
-          onSubmitted: _runSearch,
+          onSubmitted: (value) {
+            _debounce?.cancel();
+            FocusScope.of(context).unfocus();
+            _runSearch(value, includeSuggestions: false);
+          },
+          onTapOutside: (_) => FocusScope.of(context).unfocus(),
         ),
+        if (_suggestions.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: _suggestions
+                    .map(
+                      (suggestion) => ActionChip(
+                        label: Text(
+                          suggestion,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+                        visualDensity: VisualDensity.compact,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        onPressed: () => _applySuggestion(suggestion),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
+          ),
         if (_isLoading)
           const Padding(
             padding: EdgeInsets.only(top: 8),
@@ -1610,32 +1641,6 @@ class _AddFoodModalState extends ConsumerState<_AddFoodModal> {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _MiniMacroChip extends StatelessWidget {
-  const _MiniMacroChip({required this.label, required this.color});
-
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
-      ),
     );
   }
 }
@@ -1753,7 +1758,6 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
     _statusOverlay?.remove();
 
     final overlay = Overlay.of(context);
-    if (overlay == null) return;
 
     final mediaQuery = MediaQuery.of(context);
     final bottomInset = mediaQuery.viewPadding.bottom;
@@ -1866,24 +1870,6 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
     }
   }
 
-  Widget _macroChip(String label, String value, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        '$label $value',
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: color.withValues(alpha: 0.9),
-        ),
-      ),
-    );
-  }
-
   Widget _macroStatTile({
     required String label,
     required Color color,
@@ -1892,9 +1878,13 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
     required String value,
     required String unit,
   }) {
+    final textScale = MediaQuery.textScalerOf(
+      context,
+    ).scale(1.0).clamp(1.0, 1.35).toDouble();
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 150),
-      height: 54,
+      height: 54 * textScale,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: isEditing ? color.withValues(alpha: 0.12) : AppColors.surface,
@@ -1920,6 +1910,8 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
         children: [
           Text(
             label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w700,
@@ -1953,14 +1945,20 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
               ),
             )
           else
-            Align(
-              alignment: Alignment.centerRight,
-              child: Text(
-                '$value $unit',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  color: color.withValues(alpha: 0.95),
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    '$value $unit',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: color.withValues(alpha: 0.95),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -2163,7 +2161,8 @@ class _FoodSearchResultTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final calories = (result.caloriesPerGram * result.servingGrams).round();
+    final serving = result.defaultServingOption;
+    final calories = (serving.caloriesPerGram * serving.grams).round();
 
     return Container(
       padding: const EdgeInsets.all(10),
@@ -2187,7 +2186,7 @@ class _FoodSearchResultTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${result.servingGrams.toStringAsFixed(0)} g · $calories Cal',
+                  '${serving.grams.toStringAsFixed(0)} g · $calories Cal',
                   style: TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 12,
@@ -2199,23 +2198,18 @@ class _FoodSearchResultTile extends StatelessWidget {
                   runSpacing: 2,
                   children: [
                     Text(
-                      'P ${(result.proteinPerGram * result.servingGrams).toStringAsFixed(1)}g',
+                      'P ${(serving.proteinPerGram * serving.grams).toStringAsFixed(1)}g',
                       style: TextStyle(color: AppColors.textHint, fontSize: 11),
                     ),
                     Text(
-                      'C ${(result.carbsPerGram * result.servingGrams).toStringAsFixed(1)}g',
+                      'C ${(serving.carbsPerGram * serving.grams).toStringAsFixed(1)}g',
                       style: TextStyle(color: AppColors.textHint, fontSize: 11),
                     ),
                     Text(
-                      'F ${(result.fatPerGram * result.servingGrams).toStringAsFixed(1)}g',
+                      'F ${(serving.fatPerGram * serving.grams).toStringAsFixed(1)}g',
                       style: TextStyle(color: AppColors.textHint, fontSize: 11),
                     ),
                   ],
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  result.sourceLabel,
-                  style: TextStyle(color: AppColors.statusNone, fontSize: 11),
                 ),
               ],
             ),
@@ -2254,56 +2248,6 @@ class _MacroSummaryItem extends StatelessWidget {
             fontWeight: FontWeight.bold,
             color: AppColors.textPrimary,
           ),
-        ),
-      ],
-    );
-  }
-}
-
-class _FoodsTable extends StatelessWidget {
-  const _FoodsTable({required this.date, required this.rows});
-
-  final DateTime date;
-  final List<_FoodRow> rows;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Table(
-          border: TableBorder.all(
-            color: AppColors.accentBrown.withValues(alpha: 0.3),
-          ),
-          columnWidths: const {
-            0: FlexColumnWidth(3),
-            1: FlexColumnWidth(1.5),
-            2: FlexColumnWidth(1.5),
-            3: FlexColumnWidth(1.5),
-            4: FlexColumnWidth(1.5),
-          },
-          children: [
-            TableRow(
-              decoration: BoxDecoration(color: AppColors.inputFill),
-              children: const [
-                _TableCellText('Food', isHeader: true),
-                _TableCellText('Cal', isHeader: true),
-                _TableCellText('Pro', isHeader: true),
-                _TableCellText('Carb', isHeader: true),
-                _TableCellText('Fat', isHeader: true),
-              ],
-            ),
-            for (final row in rows)
-              TableRow(
-                children: [
-                  _TableCellText(row.name),
-                  _TableCellText('${row.calories.toInt()}'),
-                  _TableCellText('${row.protein.toStringAsFixed(1)}g'),
-                  _TableCellText('${row.carbs.toStringAsFixed(1)}g'),
-                  _TableCellText('${row.fat.toStringAsFixed(1)}g'),
-                ],
-              ),
-          ],
         ),
       ],
     );
@@ -2484,47 +2428,6 @@ class _NutritionGrade {
     required this.errorPercent,
     required this.color,
   });
-}
-
-class _MacroChip extends StatelessWidget {
-  const _MacroChip({
-    required this.label,
-    required this.value,
-    required this.suffix,
-  });
-
-  final String label;
-  final double value;
-  final String suffix;
-
-  @override
-  Widget build(BuildContext context) {
-    return Chip(
-      label: Text('$label: ${value.toStringAsFixed(1)}$suffix'),
-      backgroundColor: AppColors.inputFill,
-      shape: const StadiumBorder(),
-    );
-  }
-}
-
-class _TableCellText extends StatelessWidget {
-  const _TableCellText(this.text, {this.isHeader = false});
-  final String text;
-  final bool isHeader;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontWeight: isHeader ? FontWeight.bold : FontWeight.w500,
-          color: AppColors.accentBrown,
-        ),
-      ),
-    );
-  }
 }
 
 class _MonthlyCalendarPicker extends StatefulWidget {
@@ -3091,7 +2994,6 @@ class _ScheduledMealDetailScreen extends StatelessWidget {
     final instructions = _parseInstructions(recipe['instructions']);
     const baseColor = AppColors.recipeSurface;
     final cardColor = AppColors.surface.withValues(alpha: 0.05);
-    const accentColor = AppColors.recipeAccent;
 
     return Scaffold(
       backgroundColor: baseColor,
@@ -3396,13 +3298,11 @@ class _AddSearchResultDialog extends ConsumerStatefulWidget {
   final FoodSearchResult result;
   final DateTime day;
   final String userId;
-  final VoidCallback onSuccess;
 
   const _AddSearchResultDialog({
     required this.result,
     required this.day,
     required this.userId,
-    required this.onSuccess,
   });
 
   @override
@@ -3412,78 +3312,211 @@ class _AddSearchResultDialog extends ConsumerStatefulWidget {
 
 class _AddSearchResultDialogState
     extends ConsumerState<_AddSearchResultDialog> {
+  late final bool _hasExplicitServingOptions;
+  late final List<FoodServingOption> _availableServings;
+  late FoodServingOption _selectedServing;
   late final TextEditingController _gramsController;
-  late final FocusNode _gramsFocusNode;
   String _mealType = 'snack';
+  int _quantity = 1;
 
   @override
   void initState() {
     super.initState();
-    _gramsController = TextEditingController(
-      text: widget.result.servingGrams.toStringAsFixed(0),
+    _hasExplicitServingOptions = widget.result.servingOptions.isNotEmpty;
+    final rawServings = _hasExplicitServingOptions
+        ? widget.result.servingOptions
+        : [widget.result.defaultServingOption];
+    _availableServings = _normalizeServingOptions(rawServings);
+    _selectedServing = _availableServings.firstWhere(
+      (option) => option.isDefault,
+      orElse: () => _availableServings.first,
     );
-    _gramsFocusNode = FocusNode();
+    _gramsController = TextEditingController(
+      text: _selectedServing.grams.toStringAsFixed(0),
+    );
   }
 
   @override
   void dispose() {
     _gramsController.dispose();
-    _gramsFocusNode.dispose();
     super.dispose();
+  }
+
+  Future<void> _closeDialog([bool? result]) async {
+    // Ensure any active text input detaches before this route is removed.
+    FocusManager.instance.primaryFocus?.unfocus();
+    await Future<void>.delayed(Duration.zero);
+    if (!mounted) return;
+    Navigator.of(context).pop(result);
+  }
+
+  List<FoodServingOption> _normalizeServingOptions(
+    List<FoodServingOption> options,
+  ) {
+    final prioritized = [
+      ...options.where((option) => option.isDefault),
+      ...options.where((option) => !option.isDefault),
+    ];
+    final seen = <String>{};
+    final normalized = <FoodServingOption>[];
+    for (final option in prioritized) {
+      final key =
+          '${option.description.trim().toLowerCase()}|${option.grams.toStringAsFixed(2)}';
+      if (!seen.add(key)) continue;
+      normalized.add(option);
+    }
+    return normalized.isEmpty ? options : normalized;
+  }
+
+  String _servingLabel(FoodServingOption option) {
+    final gramsText = '${option.grams.toStringAsFixed(0)} g';
+    final description = option.description.trim().replaceAll(
+      RegExp(r'\s+'),
+      ' ',
+    );
+    if (description.isEmpty) {
+      return gramsText;
+    }
+    final normalized = description.toLowerCase();
+    if (normalized == 'default serving') {
+      return gramsText;
+    }
+    final duplicatePattern = RegExp(
+      r'^([\d.]+\s*(?:g|gram|grams|ml|oz|ounce|ounces))\s*\(\s*\1\s*\)$',
+      caseSensitive: false,
+    );
+    final duplicateMatch = duplicatePattern.firstMatch(description);
+    if (duplicateMatch != null) {
+      return duplicateMatch.group(1)!;
+    }
+    if (RegExp(
+      r'^\s*[\d.]+\s*(g|gram|grams|ml|oz|ounce|ounces)\s*$',
+    ).hasMatch(normalized)) {
+      return description;
+    }
+    return '$description ($gramsText)';
   }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text('Add ${widget.result.name}'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          DropdownButtonFormField<String>(
-            initialValue: _mealType,
-            decoration: const InputDecoration(labelText: 'Meal type'),
-            items: const [
-              DropdownMenuItem(value: 'breakfast', child: Text('Breakfast')),
-              DropdownMenuItem(value: 'lunch', child: Text('Lunch')),
-              DropdownMenuItem(value: 'dinner', child: Text('Dinner')),
-              DropdownMenuItem(value: 'snack', child: Text('Snack')),
-            ],
-            onChanged: (value) {
-              if (value != null) {
-                setState(() => _mealType = value);
-              }
-            },
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _gramsController,
-            focusNode: _gramsFocusNode,
-            decoration: InputDecoration(
-              labelText: 'Grams',
-              suffixIcon: IconButton(
-                tooltip: 'Done',
-                icon: const Icon(Icons.check),
-                onPressed: () => FocusScope.of(context).unfocus(),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DropdownButtonFormField<String>(
+              value: _mealType,
+              decoration: const InputDecoration(labelText: 'Meal type'),
+              items: const [
+                DropdownMenuItem(value: 'breakfast', child: Text('Breakfast')),
+                DropdownMenuItem(value: 'lunch', child: Text('Lunch')),
+                DropdownMenuItem(value: 'dinner', child: Text('Dinner')),
+                DropdownMenuItem(value: 'snack', child: Text('Snack')),
+              ],
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() => _mealType = value);
+                }
+              },
+            ),
+            const SizedBox(height: 8),
+            if (_hasExplicitServingOptions) ...[
+              if (_availableServings.length > 1) ...[
+                DropdownButtonFormField<FoodServingOption>(
+                  value: _selectedServing,
+                  isExpanded: true,
+                  decoration: const InputDecoration(labelText: 'Serving size'),
+                  selectedItemBuilder: (context) => _availableServings
+                      .map(
+                        (option) => Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Text(
+                            _servingLabel(option),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  items: _availableServings
+                      .map(
+                        (option) => DropdownMenuItem<FoodServingOption>(
+                          value: option,
+                          child: Text(
+                            _servingLabel(option),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() {
+                      _selectedServing = value;
+                    });
+                  },
+                ),
+                const SizedBox(height: 8),
+              ],
+              DropdownButtonFormField<int>(
+                value: _quantity,
+                decoration: const InputDecoration(labelText: 'Servings'),
+                items: List.generate(
+                  10,
+                  (index) => DropdownMenuItem<int>(
+                    value: index + 1,
+                    child: Text('${index + 1}'),
+                  ),
+                ),
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() {
+                    _quantity = value;
+                  });
+                },
               ),
-            ),
-            keyboardType: TextInputType.number,
-            textInputAction: TextInputAction.done,
-            onSubmitted: (_) => FocusScope.of(context).unfocus(),
-            onTapOutside: (_) => FocusScope.of(context).unfocus(),
-          ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Source: ${widget.result.sourceLabel}',
-              style: TextStyle(color: AppColors.textHint, fontSize: 12),
-            ),
-          ),
-        ],
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Total: ${(_selectedServing.grams * _quantity).toStringAsFixed(0)} g',
+                  style: TextStyle(color: AppColors.textHint, fontSize: 12),
+                ),
+              ),
+            ] else
+              TextField(
+                controller: _gramsController,
+                decoration: InputDecoration(
+                  labelText: 'Weight (g)',
+                  suffixIcon: IconButton(
+                    tooltip: 'Done',
+                    icon: const Icon(Icons.check),
+                    onPressed: () =>
+                        FocusManager.instance.primaryFocus?.unfocus(),
+                  ),
+                ),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) =>
+                    FocusManager.instance.primaryFocus?.unfocus(),
+                onTapOutside: (_) =>
+                    FocusManager.instance.primaryFocus?.unfocus(),
+                onChanged: (_) {
+                  setState(() {});
+                },
+              ),
+          ],
+        ),
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: () async {
+            await _closeDialog(false);
+          },
           child: const Text('Cancel'),
         ),
         ElevatedButton(onPressed: _handleAdd, child: const Text('Add')),
@@ -3492,7 +3525,9 @@ class _AddSearchResultDialogState
   }
 
   Future<void> _handleAdd() async {
-    final grams = double.tryParse(_gramsController.text.trim());
+    final grams = _hasExplicitServingOptions
+        ? _selectedServing.grams * _quantity
+        : double.tryParse(_gramsController.text.trim());
     if (grams == null || grams <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a valid grams value.')),
@@ -3511,10 +3546,10 @@ class _AddSearchResultDialogState
       id: 'search-${DateTime.now().microsecondsSinceEpoch}',
       name: widget.result.name,
       mass_g: grams,
-      calories_g: widget.result.caloriesPerGram,
-      protein_g: widget.result.proteinPerGram,
-      carbs_g: widget.result.carbsPerGram,
-      fat: widget.result.fatPerGram,
+      calories_g: _selectedServing.caloriesPerGram,
+      protein_g: _selectedServing.proteinPerGram,
+      carbs_g: _selectedServing.carbsPerGram,
+      fat: _selectedServing.fatPerGram,
       mealType: _mealType,
       consumedAt: consumedAt,
     );
@@ -3524,12 +3559,7 @@ class _AddSearchResultDialogState
           .read(firestoreFoodLogProvider(widget.userId).notifier)
           .addFood(widget.userId, item);
       if (!mounted) return;
-      final messenger = ScaffoldMessenger.of(context);
-      Navigator.pop(context);
-      widget.onSuccess();
-      messenger.showSnackBar(
-        SnackBar(content: Text('Added "${widget.result.name}"')),
-      );
+      await _closeDialog(true);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(

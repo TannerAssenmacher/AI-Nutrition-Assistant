@@ -8,6 +8,7 @@ import '../providers/firestore_providers.dart';
 import '../db/food.dart';
 import 'package:nutrition_assistant/navigation/nav_helper.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
+import 'package:nutrition_assistant/widgets/fatsecret_attribution.dart';
 
 class FoodSearchScreen extends ConsumerStatefulWidget {
   final bool isInPageView;
@@ -24,6 +25,8 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
   Timer? _debounce;
   bool _isLoading = false;
   String? _error;
+  int _searchRequestId = 0;
+  List<String> _suggestions = const [];
   List<FoodSearchResult> _results = const [];
 
   @override
@@ -40,10 +43,14 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
     });
   }
 
-  Future<void> _runSearch(String query) async {
+  Future<void> _runSearch(
+    String query, {
+    bool includeSuggestions = true,
+  }) async {
     final trimmed = query.trim();
     if (trimmed.length < 2) {
       setState(() {
+        _suggestions = const [];
         _results = const [];
         _error = null;
         _isLoading = false;
@@ -51,28 +58,59 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
       return;
     }
 
+    final requestId = ++_searchRequestId;
     setState(() {
       _isLoading = true;
       _error = null;
     });
 
     try {
-      final results = await _searchService.searchFoods(trimmed);
-      if (!mounted) return;
+      final resultsFuture = _searchService.searchFoods(trimmed);
+      Future<List<String>>? suggestionsFuture;
+      if (includeSuggestions) {
+        suggestionsFuture = _searchService.autocompleteFoods(
+          trimmed,
+          maxResults: 5,
+        );
+      }
+      final results = await resultsFuture;
+
+      List<String> suggestions = const [];
+      if (suggestionsFuture != null) {
+        try {
+          suggestions = await suggestionsFuture;
+        } catch (_) {
+          suggestions = const [];
+        }
+      }
+
+      if (!mounted || requestId != _searchRequestId) return;
       setState(() {
+        _suggestions = includeSuggestions ? suggestions : const [];
         _results = results;
         _isLoading = false;
-        _error = results.isEmpty
-            ? 'No results found from USDA or Spoonacular.'
-            : null;
+        _error = results.isEmpty ? 'No results found from FatSecret.' : null;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || requestId != _searchRequestId) return;
       setState(() {
         _isLoading = false;
         _error = 'Search failed: $e';
       });
     }
+  }
+
+  void _applySuggestion(String suggestion) {
+    _debounce?.cancel();
+    _searchController.value = TextEditingValue(
+      text: suggestion,
+      selection: TextSelection.collapsed(offset: suggestion.length),
+    );
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _suggestions = const [];
+    });
+    _runSearch(suggestion, includeSuggestions: false);
   }
 
   Future<void> _addSearchResult(FoodSearchResult result) async {
@@ -88,9 +126,67 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
     }
 
     final rootContext = context;
-    final gramsController =
-        TextEditingController(text: result.servingGrams.toStringAsFixed(0));
-    final gramsFocusNode = FocusNode();
+    final hasExplicitServingOptions = result.servingOptions.isNotEmpty;
+    List<FoodServingOption> normalizeServingOptions(
+      List<FoodServingOption> options,
+    ) {
+      final prioritized = [
+        ...options.where((option) => option.isDefault),
+        ...options.where((option) => !option.isDefault),
+      ];
+      final seen = <String>{};
+      final normalized = <FoodServingOption>[];
+      for (final option in prioritized) {
+        final key =
+            '${option.description.trim().toLowerCase()}|${option.grams.toStringAsFixed(2)}';
+        if (!seen.add(key)) continue;
+        normalized.add(option);
+      }
+      return normalized.isEmpty ? options : normalized;
+    }
+
+    String servingLabel(FoodServingOption option) {
+      final gramsText = '${option.grams.toStringAsFixed(0)} g';
+      final description = option.description.trim().replaceAll(
+        RegExp(r'\s+'),
+        ' ',
+      );
+      if (description.isEmpty) {
+        return gramsText;
+      }
+      final normalized = description.toLowerCase();
+      if (normalized == 'default serving') {
+        return gramsText;
+      }
+      final duplicatePattern = RegExp(
+        r'^([\d.]+\s*(?:g|gram|grams|ml|oz|ounce|ounces))\s*\(\s*\1\s*\)$',
+        caseSensitive: false,
+      );
+      final duplicateMatch = duplicatePattern.firstMatch(description);
+      if (duplicateMatch != null) {
+        return duplicateMatch.group(1)!;
+      }
+      if (RegExp(
+        r'^\s*[\d.]+\s*(g|gram|grams|ml|oz|ounce|ounces)\s*$',
+      ).hasMatch(normalized)) {
+        return description;
+      }
+      return '$description ($gramsText)';
+    }
+
+    final availableServings = normalizeServingOptions(
+      hasExplicitServingOptions
+          ? result.servingOptions
+          : [result.defaultServingOption],
+    );
+    FoodServingOption selectedServing = availableServings.firstWhere(
+      (option) => option.isDefault,
+      orElse: () => availableServings.first,
+    );
+    int quantity = 1;
+    final gramsController = TextEditingController(
+      text: selectedServing.grams.toStringAsFixed(0),
+    );
     String mealType = 'snack';
     DateTime selectedDate = DateTime.now();
 
@@ -99,14 +195,20 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            final currentGrams =
-                double.tryParse(gramsController.text) ?? result.servingGrams;
-            final calories = (result.caloriesPerGram * currentGrams).round();
-            final protein =
-                (result.proteinPerGram * currentGrams).toStringAsFixed(1);
-            final carbs =
-                (result.carbsPerGram * currentGrams).toStringAsFixed(1);
-            final fat = (result.fatPerGram * currentGrams).toStringAsFixed(1);
+            final parsedGrams = double.tryParse(gramsController.text.trim());
+            final currentGrams = hasExplicitServingOptions
+                ? selectedServing.grams * quantity
+                : ((parsedGrams != null && parsedGrams > 0)
+                      ? parsedGrams
+                      : selectedServing.grams);
+            final calories = (selectedServing.caloriesPerGram * currentGrams)
+                .round();
+            final protein = (selectedServing.proteinPerGram * currentGrams)
+                .toStringAsFixed(1);
+            final carbs = (selectedServing.carbsPerGram * currentGrams)
+                .toStringAsFixed(1);
+            final fat = (selectedServing.fatPerGram * currentGrams)
+                .toStringAsFixed(1);
 
             return AlertDialog(
               title: Text('Add ${result.name}'),
@@ -115,14 +217,18 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     DropdownButtonFormField<String>(
-                      value: mealType,
+                      initialValue: mealType,
                       decoration: const InputDecoration(labelText: 'Meal type'),
                       items: const [
                         DropdownMenuItem(
-                            value: 'breakfast', child: Text('Breakfast')),
+                          value: 'breakfast',
+                          child: Text('Breakfast'),
+                        ),
                         DropdownMenuItem(value: 'lunch', child: Text('Lunch')),
                         DropdownMenuItem(
-                            value: 'dinner', child: Text('Dinner')),
+                          value: 'dinner',
+                          child: Text('Dinner'),
+                        ),
                         DropdownMenuItem(value: 'snack', child: Text('Snack')),
                       ],
                       onChanged: (value) {
@@ -134,28 +240,101 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                       },
                     ),
                     const SizedBox(height: 8),
-                    TextField(
-                      controller: gramsController,
-                      focusNode: gramsFocusNode,
-                      decoration: InputDecoration(
-                        labelText: 'Grams',
-                        suffixIcon: IconButton(
-                          tooltip: 'Done',
-                          icon: const Icon(Icons.check),
-                          onPressed: () =>
-                              FocusScope.of(dialogContext).unfocus(),
+                    if (hasExplicitServingOptions) ...[
+                      if (availableServings.length > 1) ...[
+                        DropdownButtonFormField<FoodServingOption>(
+                          initialValue: selectedServing,
+                          isExpanded: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Serving size',
+                          ),
+                          selectedItemBuilder: (context) => availableServings
+                              .map(
+                                (option) => Align(
+                                  alignment: AlignmentDirectional.centerStart,
+                                  child: Text(
+                                    servingLabel(option),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          items: availableServings
+                              .map(
+                                (option) => DropdownMenuItem<FoodServingOption>(
+                                  value: option,
+                                  child: Text(
+                                    servingLabel(option),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) {
+                            if (value == null) return;
+                            setDialogState(() {
+                              selectedServing = value;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                      DropdownButtonFormField<int>(
+                        initialValue: quantity,
+                        decoration: const InputDecoration(
+                          labelText: 'Servings',
+                        ),
+                        items: List.generate(
+                          10,
+                          (index) => DropdownMenuItem<int>(
+                            value: index + 1,
+                            child: Text('${index + 1}'),
+                          ),
+                        ),
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setDialogState(() {
+                            quantity = value;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Total: ${(selectedServing.grams * quantity).toStringAsFixed(0)} g',
+                          style: TextStyle(
+                            color: AppColors.textHint,
+                            fontSize: 12,
+                          ),
                         ),
                       ),
-                      keyboardType: TextInputType.number,
-                      textInputAction: TextInputAction.done,
-                      onSubmitted: (_) =>
-                          FocusScope.of(dialogContext).unfocus(),
-                      onTapOutside: (_) =>
-                          FocusScope.of(dialogContext).unfocus(),
-                      onChanged: (value) {
-                        setDialogState(() {});
-                      },
-                    ),
+                    ] else
+                      TextField(
+                        controller: gramsController,
+                        decoration: InputDecoration(
+                          labelText: 'Weight (g)',
+                          suffixIcon: IconButton(
+                            tooltip: 'Done',
+                            icon: const Icon(Icons.check),
+                            onPressed: () =>
+                                FocusManager.instance.primaryFocus?.unfocus(),
+                          ),
+                        ),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: (_) =>
+                            FocusManager.instance.primaryFocus?.unfocus(),
+                        onTapOutside: (_) =>
+                            FocusManager.instance.primaryFocus?.unfocus(),
+                        onChanged: (_) {
+                          setDialogState(() {});
+                        },
+                      ),
                     const SizedBox(height: 12),
                     Container(
                       padding: const EdgeInsets.all(12),
@@ -230,10 +409,12 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                         final pickedDate = await showDatePicker(
                           context: dialogContext,
                           initialDate: selectedDate,
-                          firstDate: DateTime.now()
-                              .subtract(const Duration(days: 365)),
-                          lastDate:
-                              DateTime.now().add(const Duration(days: 30)),
+                          firstDate: DateTime.now().subtract(
+                            const Duration(days: 365),
+                          ),
+                          lastDate: DateTime.now().add(
+                            const Duration(days: 30),
+                          ),
                         );
                         if (pickedDate != null) {
                           setDialogState(() {
@@ -255,16 +436,25 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
+                  onPressed: () async {
+                    FocusManager.instance.primaryFocus?.unfocus();
+                    await Future<void>.delayed(Duration.zero);
+                    if (dialogContext.mounted) {
+                      Navigator.pop(dialogContext);
+                    }
+                  },
                   child: const Text('Cancel'),
                 ),
                 ElevatedButton(
                   onPressed: () async {
-                    final grams = double.tryParse(gramsController.text.trim());
+                    final grams = hasExplicitServingOptions
+                        ? selectedServing.grams * quantity
+                        : double.tryParse(gramsController.text.trim());
                     if (grams == null || grams <= 0) {
                       ScaffoldMessenger.of(dialogContext).showSnackBar(
                         const SnackBar(
-                            content: Text('Please enter a valid grams value.')),
+                          content: Text('Please enter a valid grams value.'),
+                        ),
                       );
                       return;
                     }
@@ -281,10 +471,10 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                       id: 'search-${DateTime.now().microsecondsSinceEpoch}',
                       name: result.name,
                       mass_g: grams,
-                      calories_g: result.caloriesPerGram,
-                      protein_g: result.proteinPerGram,
-                      carbs_g: result.carbsPerGram,
-                      fat: result.fatPerGram,
+                      calories_g: selectedServing.caloriesPerGram,
+                      protein_g: selectedServing.proteinPerGram,
+                      carbs_g: selectedServing.carbsPerGram,
+                      fat: selectedServing.fatPerGram,
                       mealType: mealType,
                       consumedAt: consumedAt,
                     );
@@ -293,18 +483,25 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                       await ref
                           .read(firestoreFoodLogProvider(userId).notifier)
                           .addFood(userId, item);
-                      if (!mounted) return;
+                      FocusManager.instance.primaryFocus?.unfocus();
+                      await Future<void>.delayed(Duration.zero);
+                      if (!mounted ||
+                          !rootContext.mounted ||
+                          !dialogContext.mounted) {
+                        return;
+                      }
                       final messenger = ScaffoldMessenger.of(rootContext);
                       Navigator.pop(dialogContext);
-                      final dateText = selectedDate.day == DateTime.now().day &&
+                      final dateText =
+                          selectedDate.day == DateTime.now().day &&
                               selectedDate.month == DateTime.now().month &&
                               selectedDate.year == DateTime.now().year
                           ? 'today\'s log'
                           : '${selectedDate.month}/${selectedDate.day}/${selectedDate.year}';
                       messenger.showSnackBar(
                         SnackBar(
-                            content:
-                                Text('Added "${result.name}" to $dateText')),
+                          content: Text('Added "${result.name}" to $dateText'),
+                        ),
                       );
                     } catch (e) {
                       if (dialogContext.mounted) {
@@ -324,7 +521,6 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
     );
 
     gramsController.dispose();
-    gramsFocusNode.dispose();
   }
 
   @override
@@ -343,7 +539,10 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
             ),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [AppColors.brand, AppColors.brand.withValues(alpha: 0.85)],
+                colors: [
+                  AppColors.brand,
+                  AppColors.brand.withValues(alpha: 0.85),
+                ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -366,9 +565,9 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                   child: Text(
                     'Food Search',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.surface,
-                        ),
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.surface,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -388,7 +587,7 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: 'Search USDA foods (Spoonacular fallback)...',
+                hintText: 'Search foods (FatSecret)...',
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: _searchController.text.isEmpty
                     ? null
@@ -404,25 +603,64 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                 fillColor: AppColors.surface,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppColors.accentBrown.withValues(alpha: 0.3)),
+                  borderSide: BorderSide(
+                    color: AppColors.accentBrown.withValues(alpha: 0.3),
+                  ),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppColors.accentBrown.withValues(alpha: 0.3)),
+                  borderSide: BorderSide(
+                    color: AppColors.accentBrown.withValues(alpha: 0.3),
+                  ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide:
-                      BorderSide(color: AppColors.accentBrown, width: 2),
+                  borderSide: BorderSide(
+                    color: AppColors.accentBrown,
+                    width: 2,
+                  ),
                 ),
               ),
               onChanged: (value) {
                 setState(() {});
                 _onSearchQueryChanged(value);
               },
-              onSubmitted: _runSearch,
+              onSubmitted: (value) {
+                _debounce?.cancel();
+                FocusScope.of(context).unfocus();
+                _runSearch(value, includeSuggestions: false);
+              },
+              onTapOutside: (_) => FocusScope.of(context).unfocus(),
             ),
           ),
+          if (_suggestions.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: _suggestions
+                      .map(
+                        (suggestion) => ActionChip(
+                          label: Text(
+                            suggestion,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          labelPadding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                          ),
+                          visualDensity: VisualDensity.compact,
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                          onPressed: () => _applySuggestion(suggestion),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ),
+            ),
           // Loading indicator
           if (_isLoading)
             const Padding(
@@ -435,14 +673,12 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 children: [
-                  Icon(Icons.info_outline,
-                      color: AppColors.warning, size: 20),
+                  Icon(Icons.info_outline, color: AppColors.warning, size: 20),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       _error!,
-                      style: TextStyle(
-                          color: AppColors.warning, fontSize: 13),
+                      style: TextStyle(color: AppColors.warning, fontSize: 13),
                     ),
                   ),
                 ],
@@ -505,11 +741,23 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
     }
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: AppColors.background,
       body: bodyContent,
-      bottomNavigationBar: NavBar(
-        currentIndex: navIndexSearch,
-        onTap: (index) => handleNavTap(context, index),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: double.infinity,
+            color: Colors.white,
+            padding: const EdgeInsets.only(top: 2),
+            child: const FatSecretAttribution(),
+          ),
+          NavBar(
+            currentIndex: navIndexSearch,
+            onTap: (index) => handleNavTap(context, index),
+          ),
+        ],
       ),
     );
   }
@@ -523,14 +771,17 @@ class _FoodSearchResultTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final calories = (result.caloriesPerGram * result.servingGrams).round();
+    final serving = result.defaultServingOption;
+    final calories = (serving.caloriesPerGram * serving.grams).round();
 
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.accentBrown.withValues(alpha: 0.25)),
+        border: Border.all(
+          color: AppColors.accentBrown.withValues(alpha: 0.25),
+        ),
         boxShadow: [
           BoxShadow(
             color: AppColors.black.withValues(alpha: 0.03),
@@ -547,11 +798,7 @@ class _FoodSearchResultTile extends StatelessWidget {
               color: AppColors.brand.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(
-              Icons.restaurant,
-              color: AppColors.brand,
-              size: 24,
-            ),
+            child: Icon(Icons.restaurant, color: AppColors.brand, size: 24),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -567,7 +814,7 @@ class _FoodSearchResultTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${result.servingGrams.toStringAsFixed(0)} g · $calories Cal',
+                  '${serving.grams.toStringAsFixed(0)} g · $calories Cal',
                   style: TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 13,
@@ -581,31 +828,23 @@ class _FoodSearchResultTile extends StatelessWidget {
                   children: [
                     _MacroChip(
                       label: 'P',
-                      value: (result.proteinPerGram * result.servingGrams)
+                      value: (serving.proteinPerGram * serving.grams)
                           .toStringAsFixed(1),
                       color: AppColors.protein,
                     ),
                     _MacroChip(
                       label: 'C',
-                      value: (result.carbsPerGram * result.servingGrams)
+                      value: (serving.carbsPerGram * serving.grams)
                           .toStringAsFixed(1),
                       color: AppColors.carbs,
                     ),
                     _MacroChip(
                       label: 'F',
-                      value: (result.fatPerGram * result.servingGrams)
+                      value: (serving.fatPerGram * serving.grams)
                           .toStringAsFixed(1),
                       color: AppColors.fat,
                     ),
                   ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  result.sourceLabel,
-                  style: TextStyle(
-                    color: AppColors.statusNone,
-                    fontSize: 11,
-                  ),
                 ),
               ],
             ),
@@ -642,10 +881,14 @@ class _MacroChip extends StatelessWidget {
 
   static String _fullLabel(String abbr) {
     switch (abbr) {
-      case 'P': return 'Protein';
-      case 'C': return 'Carbs';
-      case 'F': return 'Fat';
-      default: return abbr;
+      case 'P':
+        return 'Protein';
+      case 'C':
+        return 'Carbs';
+      case 'F':
+        return 'Fat';
+      default:
+        return abbr;
     }
   }
 
@@ -688,40 +931,38 @@ class _NutritionIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Flexible(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey.shade600,
+            fontWeight: FontWeight.w500,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 4),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            '$value$unit',
             style: TextStyle(
-              fontSize: 12,
-              color: AppColors.textHint,
-              fontWeight: FontWeight.w500,
+              fontSize: 15,
+              color: color,
+              fontWeight: FontWeight.w700,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              '$value$unit',
-              style: TextStyle(
-                fontSize: 15,
-                color: color,
-                fontWeight: FontWeight.w700,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
