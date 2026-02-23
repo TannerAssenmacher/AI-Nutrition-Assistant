@@ -31,7 +31,8 @@ const FATSECRET_VPC_CONNECTOR =
   "projects/ai-nutrition-assistant-e2346/locations/us-central1/connectors/fatsecret-egress-conn";
 const FATSECRET_OAUTH_URL = "https://oauth.fatsecret.com/connect/token";
 const FATSECRET_API_BASE_URL = "https://platform.fatsecret.com/rest";
-const FATSECRET_OAUTH_SCOPE = "premier";
+const FATSECRET_SEARCH_OAUTH_SCOPE = "premier";
+const FATSECRET_BARCODE_OAUTH_SCOPE = "barcode";
 const FATSECRET_TOKEN_REFRESH_BUFFER_MS = 60_000;
 
 // PostgreSQL connection pool (lazy initialization)
@@ -841,7 +842,10 @@ interface FatSecretFoodResultPayload {
   imageUrl?: string;
 }
 
-let fatSecretTokenCache: { token: string; expiresAtMs: number } | null = null;
+let fatSecretTokenCache: Record<
+  string,
+  { token: string; expiresAtMs: number }
+> = {};
 
 function ensureArray<T>(value: T | T[] | null | undefined): T[] {
   if (Array.isArray(value)) {
@@ -873,6 +877,38 @@ function toGtin13Barcode(value: string): string | null {
   return normalized.padStart(13, "0");
 }
 
+function buildBarcodeCandidates(value: string): string[] {
+  const normalized = normalizeBarcode(value);
+  if (normalized.length < 8 || normalized.length > 13) {
+    return [];
+  }
+
+  const candidates: string[] = [];
+  const seen = new Set<string>();
+  const add = (candidate: string) => {
+    const trimmed = candidate.trim();
+    if (!trimmed || seen.has(trimmed)) {
+      return;
+    }
+    seen.add(trimmed);
+    candidates.push(trimmed);
+  };
+
+  // Try exact scanned digits first.
+  add(normalized);
+  // Then GTIN-13 padded form for UPC/EAN compatibility.
+  const gtin13 = toGtin13Barcode(normalized);
+  if (gtin13) {
+    add(gtin13);
+  }
+  // If scanner produced a leading-zero EAN-13, also try UPC-A form.
+  if (normalized.length === 13 && normalized.startsWith("0")) {
+    add(normalized.substring(1));
+  }
+
+  return candidates;
+}
+
 function toHttpUrl(value: unknown): string | null {
   if (typeof value !== "string") {
     return null;
@@ -881,6 +917,10 @@ function toHttpUrl(value: unknown): string | null {
   const trimmed = value.trim();
   if (!trimmed) {
     return null;
+  }
+
+  if (trimmed.startsWith("//")) {
+    return `https:${trimmed}`;
   }
 
   try {
@@ -892,6 +932,52 @@ function toHttpUrl(value: unknown): string | null {
   } catch (_) {
     return null;
   }
+}
+
+function resolveFatSecretImageUrl(food: any): string | null {
+  const imageRoots = [
+    food?.food_images?.food_image,
+    food?.food_images,
+    food?.food_image,
+    food?.images?.image,
+    food?.images,
+  ];
+
+  for (const root of imageRoots) {
+    const imageNodes = ensureArray<any>(root);
+    for (const node of imageNodes) {
+      const candidateValues = [
+        node?.image_url,
+        node?.url,
+        node?.image_url_large,
+        node?.image_url_medium,
+        node?.image_url_small,
+        node,
+      ];
+      for (const candidate of candidateValues) {
+        const resolved = toHttpUrl(candidate);
+        if (resolved) {
+          return resolved;
+        }
+      }
+    }
+  }
+
+  const directCandidates = [
+    food?.food_image_url,
+    food?.food_image_thumbnail,
+    food?.food_image,
+    food?.image_url,
+    food?.photo_url,
+  ];
+  for (const candidate of directCandidates) {
+    const resolved = toHttpUrl(candidate);
+    if (resolved) {
+      return resolved;
+    }
+  }
+
+  return null;
 }
 
 function convertServingAmountToGrams(amount: number, unitRaw: string): number | null {
@@ -1023,8 +1109,7 @@ function parseFatSecretFoodResult(
   const defaultServing =
     servingOptions.find((option) => option.isDefault) ?? servingOptions[0];
 
-  const imageNode = ensureArray<any>(food?.food_images?.food_image)[0];
-  const imageUrl = toHttpUrl(imageNode?.image_url || imageNode?.url || imageNode);
+  const imageUrl = resolveFatSecretImageUrl(food);
   const foodId = (food?.food_id || "").toString().trim();
   const idPrefix = options?.idPrefix || "fatsecret_";
   const barcode = canonicalBarcode(options?.barcode || "");
@@ -1202,35 +1287,70 @@ async function requestFatSecretToken(
   };
 }
 
-async function getFatSecretAccessToken(): Promise<string> {
+function fatSecretTokenCacheKey(scope?: string): string {
+  const normalized = (scope || "").toString().trim().toLowerCase();
+  return normalized || "__default__";
+}
+
+async function getFatSecretAccessToken(options?: {
+  scope?: string;
+  fallbackScope?: string;
+  allowScopeFallback?: boolean;
+}): Promise<string> {
+  const requestedScope = (options?.scope || "").toString().trim() || undefined;
+  const fallbackScope = (options?.fallbackScope || "")
+    .toString()
+    .trim() || undefined;
+  const allowScopeFallback = options?.allowScopeFallback !== false;
   const now = Date.now();
+  const requestedScopeKey = fatSecretTokenCacheKey(requestedScope);
+  const cachedToken = fatSecretTokenCache[requestedScopeKey];
   if (
-    fatSecretTokenCache &&
-    now < fatSecretTokenCache.expiresAtMs - FATSECRET_TOKEN_REFRESH_BUFFER_MS
+    cachedToken &&
+    now < cachedToken.expiresAtMs - FATSECRET_TOKEN_REFRESH_BUFFER_MS
   ) {
-    return fatSecretTokenCache.token;
+    return cachedToken.token;
   }
 
-  const preferredScope = FATSECRET_OAUTH_SCOPE.trim();
-  let tokenAttempt = await requestFatSecretToken(preferredScope || undefined);
+  let attemptedScope = requestedScope;
+  let cacheScopeKey = requestedScopeKey;
+  let tokenAttempt = await requestFatSecretToken(requestedScope);
   const tokenAttemptError = extractFatSecretErrorMessage(
     tokenAttempt.payload
   ).toLowerCase();
   const invalidScope =
     tokenAttemptError === "invalid_scope" ||
     tokenAttempt.payload?.error === "invalid_scope";
-  if (tokenAttempt.status >= 400 && preferredScope && invalidScope) {
+  if (tokenAttempt.status >= 400 && requestedScope && invalidScope && allowScopeFallback) {
+    const fallbackTarget = fallbackScope || undefined;
+    if (fallbackTarget && fallbackTarget !== requestedScope) {
+      console.warn(
+        `FatSecret OAuth scope "${requestedScope}" was rejected. Retrying token request with fallback scope "${fallbackTarget}".`
+      );
+      attemptedScope = fallbackTarget;
+      cacheScopeKey = fatSecretTokenCacheKey(fallbackTarget);
+      tokenAttempt = await requestFatSecretToken(fallbackTarget);
+    } else {
+      console.warn(
+        `FatSecret OAuth scope "${requestedScope}" was rejected. Retrying token request without explicit scope.`
+      );
+      attemptedScope = undefined;
+      cacheScopeKey = fatSecretTokenCacheKey(undefined);
+      tokenAttempt = await requestFatSecretToken(undefined);
+    }
+  } else if (tokenAttempt.status >= 400 && requestedScope && invalidScope && !allowScopeFallback) {
     console.warn(
-      `FatSecret OAuth scope "${preferredScope}" was rejected. Retrying token request without explicit scope.`
+      `FatSecret OAuth scope "${requestedScope}" was rejected and fallback is disabled.`
     );
-    tokenAttempt = await requestFatSecretToken(undefined);
   }
 
   if (tokenAttempt.status >= 400) {
     throwFatSecretApiError(
       tokenAttempt.status,
       tokenAttempt.payload,
-      "oauth token request"
+      attemptedScope
+        ? `oauth token request (${attemptedScope})`
+        : "oauth token request"
     );
   }
 
@@ -1246,7 +1366,7 @@ async function getFatSecretAccessToken(): Promise<string> {
     );
   }
 
-  fatSecretTokenCache = {
+  fatSecretTokenCache[cacheScopeKey] = {
     token: accessToken,
     expiresAtMs: now + Math.max(60, Math.floor(expiresInSeconds)) * 1000,
   };
@@ -1255,9 +1375,18 @@ async function getFatSecretAccessToken(): Promise<string> {
 
 async function callFatSecretJson(
   endpointPath: string,
-  params: Record<string, string | number | boolean | null | undefined>
+  params: Record<string, string | number | boolean | null | undefined>,
+  options?: {
+    oauthScope?: string;
+    fallbackScope?: string;
+    allowScopeFallback?: boolean;
+  }
 ): Promise<any> {
-  const token = await getFatSecretAccessToken();
+  const token = await getFatSecretAccessToken({
+    scope: options?.oauthScope,
+    fallbackScope: options?.fallbackScope,
+    allowScopeFallback: options?.allowScopeFallback,
+  });
   const url = new URL(`${FATSECRET_API_BASE_URL}${endpointPath}`);
   for (const [key, value] of Object.entries(params)) {
     if (value === null || value === undefined) {
@@ -1318,37 +1447,65 @@ export const lookupFoodByBarcode = onCall(
 
     const rawBarcode = (request.data?.barcode || "").toString().trim();
     const normalizedBarcode = normalizeBarcode(rawBarcode);
-    const gtin13 = toGtin13Barcode(normalizedBarcode);
-    if (!gtin13) {
+    const barcodeCandidates = buildBarcodeCandidates(normalizedBarcode);
+    if (barcodeCandidates.length === 0) {
       throw new HttpsError("invalid-argument", "A valid barcode is required");
     }
 
     try {
-      const payload = await callFatSecretJson("/food/barcode/find-by-id/v2", {
-        barcode: gtin13,
-        format: "json",
-        flag_default_serving: "true",
-      });
-      const food = payload?.food;
-      if (!food || typeof food !== "object") {
-        throw new HttpsError(
-          "not-found",
-          `No food found for barcode ${normalizedBarcode}`
-        );
+      let resolvedResult: FatSecretFoodResultPayload | null = null;
+
+      for (const candidate of barcodeCandidates) {
+        try {
+          const payload = await callFatSecretJson(
+            "/food/barcode/find-by-id/v2",
+            {
+              barcode: candidate,
+              format: "json",
+              flag_default_serving: "true",
+              include_food_images: "true",
+            },
+            {
+              oauthScope: FATSECRET_BARCODE_OAUTH_SCOPE,
+              fallbackScope: FATSECRET_SEARCH_OAUTH_SCOPE,
+              allowScopeFallback: true,
+            }
+          );
+
+          const food = payload?.food;
+          if (!food || typeof food !== "object") {
+            continue;
+          }
+
+          resolvedResult = parseFatSecretFoodResult(food, {
+            idPrefix: "fatsecret_barcode_",
+            barcode: normalizedBarcode,
+          });
+          if (resolvedResult) {
+            break;
+          }
+        } catch (candidateError) {
+          if (candidateError instanceof HttpsError) {
+            if (
+              candidateError.code === "not-found" ||
+              candidateError.code === "invalid-argument"
+            ) {
+              continue;
+            }
+            throw candidateError;
+          }
+          throw candidateError;
+        }
       }
 
-      const result = parseFatSecretFoodResult(food, {
-        idPrefix: "fatsecret_barcode_",
-        barcode: normalizedBarcode,
-      });
-      if (!result) {
+      if (!resolvedResult) {
         throw new HttpsError(
           "not-found",
           `No nutrition facts found for barcode ${normalizedBarcode}`
         );
       }
 
-      return { result };
+      return { result: resolvedResult };
     } catch (error) {
       if (error instanceof HttpsError) {
         throw error;
@@ -1395,6 +1552,10 @@ export const searchFoods = onCall(
         max_results: maxResults,
         format: "json",
         flag_default_serving: "true",
+        include_food_images: "true",
+      }, {
+        oauthScope: FATSECRET_SEARCH_OAUTH_SCOPE,
+        allowScopeFallback: true,
       });
       const foods = ensureArray<any>(payload?.foods_search?.results?.food);
       const results = foods
@@ -1449,6 +1610,9 @@ export const autocompleteFoods = onCall(
         expression,
         max_results: maxResults,
         format: "json",
+      }, {
+        oauthScope: FATSECRET_SEARCH_OAUTH_SCOPE,
+        allowScopeFallback: true,
       });
       const suggestions = parseFatSecretSuggestions(payload).slice(0, maxResults);
       return { suggestions };
@@ -1461,6 +1625,9 @@ export const autocompleteFoods = onCall(
             max_results: maxResults,
             format: "json",
             flag_default_serving: "false",
+          }, {
+            oauthScope: FATSECRET_SEARCH_OAUTH_SCOPE,
+            allowScopeFallback: true,
           });
           const suggestions = parseFatSecretSearchSuggestions(
             fallbackPayload,

@@ -8,6 +8,7 @@ import '../providers/firestore_providers.dart';
 import '../db/food.dart';
 import 'package:nutrition_assistant/navigation/nav_helper.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
+import 'package:nutrition_assistant/widgets/fatsecret_attribution.dart';
 
 class FoodSearchScreen extends ConsumerStatefulWidget {
   final bool isInPageView;
@@ -42,7 +43,10 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
     });
   }
 
-  Future<void> _runSearch(String query) async {
+  Future<void> _runSearch(
+    String query, {
+    bool includeSuggestions = true,
+  }) async {
     final trimmed = query.trim();
     if (trimmed.length < 2) {
       setState(() {
@@ -61,23 +65,28 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
     });
 
     try {
-      final suggestionsFuture = _searchService.autocompleteFoods(
-        trimmed,
-        maxResults: 6,
-      );
       final resultsFuture = _searchService.searchFoods(trimmed);
+      Future<List<String>>? suggestionsFuture;
+      if (includeSuggestions) {
+        suggestionsFuture = _searchService.autocompleteFoods(
+          trimmed,
+          maxResults: 5,
+        );
+      }
       final results = await resultsFuture;
 
       List<String> suggestions = const [];
-      try {
-        suggestions = await suggestionsFuture;
-      } catch (_) {
-        suggestions = const [];
+      if (suggestionsFuture != null) {
+        try {
+          suggestions = await suggestionsFuture;
+        } catch (_) {
+          suggestions = const [];
+        }
       }
 
       if (!mounted || requestId != _searchRequestId) return;
       setState(() {
-        _suggestions = suggestions;
+        _suggestions = includeSuggestions ? suggestions : const [];
         _results = results;
         _isLoading = false;
         _error = results.isEmpty ? 'No results found from FatSecret.' : null;
@@ -92,11 +101,16 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
   }
 
   void _applySuggestion(String suggestion) {
+    _debounce?.cancel();
     _searchController.value = TextEditingValue(
       text: suggestion,
       selection: TextSelection.collapsed(offset: suggestion.length),
     );
-    _runSearch(suggestion);
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _suggestions = const [];
+    });
+    _runSearch(suggestion, includeSuggestions: false);
   }
 
   Future<void> _addSearchResult(FoodSearchResult result) async {
@@ -112,15 +126,62 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
     }
 
     final rootContext = context;
-    final availableServings = result.servingOptions.isEmpty
-        ? [result.defaultServingOption]
-        : result.servingOptions;
+    List<FoodServingOption> normalizeServingOptions(
+      List<FoodServingOption> options,
+    ) {
+      final prioritized = [
+        ...options.where((option) => option.isDefault),
+        ...options.where((option) => !option.isDefault),
+      ];
+      final seen = <String>{};
+      final normalized = <FoodServingOption>[];
+      for (final option in prioritized) {
+        final key =
+            '${option.description.trim().toLowerCase()}|${option.grams.toStringAsFixed(2)}';
+        if (!seen.add(key)) continue;
+        normalized.add(option);
+      }
+      return normalized.isEmpty ? options : normalized;
+    }
+
+    String servingLabel(FoodServingOption option) {
+      final gramsText = '${option.grams.toStringAsFixed(0)} g';
+      final description = option.description.trim().replaceAll(
+        RegExp(r'\s+'),
+        ' ',
+      );
+      if (description.isEmpty) {
+        return gramsText;
+      }
+      final normalized = description.toLowerCase();
+      if (normalized == 'default serving') {
+        return gramsText;
+      }
+      final duplicatePattern = RegExp(
+        r'^([\d.]+\s*(?:g|gram|grams|ml|oz|ounce|ounces))\s*\(\s*\1\s*\)$',
+        caseSensitive: false,
+      );
+      final duplicateMatch = duplicatePattern.firstMatch(description);
+      if (duplicateMatch != null) {
+        return duplicateMatch.group(1)!;
+      }
+      if (RegExp(
+        r'^\s*[\d.]+\s*(g|gram|grams|ml|oz|ounce|ounces)\s*$',
+      ).hasMatch(normalized)) {
+        return description;
+      }
+      return '$description ($gramsText)';
+    }
+
+    final availableServings = normalizeServingOptions(
+      result.servingOptions.isEmpty
+          ? [result.defaultServingOption]
+          : result.servingOptions,
+    );
     FoodServingOption selectedServing = availableServings.firstWhere(
       (option) => option.isDefault,
       orElse: () => availableServings.first,
     );
-    int quantity = 1;
-    bool useCustomGrams = false;
     final gramsController = TextEditingController(
       text: selectedServing.grams.toStringAsFixed(0),
     );
@@ -133,11 +194,10 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            final presetGrams = selectedServing.grams * quantity;
-            final customGrams = double.tryParse(gramsController.text.trim());
-            final currentGrams = useCustomGrams
-                ? (customGrams ?? presetGrams)
-                : presetGrams;
+            final parsedGrams = double.tryParse(gramsController.text.trim());
+            final currentGrams = (parsedGrams != null && parsedGrams > 0)
+                ? parsedGrams
+                : selectedServing.grams;
             final calories = (selectedServing.caloriesPerGram * currentGrams)
                 .round();
             final protein = (selectedServing.proteinPerGram * currentGrams)
@@ -177,102 +237,73 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                       },
                     ),
                     const SizedBox(height: 8),
-                    DropdownButtonFormField<FoodServingOption>(
-                      initialValue: selectedServing,
-                      decoration: const InputDecoration(
-                        labelText: 'Serving size',
-                      ),
-                      items: availableServings
-                          .map(
-                            (option) => DropdownMenuItem<FoodServingOption>(
-                              value: option,
-                              child: Text(
-                                '${option.description} (${option.grams.toStringAsFixed(0)} g)',
+                    if (availableServings.length > 1) ...[
+                      DropdownButtonFormField<FoodServingOption>(
+                        initialValue: selectedServing,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Serving size',
+                        ),
+                        selectedItemBuilder: (context) => availableServings
+                            .map(
+                              (option) => Align(
+                                alignment: AlignmentDirectional.centerStart,
+                                child: Text(
+                                  servingLabel(option),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                ),
                               ),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setDialogState(() {
-                          selectedServing = value;
-                          if (!useCustomGrams) {
-                            gramsController.text =
-                                (selectedServing.grams * quantity)
-                                    .toStringAsFixed(0);
-                          }
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 8),
-                    DropdownButtonFormField<int>(
-                      initialValue: quantity,
-                      decoration: const InputDecoration(labelText: 'Quantity'),
-                      items: List.generate(
-                        6,
-                        (index) => DropdownMenuItem<int>(
-                          value: index + 1,
-                          child: Text('${index + 1}'),
-                        ),
-                      ),
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setDialogState(() {
-                          quantity = value;
-                          if (!useCustomGrams) {
-                            gramsController.text =
-                                (selectedServing.grams * quantity)
-                                    .toStringAsFixed(0);
-                          }
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 8),
-                    SwitchListTile.adaptive(
-                      contentPadding: EdgeInsets.zero,
-                      value: useCustomGrams,
-                      title: const Text('Override grams'),
-                      subtitle: Text(
-                        useCustomGrams
-                            ? 'Custom grams will be used.'
-                            : 'Using ${presetGrams.toStringAsFixed(0)} g from serving × quantity.',
-                      ),
-                      onChanged: (value) {
-                        setDialogState(() {
-                          useCustomGrams = value;
-                          if (!useCustomGrams) {
-                            gramsController.text =
-                                (selectedServing.grams * quantity)
-                                    .toStringAsFixed(0);
-                          }
-                        });
-                      },
-                    ),
-                    if (useCustomGrams) ...[
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: gramsController,
-                        focusNode: gramsFocusNode,
-                        decoration: InputDecoration(
-                          labelText: 'Custom grams',
-                          suffixIcon: IconButton(
-                            tooltip: 'Done',
-                            icon: const Icon(Icons.check),
-                            onPressed: () =>
-                                FocusScope.of(dialogContext).unfocus(),
-                          ),
-                        ),
-                        keyboardType: TextInputType.number,
-                        textInputAction: TextInputAction.done,
-                        onSubmitted: (_) =>
-                            FocusScope.of(dialogContext).unfocus(),
-                        onTapOutside: (_) =>
-                            FocusScope.of(dialogContext).unfocus(),
-                        onChanged: (_) {
-                          setDialogState(() {});
+                            )
+                            .toList(),
+                        items: availableServings
+                            .map(
+                              (option) => DropdownMenuItem<FoodServingOption>(
+                                value: option,
+                                child: Text(
+                                  servingLabel(option),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                ),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setDialogState(() {
+                            selectedServing = value;
+                            gramsController.text = value.grams.toStringAsFixed(
+                              0,
+                            );
+                          });
                         },
                       ),
+                      const SizedBox(height: 8),
                     ],
+                    TextField(
+                      controller: gramsController,
+                      focusNode: gramsFocusNode,
+                      decoration: InputDecoration(
+                        labelText: 'Weight (g)',
+                        suffixIcon: IconButton(
+                          tooltip: 'Done',
+                          icon: const Icon(Icons.check),
+                          onPressed: () =>
+                              FocusScope.of(dialogContext).unfocus(),
+                        ),
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) =>
+                          FocusScope.of(dialogContext).unfocus(),
+                      onTapOutside: (_) =>
+                          FocusScope.of(dialogContext).unfocus(),
+                      onChanged: (_) {
+                        setDialogState(() {});
+                      },
+                    ),
                     const SizedBox(height: 12),
                     Container(
                       padding: const EdgeInsets.all(12),
@@ -379,10 +410,7 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                 ),
                 ElevatedButton(
                   onPressed: () async {
-                    final defaultGrams = selectedServing.grams * quantity;
-                    final grams = useCustomGrams
-                        ? double.tryParse(gramsController.text.trim())
-                        : defaultGrams;
+                    final grams = double.tryParse(gramsController.text.trim());
                     if (grams == null || grams <= 0) {
                       ScaffoldMessenger.of(dialogContext).showSnackBar(
                         const SnackBar(
@@ -557,7 +585,12 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                 setState(() {});
                 _onSearchQueryChanged(value);
               },
-              onSubmitted: _runSearch,
+              onSubmitted: (value) {
+                _debounce?.cancel();
+                FocusScope.of(context).unfocus();
+                _runSearch(value, includeSuggestions: false);
+              },
+              onTapOutside: (_) => FocusScope.of(context).unfocus(),
             ),
           ),
           if (_suggestions.isNotEmpty)
@@ -566,12 +599,21 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                  spacing: 6,
+                  runSpacing: 6,
                   children: _suggestions
                       .map(
                         (suggestion) => ActionChip(
-                          label: Text(suggestion),
+                          label: Text(
+                            suggestion,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          labelPadding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                          ),
+                          visualDensity: VisualDensity.compact,
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
                           onPressed: () => _applySuggestion(suggestion),
                         ),
                       )
@@ -659,11 +701,23 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
     }
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: AppColors.background,
       body: bodyContent,
-      bottomNavigationBar: NavBar(
-        currentIndex: navIndexSearch,
-        onTap: (index) => handleNavTap(context, index),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: double.infinity,
+            color: Colors.white,
+            padding: const EdgeInsets.only(top: 2),
+            child: const FatSecretAttribution(),
+          ),
+          NavBar(
+            currentIndex: navIndexSearch,
+            onTap: (index) => handleNavTap(context, index),
+          ),
+        ],
       ),
     );
   }
@@ -752,11 +806,6 @@ class _FoodSearchResultTile extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  result.sourceLabel,
-                  style: TextStyle(color: AppColors.statusNone, fontSize: 11),
-                ),
               ],
             ),
           ),
@@ -842,40 +891,38 @@ class _NutritionIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Flexible(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey.shade600,
+            fontWeight: FontWeight.w500,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 4),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            '$value$unit',
             style: TextStyle(
-              fontSize: 12,
-              color: AppColors.textHint,
-              fontWeight: FontWeight.w500,
+              fontSize: 15,
+              color: color,
+              fontWeight: FontWeight.w700,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              '$value$unit',
-              style: TextStyle(
-                fontSize: 15,
-                color: color,
-                fontWeight: FontWeight.w700,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

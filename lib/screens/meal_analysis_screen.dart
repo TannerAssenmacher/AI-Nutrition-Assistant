@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nutrition_assistant/navigation/nav_helper.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
+import 'package:nutrition_assistant/widgets/fatsecret_attribution.dart';
 
 import '../services/food_search_service.dart';
 import '../services/meal_analysis_service.dart';
@@ -138,10 +139,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: AppColors.error,
-        ),
+        SnackBar(content: Text(message), backgroundColor: AppColors.error),
       );
     } catch (e) {
       if (!mounted) return;
@@ -177,6 +175,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     final scannedBarcode = (rawBarcode ?? '').trim();
     if (scannedBarcode.isEmpty) {
       if (!mounted) return;
+      if (widget.isInPageView && !widget.isActive) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Scanned barcode was empty.')),
       );
@@ -197,6 +196,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
           .lookupFoodByBarcode(scannedBarcode)
           .timeout(const Duration(seconds: 25));
       if (!mounted) return;
+      if (widget.isInPageView && !widget.isActive) return;
 
       if (result == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -217,6 +217,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       );
     } on FirebaseFunctionsException catch (e) {
       if (!mounted) return;
+      if (widget.isInPageView && !widget.isActive) return;
       final message = _buildBarcodeLookupErrorMessage(
         e,
         barcodeForMessages: barcodeForMessages,
@@ -225,35 +226,28 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
         _errorMessage = message;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: AppColors.error,
-        ),
+        SnackBar(content: Text(message), backgroundColor: AppColors.error),
       );
     } on TimeoutException {
       if (!mounted) return;
+      if (widget.isInPageView && !widget.isActive) return;
       final message =
           'Barcode lookup timed out. Check your connection and try again.';
       setState(() {
         _errorMessage = message;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: AppColors.error,
-        ),
+        SnackBar(content: Text(message), backgroundColor: AppColors.error),
       );
     } catch (e) {
       if (!mounted) return;
+      if (widget.isInPageView && !widget.isActive) return;
       final message = 'Barcode lookup failed: $e';
       setState(() {
         _errorMessage = message;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: AppColors.error,
-        ),
+        SnackBar(content: Text(message), backgroundColor: AppColors.error),
       );
     } finally {
       if (mounted) {
@@ -302,18 +296,6 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     return wasAdded ?? false;
   }
 
-  String _formatCompactNumber(double value, {int maxDecimals = 1}) {
-    final safeValue = value.isFinite ? value : 0;
-    final normalized = safeValue.abs() < 0.0000001 ? 0 : safeValue;
-    if (maxDecimals <= 0) {
-      return normalized.round().toString();
-    }
-
-    final fixed = normalized.toStringAsFixed(maxDecimals);
-    final withoutTrailingZeros = fixed.replaceFirst(RegExp(r'0+$'), '');
-    return withoutTrailingZeros.replaceFirst(RegExp(r'\.$'), '');
-  }
-
   String _buildAnalyzeMealErrorMessage(FirebaseFunctionsException e) {
     if (_isMissingCallable(e)) {
       return 'Cloud Function analyzeMealImage was not found. Deploy Functions to us-central1 for project ai-nutrition-assistant-e2346.';
@@ -342,6 +324,16 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     }
     if (e.code == 'invalid-argument') {
       return 'Invalid barcode. Please scan again.';
+    }
+    if (e.code == 'permission-denied') {
+      final message = (e.message ?? '').toLowerCase();
+      if (message.contains('scope') && message.contains('barcode')) {
+        return 'FatSecret barcode scope is missing on this API key. Ask FatSecret to enable the barcode scope for your key.';
+      }
+      if (message.contains('invalid ip')) {
+        return 'FatSecret rejected this request IP. Confirm the static egress IP is allowlisted in FatSecret.';
+      }
+      return 'Permission denied during barcode lookup. Please verify FatSecret API permissions.';
     }
     return e.message ?? 'Barcode lookup failed. Please try again.';
   }
@@ -406,34 +398,19 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
         final carbsPerGram = food.carbs / mass;
         final fatPerGram = food.fat / mass;
 
-        notifier.addFoodItem(
-          FoodItem(
-            id: '${now.microsecondsSinceEpoch}-$added',
-            name: food.name,
-            mass_g: mass,
-            calories_g: caloriesPerGram,
-            protein_g: proteinPerGram,
-            carbs_g: carbsPerGram,
-            fat: fatPerGram,
-            mealType: 'meal',
-            consumedAt: now,
-          ),
+        final item = FoodItem(
+          id: '${now.microsecondsSinceEpoch}-$added',
+          name: food.name,
+          mass_g: mass,
+          calories_g: caloriesPerGram,
+          protein_g: proteinPerGram,
+          carbs_g: carbsPerGram,
+          fat: fatPerGram,
+          mealType: 'meal',
+          consumedAt: now,
         );
-
-        await firestoreLog.addFood(
-          userId,
-          FoodItem(
-            id: '${now.microsecondsSinceEpoch}-$added',
-            name: food.name,
-            mass_g: mass,
-            calories_g: caloriesPerGram,
-            protein_g: proteinPerGram,
-            carbs_g: carbsPerGram,
-            fat: fatPerGram,
-            mealType: 'meal',
-            consumedAt: now,
-          ),
-        );
+        notifier.addFoodItem(item);
+        await firestoreLog.addFood(userId, item);
 
         added++;
       }
@@ -640,29 +617,6 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   @override
   Widget build(BuildContext context) {
     final bodyContent = _buildCameraContent(context);
-    final isBusy = _isAnalyzing || _isLookingUpBarcode;
-
-    final fab = FloatingActionButton.extended(
-      onPressed: isBusy ? null : _captureAndAnalyze,
-      backgroundColor: AppColors.success,
-      icon: isBusy
-          ? const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 3,
-                valueColor: AlwaysStoppedAnimation<Color>(AppColors.surface),
-              ),
-            )
-          : const Icon(Icons.camera_alt),
-      label: Text(
-        _isAnalyzing
-            ? 'Analyzing...'
-            : _isLookingUpBarcode
-                ? 'Looking up...'
-                : 'Capture meal',
-      ),
-    );
 
     if (widget.isInPageView == true) {
       return bodyContent;
@@ -671,9 +625,20 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: bodyContent,
-      bottomNavigationBar: NavBar(
-        currentIndex: navIndexCamera,
-        onTap: (index) => handleNavTap(context, index),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: double.infinity,
+            color: Colors.white,
+            padding: const EdgeInsets.only(top: 2),
+            child: const FatSecretAttribution(),
+          ),
+          NavBar(
+            currentIndex: navIndexCamera,
+            onTap: (index) => handleNavTap(context, index),
+          ),
+        ],
       ),
     );
   }
@@ -701,6 +666,18 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   }
 }
 
+String _formatCompactNumber(double value, {int maxDecimals = 1}) {
+  final safeValue = value.isFinite ? value : 0;
+  final normalized = safeValue.abs() < 0.0000001 ? 0 : safeValue;
+  if (maxDecimals <= 0) {
+    return normalized.round().toString();
+  }
+
+  final fixed = normalized.toStringAsFixed(maxDecimals);
+  final withoutTrailingZeros = fixed.replaceFirst(RegExp(r'0+$'), '');
+  return withoutTrailingZeros.replaceFirst(RegExp(r'\.$'), '');
+}
+
 class _ErrorBanner extends StatelessWidget {
   final String message;
 
@@ -721,10 +698,7 @@ class _ErrorBanner extends StatelessWidget {
           Icon(Icons.error_outline, color: AppColors.error),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(
-              message,
-              style: TextStyle(color: AppColors.error),
-            ),
+            child: Text(message, style: TextStyle(color: AppColors.error)),
           ),
         ],
       ),
@@ -790,25 +764,21 @@ class _BarcodeFoodDialogState extends State<_BarcodeFoodDialog> {
   late final TextEditingController _gramsController;
   late final FocusNode _gramsFocusNode;
   String _mealType = 'snack';
-  int _quantity = 1;
-  bool _useCustomGrams = false;
   bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
-    _availableServings = widget.result.servingOptions.isEmpty
+    final rawServings = widget.result.servingOptions.isEmpty
         ? [widget.result.defaultServingOption]
         : widget.result.servingOptions;
+    _availableServings = _normalizeServingOptions(rawServings);
     _selectedServing = _availableServings.firstWhere(
       (option) => option.isDefault,
       orElse: () => _availableServings.first,
     );
     _gramsController = TextEditingController(
-      text: _formatCompactNumber(
-        _selectedServing.grams * _quantity,
-        maxDecimals: 0,
-      ),
+      text: _formatCompactNumber(_selectedServing.grams, maxDecimals: 0),
     );
     _gramsFocusNode = FocusNode();
   }
@@ -824,16 +794,83 @@ class _BarcodeFoodDialogState extends State<_BarcodeFoodDialog> {
     FocusManager.instance.primaryFocus?.unfocus();
   }
 
-  String _formatCompactNumber(double value, {int maxDecimals = 1}) {
-    final safeValue = value.isFinite ? value : 0;
-    final normalized = safeValue.abs() < 0.0000001 ? 0 : safeValue;
-    if (maxDecimals <= 0) {
-      return normalized.round().toString();
+  List<FoodServingOption> _normalizeServingOptions(
+    List<FoodServingOption> options,
+  ) {
+    final prioritized = [
+      ...options.where((option) => option.isDefault),
+      ...options.where((option) => !option.isDefault),
+    ];
+    final seen = <String>{};
+    final normalized = <FoodServingOption>[];
+    for (final option in prioritized) {
+      final key =
+          '${option.description.trim().toLowerCase()}|${option.grams.toStringAsFixed(2)}';
+      if (!seen.add(key)) continue;
+      normalized.add(option);
+    }
+    return normalized.isEmpty ? options : normalized;
+  }
+
+  String _servingLabel(FoodServingOption option) {
+    final gramsText = '${_formatCompactNumber(option.grams, maxDecimals: 0)} g';
+    final description = option.description.trim().replaceAll(
+      RegExp(r'\s+'),
+      ' ',
+    );
+    if (description.isEmpty) {
+      return gramsText;
     }
 
-    final fixed = normalized.toStringAsFixed(maxDecimals);
-    final withoutTrailingZeros = fixed.replaceFirst(RegExp(r'0+$'), '');
-    return withoutTrailingZeros.replaceFirst(RegExp(r'\.$'), '');
+    final normalized = description.toLowerCase();
+    if (normalized == 'default serving') {
+      return gramsText;
+    }
+    final duplicatePattern = RegExp(
+      r'^([\d.]+\s*(?:g|gram|grams|ml|oz|ounce|ounces))\s*\(\s*\1\s*\)$',
+      caseSensitive: false,
+    );
+    final duplicateMatch = duplicatePattern.firstMatch(description);
+    if (duplicateMatch != null) {
+      return duplicateMatch.group(1)!;
+    }
+    if (RegExp(
+      r'^\s*[\d.]+\s*(g|gram|grams|ml|oz|ounce|ounces)\s*$',
+    ).hasMatch(normalized)) {
+      return description;
+    }
+    return '$description ($gramsText)';
+  }
+
+  Widget _buildImagePreview() {
+    final imageUrl = widget.result.imageUrl?.trim() ?? '';
+    if (imageUrl.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Image.network(
+        imageUrl,
+        width: double.infinity,
+        height: 140,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            height: 140,
+            color: Colors.grey.shade100,
+            alignment: Alignment.center,
+            child: const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          );
+        },
+        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+      ),
+    );
   }
 
   String _errorMessage(Object error) {
@@ -844,9 +881,7 @@ class _BarcodeFoodDialogState extends State<_BarcodeFoodDialog> {
   }
 
   Future<void> _handleAdd() async {
-    final grams = _useCustomGrams
-        ? double.tryParse(_gramsController.text.trim())
-        : (_selectedServing.grams * _quantity);
+    final grams = double.tryParse(_gramsController.text.trim());
     if (grams == null || grams <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a valid grams amount.')),
@@ -878,11 +913,10 @@ class _BarcodeFoodDialogState extends State<_BarcodeFoodDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final defaultGrams = _selectedServing.grams * _quantity;
-    final previewInput = _useCustomGrams
-        ? (double.tryParse(_gramsController.text.trim()) ?? defaultGrams)
-        : defaultGrams;
-    final gramsPreview = previewInput > 0 ? previewInput : 0;
+    final typedGrams = double.tryParse(_gramsController.text.trim());
+    final gramsPreview = (typedGrams != null && typedGrams > 0)
+        ? typedGrams
+        : _selectedServing.grams;
     final previewCalories = _selectedServing.caloriesPerGram * gramsPreview;
     final previewProtein = _selectedServing.proteinPerGram * gramsPreview;
     final previewCarbs = _selectedServing.carbsPerGram * gramsPreview;
@@ -893,12 +927,14 @@ class _BarcodeFoodDialogState extends State<_BarcodeFoodDialog> {
       children: [
         Center(
           child: AlertDialog(
-            title: const Text('Scanned Food'),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  _buildImagePreview(),
+                  if ((widget.result.imageUrl ?? '').trim().isNotEmpty)
+                    const SizedBox(height: 12),
                   Text(
                     widget.result.name,
                     style: const TextStyle(
@@ -938,122 +974,76 @@ class _BarcodeFoodDialogState extends State<_BarcodeFoodDialog> {
                             });
                           },
                   ),
-                  const SizedBox(height: 10),
-                  DropdownButtonFormField<FoodServingOption>(
-                    initialValue: _selectedServing,
-                    decoration: const InputDecoration(
-                      labelText: 'Serving size',
-                    ),
-                    items: _availableServings
-                        .map(
-                          (option) => DropdownMenuItem<FoodServingOption>(
-                            value: option,
-                            child: Text(
-                              '${option.description} (${_formatCompactNumber(option.grams, maxDecimals: 0)} g)',
-                            ),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: _isSaving
-                        ? null
-                        : (value) {
-                            if (value == null) return;
-                            setState(() {
-                              _selectedServing = value;
-                              if (!_useCustomGrams) {
-                                _gramsController.text = _formatCompactNumber(
-                                  _selectedServing.grams * _quantity,
-                                  maxDecimals: 0,
-                                );
-                              }
-                            });
-                          },
-                  ),
-                  const SizedBox(height: 10),
-                  DropdownButtonFormField<int>(
-                    initialValue: _quantity,
-                    decoration: const InputDecoration(labelText: 'Quantity'),
-                    items: List.generate(
-                      6,
-                      (index) => DropdownMenuItem<int>(
-                        value: index + 1,
-                        child: Text('${index + 1}'),
-                      ),
-                    ),
-                    onChanged: _isSaving
-                        ? null
-                        : (value) {
-                            if (value == null) return;
-                            setState(() {
-                              _quantity = value;
-                              if (!_useCustomGrams) {
-                                _gramsController.text = _formatCompactNumber(
-                                  _selectedServing.grams * _quantity,
-                                  maxDecimals: 0,
-                                );
-                              }
-                            });
-                          },
-                  ),
-                  const SizedBox(height: 10),
-                  SwitchListTile.adaptive(
-                    contentPadding: EdgeInsets.zero,
-                    value: _useCustomGrams,
-                    title: const Text('Override grams'),
-                    subtitle: Text(
-                      _useCustomGrams
-                          ? 'Custom grams will be used.'
-                          : 'Using ${_formatCompactNumber(defaultGrams, maxDecimals: 0)} g from serving × quantity.',
-                    ),
-                    onChanged: _isSaving
-                        ? null
-                        : (value) {
-                            setState(() {
-                              _useCustomGrams = value;
-                              if (!_useCustomGrams) {
-                                _gramsController.text = _formatCompactNumber(
-                                  _selectedServing.grams * _quantity,
-                                  maxDecimals: 0,
-                                );
-                              }
-                            });
-                          },
-                  ),
-                  if (_useCustomGrams) ...[
+                  if (_availableServings.length > 1) ...[
                     const SizedBox(height: 10),
-                    TextField(
-                      controller: _gramsController,
-                      focusNode: _gramsFocusNode,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
+                    DropdownButtonFormField<FoodServingOption>(
+                      initialValue: _selectedServing,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Serving size',
                       ),
-                      textInputAction: TextInputAction.done,
-                      decoration: InputDecoration(
-                        labelText: 'Custom grams',
-                        helperText:
-                            'FatSecret reference: ${_formatCompactNumber(defaultGrams, maxDecimals: 0)} g',
-                        suffixIcon: IconButton(
-                          tooltip: 'Done',
-                          icon: const Icon(Icons.check),
-                          onPressed: _dismissKeyboard,
-                        ),
-                      ),
-                      onChanged: (_) {
-                        setState(() {});
-                      },
-                      onSubmitted: (_) => _dismissKeyboard(),
-                      onTapOutside: (_) => _dismissKeyboard(),
+                      selectedItemBuilder: (context) => _availableServings
+                          .map(
+                            (option) => Align(
+                              alignment: AlignmentDirectional.centerStart,
+                              child: Text(
+                                _servingLabel(option),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      items: _availableServings
+                          .map(
+                            (option) => DropdownMenuItem<FoodServingOption>(
+                              value: option,
+                              child: Text(
+                                _servingLabel(option),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: _isSaving
+                          ? null
+                          : (value) {
+                              if (value == null) return;
+                              setState(() {
+                                _selectedServing = value;
+                                _gramsController.text = _formatCompactNumber(
+                                  value.grams,
+                                  maxDecimals: 0,
+                                );
+                              });
+                            },
                     ),
-                  ] else ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      'FatSecret reference: ${_formatCompactNumber(defaultGrams, maxDecimals: 0)} g',
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: 12,
+                    const SizedBox(height: 10),
+                  ] else
+                    const SizedBox(height: 10),
+                  TextField(
+                    controller: _gramsController,
+                    focusNode: _gramsFocusNode,
+                    enabled: !_isSaving,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    textInputAction: TextInputAction.done,
+                    decoration: InputDecoration(
+                      labelText: 'Weight (g)',
+                      suffixIcon: IconButton(
+                        tooltip: 'Done',
+                        icon: const Icon(Icons.check),
+                        onPressed: _dismissKeyboard,
                       ),
                     ),
-                  ],
+                    onChanged: (_) {
+                      setState(() {});
+                    },
+                    onSubmitted: (_) => _dismissKeyboard(),
+                    onTapOutside: (_) => _dismissKeyboard(),
+                  ),
                   const SizedBox(height: 12),
                   _BarcodeMacroRow(
                     label: 'Calories',
@@ -1074,14 +1064,6 @@ class _BarcodeFoodDialogState extends State<_BarcodeFoodDialog> {
                     label: 'Fat',
                     value:
                         '${_formatCompactNumber(previewFat, maxDecimals: 1)} g',
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    widget.result.sourceLabel,
-                    style: TextStyle(
-                      color: AppColors.textHint,
-                      fontSize: 11,
-                    ),
                   ),
                 ],
               ),
@@ -1273,7 +1255,11 @@ class _EditableChip extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 4),
-                const Icon(Icons.edit, size: 14, color: AppColors.textSecondary),
+                const Icon(
+                  Icons.edit,
+                  size: 14,
+                  color: AppColors.textSecondary,
+                ),
               ],
             ),
           ],
@@ -1450,7 +1436,9 @@ class MealAnalysisResultWidget extends StatelessWidget {
                                 child: _NutrientChip(
                                   label: 'Protein',
                                   value: '${food.protein.toStringAsFixed(1)} g',
-                                  color: AppColors.protein.withValues(alpha: 0.1),
+                                  color: AppColors.protein.withValues(
+                                    alpha: 0.1,
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 8),
@@ -1519,10 +1507,7 @@ class _NutrientChip extends StatelessWidget {
         children: [
           Text(
             label,
-            style: TextStyle(
-              fontSize: 11,
-              color: AppColors.textSecondary,
-            ),
+            style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 2),
           FittedBox(
@@ -1565,10 +1550,7 @@ class _TotalCard extends StatelessWidget {
         children: [
           Text(
             label,
-            style: TextStyle(
-              fontSize: 12,
-              color: AppColors.textSecondary,
-            ),
+            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
@@ -1588,10 +1570,7 @@ class _TotalCard extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 3),
                 child: Text(
                   unit,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textHint,
-                  ),
+                  style: TextStyle(fontSize: 14, color: AppColors.textHint),
                 ),
               ),
             ],

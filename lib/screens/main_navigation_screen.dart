@@ -4,6 +4,7 @@ import 'package:nutrition_assistant/screens/daily_log_calendar.dart';
 import 'package:nutrition_assistant/screens/home_screen.dart';
 import 'package:nutrition_assistant/screens/meal_analysis_screen.dart';
 import 'package:nutrition_assistant/screens/food_search_screen.dart';
+import 'package:nutrition_assistant/widgets/fatsecret_attribution.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
 import 'package:nutrition_assistant/navigation/nav_helper.dart';
 import '../theme/app_colors.dart';
@@ -65,6 +66,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: _currentIndex != navIndexSearch,
       backgroundColor: AppColors.background,
       body: PageView(
         controller: _pageController,
@@ -80,9 +82,19 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: NavBar(
-        currentIndex: _currentIndex,
-        onTap: _onNavBarTap,
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (_currentIndex == navIndexSearch ||
+              _currentIndex == navIndexCamera)
+            Container(
+              width: double.infinity,
+              color: Colors.white,
+              padding: const EdgeInsets.only(top: 2),
+              child: const FatSecretAttribution(),
+            ),
+          NavBar(currentIndex: _currentIndex, onTap: _onNavBarTap),
+        ],
       ),
     );
   }

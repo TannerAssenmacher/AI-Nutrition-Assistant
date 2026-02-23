@@ -1241,7 +1241,10 @@ class _AddFoodModalState extends ConsumerState<_AddFoodModal> {
     });
   }
 
-  Future<void> _runSearch(String query) async {
+  Future<void> _runSearch(
+    String query, {
+    bool includeSuggestions = true,
+  }) async {
     final trimmed = query.trim();
     if (trimmed.length < 2) {
       setState(() {
@@ -1260,23 +1263,28 @@ class _AddFoodModalState extends ConsumerState<_AddFoodModal> {
     });
 
     try {
-      final suggestionsFuture = _searchService.autocompleteFoods(
-        trimmed,
-        maxResults: 6,
-      );
       final resultsFuture = _searchService.searchFoods(trimmed);
+      Future<List<String>>? suggestionsFuture;
+      if (includeSuggestions) {
+        suggestionsFuture = _searchService.autocompleteFoods(
+          trimmed,
+          maxResults: 5,
+        );
+      }
       final results = await resultsFuture;
 
       List<String> suggestions = const [];
-      try {
-        suggestions = await suggestionsFuture;
-      } catch (_) {
-        suggestions = const [];
+      if (suggestionsFuture != null) {
+        try {
+          suggestions = await suggestionsFuture;
+        } catch (_) {
+          suggestions = const [];
+        }
       }
 
       if (!mounted || requestId != _searchRequestId) return;
       setState(() {
-        _suggestions = suggestions;
+        _suggestions = includeSuggestions ? suggestions : const [];
         _results = results;
         _isLoading = false;
         _error = results.isEmpty ? 'No results found from FatSecret.' : null;
@@ -1291,11 +1299,16 @@ class _AddFoodModalState extends ConsumerState<_AddFoodModal> {
   }
 
   void _applySuggestion(String suggestion) {
+    _debounce?.cancel();
     _searchController.value = TextEditingValue(
       text: suggestion,
       selection: TextSelection.collapsed(offset: suggestion.length),
     );
-    _runSearch(suggestion);
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _suggestions = const [];
+    });
+    _runSearch(suggestion, includeSuggestions: false);
   }
 
   Future<void> _addManualMeal() async {
@@ -1510,7 +1523,12 @@ class _AddFoodModalState extends ConsumerState<_AddFoodModal> {
             setState(() {});
             _onSearchQueryChanged(value);
           },
-          onSubmitted: _runSearch,
+          onSubmitted: (value) {
+            _debounce?.cancel();
+            FocusScope.of(context).unfocus();
+            _runSearch(value, includeSuggestions: false);
+          },
+          onTapOutside: (_) => FocusScope.of(context).unfocus(),
         ),
         if (_suggestions.isNotEmpty)
           Padding(
@@ -1518,12 +1536,18 @@ class _AddFoodModalState extends ConsumerState<_AddFoodModal> {
             child: Align(
               alignment: Alignment.centerLeft,
               child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
+                spacing: 6,
+                runSpacing: 6,
                 children: _suggestions
                     .map(
                       (suggestion) => ActionChip(
-                        label: Text(suggestion),
+                        label: Text(
+                          suggestion,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+                        visualDensity: VisualDensity.compact,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         onPressed: () => _applySuggestion(suggestion),
                       ),
                     )
@@ -2197,11 +2221,6 @@ class _FoodSearchResultTile extends StatelessWidget {
                       style: TextStyle(color: AppColors.textHint, fontSize: 11),
                     ),
                   ],
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  result.sourceLabel,
-                  style: TextStyle(color: AppColors.statusNone, fontSize: 11),
                 ),
               ],
             ),
@@ -3311,21 +3330,20 @@ class _AddSearchResultDialogState
   late final TextEditingController _gramsController;
   late final FocusNode _gramsFocusNode;
   String _mealType = 'snack';
-  int _quantity = 1;
-  bool _useCustomGrams = false;
 
   @override
   void initState() {
     super.initState();
-    _availableServings = widget.result.servingOptions.isEmpty
+    final rawServings = widget.result.servingOptions.isEmpty
         ? [widget.result.defaultServingOption]
         : widget.result.servingOptions;
+    _availableServings = _normalizeServingOptions(rawServings);
     _selectedServing = _availableServings.firstWhere(
       (option) => option.isDefault,
       orElse: () => _availableServings.first,
     );
     _gramsController = TextEditingController(
-      text: (_selectedServing.grams * _quantity).toStringAsFixed(0),
+      text: _selectedServing.grams.toStringAsFixed(0),
     );
     _gramsFocusNode = FocusNode();
   }
@@ -3337,124 +3355,139 @@ class _AddSearchResultDialogState
     super.dispose();
   }
 
+  List<FoodServingOption> _normalizeServingOptions(
+    List<FoodServingOption> options,
+  ) {
+    final prioritized = [
+      ...options.where((option) => option.isDefault),
+      ...options.where((option) => !option.isDefault),
+    ];
+    final seen = <String>{};
+    final normalized = <FoodServingOption>[];
+    for (final option in prioritized) {
+      final key =
+          '${option.description.trim().toLowerCase()}|${option.grams.toStringAsFixed(2)}';
+      if (!seen.add(key)) continue;
+      normalized.add(option);
+    }
+    return normalized.isEmpty ? options : normalized;
+  }
+
+  String _servingLabel(FoodServingOption option) {
+    final gramsText = '${option.grams.toStringAsFixed(0)} g';
+    final description = option.description.trim().replaceAll(
+      RegExp(r'\s+'),
+      ' ',
+    );
+    if (description.isEmpty) {
+      return gramsText;
+    }
+    final normalized = description.toLowerCase();
+    if (normalized == 'default serving') {
+      return gramsText;
+    }
+    final duplicatePattern = RegExp(
+      r'^([\d.]+\s*(?:g|gram|grams|ml|oz|ounce|ounces))\s*\(\s*\1\s*\)$',
+      caseSensitive: false,
+    );
+    final duplicateMatch = duplicatePattern.firstMatch(description);
+    if (duplicateMatch != null) {
+      return duplicateMatch.group(1)!;
+    }
+    if (RegExp(
+      r'^\s*[\d.]+\s*(g|gram|grams|ml|oz|ounce|ounces)\s*$',
+    ).hasMatch(normalized)) {
+      return description;
+    }
+    return '$description ($gramsText)';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final defaultGrams = _selectedServing.grams * _quantity;
     return AlertDialog(
       title: Text('Add ${widget.result.name}'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          DropdownButtonFormField<String>(
-            value: _mealType,
-            decoration: const InputDecoration(labelText: 'Meal type'),
-            items: const [
-              DropdownMenuItem(value: 'breakfast', child: Text('Breakfast')),
-              DropdownMenuItem(value: 'lunch', child: Text('Lunch')),
-              DropdownMenuItem(value: 'dinner', child: Text('Dinner')),
-              DropdownMenuItem(value: 'snack', child: Text('Snack')),
-            ],
-            onChanged: (value) {
-              if (value != null) {
-                setState(() => _mealType = value);
-              }
-            },
-          ),
-          const SizedBox(height: 8),
-          DropdownButtonFormField<FoodServingOption>(
-            value: _selectedServing,
-            decoration: const InputDecoration(labelText: 'Serving size'),
-            items: _availableServings
-                .map(
-                  (option) => DropdownMenuItem<FoodServingOption>(
-                    value: option,
-                    child: Text(
-                      '${option.description} (${option.grams.toStringAsFixed(0)} g)',
-                    ),
-                  ),
-                )
-                .toList(),
-            onChanged: (value) {
-              if (value == null) return;
-              setState(() {
-                _selectedServing = value;
-                if (!_useCustomGrams) {
-                  _gramsController.text = (_selectedServing.grams * _quantity)
-                      .toStringAsFixed(0);
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DropdownButtonFormField<String>(
+              value: _mealType,
+              decoration: const InputDecoration(labelText: 'Meal type'),
+              items: const [
+                DropdownMenuItem(value: 'breakfast', child: Text('Breakfast')),
+                DropdownMenuItem(value: 'lunch', child: Text('Lunch')),
+                DropdownMenuItem(value: 'dinner', child: Text('Dinner')),
+                DropdownMenuItem(value: 'snack', child: Text('Snack')),
+              ],
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() => _mealType = value);
                 }
-              });
-            },
-          ),
-          const SizedBox(height: 8),
-          DropdownButtonFormField<int>(
-            value: _quantity,
-            decoration: const InputDecoration(labelText: 'Quantity'),
-            items: List.generate(
-              6,
-              (index) => DropdownMenuItem<int>(
-                value: index + 1,
-                child: Text('${index + 1}'),
-              ),
+              },
             ),
-            onChanged: (value) {
-              if (value == null) return;
-              setState(() {
-                _quantity = value;
-                if (!_useCustomGrams) {
-                  _gramsController.text = (_selectedServing.grams * _quantity)
-                      .toStringAsFixed(0);
-                }
-              });
-            },
-          ),
-          const SizedBox(height: 8),
-          SwitchListTile.adaptive(
-            contentPadding: EdgeInsets.zero,
-            value: _useCustomGrams,
-            title: const Text('Override grams'),
-            subtitle: Text(
-              _useCustomGrams
-                  ? 'Custom grams will be used.'
-                  : 'Using ${defaultGrams.toStringAsFixed(0)} g from serving × quantity.',
-            ),
-            onChanged: (value) {
-              setState(() {
-                _useCustomGrams = value;
-                if (!_useCustomGrams) {
-                  _gramsController.text = (_selectedServing.grams * _quantity)
-                      .toStringAsFixed(0);
-                }
-              });
-            },
-          ),
-          if (_useCustomGrams) ...[
             const SizedBox(height: 8),
+            if (_availableServings.length > 1) ...[
+              DropdownButtonFormField<FoodServingOption>(
+                value: _selectedServing,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Serving size'),
+                selectedItemBuilder: (context) => _availableServings
+                    .map(
+                      (option) => Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: Text(
+                          _servingLabel(option),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                    )
+                    .toList(),
+                items: _availableServings
+                    .map(
+                      (option) => DropdownMenuItem<FoodServingOption>(
+                        value: option,
+                        child: Text(
+                          _servingLabel(option),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() {
+                    _selectedServing = value;
+                    _gramsController.text = value.grams.toStringAsFixed(0);
+                  });
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
             TextField(
               controller: _gramsController,
               focusNode: _gramsFocusNode,
               decoration: InputDecoration(
-                labelText: 'Custom grams',
+                labelText: 'Weight (g)',
                 suffixIcon: IconButton(
                   tooltip: 'Done',
                   icon: const Icon(Icons.check),
                   onPressed: () => FocusScope.of(context).unfocus(),
                 ),
               ),
-              keyboardType: TextInputType.number,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               textInputAction: TextInputAction.done,
               onSubmitted: (_) => FocusScope.of(context).unfocus(),
               onTapOutside: (_) => FocusScope.of(context).unfocus(),
+              onChanged: (_) {
+                setState(() {});
+              },
             ),
           ],
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Source: ${widget.result.sourceLabel}',
-              style: TextStyle(color: AppColors.textHint, fontSize: 12),
-            ),
-          ),
-        ],
+        ),
       ),
       actions: [
         TextButton(
@@ -3467,9 +3500,7 @@ class _AddSearchResultDialogState
   }
 
   Future<void> _handleAdd() async {
-    final grams = _useCustomGrams
-        ? double.tryParse(_gramsController.text.trim())
-        : (_selectedServing.grams * _quantity);
+    final grams = double.tryParse(_gramsController.text.trim());
     if (grams == null || grams <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a valid grams value.')),

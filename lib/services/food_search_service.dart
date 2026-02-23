@@ -100,7 +100,7 @@ class FoodSearchService {
 
   Future<List<String>> autocompleteFoods(
     String expression, {
-    int maxResults = 6,
+    int maxResults = 5,
   }) async {
     final trimmed = expression.trim();
     if (trimmed.length < 2) return const [];
@@ -258,9 +258,24 @@ class FoodSearchService {
     }
 
     if (parsed.isNotEmpty) {
-      final hasDefault = parsed.any((option) => option.isDefault);
-      if (hasDefault) return parsed;
-      return [parsed.first.copyWith(isDefault: true), ...parsed.skip(1)];
+      final prioritized = [
+        ...parsed.where((option) => option.isDefault),
+        ...parsed.where((option) => !option.isDefault),
+      ];
+      final seen = <String>{};
+      final deduped = <FoodServingOption>[];
+      for (final option in prioritized) {
+        final key =
+            '${option.description.trim().toLowerCase()}|${option.grams.toStringAsFixed(2)}';
+        if (!seen.add(key)) continue;
+        deduped.add(option);
+      }
+      if (deduped.isEmpty) {
+        return [];
+      }
+      final hasDefault = deduped.any((option) => option.isDefault);
+      if (hasDefault) return deduped;
+      return [deduped.first.copyWith(isDefault: true), ...deduped.skip(1)];
     }
 
     final fallbackGrams = (map['servingGrams'] as num?)?.toDouble() ?? 100;
