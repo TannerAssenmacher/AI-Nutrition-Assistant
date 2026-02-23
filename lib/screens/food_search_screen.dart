@@ -126,6 +126,7 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
     }
 
     final rootContext = context;
+    final hasExplicitServingOptions = result.servingOptions.isNotEmpty;
     List<FoodServingOption> normalizeServingOptions(
       List<FoodServingOption> options,
     ) {
@@ -174,18 +175,18 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
     }
 
     final availableServings = normalizeServingOptions(
-      result.servingOptions.isEmpty
-          ? [result.defaultServingOption]
-          : result.servingOptions,
+      hasExplicitServingOptions
+          ? result.servingOptions
+          : [result.defaultServingOption],
     );
     FoodServingOption selectedServing = availableServings.firstWhere(
       (option) => option.isDefault,
       orElse: () => availableServings.first,
     );
+    int quantity = 1;
     final gramsController = TextEditingController(
       text: selectedServing.grams.toStringAsFixed(0),
     );
-    final gramsFocusNode = FocusNode();
     String mealType = 'snack';
     DateTime selectedDate = DateTime.now();
 
@@ -195,9 +196,11 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             final parsedGrams = double.tryParse(gramsController.text.trim());
-            final currentGrams = (parsedGrams != null && parsedGrams > 0)
-                ? parsedGrams
-                : selectedServing.grams;
+            final currentGrams = hasExplicitServingOptions
+                ? selectedServing.grams * quantity
+                : ((parsedGrams != null && parsedGrams > 0)
+                      ? parsedGrams
+                      : selectedServing.grams);
             final calories = (selectedServing.caloriesPerGram * currentGrams)
                 .round();
             final protein = (selectedServing.proteinPerGram * currentGrams)
@@ -237,73 +240,101 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                       },
                     ),
                     const SizedBox(height: 8),
-                    if (availableServings.length > 1) ...[
-                      DropdownButtonFormField<FoodServingOption>(
-                        initialValue: selectedServing,
-                        isExpanded: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Serving size',
+                    if (hasExplicitServingOptions) ...[
+                      if (availableServings.length > 1) ...[
+                        DropdownButtonFormField<FoodServingOption>(
+                          initialValue: selectedServing,
+                          isExpanded: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Serving size',
+                          ),
+                          selectedItemBuilder: (context) => availableServings
+                              .map(
+                                (option) => Align(
+                                  alignment: AlignmentDirectional.centerStart,
+                                  child: Text(
+                                    servingLabel(option),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          items: availableServings
+                              .map(
+                                (option) => DropdownMenuItem<FoodServingOption>(
+                                  value: option,
+                                  child: Text(
+                                    servingLabel(option),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) {
+                            if (value == null) return;
+                            setDialogState(() {
+                              selectedServing = value;
+                            });
+                          },
                         ),
-                        selectedItemBuilder: (context) => availableServings
-                            .map(
-                              (option) => Align(
-                                alignment: AlignmentDirectional.centerStart,
-                                child: Text(
-                                  servingLabel(option),
-                                  overflow: TextOverflow.ellipsis,
-                                  maxLines: 1,
-                                ),
-                              ),
-                            )
-                            .toList(),
-                        items: availableServings
-                            .map(
-                              (option) => DropdownMenuItem<FoodServingOption>(
-                                value: option,
-                                child: Text(
-                                  servingLabel(option),
-                                  overflow: TextOverflow.ellipsis,
-                                  maxLines: 1,
-                                ),
-                              ),
-                            )
-                            .toList(),
+                        const SizedBox(height: 8),
+                      ],
+                      DropdownButtonFormField<int>(
+                        initialValue: quantity,
+                        decoration: const InputDecoration(
+                          labelText: 'Servings',
+                        ),
+                        items: List.generate(
+                          10,
+                          (index) => DropdownMenuItem<int>(
+                            value: index + 1,
+                            child: Text('${index + 1}'),
+                          ),
+                        ),
                         onChanged: (value) {
                           if (value == null) return;
                           setDialogState(() {
-                            selectedServing = value;
-                            gramsController.text = value.grams.toStringAsFixed(
-                              0,
-                            );
+                            quantity = value;
                           });
                         },
                       ),
                       const SizedBox(height: 8),
-                    ],
-                    TextField(
-                      controller: gramsController,
-                      focusNode: gramsFocusNode,
-                      decoration: InputDecoration(
-                        labelText: 'Weight (g)',
-                        suffixIcon: IconButton(
-                          tooltip: 'Done',
-                          icon: const Icon(Icons.check),
-                          onPressed: () =>
-                              FocusScope.of(dialogContext).unfocus(),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Total: ${(selectedServing.grams * quantity).toStringAsFixed(0)} g',
+                          style: TextStyle(
+                            color: AppColors.textHint,
+                            fontSize: 12,
+                          ),
                         ),
                       ),
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
+                    ] else
+                      TextField(
+                        controller: gramsController,
+                        decoration: InputDecoration(
+                          labelText: 'Weight (g)',
+                          suffixIcon: IconButton(
+                            tooltip: 'Done',
+                            icon: const Icon(Icons.check),
+                            onPressed: () =>
+                                FocusManager.instance.primaryFocus?.unfocus(),
+                          ),
+                        ),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: (_) =>
+                            FocusManager.instance.primaryFocus?.unfocus(),
+                        onTapOutside: (_) =>
+                            FocusManager.instance.primaryFocus?.unfocus(),
+                        onChanged: (_) {
+                          setDialogState(() {});
+                        },
                       ),
-                      textInputAction: TextInputAction.done,
-                      onSubmitted: (_) =>
-                          FocusScope.of(dialogContext).unfocus(),
-                      onTapOutside: (_) =>
-                          FocusScope.of(dialogContext).unfocus(),
-                      onChanged: (_) {
-                        setDialogState(() {});
-                      },
-                    ),
                     const SizedBox(height: 12),
                     Container(
                       padding: const EdgeInsets.all(12),
@@ -405,12 +436,20 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
+                  onPressed: () async {
+                    FocusManager.instance.primaryFocus?.unfocus();
+                    await Future<void>.delayed(Duration.zero);
+                    if (dialogContext.mounted) {
+                      Navigator.pop(dialogContext);
+                    }
+                  },
                   child: const Text('Cancel'),
                 ),
                 ElevatedButton(
                   onPressed: () async {
-                    final grams = double.tryParse(gramsController.text.trim());
+                    final grams = hasExplicitServingOptions
+                        ? selectedServing.grams * quantity
+                        : double.tryParse(gramsController.text.trim());
                     if (grams == null || grams <= 0) {
                       ScaffoldMessenger.of(dialogContext).showSnackBar(
                         const SnackBar(
@@ -444,6 +483,8 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                       await ref
                           .read(firestoreFoodLogProvider(userId).notifier)
                           .addFood(userId, item);
+                      FocusManager.instance.primaryFocus?.unfocus();
+                      await Future<void>.delayed(Duration.zero);
                       if (!mounted ||
                           !rootContext.mounted ||
                           !dialogContext.mounted) {
@@ -480,7 +521,6 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
     );
 
     gramsController.dispose();
-    gramsFocusNode.dispose();
   }
 
   @override

@@ -51,76 +51,112 @@ class HomeScreen extends ConsumerWidget {
                       label: 'Go to profile. Good Morning, $name!',
                       excludeSemantics: true,
                       child: GestureDetector(
-                      onTap: () {
-                        Navigator.pushNamed(context, '/profile');
-                      },
-                      child: Container(
-                        width: double.infinity,
-                        height: MediaQuery.of(context).size.height * 0.18,
-                        padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(30),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.black.withValues(alpha: 0.05),
-                              blurRadius: 20,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  'Good Morning,',
-                                  style: TextStyle(
-                                    fontSize:
-                                        MediaQuery.of(context).size.height *
-                                        0.02,
-                                    color: AppColors.accentBrown,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                Text(
-                                  '$name!',
-                                  style: const TextStyle(
-                                    fontSize: 26,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.brand,
-                                  ),
-                                ),
-                                SizedBox(height: 8),
-                                Text(
-                                  DateFormat(
-                                    'EEEE, MMM d',
-                                  ).format(DateTime.now()),
-                                  style: TextStyle(
-                                    fontSize:
-                                        MediaQuery.of(context).size.height *
-                                        0.015,
-                                    color: AppColors.accentBrown,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            SizedBox(
-                              height: 80,
-                              width: 80,
-                              child: Image.asset(
-                                'lib/icons/WISERBITES_img_only.png',
-                                fit: BoxFit.contain,
+                        onTap: () {
+                          Navigator.pushNamed(context, '/profile');
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          constraints: BoxConstraints(
+                            minHeight:
+                                MediaQuery.of(context).size.height * 0.16,
+                          ),
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(30),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.black.withValues(alpha: 0.05),
+                                blurRadius: 20,
+                                offset: const Offset(0, 4),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              final textScale = MediaQuery.textScalerOf(
+                                context,
+                              ).scale(1.0);
+                              final stackVertically =
+                                  textScale > 1.15 ||
+                                  constraints.maxWidth < 340;
+
+                              final greetingText = Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'Good Morning,',
+                                    style: TextStyle(
+                                      fontSize:
+                                          MediaQuery.of(context).size.height *
+                                          0.02,
+                                      color: AppColors.accentBrown,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  Text(
+                                    '$name!',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 26,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.brand,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    DateFormat(
+                                      'EEEE, MMM d',
+                                    ).format(DateTime.now()),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize:
+                                          MediaQuery.of(context).size.height *
+                                          0.015,
+                                      color: AppColors.accentBrown,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              );
+
+                              final logo = SizedBox(
+                                height: 80,
+                                width: 80,
+                                child: Image.asset(
+                                  'lib/icons/WISERBITES_img_only.png',
+                                  fit: BoxFit.contain,
+                                ),
+                              );
+
+                              if (stackVertically) {
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    greetingText,
+                                    const SizedBox(height: 14),
+                                    Align(
+                                      alignment: Alignment.centerRight,
+                                      child: logo,
+                                    ),
+                                  ],
+                                );
+                              }
+
+                              return Row(
+                                children: [
+                                  Expanded(child: greetingText),
+                                  const SizedBox(width: 12),
+                                  logo,
+                                ],
+                              );
+                            },
+                          ),
                         ),
                       ),
-                    ),
                     ), // closes Semantics
                     const SizedBox(height: 20),
                     foodLogAsync.when(
@@ -195,7 +231,9 @@ class HomeScreen extends ConsumerWidget {
                                 borderRadius: BorderRadius.circular(30),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: AppColors.black.withValues(alpha: 0.05),
+                                    color: AppColors.black.withValues(
+                                      alpha: 0.05,
+                                    ),
                                     blurRadius: 20,
                                     offset: const Offset(0, 4),
                                   ),
@@ -209,29 +247,39 @@ class HomeScreen extends ConsumerWidget {
                                   ),
                                   const SizedBox(height: 20),
                                   Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
                                     children: [
-                                      _MacroIndicator(
-                                        label: 'Protein',
-                                        current: currentProtein,
-                                        goal: proteinGoal,
-                                        color: AppColors.protein,
-                                        unit: 'g',
+                                      Expanded(
+                                        child: Center(
+                                          child: _MacroIndicator(
+                                            label: 'Protein',
+                                            current: currentProtein,
+                                            goal: proteinGoal,
+                                            color: AppColors.protein,
+                                            unit: 'g',
+                                          ),
+                                        ),
                                       ),
-                                      _MacroIndicator(
-                                        label: 'Carbs',
-                                        current: currentCarbs,
-                                        goal: carbsGoal,
-                                        color: AppColors.carbs,
-                                        unit: 'g',
+                                      Expanded(
+                                        child: Center(
+                                          child: _MacroIndicator(
+                                            label: 'Carbs',
+                                            current: currentCarbs,
+                                            goal: carbsGoal,
+                                            color: AppColors.carbs,
+                                            unit: 'g',
+                                          ),
+                                        ),
                                       ),
-                                      _MacroIndicator(
-                                        label: 'Fat',
-                                        current: currentFat,
-                                        goal: fatGoal,
-                                        color: AppColors.fat,
-                                        unit: 'g',
+                                      Expanded(
+                                        child: Center(
+                                          child: _MacroIndicator(
+                                            label: 'Fat',
+                                            current: currentFat,
+                                            goal: fatGoal,
+                                            color: AppColors.fat,
+                                            unit: 'g',
+                                          ),
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -308,45 +356,6 @@ class HomeScreen extends ConsumerWidget {
       ),
     );
   }
-
-  Future<void> _openMealAnalyzer(BuildContext context) async {
-    await Navigator.of(context).pushNamed('/camera');
-  }
-
-  void _showAddFoodDialog(BuildContext context, WidgetRef ref) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add Food'),
-        content: const Text('This would open a food search/add dialog.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              final sampleFood = FoodItem(
-                id: DateTime.now().millisecondsSinceEpoch.toString(),
-                name: 'Sample Apple',
-                mass_g: 100,
-                calories_g: 2.0,
-                protein_g: 0.025,
-                carbs_g: 0.10,
-                fat: 0.005,
-                mealType: 'snack',
-                consumedAt: DateTime.now(),
-              );
-
-              ref.read(foodLogProvider.notifier).addFoodItem(sampleFood);
-              Navigator.of(context).pop();
-            },
-            child: const Text('Add Sample'),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _CalorieProgressBar extends StatelessWidget {
@@ -358,29 +367,62 @@ class _CalorieProgressBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final double percent = goal > 0 ? (current / goal).clamp(0.0, 1.0) : 0.0;
+    final textScale = MediaQuery.textScalerOf(context).scale(1.0);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Calories',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: AppColors.accentBrown,
-              ),
-            ),
-            Text(
-              '${current.round()} / ${goal.round()} kcal',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: AppColors.brand,
-              ),
-            ),
-          ],
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final useStackedLabel =
+                textScale > 1.15 || constraints.maxWidth < 300;
+
+            if (useStackedLabel) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Calories',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.accentBrown,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${current.round()} / ${goal.round()} Cal',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.brand,
+                    ),
+                  ),
+                ],
+              );
+            }
+
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Calories',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.accentBrown,
+                  ),
+                ),
+                Text(
+                  '${current.round()} / ${goal.round()} Cal',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.brand,
+                  ),
+                ),
+              ],
+            );
+          },
         ),
         const SizedBox(height: 8),
         Semantics(
@@ -411,60 +453,61 @@ class _FoodCarouselCard extends StatelessWidget {
     final calories = (food.calories_g * food.mass_g).round();
     return Semantics(
       button: true,
-      label: '${food.name}, $calories calories, ${food.mealType}. Tap for details.',
+      label:
+          '${food.name}, $calories calories, ${food.mealType}. Tap for details.',
       excludeSemantics: true,
       child: GestureDetector(
-      onTap: () => _showFoodDetails(context, food),
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 8),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                food.name,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.accentBrown,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '${(food.calories_g * food.mass_g).round()} kcal',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.brand,
-                ),
-              ),
-              Text(
-                food.mealType.toUpperCase(),
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textHint,
-                  fontWeight: FontWeight.w500,
-                ),
+        onTap: () => _showFoodDetails(context, food),
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 8),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  food.name,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.accentBrown,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${(food.calories_g * food.mass_g).round()} Cal',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.brand,
+                  ),
+                ),
+                Text(
+                  food.mealType.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textHint,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
-      ),
       ),
     );
   }
@@ -487,7 +530,7 @@ class _FoodCarouselCard extends StatelessWidget {
           children: [
             _DetailRow(
               label: 'Calories',
-              value: '${(food.calories_g * food.mass_g).round()} kcal',
+              value: '${(food.calories_g * food.mass_g).round()} Cal',
             ),
             const SizedBox(height: 8),
             _DetailRow(
@@ -563,15 +606,25 @@ class _DetailRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+        Expanded(
+          child: Text(
+            label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          ),
         ),
-        Text(
-          value,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        const SizedBox(width: 12),
+        Flexible(
+          child: Text(
+            value,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.end,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
         ),
       ],
     );
@@ -596,32 +649,51 @@ class _MacroIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final double percent = goal > 0 ? (current / goal).clamp(0.0, 1.0) : 0.0;
-    return Semantics(
-      label: '$label: ${current.toInt()} of ${goal.toInt()} grams',
-      child: CircularPercentIndicator(
-      radius: MediaQuery.of(context).size.width * 0.1,
-      lineWidth: 12,
-      percent: percent,
-      center: Text(
-        label,
-        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-      ),
-      footer: Padding(
-        padding: const EdgeInsets.only(top: 6.0),
-        child: Text(
-          '${current.toInt()}$unit',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-            color: color,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.hasBoundedWidth
+            ? constraints.maxWidth
+            : MediaQuery.of(context).size.width / 3;
+        final radius = (width * 0.42).clamp(42.0, 58.0).toDouble();
+        final lineWidth = (radius * 0.22).clamp(9.0, 13.0).toDouble();
+
+        return Semantics(
+          label: '$label: ${current.toInt()} of ${goal.toInt()} grams',
+          child: CircularPercentIndicator(
+            radius: radius,
+            lineWidth: lineWidth,
+            percent: percent,
+            center: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            footer: Padding(
+              padding: const EdgeInsets.only(top: 6.0),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  '${current.toInt()}$unit',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    color: color,
+                  ),
+                ),
+              ),
+            ),
+            progressColor: color,
+            backgroundColor: color.withValues(alpha: 0.25),
+            //circularStrokeCap: CircularStrokeCap.round,
+            animation: true,
           ),
-        ),
-      ),
-      progressColor: color,
-      backgroundColor: color.withValues(alpha: 0.25),
-      //circularStrokeCap: CircularStrokeCap.round,
-      animation: true,
-      ),
+        );
+      },
     );
   }
 }

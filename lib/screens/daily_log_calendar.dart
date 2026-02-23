@@ -283,34 +283,6 @@ class _DailyLogCalendarScreenState
     }
   }
 
-  void _addPlaceholderApple() {
-    final authUser = ref.read(authServiceProvider);
-    final userId = authUser?.uid;
-    if (userId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please sign in to add foods.')),
-      );
-      return;
-    }
-
-    final firestoreLog = ref.read(firestoreFoodLogProvider(userId).notifier);
-    final day = _selectedDay ?? _focusedDay;
-    final consumedAt = DateTime(day.year, day.month, day.day, 12);
-    final item = FoodItem(
-      id: 'apple-${DateTime.now().microsecondsSinceEpoch}',
-      name: 'Apple',
-      mass_g: 150,
-      calories_g: 0.52,
-      protein_g: 0.0027,
-      carbs_g: 0.14,
-      fat: 0.0013,
-      mealType: 'snack',
-      consumedAt: consumedAt,
-    );
-
-    firestoreLog.addFood(userId, item);
-  }
-
   void _showMonthlyCalendarPicker() {
     showDialog(
       context: context,
@@ -959,12 +931,6 @@ class _DailyLogCalendarScreenState
                           });
                         },
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.add),
-                        color: AppColors.error,
-                        tooltip: 'Add apple to selected day',
-                        onPressed: _addPlaceholderApple,
-                      ),
                     ],
                   ),
                 ),
@@ -1369,19 +1335,30 @@ class _AddFoodModalState extends ConsumerState<_AddFoodModal> {
   Future<void> _addSearchResult(FoodSearchResult result) async {
     final rootContext = context;
 
-    await showDialog<void>(
+    final added = await showDialog<bool>(
       context: rootContext,
       builder: (dialogContext) {
         return _AddSearchResultDialog(
           result: result,
           day: widget.day,
           userId: widget.userId,
-          onSuccess: () {
-            Navigator.pop(rootContext);
-          },
         );
       },
     );
+
+    if (added != true || !mounted || !rootContext.mounted) {
+      return;
+    }
+
+    FocusManager.instance.primaryFocus?.unfocus();
+    await Future<void>.delayed(Duration.zero);
+    if (!mounted || !rootContext.mounted) {
+      return;
+    }
+
+    final messenger = ScaffoldMessenger.of(rootContext);
+    Navigator.pop(rootContext);
+    messenger.showSnackBar(SnackBar(content: Text('Added "${result.name}"')));
   }
 
   @override
@@ -1901,9 +1878,13 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
     required String value,
     required String unit,
   }) {
+    final textScale = MediaQuery.textScalerOf(
+      context,
+    ).scale(1.0).clamp(1.0, 1.35).toDouble();
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 150),
-      height: 54,
+      height: 54 * textScale,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: isEditing ? color.withValues(alpha: 0.12) : AppColors.surface,
@@ -1929,6 +1910,8 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
         children: [
           Text(
             label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w700,
@@ -1962,14 +1945,20 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
               ),
             )
           else
-            Align(
-              alignment: Alignment.centerRight,
-              child: Text(
-                '$value $unit',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  color: color.withValues(alpha: 0.95),
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    '$value $unit',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: color.withValues(alpha: 0.95),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -3309,13 +3298,11 @@ class _AddSearchResultDialog extends ConsumerStatefulWidget {
   final FoodSearchResult result;
   final DateTime day;
   final String userId;
-  final VoidCallback onSuccess;
 
   const _AddSearchResultDialog({
     required this.result,
     required this.day,
     required this.userId,
-    required this.onSuccess,
   });
 
   @override
@@ -3325,18 +3312,20 @@ class _AddSearchResultDialog extends ConsumerStatefulWidget {
 
 class _AddSearchResultDialogState
     extends ConsumerState<_AddSearchResultDialog> {
+  late final bool _hasExplicitServingOptions;
   late final List<FoodServingOption> _availableServings;
   late FoodServingOption _selectedServing;
   late final TextEditingController _gramsController;
-  late final FocusNode _gramsFocusNode;
   String _mealType = 'snack';
+  int _quantity = 1;
 
   @override
   void initState() {
     super.initState();
-    final rawServings = widget.result.servingOptions.isEmpty
-        ? [widget.result.defaultServingOption]
-        : widget.result.servingOptions;
+    _hasExplicitServingOptions = widget.result.servingOptions.isNotEmpty;
+    final rawServings = _hasExplicitServingOptions
+        ? widget.result.servingOptions
+        : [widget.result.defaultServingOption];
     _availableServings = _normalizeServingOptions(rawServings);
     _selectedServing = _availableServings.firstWhere(
       (option) => option.isDefault,
@@ -3345,14 +3334,20 @@ class _AddSearchResultDialogState
     _gramsController = TextEditingController(
       text: _selectedServing.grams.toStringAsFixed(0),
     );
-    _gramsFocusNode = FocusNode();
   }
 
   @override
   void dispose() {
     _gramsController.dispose();
-    _gramsFocusNode.dispose();
     super.dispose();
+  }
+
+  Future<void> _closeDialog([bool? result]) async {
+    // Ensure any active text input detaches before this route is removed.
+    FocusManager.instance.primaryFocus?.unfocus();
+    await Future<void>.delayed(Duration.zero);
+    if (!mounted) return;
+    Navigator.of(context).pop(result);
   }
 
   List<FoodServingOption> _normalizeServingOptions(
@@ -3426,72 +3421,102 @@ class _AddSearchResultDialogState
               },
             ),
             const SizedBox(height: 8),
-            if (_availableServings.length > 1) ...[
-              DropdownButtonFormField<FoodServingOption>(
-                value: _selectedServing,
-                isExpanded: true,
-                decoration: const InputDecoration(labelText: 'Serving size'),
-                selectedItemBuilder: (context) => _availableServings
-                    .map(
-                      (option) => Align(
-                        alignment: AlignmentDirectional.centerStart,
-                        child: Text(
-                          _servingLabel(option),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
+            if (_hasExplicitServingOptions) ...[
+              if (_availableServings.length > 1) ...[
+                DropdownButtonFormField<FoodServingOption>(
+                  value: _selectedServing,
+                  isExpanded: true,
+                  decoration: const InputDecoration(labelText: 'Serving size'),
+                  selectedItemBuilder: (context) => _availableServings
+                      .map(
+                        (option) => Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Text(
+                            _servingLabel(option),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
                         ),
-                      ),
-                    )
-                    .toList(),
-                items: _availableServings
-                    .map(
-                      (option) => DropdownMenuItem<FoodServingOption>(
-                        value: option,
-                        child: Text(
-                          _servingLabel(option),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
+                      )
+                      .toList(),
+                  items: _availableServings
+                      .map(
+                        (option) => DropdownMenuItem<FoodServingOption>(
+                          value: option,
+                          child: Text(
+                            _servingLabel(option),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
                         ),
-                      ),
-                    )
-                    .toList(),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() {
+                      _selectedServing = value;
+                    });
+                  },
+                ),
+                const SizedBox(height: 8),
+              ],
+              DropdownButtonFormField<int>(
+                value: _quantity,
+                decoration: const InputDecoration(labelText: 'Servings'),
+                items: List.generate(
+                  10,
+                  (index) => DropdownMenuItem<int>(
+                    value: index + 1,
+                    child: Text('${index + 1}'),
+                  ),
+                ),
                 onChanged: (value) {
                   if (value == null) return;
                   setState(() {
-                    _selectedServing = value;
-                    _gramsController.text = value.grams.toStringAsFixed(0);
+                    _quantity = value;
                   });
                 },
               ),
               const SizedBox(height: 8),
-            ],
-            TextField(
-              controller: _gramsController,
-              focusNode: _gramsFocusNode,
-              decoration: InputDecoration(
-                labelText: 'Weight (g)',
-                suffixIcon: IconButton(
-                  tooltip: 'Done',
-                  icon: const Icon(Icons.check),
-                  onPressed: () => FocusScope.of(context).unfocus(),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Total: ${(_selectedServing.grams * _quantity).toStringAsFixed(0)} g',
+                  style: TextStyle(color: AppColors.textHint, fontSize: 12),
                 ),
               ),
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
+            ] else
+              TextField(
+                controller: _gramsController,
+                decoration: InputDecoration(
+                  labelText: 'Weight (g)',
+                  suffixIcon: IconButton(
+                    tooltip: 'Done',
+                    icon: const Icon(Icons.check),
+                    onPressed: () =>
+                        FocusManager.instance.primaryFocus?.unfocus(),
+                  ),
+                ),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) =>
+                    FocusManager.instance.primaryFocus?.unfocus(),
+                onTapOutside: (_) =>
+                    FocusManager.instance.primaryFocus?.unfocus(),
+                onChanged: (_) {
+                  setState(() {});
+                },
               ),
-              textInputAction: TextInputAction.done,
-              onSubmitted: (_) => FocusScope.of(context).unfocus(),
-              onTapOutside: (_) => FocusScope.of(context).unfocus(),
-              onChanged: (_) {
-                setState(() {});
-              },
-            ),
           ],
         ),
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: () async {
+            await _closeDialog(false);
+          },
           child: const Text('Cancel'),
         ),
         ElevatedButton(onPressed: _handleAdd, child: const Text('Add')),
@@ -3500,7 +3525,9 @@ class _AddSearchResultDialogState
   }
 
   Future<void> _handleAdd() async {
-    final grams = double.tryParse(_gramsController.text.trim());
+    final grams = _hasExplicitServingOptions
+        ? _selectedServing.grams * _quantity
+        : double.tryParse(_gramsController.text.trim());
     if (grams == null || grams <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a valid grams value.')),
@@ -3532,12 +3559,7 @@ class _AddSearchResultDialogState
           .read(firestoreFoodLogProvider(widget.userId).notifier)
           .addFood(widget.userId, item);
       if (!mounted) return;
-      final messenger = ScaffoldMessenger.of(context);
-      Navigator.pop(context);
-      widget.onSuccess();
-      messenger.showSnackBar(
-        SnackBar(content: Text('Added "${widget.result.name}"')),
-      );
+      await _closeDialog(true);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
