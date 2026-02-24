@@ -224,63 +224,120 @@ class _DailyLogCalendarScreenState
     };
   }
 
-  double _percentError(double actual, double target) {
-    if (target <= 0) return 0;
-    return ((actual - target).abs()) / target;
+  double _goalPointsForMacro({required double actual, required double goal}) {
+    if (goal <= 0) return 0;
+    final percentage = (actual / goal) * 100;
+    if (percentage > 130) return 0;
+    if (percentage > 110) return 0.5;
+    if (percentage >= 90) return 1;
+    if (percentage >= 80) return 0.5;
+    return 0;
   }
 
-  _NutritionGrade _calculateNutritionGrade({
+  double _calculateGoalPoints({
     required Map<String, double> totals,
     required Map<String, double> goals,
   }) {
-    final calError = _percentError(
-      totals['calories'] ?? 0,
-      goals['calories'] ?? 0,
-    );
-    final proteinError = _percentError(
-      totals['protein'] ?? 0,
-      goals['protein'] ?? 0,
-    );
-    final carbsError = _percentError(totals['carbs'] ?? 0, goals['carbs'] ?? 0);
-    final fatError = _percentError(totals['fat'] ?? 0, goals['fat'] ?? 0);
-
-    // Weighted equally by 0.25 as specified.
-    final overallError =
-        0.25 * (calError + proteinError + carbsError + fatError);
-    final percent = overallError * 100;
-    final letter = _gradeLetterForError(overallError);
-    return _NutritionGrade(
-      letter: letter,
-      errorPercent: percent,
-      color: _gradeColor(letter),
-    );
+    return _goalPointsForMacro(
+          actual: totals['calories'] ?? 0,
+          goal: goals['calories'] ?? 0,
+        ) +
+        _goalPointsForMacro(
+          actual: totals['protein'] ?? 0,
+          goal: goals['protein'] ?? 0,
+        ) +
+        _goalPointsForMacro(
+          actual: totals['carbs'] ?? 0,
+          goal: goals['carbs'] ?? 0,
+        ) +
+        _goalPointsForMacro(actual: totals['fat'] ?? 0, goal: goals['fat'] ?? 0);
   }
 
-  String _gradeLetterForError(double overallError) {
-    if (overallError <= 0.05) return 'S';
-    if (overallError <= 0.10) return 'A';
-    if (overallError <= 0.15) return 'B';
-    if (overallError <= 0.20) return 'C';
-    if (overallError <= 0.25) return 'D';
-    return 'F';
-  }
+  _ThirtyDayGoalStats _calculateThirtyDayGoalStats({
+    required List<FoodItem>? log,
+    required Map<String, double> goals,
+  }) {
+    double caloriePoints = 0;
+    double proteinPoints = 0;
+    double carbsPoints = 0;
+    double fatPoints = 0;
+    int perfectDays = 0;
 
-  Color _gradeColor(String letter) {
-    switch (letter) {
-      case 'S':
-        return AppColors.gradeS;
-      case 'A':
-        return AppColors.gradeA;
-      case 'B':
-        return AppColors.gradeB;
-      case 'C':
-        return AppColors.gradeC;
-      case 'D':
-        return AppColors.gradeD;
-      case 'F':
-      default:
-        return AppColors.gradeF;
+    final today = DateTime.now();
+    final todayOnly = DateTime(today.year, today.month, today.day);
+
+    for (int i = 0; i < 30; i++) {
+      final day = todayOnly.subtract(Duration(days: i));
+      final totals = _totalsForDay(day, log);
+
+      final cal = _goalPointsForMacro(
+        actual: totals['calories'] ?? 0,
+        goal: goals['calories'] ?? 0,
+      );
+      final pro = _goalPointsForMacro(
+        actual: totals['protein'] ?? 0,
+        goal: goals['protein'] ?? 0,
+      );
+      final carb = _goalPointsForMacro(
+        actual: totals['carbs'] ?? 0,
+        goal: goals['carbs'] ?? 0,
+      );
+      final fat = _goalPointsForMacro(
+        actual: totals['fat'] ?? 0,
+        goal: goals['fat'] ?? 0,
+      );
+
+      caloriePoints += cal;
+      proteinPoints += pro;
+      carbsPoints += carb;
+      fatPoints += fat;
+
+      if (cal == 1 && pro == 1 && carb == 1 && fat == 1) {
+        perfectDays += 1;
+      }
     }
+
+    return _ThirtyDayGoalStats(
+      caloriePoints: caloriePoints,
+      proteinPoints: proteinPoints,
+      carbsPoints: carbsPoints,
+      fatPoints: fatPoints,
+      perfectDays: perfectDays,
+    );
+  }
+
+  Widget _buildGoalStars(double points) {
+    final fullStars = points.floor();
+    final hasHalfStar = (points - fullStars) >= 0.5;
+
+    if (fullStars == 0 && !hasHalfStar) {
+      return const SizedBox(width: 26, height: 26);
+    }
+
+    return SizedBox(
+      width: 48,
+      height: 26,
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 1,
+        runSpacing: 0,
+        children: [
+          for (int i = 0; i < fullStars; i++)
+            const Icon(
+              Icons.star_rounded,
+              size: 11,
+              color: AppColors.statusNear,
+            ),
+          if (hasHalfStar)
+            const Icon(
+              Icons.star_half_rounded,
+              size: 11,
+              color: AppColors.statusNear,
+            ),
+        ],
+      ),
+    );
   }
 
   void _showMonthlyCalendarPicker() {
@@ -370,20 +427,20 @@ class _DailyLogCalendarScreenState
                             // ✅ Segmented control
                             CupertinoSlidingSegmentedControl<int>(
                               groupValue: segment,
-                              children: const {
+                              children: {
                                 0: Padding(
                                   padding: EdgeInsets.symmetric(
                                     vertical: 8,
                                     horizontal: 14,
                                   ),
-                                  child: Text('History'),
+                                  child: Text('History (${rows.length})'),
                                 ),
                                 1: Padding(
                                   padding: EdgeInsets.symmetric(
                                     vertical: 8,
                                     horizontal: 14,
                                   ),
-                                  child: Text('Scheduled'),
+                                  child: Text('Scheduled (${scheduledMeals.length})'),
                                 ),
                               },
                               onValueChanged: (value) {
@@ -547,16 +604,6 @@ class _DailyLogCalendarScreenState
                                 'Logged Foods',
                                 style: Theme.of(context).textTheme.titleSmall
                                     ?.copyWith(fontWeight: FontWeight.w600),
-                              ),
-                              const SizedBox(height: 8),
-                              TextButton.icon(
-                                onPressed: () {
-                                  setSheetState(
-                                    () => segment = 1,
-                                  ); // ✅ switch to Scheduled tab
-                                },
-                                icon: const Icon(Icons.schedule),
-                                label: const Text('View Scheduled Meals'),
                               ),
                               const SizedBox(height: 8),
 
@@ -852,6 +899,7 @@ class _DailyLogCalendarScreenState
     }
 
     final foodLogAsync = ref.watch(firestoreFoodLogProvider(userId));
+    final scheduledMealsAsync = ref.watch(firestoreScheduledMealsProvider(userId));
     final userProfileAsync = ref.watch(firestoreUserProfileProvider(userId));
     final goals = _goalsFromProfile(userProfileAsync.valueOrNull);
     final calorieGoal = goals['calories'] ?? 2000.0;
@@ -875,6 +923,16 @@ class _DailyLogCalendarScreenState
         const SafeArea(child: Center(child: CircularProgressIndicator())),
       ),
       data: (foodLog) {
+        final thirtyDayStats = _calculateThirtyDayGoalStats(
+          log: foodLog,
+          goals: {
+            'calories': calorieGoal,
+            'protein': proteinGoal,
+            'carbs': carbsGoal,
+            'fat': fatGoal,
+          },
+        );
+
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _autoScrollToTodayIfNeeded(weekDays);
           unawaited(_checkAndShowNotifications(foodLog, goals, userId));
@@ -938,7 +996,8 @@ class _DailyLogCalendarScreenState
                   child: ListView(
                     controller: _weekListScrollController,
                     padding: const EdgeInsets.symmetric(horizontal: 8),
-                    children: weekDays.map((day) {
+                    children: [
+                      ...weekDays.map((day) {
                       final isSelected =
                           _selectedDay != null &&
                           day.year == _selectedDay!.year &&
@@ -956,10 +1015,21 @@ class _DailyLogCalendarScreenState
                       final dayOnly = DateTime(day.year, day.month, day.day);
                       final isFutureDay = dayOnly.isAfter(todayOnly);
                       final foods = _foodsForDay(day, foodLog);
+                      final scheduledMealsForDay = scheduledMealsAsync.maybeWhen(
+                        data: (meals) => _scheduledMealsForDay(day, meals),
+                        orElse: () => <PlannedFood>[],
+                      );
+                      final summaryParts = <String>[
+                        if (foods.isNotEmpty)
+                          '${foods.length} Logged Food${foods.length == 1 ? '' : 's'}',
+                        if (scheduledMealsForDay.isNotEmpty)
+                          '${scheduledMealsForDay.length} Scheduled Meal${scheduledMealsForDay.length == 1 ? '' : 's'}',
+                      ];
+                      final daySummaryLabel = summaryParts.join(' - ');
                       final dayTotals = _totalsForDay(day, foodLog);
-                      final grade = isFutureDay
-                          ? null
-                          : _calculateNutritionGrade(
+                      final goalPoints = isFutureDay
+                          ? 0.0
+                          : _calculateGoalPoints(
                               totals: dayTotals,
                               goals: {
                                 'calories': calorieGoal,
@@ -1038,32 +1108,7 @@ class _DailyLogCalendarScreenState
                                       ),
                                     ),
                                     const SizedBox(height: 6),
-                                    if (grade != null)
-                                      Container(
-                                        width: 26,
-                                        height: 26,
-                                        alignment: Alignment.center,
-                                        decoration: BoxDecoration(
-                                          color: grade.color,
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: grade.color.withValues(
-                                              alpha: 0.45,
-                                            ),
-                                            width: 1,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          grade.letter,
-                                          style: const TextStyle(
-                                            color: AppColors.surface,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w800,
-                                          ),
-                                        ),
-                                      )
-                                    else
-                                      const SizedBox(width: 26, height: 26),
+                                    _buildGoalStars(goalPoints),
                                   ],
                                 ),
                               ),
@@ -1073,35 +1118,15 @@ class _DailyLogCalendarScreenState
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      foods.isEmpty
-                                          ? 'No foods logged'
-                                          : '${foods.length} food${foods.length != 1 ? 's' : ''}',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: foods.isEmpty
-                                            ? FontWeight.normal
-                                            : FontWeight.w600,
-                                        color: foods.isEmpty
-                                            ? AppColors.statusNone
-                                            : AppColors.textPrimary,
-                                        fontStyle: foods.isEmpty
-                                            ? FontStyle.italic
-                                            : FontStyle.normal,
+                                    if (daySummaryLabel.isNotEmpty)
+                                      Text(
+                                        daySummaryLabel,
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.textPrimary,
+                                        ),
                                       ),
-                                    ),
-                                    if (grade != null) ...[
-                                      // Shows calculated grade for the day based on nutrition quality but idk if needed
-                                      // const SizedBox(height: 4),
-                                      // Text(
-                                      //   'Grade ${grade.letter}  (${grade.errorPercent.toStringAsFixed(1)}% error)',
-                                      //   style: TextStyle(
-                                      //     fontSize: 12,
-                                      //     fontWeight: FontWeight.w600,
-                                      //     color: grade.color,
-                                      //   ),
-                                      // ),
-                                    ],
                                     const SizedBox(height: 8),
                                     _MacroProgressIndicator(
                                       label: 'Cal',
@@ -1146,6 +1171,72 @@ class _DailyLogCalendarScreenState
                         ),
                       );
                     }).toList(),
+                      const SizedBox(height: 10),
+                      Container(
+                        margin: const EdgeInsets.symmetric(
+                          vertical: 6,
+                          horizontal: 8,
+                        ),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.black.withValues(alpha: 0.05),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Last 30 Days Statistics',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                _StatChip(
+                                  label: 'Calories',
+                                  points: thirtyDayStats.caloriePoints,
+                                ),
+                                _StatChip(
+                                  label: 'Protein',
+                                  points: thirtyDayStats.proteinPoints,
+                                ),
+                                _StatChip(
+                                  label: 'Carbs',
+                                  points: thirtyDayStats.carbsPoints,
+                                ),
+                                _StatChip(
+                                  label: 'Fat',
+                                  points: thirtyDayStats.fatPoints,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              'Perfect Days (Last 30 Days): ${thirtyDayStats.perfectDays}',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
                   ),
                 ),
               ],
@@ -2418,16 +2509,51 @@ class _FoodRow {
   }
 }
 
-class _NutritionGrade {
-  final String letter;
-  final double errorPercent;
-  final Color color;
+class _ThirtyDayGoalStats {
+  final double caloriePoints;
+  final double proteinPoints;
+  final double carbsPoints;
+  final double fatPoints;
+  final int perfectDays;
 
-  const _NutritionGrade({
-    required this.letter,
-    required this.errorPercent,
-    required this.color,
+  const _ThirtyDayGoalStats({
+    required this.caloriePoints,
+    required this.proteinPoints,
+    required this.carbsPoints,
+    required this.fatPoints,
+    required this.perfectDays,
   });
+}
+
+class _StatChip extends StatelessWidget {
+  final String label;
+  final double points;
+
+  const _StatChip({required this.label, required this.points});
+
+  @override
+  Widget build(BuildContext context) {
+    final formatted = points % 1 == 0
+        ? points.toInt().toString()
+        : points.toStringAsFixed(1);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.inputFill,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.selectionColor.withValues(alpha: 0.25)),
+      ),
+      child: Text(
+        '$label: $formatted pts',
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: AppColors.textPrimary,
+        ),
+      ),
+    );
+  }
 }
 
 class _MonthlyCalendarPicker extends StatefulWidget {

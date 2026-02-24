@@ -573,6 +573,78 @@ class _RecipeCardState extends State<_RecipeCard> {
     return 'https://us-central1-ai-nutrition-assistant-e2346.cloudfunctions.net/proxyImage?url=$encodedUrl';
   }
 
+  Future<void> _openScheduleDialog(Map<String, dynamic> recipe, List<String> ingredients) async {
+    _selectedDates.clear();
+    final Map<DateTime, String> plannedDates = {};
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text("Select Dates"),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 380,
+            child: TableCalendar(
+              firstDay: DateTime.now(),
+              lastDay: DateTime.now().add(const Duration(days: 30)),
+              focusedDay: DateTime.now(),
+              calendarFormat: CalendarFormat.month,
+              selectedDayPredicate: (day) => _selectedDates.contains(day),
+              onDaySelected: (day, focusedDay) async {
+                if (!_selectedDates.contains(day)) {
+                  final mealType = await showDialog<String>(
+                    context: ctx,
+                    builder: (ctx2) => SimpleDialog(
+                      title: Text(
+                        "Meal for ${day.month}/${day.day}",
+                      ),
+                      children: ['Breakfast', 'Lunch', 'Dinner', 'Snack']
+                          .map((m) => SimpleDialogOption(
+                                child: Text(m),
+                                onPressed: () => Navigator.pop(ctx2, m),
+                              ))
+                          .toList(),
+                    ),
+                  );
+                  if (mealType != null) {
+                    setDialogState(() {
+                      _selectedDates.add(day);
+                      plannedDates[day] = mealType;
+                    });
+                    Navigator.pop(ctx);
+                  }
+                } else {
+                  setDialogState(() {
+                    _selectedDates.remove(day);
+                    plannedDates.remove(day);
+                  });
+                }
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    if (plannedDates.isEmpty) return;
+
+    final inputs = plannedDates.entries
+        .map((e) => PlannedFoodInput(date: e.key, mealType: e.value))
+        .toList();
+
+    widget.onSchedule(recipe['id'].toString(), inputs, ingredients);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${recipe['label']} scheduled for ${inputs.length} date(s)',
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final r = widget.recipe;
@@ -613,13 +685,34 @@ class _RecipeCardState extends State<_RecipeCard> {
             r['label'] ?? 'Recipe',
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
-          subtitle: Text(
-            "${r['calories']} Cal • P:${r['protein']}g C:${r['carbs']}g F:${r['fat']}g",
-            style: TextStyle(
-              color: widget.brandColor,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "${r['calories']} Cal • P:${r['protein']}g C:${r['carbs']}g F:${r['fat']}g",
+                style: TextStyle(
+                  color: widget.brandColor,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 32,
+                child: OutlinedButton.icon(
+                  onPressed: () => _openScheduleDialog(r, ingredients),
+                  icon: const Icon(Icons.add_circle_outline, size: 16),
+                  label: const Text('Add Meal'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: widget.brandColor,
+                    side: BorderSide(color: widget.brandColor),
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+              ),
+            ],
           ),
           childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           children: [
@@ -711,79 +804,7 @@ class _RecipeCardState extends State<_RecipeCard> {
                   elevation: 0,
                 ),
                 onPressed: () async {
-                  final Map<DateTime, String> plannedDates = {};
-                  await showDialog(
-                    context: context,
-                    builder: (ctx) => StatefulBuilder(
-                      builder: (ctx, setDialogState) => AlertDialog(
-                        title: const Text("Select Dates"),
-                        content: SizedBox(
-                          width: double.maxFinite,
-                          height: 380,
-                          child: TableCalendar(
-                            firstDay: DateTime.now(),
-                            lastDay: DateTime.now().add(const Duration(days: 30)),
-                            focusedDay: DateTime.now(),
-                            calendarFormat: CalendarFormat.month,
-                            selectedDayPredicate: (day) => _selectedDates.contains(day),
-                            onDaySelected: (day, focusedDay) async {
-                              if (!_selectedDates.contains(day)) {
-                                final mealType = await showDialog<String>(
-                                  context: ctx,
-                                  builder: (ctx2) => SimpleDialog(
-                                    title: Text(
-                                      "Meal for ${day.month}/${day.day}",
-                                    ),
-                                    children: ['Breakfast', 'Lunch', 'Dinner', 'Snack']
-                                        .map((m) => SimpleDialogOption(
-                                              child: Text(m),
-                                              onPressed: () => Navigator.pop(ctx2, m),
-                                            ))
-                                        .toList(),
-                                  ),
-                                );
-                                if (mealType != null) {
-                                  setDialogState(() {
-                                    _selectedDates.add(day);
-                                    plannedDates[day] = mealType;
-                                  });
-                                }
-                              } else {
-                                setDialogState(() {
-                                  _selectedDates.remove(day);
-                                  plannedDates.remove(day);
-                                });
-                              }
-                            },
-                          ),
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx),
-                            child: const Text("Done"),
-                          )
-                        ],
-                      ),
-                    ),
-                  );
-                  
-                  if (plannedDates.isEmpty) return;
-
-                  final inputs = plannedDates.entries
-                      .map((e) => PlannedFoodInput(date: e.key, mealType: e.value))
-                      .toList();
-                  
-                  widget.onSchedule(r['id'].toString(), inputs, ingredients);
-                  
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          '${r['label']} scheduled for ${inputs.length} date(s)',
-                        ),
-                      ),
-                    );
-                  }
+                  await _openScheduleDialog(r, ingredients);
                 },
                 icon: const Icon(Icons.schedule),
                 label: const Text(
