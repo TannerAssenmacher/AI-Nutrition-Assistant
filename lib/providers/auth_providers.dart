@@ -19,7 +19,17 @@ class AuthService extends _$AuthService {
   @override
   User? build() {
     final authState = ref.watch(authStateChangesProvider);
-    return authState.value ?? FirebaseAuth.instance.currentUser;
+    // Distinguish between the stream still loading (Firebase hydrating from
+    // storage – use the synchronous cache as a best-effort value) and the
+    // stream having explicitly emitted null (user signed out).  Collapsing
+    // both to `currentUser` caused the home screen to show a permanent spinner
+    // when Firebase briefly emitted null during the post-verification token
+    // refresh on web.
+    return authState.when(
+      loading: () => FirebaseAuth.instance.currentUser,
+      data: (user) => user,
+      error: (_, __) => FirebaseAuth.instance.currentUser,
+    );
   }
 
   Future<void> signInWithEmailAndPassword(String email, String password) async {
