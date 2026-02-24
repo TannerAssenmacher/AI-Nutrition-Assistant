@@ -36,8 +36,34 @@ void main() async {
     await NotificationService.scheduleStreakReminder();
     await NotificationService.scheduleMacroCheckReminder();
 
-    // Only resume an existing authenticated session.
-    final currentUser = FirebaseAuth.instance.currentUser;
+    // On web, Firebase restores auth state from IndexedDB asynchronously.
+    // Reading currentUser synchronously can return null even when the user IS
+    // authenticated, causing the app to incorrectly land on /login and then
+    // show a stuck spinner on the home screen after the email-verification
+    // redirect.  Awaiting the first authStateChanges() emission gives Firebase
+    // time to hydrate its state before we decide the initial route.
+    User? currentUser;
+    try {
+      currentUser = await FirebaseAuth.instance
+          .authStateChanges()
+          .first
+          .timeout(const Duration(seconds: 5));
+    } catch (_) {
+      // Timeout or stream error – fall back to the synchronous cache.
+      currentUser = FirebaseAuth.instance.currentUser;
+    }
+
+    // After an email-confirmation redirect the cached token may still carry
+    // emailVerified=false.  A reload() fetches the latest claim from the
+    // server so the route decision is always based on fresh state.
+    if (currentUser != null && !currentUser.isAnonymous) {
+      try {
+        await currentUser.reload();
+        currentUser = FirebaseAuth.instance.currentUser;
+      } catch (_) {
+        // If reload fails (e.g. offline), proceed with cached state.
+      }
+    }
 
     // If we have a verified user or a persisted anonymous user, skip login.
     if (currentUser != null &&

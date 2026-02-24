@@ -95,7 +95,13 @@ class _LoginPageState extends State<LoginPage> {
       // Check if user's email is verified before signing in
       if (user != null && !user.emailVerified) {
         await _showEmailVerificationDialog(user);
-        await FirebaseAuth.instance.signOut();
+        // Only sign out if the user cancelled without verifying.
+        // If they verified, the dialog already pushed /home and the sign-out
+        // below would immediately kick them off that screen (the root cause of
+        // the permanent loading spinner after email confirmation).
+        if (FirebaseAuth.instance.currentUser?.emailVerified != true) {
+          await FirebaseAuth.instance.signOut();
+        }
         return;
       }
 
