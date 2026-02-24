@@ -262,12 +262,19 @@ class _DailyLogCalendarScreenState
     double carbsPoints = 0;
     double fatPoints = 0;
     int perfectDays = 0;
+    int consideredDays = 0;
 
     final today = DateTime.now();
     final todayOnly = DateTime(today.year, today.month, today.day);
 
     for (int i = 0; i < 30; i++) {
       final day = todayOnly.subtract(Duration(days: i));
+      final foods = _foodsForDay(day, log);
+      if (foods.isEmpty) {
+        continue;
+      }
+
+      consideredDays += 1;
       final totals = _totalsForDay(day, log);
 
       final cal = _goalPointsForMacro(
@@ -303,10 +310,26 @@ class _DailyLogCalendarScreenState
       carbsPoints: carbsPoints,
       fatPoints: fatPoints,
       perfectDays: perfectDays,
+      consideredDays: consideredDays,
+      potentialPointsPerCategory: consideredDays.toDouble(),
     );
   }
 
   Widget _buildGoalStars(double points) {
+    if (points >= 4) {
+      return const SizedBox(
+        width: 48,
+        height: 26,
+        child: Center(
+          child: Icon(
+            Icons.star_rounded,
+            size: 22,
+            color: AppColors.statusNear,
+          ),
+        ),
+      );
+    }
+
     final fullStars = points.floor();
     final hasHalfStar = (points - fullStars) >= 0.5;
 
@@ -1201,25 +1224,38 @@ class _DailyLogCalendarScreenState
                               ),
                             ),
                             const SizedBox(height: 10),
+                            Text(
+                              'Based on ${thirtyDayStats.consideredDays} logged day${thirtyDayStats.consideredDays == 1 ? '' : 's'}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.textHint,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
                             Wrap(
                               spacing: 8,
                               runSpacing: 8,
                               children: [
                                 _StatChip(
                                   label: 'Calories',
-                                  points: thirtyDayStats.caloriePoints,
+                                  pointsEarned: thirtyDayStats.caloriePoints,
+                                  potentialPoints: thirtyDayStats.potentialPointsPerCategory,
                                 ),
                                 _StatChip(
                                   label: 'Protein',
-                                  points: thirtyDayStats.proteinPoints,
+                                  pointsEarned: thirtyDayStats.proteinPoints,
+                                  potentialPoints: thirtyDayStats.potentialPointsPerCategory,
                                 ),
                                 _StatChip(
                                   label: 'Carbs',
-                                  points: thirtyDayStats.carbsPoints,
+                                  pointsEarned: thirtyDayStats.carbsPoints,
+                                  potentialPoints: thirtyDayStats.potentialPointsPerCategory,
                                 ),
                                 _StatChip(
                                   label: 'Fat',
-                                  points: thirtyDayStats.fatPoints,
+                                  pointsEarned: thirtyDayStats.fatPoints,
+                                  potentialPoints: thirtyDayStats.potentialPointsPerCategory,
                                 ),
                               ],
                             ),
@@ -2515,6 +2551,8 @@ class _ThirtyDayGoalStats {
   final double carbsPoints;
   final double fatPoints;
   final int perfectDays;
+  final int consideredDays;
+  final double potentialPointsPerCategory;
 
   const _ThirtyDayGoalStats({
     required this.caloriePoints,
@@ -2522,20 +2560,35 @@ class _ThirtyDayGoalStats {
     required this.carbsPoints,
     required this.fatPoints,
     required this.perfectDays,
+    required this.consideredDays,
+    required this.potentialPointsPerCategory,
   });
 }
 
 class _StatChip extends StatelessWidget {
   final String label;
-  final double points;
+  final double pointsEarned;
+  final double potentialPoints;
 
-  const _StatChip({required this.label, required this.points});
+  const _StatChip({
+    required this.label,
+    required this.pointsEarned,
+    required this.potentialPoints,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final formatted = points % 1 == 0
-        ? points.toInt().toString()
-        : points.toStringAsFixed(1);
+    final hasPotential = potentialPoints > 0;
+    final percentage = hasPotential ? (pointsEarned / potentialPoints) * 100 : 0.0;
+    final earnedFormatted = pointsEarned % 1 == 0
+        ? pointsEarned.toInt().toString()
+        : pointsEarned.toStringAsFixed(1);
+    final potentialFormatted = potentialPoints % 1 == 0
+        ? potentialPoints.toInt().toString()
+        : potentialPoints.toStringAsFixed(1);
+    final percentageLabel = hasPotential
+        ? '${percentage.toStringAsFixed(0)}%'
+        : '--';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -2545,7 +2598,7 @@ class _StatChip extends StatelessWidget {
         border: Border.all(color: AppColors.selectionColor.withValues(alpha: 0.25)),
       ),
       child: Text(
-        '$label: $formatted pts',
+        '$label: $percentageLabel ($earnedFormatted/$potentialFormatted)',
         style: const TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w600,
