@@ -1260,14 +1260,19 @@ class _DailyLogCalendarScreenState
                               ],
                             ),
                             const SizedBox(height: 10),
-                            Text(
-                              'Perfect Days (Last 30 Days): ${thirtyDayStats.perfectDays}',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textPrimary,
+                            if (thirtyDayStats.perfectDays > 0)
+                              Wrap(
+                                spacing: 4,
+                                runSpacing: 4,
+                                children: List.generate(
+                                  thirtyDayStats.perfectDays,
+                                  (_) => const Icon(
+                                    Icons.star_rounded,
+                                    size: 22,
+                                    color: AppColors.statusNear,
+                                  ),
+                                ),
                               ),
-                            ),
                           ],
                         ),
                       ),
@@ -2578,32 +2583,64 @@ class _StatChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final accentColor = switch (label) {
+      'Calories' => AppColors.caloriesCircle,
+      'Protein' => AppColors.protein,
+      'Carbs' => AppColors.carbs,
+      'Fat' => AppColors.fat,
+      _ => AppColors.selectionColor,
+    };
+
     final hasPotential = potentialPoints > 0;
     final percentage = hasPotential ? (pointsEarned / potentialPoints) * 100 : 0.0;
-    final earnedFormatted = pointsEarned % 1 == 0
-        ? pointsEarned.toInt().toString()
-        : pointsEarned.toStringAsFixed(1);
-    final potentialFormatted = potentialPoints % 1 == 0
-        ? potentialPoints.toInt().toString()
-        : potentialPoints.toStringAsFixed(1);
     final percentageLabel = hasPotential
         ? '${percentage.toStringAsFixed(0)}%'
         : '--';
+    final qualifier = switch (percentage) {
+      >= 90 => 'Amazing!',
+      >= 80 => 'Great!',
+      >= 60 => 'Good!',
+      >= 50 => 'You got this!',
+      _ => null,
+    };
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.inputFill,
+        color: accentColor.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppColors.selectionColor.withValues(alpha: 0.25)),
+        border: Border.all(color: accentColor.withValues(alpha: 0.45), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: accentColor.withValues(alpha: 0.18),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      child: Text(
-        '$label: $percentageLabel ($earnedFormatted/$potentialFormatted)',
-        style: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
-        ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (qualifier != null)
+            Text(
+              qualifier,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: accentColor.withValues(alpha: 0.9),
+              ),
+            ),
+          Text(
+            '$label: $percentageLabel',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: accentColor,
+              letterSpacing: 0.2,
+            ),
+          ),
+        ],
       ),
     );
   }
