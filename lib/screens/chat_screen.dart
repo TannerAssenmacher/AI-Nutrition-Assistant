@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import '../services/gemini_chat_service.dart';
 import '../models/planned_food_input.dart';
 import '../db/food.dart';
@@ -12,6 +13,10 @@ import '../theme/app_colors.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:nutrition_assistant/navigation/nav_helper.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
+
+String _formatMonthShort(DateTime date, dynamic locale) {
+  return DateFormat('MMM yyyy').format(date);
+}
 
 class ChatScreen extends ConsumerStatefulWidget {
   final bool isInPageView;
@@ -39,11 +44,34 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   //list of cuisine
   //:)
   final List<String> _cuisineTypes = [
-    'No Preference', 'African', 'Asian', 'American', 'British', 'Cajun',
-    'Caribbean', 'Chinese', 'Eastern European', 'European', 'French',
-    'German', 'Greek', 'Indian', 'Irish', 'Italian', 'Japanese', 'Jewish',
-    'Korean', 'Latin American', 'Mediterranean', 'Mexican', 'Middle Eastern',
-    'Nordic', 'Southern', 'Spanish', 'Thai', 'Vietnamese',
+    'No Preference',
+    'African',
+    'Asian',
+    'American',
+    'British',
+    'Cajun',
+    'Caribbean',
+    'Chinese',
+    'Eastern European',
+    'European',
+    'French',
+    'German',
+    'Greek',
+    'Indian',
+    'Irish',
+    'Italian',
+    'Japanese',
+    'Jewish',
+    'Korean',
+    'Latin American',
+    'Mediterranean',
+    'Mexican',
+    'Middle Eastern',
+    'Nordic',
+    'Southern',
+    'Spanish',
+    'Thai',
+    'Vietnamese',
   ];
 
   @override
@@ -65,7 +93,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void _sendMessage() {
     final message = _messageController.text.trim();
     if (message.isEmpty) return;
-    HapticFeedback.lightImpact(); 
+    HapticFeedback.lightImpact();
     _messageController.clear();
     ref.read(geminiChatServiceProvider.notifier).sendMessage(message);
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
@@ -73,7 +101,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   void _promptRecipeType() {
     HapticFeedback.mediumImpact();
-    ref.read(geminiChatServiceProvider.notifier).addLocalBotMessage("What kind of meal would you like?");
+    ref
+        .read(geminiChatServiceProvider.notifier)
+        .addLocalBotMessage("What kind of meal would you like?");
     setState(() {
       _showRecipePicker = true;
       _showCuisinePicker = false;
@@ -125,35 +155,55 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onHorizontalDragStart: (_) {}, 
+        onHorizontalDragStart: (_) {},
         onHorizontalDragUpdate: (_) {},
-          child: SingleChildScrollView(
+        child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
-            children: options.map((text) => Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(15),
-                  boxShadow: [
-                    BoxShadow(color: AppColors.surface, offset: const Offset(-3, -3), blurRadius: 8),
-                    BoxShadow(color: neumorphicShadow, offset: const Offset(3, 3), blurRadius: 8),
-                  ],
-                ),
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: brandColor,
-                    foregroundColor: AppColors.surface,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            children: options
+                .map(
+                  (text) => Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(15),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.surface,
+                            offset: const Offset(-3, -3),
+                            blurRadius: 8,
+                          ),
+                          BoxShadow(
+                            color: neumorphicShadow,
+                            offset: const Offset(3, 3),
+                            blurRadius: 8,
+                          ),
+                        ],
+                      ),
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: brandColor,
+                          foregroundColor: AppColors.surface,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 12,
+                          ),
+                        ),
+                        onPressed: () => onTap!(text),
+                        child: Text(
+                          text,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
                   ),
-                  onPressed: () => onTap!(text),
-                  child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold)),
-                ),
-              ),
-            )).toList(),
+                )
+                .toList(),
           ),
         ),
       ),
@@ -173,7 +223,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
 
     ref.listen(chatLoadingProvider, (prev, next) {
-      if (next) WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+      if (next)
+        WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
     });
 
     return Scaffold(
@@ -193,8 +244,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ),
         title: Column(
           children: [
-            Text("NutriCoach", style: TextStyle(color: brandColor, fontWeight: FontWeight.bold, fontSize: 18)),
-            const Text("AI NUTRITION ASSISTANT", style: TextStyle(color: AppColors.statusNone, fontSize: 9, letterSpacing: 1.2)),
+            Text(
+              "NutriCoach",
+              style: TextStyle(
+                color: brandColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+            const Text(
+              "AI NUTRITION ASSISTANT",
+              style: TextStyle(
+                color: AppColors.statusNone,
+                fontSize: 9,
+                letterSpacing: 1.2,
+              ),
+            ),
           ],
         ),
       ),
@@ -209,11 +274,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     : ListView.builder(
                         controller: _scrollController,
                         //hides keyboard when swipe
-                        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
                         padding: const EdgeInsets.all(16),
                         itemCount: chatMessages.length + (isLoading ? 1 : 0),
                         itemBuilder: (context, index) {
-                          if (index == chatMessages.length) return const _TypingIndicator();
+                          if (index == chatMessages.length)
+                            return const _TypingIndicator();
                           final message = chatMessages[index];
                           return _buildMessageNode(message);
                         },
@@ -225,10 +292,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: widget.isInPageView ? null : NavBar(
-        currentIndex: navIndexChat,
-        onTap: (index) => handleNavTap(context, index),
-      ),
+      bottomNavigationBar: widget.isInPageView
+          ? null
+          : NavBar(
+              currentIndex: navIndexChat,
+              onTap: (index) => handleNavTap(context, index),
+            ),
     );
   }
 
@@ -237,11 +306,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.chat_bubble_outline, size: 64, color: brandColor.withValues(alpha: 0.2)),
+          Icon(
+            Icons.chat_bubble_outline,
+            size: 64,
+            color: brandColor.withValues(alpha: 0.2),
+          ),
           const SizedBox(height: 16),
-          const Text('Ask me anything about nutrition!', style: TextStyle(fontSize: 18, color: AppColors.statusNone)),
+          const Text(
+            'Ask me anything about nutrition!',
+            style: TextStyle(fontSize: 18, color: AppColors.statusNone),
+          ),
           const SizedBox(height: 8),
-          Text('Try: "What should I eat for dinner?"', style: TextStyle(fontSize: 14, color: AppColors.statusNone)),
+          Text(
+            'Try: "What should I eat for dinner?"',
+            style: TextStyle(fontSize: 14, color: AppColors.statusNone),
+          ),
         ],
       ),
     );
@@ -250,23 +329,29 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget _buildRecipeResults(List<Map<String, dynamic>> recipes) {
     return Column(
       children: [
-        ...recipes.map((r) => _RecipeCard(
-          recipe: r,
-          brandColor: brandColor,
-          onSchedule: (id, inputs, ingredientLines) =>
-              ref
-                  .read(geminiChatServiceProvider.notifier)
-                  .scheduleRecipe(id, inputs, ingredientLines),
-        )),
+        ...recipes.map(
+          (r) => _RecipeCard(
+            recipe: r,
+            brandColor: brandColor,
+            onSchedule: (id, inputs, ingredientLines) => ref
+                .read(geminiChatServiceProvider.notifier)
+                .scheduleRecipe(id, inputs, ingredientLines),
+          ),
+        ),
         Center(
           child: OutlinedButton.icon(
-            onPressed: () => ref.read(geminiChatServiceProvider.notifier).requestMoreRecipes(
-              mealType: _selectedMealType ?? 'Dinner',
-              cuisineType: _selectedCuisineType ?? 'None'
-            ),
+            onPressed: () => ref
+                .read(geminiChatServiceProvider.notifier)
+                .requestMoreRecipes(
+                  mealType: _selectedMealType ?? 'Dinner',
+                  cuisineType: _selectedCuisineType ?? 'None',
+                ),
             icon: const Icon(Icons.refresh),
             label: const Text("More recipes"),
-            style: OutlinedButton.styleFrom(foregroundColor: brandColor, side: BorderSide(color: brandColor)),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: brandColor,
+              side: BorderSide(color: brandColor),
+            ),
           ),
         ),
       ],
@@ -278,10 +363,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     try {
       final parsed = jsonDecode(message.content);
       if (parsed is Map && parsed['type'] == 'meal_profile_summary') {
-        return MealProfileSummaryBubble(data: Map<String, dynamic>.from(parsed));
+        return MealProfileSummaryBubble(
+          data: Map<String, dynamic>.from(parsed),
+        );
       }
       if (parsed is Map && parsed['type'] == 'recipe_results') {
-        final recipes = List<Map<String, dynamic>>.from(parsed['recipes'] ?? const []);
+        final recipes = List<Map<String, dynamic>>.from(
+          parsed['recipes'] ?? const [],
+        );
         return _buildRecipeResults(recipes);
       }
     } catch (_) {}
@@ -296,7 +385,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       for (int i = jsonStart; i < content.length; i++) {
         if (content[i] == '{') depth++;
         if (content[i] == '}') depth--;
-        if (depth == 0) { jsonEnd = i + 1; break; }
+        if (depth == 0) {
+          jsonEnd = i + 1;
+          break;
+        }
       }
 
       if (jsonEnd != null) {
@@ -304,17 +396,25 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           final jsonStr = content.substring(jsonStart, jsonEnd);
           final parsed = jsonDecode(jsonStr);
           if (parsed is Map && parsed['type'] == 'recipe_results') {
-            final recipes = List<Map<String, dynamic>>.from(parsed['recipes'] ?? const []);
+            final recipes = List<Map<String, dynamic>>.from(
+              parsed['recipes'] ?? const [],
+            );
             final textBefore = content.substring(0, jsonStart).trim();
             final textAfter = content.substring(jsonEnd).trim();
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (textBefore.isNotEmpty)
-                  _ChatBubble(message: ChatMessage(content: textBefore, isUser: false), brandColor: brandColor),
+                  _ChatBubble(
+                    message: ChatMessage(content: textBefore, isUser: false),
+                    brandColor: brandColor,
+                  ),
                 _buildRecipeResults(recipes),
                 if (textAfter.isNotEmpty)
-                  _ChatBubble(message: ChatMessage(content: textAfter, isUser: false), brandColor: brandColor),
+                  _ChatBubble(
+                    message: ChatMessage(content: textAfter, isUser: false),
+                    brandColor: brandColor,
+                  ),
               ],
             );
           }
@@ -353,10 +453,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     child: TextField(
                       controller: _messageController,
                       decoration: InputDecoration(
-                        hintText: 'Ask about nutrition, calories, meal planning...',
+                        hintText:
+                            'Ask about nutrition, calories, meal planning...',
                         filled: true,
                         fillColor: bgColor.withValues(alpha: 0.4),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          borderSide: BorderSide.none,
+                        ),
                       ),
                       onSubmitted: (_) => _sendMessage(),
                     ),
@@ -367,11 +471,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: brandColor, 
+                        color: brandColor,
                         shape: BoxShape.circle,
-                        boxShadow: [BoxShadow(color: brandColor.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))],
+                        boxShadow: [
+                          BoxShadow(
+                            color: brandColor.withValues(alpha: 0.3),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
-                      child: const Icon(Icons.send, color: AppColors.surface, size: 22),
+                      child: const Icon(
+                        Icons.send,
+                        color: AppColors.surface,
+                        size: 22,
+                      ),
                     ),
                   ),
                 ],
@@ -395,17 +509,41 @@ class _ChatBubble extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Column(
-        crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        crossAxisAlignment: isUser
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: EdgeInsets.only(left: isUser ? 0 : 40, right: isUser ? 10 : 0, bottom: 4),
-            child: Text(isUser ? "You" : "NutriCoach", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textHint)),
+            padding: EdgeInsets.only(
+              left: isUser ? 0 : 40,
+              right: isUser ? 10 : 0,
+              bottom: 4,
+            ),
+            child: Text(
+              isUser ? "You" : "NutriCoach",
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textHint,
+              ),
+            ),
           ),
           Row(
-            mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+            mainAxisAlignment: isUser
+                ? MainAxisAlignment.end
+                : MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              if (!isUser) CircleAvatar(backgroundColor: brandColor, radius: 12, child: const Icon(Icons.auto_awesome, color: AppColors.surface, size: 12)),
+              if (!isUser)
+                CircleAvatar(
+                  backgroundColor: brandColor,
+                  radius: 12,
+                  child: const Icon(
+                    Icons.auto_awesome,
+                    color: AppColors.surface,
+                    size: 12,
+                  ),
+                ),
               const SizedBox(width: 10),
               Flexible(
                 child: ClipRRect(
@@ -415,19 +553,41 @@ class _ChatBubble extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: isUser ? brandColor : AppColors.surface.withValues(alpha: 0.8),
+                        color: isUser
+                            ? brandColor
+                            : AppColors.surface.withValues(alpha: 0.8),
                         borderRadius: BorderRadius.only(
-                          topLeft: const Radius.circular(20), topRight: const Radius.circular(20),
-                          bottomLeft: Radius.circular(isUser ? 20 : 0), bottomRight: Radius.circular(isUser ? 0 : 20),
+                          topLeft: const Radius.circular(20),
+                          topRight: const Radius.circular(20),
+                          bottomLeft: Radius.circular(isUser ? 20 : 0),
+                          bottomRight: Radius.circular(isUser ? 0 : 20),
                         ),
-                        border: Border.all(color: AppColors.surface.withValues(alpha: 0.2)),
+                        border: Border.all(
+                          color: AppColors.surface.withValues(alpha: 0.2),
+                        ),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(message.content, style: TextStyle(color: isUser ? AppColors.surface : AppColors.textPrimary, fontSize: 14)),
+                          Text(
+                            message.content,
+                            style: TextStyle(
+                              color: isUser
+                                  ? AppColors.surface
+                                  : AppColors.textPrimary,
+                              fontSize: 14,
+                            ),
+                          ),
                           const SizedBox(height: 4),
-                          Text(message.formattedTime, style: TextStyle(fontSize: 9, color: isUser ? AppColors.surface.withValues(alpha: 0.7) : AppColors.statusNone)),
+                          Text(
+                            message.formattedTime,
+                            style: TextStyle(
+                              fontSize: 9,
+                              color: isUser
+                                  ? AppColors.surface.withValues(alpha: 0.7)
+                                  : AppColors.statusNone,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -454,7 +614,6 @@ class MealProfileSummaryBubble extends StatelessWidget {
     final carbs = (macroGoals['carbs'] ?? 0).round();
     final fat = (macroGoals['fat'] ?? 0).round();
 
-
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 12),
       padding: const EdgeInsets.all(16),
@@ -462,17 +621,16 @@ class MealProfileSummaryBubble extends StatelessWidget {
         color: AppColors.surface.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(25),
         border: Border.all(color: brandColor.withValues(alpha: 0.1)),
-        boxShadow: [BoxShadow(color: brandColor.withValues(alpha: 0.05), blurRadius: 15)],
+        boxShadow: [
+          BoxShadow(color: brandColor.withValues(alpha: 0.05), blurRadius: 15),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
             "Generating Recipes with your Profile",
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 15,
-            ),
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
           ),
           const Divider(height: 24),
 
@@ -481,10 +639,7 @@ class MealProfileSummaryBubble extends StatelessWidget {
 
           //Goals Section
           const SizedBox(height: 12),
-          const Text(
-            "Goals",
-            style: TextStyle(fontWeight: FontWeight.w600),
-          ),
+          const Text("Goals", style: TextStyle(fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
           _row(Icons.track_changes, "Dietary Goal", data['dietaryGoal']),
           _row(
@@ -498,8 +653,8 @@ class MealProfileSummaryBubble extends StatelessWidget {
             Icons.pie_chart_outline,
             "Macros",
             "P $protein% • "
-            "C $carbs% • "
-            "F $fat%",
+                "C $carbs% • "
+                "F $fat%",
           ),
           const SizedBox(height: 12),
           //Preferences Section
@@ -545,9 +700,20 @@ class MealProfileSummaryBubble extends StatelessWidget {
 
   Widget _row(IconData icon, String label, dynamic val) => Padding(
     padding: const EdgeInsets.only(bottom: 6),
-    child: Row(children: [Icon(icon, size: 14, color: AppColors.statusNone), const SizedBox(width: 8), Text("$label: ", style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)), Text("$val", style: const TextStyle(fontSize: 13))]),
+    child: Row(
+      children: [
+        Icon(icon, size: 14, color: AppColors.statusNone),
+        const SizedBox(width: 8),
+        Text(
+          "$label: ",
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        ),
+        Text("$val", style: const TextStyle(fontSize: 13)),
+      ],
+    ),
   );
 }
+
 class _RecipeCard extends StatefulWidget {
   final Map<String, dynamic> recipe;
   final Color brandColor;
@@ -573,7 +739,10 @@ class _RecipeCardState extends State<_RecipeCard> {
     return 'https://us-central1-ai-nutrition-assistant-e2346.cloudfunctions.net/proxyImage?url=$encodedUrl';
   }
 
-  Future<void> _openScheduleDialog(Map<String, dynamic> recipe, List<String> ingredients) async {
+  Future<void> _openScheduleDialog(
+    Map<String, dynamic> recipe,
+    List<String> ingredients,
+  ) async {
     _selectedDates.clear();
     final Map<DateTime, String> plannedDates = {};
     await showDialog(
@@ -583,43 +752,50 @@ class _RecipeCardState extends State<_RecipeCard> {
           title: const Text("Select Dates"),
           content: SizedBox(
             width: double.maxFinite,
-            height: 380,
-            child: TableCalendar(
-              firstDay: DateTime.now(),
-              lastDay: DateTime.now().add(const Duration(days: 30)),
-              focusedDay: DateTime.now(),
-              calendarFormat: CalendarFormat.month,
-              selectedDayPredicate: (day) => _selectedDates.contains(day),
-              onDaySelected: (day, focusedDay) async {
-                if (!_selectedDates.contains(day)) {
-                  final mealType = await showDialog<String>(
-                    context: ctx,
-                    builder: (ctx2) => SimpleDialog(
-                      title: Text(
-                        "Meal for ${day.month}/${day.day}",
-                      ),
-                      children: ['Breakfast', 'Lunch', 'Dinner', 'Snack']
-                          .map((m) => SimpleDialogOption(
+            height: 420,
+            child: SingleChildScrollView(
+              child: TableCalendar(
+                firstDay: DateTime.now(),
+                lastDay: DateTime.now().add(const Duration(days: 365)),
+                focusedDay: DateTime.now(),
+                calendarFormat: CalendarFormat.month,
+                headerStyle: const HeaderStyle(
+                  formatButtonVisible: false,
+                  titleCentered: true,
+                  titleTextFormatter: _formatMonthShort,
+                ),
+                selectedDayPredicate: (day) => _selectedDates.contains(day),
+                onDaySelected: (day, focusedDay) async {
+                  if (!_selectedDates.contains(day)) {
+                    final mealType = await showDialog<String>(
+                      context: ctx,
+                      builder: (ctx2) => SimpleDialog(
+                        title: Text("Meal for ${day.month}/${day.day}"),
+                        children: ['Breakfast', 'Lunch', 'Dinner', 'Snack']
+                            .map(
+                              (m) => SimpleDialogOption(
                                 child: Text(m),
                                 onPressed: () => Navigator.pop(ctx2, m),
-                              ))
-                          .toList(),
-                    ),
-                  );
-                  if (mealType != null) {
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    );
+                    if (mealType != null) {
+                      setDialogState(() {
+                        _selectedDates.add(day);
+                        plannedDates[day] = mealType;
+                      });
+                      Navigator.pop(ctx);
+                    }
+                  } else {
                     setDialogState(() {
-                      _selectedDates.add(day);
-                      plannedDates[day] = mealType;
+                      _selectedDates.remove(day);
+                      plannedDates.remove(day);
                     });
-                    Navigator.pop(ctx);
                   }
-                } else {
-                  setDialogState(() {
-                    _selectedDates.remove(day);
-                    plannedDates.remove(day);
-                  });
-                }
-              },
+                },
+              ),
             ),
           ),
         ),
@@ -662,7 +838,7 @@ class _RecipeCardState extends State<_RecipeCard> {
             color: AppColors.black.withValues(alpha: 0.04),
             blurRadius: 20,
             offset: const Offset(0, 10),
-          )
+          ),
         ],
       ),
       child: Theme(
@@ -677,7 +853,8 @@ class _RecipeCardState extends State<_RecipeCard> {
                     width: 50,
                     height: 50,
                     fit: BoxFit.cover,
-                    errorBuilder: (c, e, s) => Icon(Icons.restaurant, color: widget.brandColor),
+                    errorBuilder: (c, e, s) =>
+                        Icon(Icons.restaurant, color: widget.brandColor),
                   ),
                 )
               : Icon(Icons.restaurant, color: widget.brandColor),
@@ -707,7 +884,10 @@ class _RecipeCardState extends State<_RecipeCard> {
                     foregroundColor: widget.brandColor,
                     side: BorderSide(color: widget.brandColor),
                     padding: const EdgeInsets.symmetric(horizontal: 10),
-                    textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                    textStyle: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                 ),
@@ -724,11 +904,16 @@ class _RecipeCardState extends State<_RecipeCard> {
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Row(
                   children: [
-                    Icon(Icons.timer_outlined, size: 16, color: AppColors.textHint),
+                    Icon(
+                      Icons.timer_outlined,
+                      size: 16,
+                      color: AppColors.textHint,
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       [
-                        if (readyInMinutes != null) 'Ready in $readyInMinutes min',
+                        if (readyInMinutes != null)
+                          'Ready in $readyInMinutes min',
                         if (servings != null) 'Serves: $servings',
                       ].join('  |  '),
                       style: TextStyle(
@@ -764,12 +949,18 @@ class _RecipeCardState extends State<_RecipeCard> {
             Wrap(
               spacing: 6,
               runSpacing: 6,
-              children: ingredients.map((i) => Chip(
-                label: Text(i, style: const TextStyle(fontSize: 11)),
-                backgroundColor: widget.brandColor.withValues(alpha: 0.05),
-                side: BorderSide.none,
-                shape: const StadiumBorder(),
-              )).toList(),
+              children: ingredients
+                  .map(
+                    (i) => Chip(
+                      label: Text(i, style: const TextStyle(fontSize: 11)),
+                      backgroundColor: widget.brandColor.withValues(
+                        alpha: 0.05,
+                      ),
+                      side: BorderSide.none,
+                      shape: const StadiumBorder(),
+                    ),
+                  )
+                  .toList(),
             ),
 
             const SizedBox(height: 15),
@@ -826,18 +1017,31 @@ class _TypingIndicator extends StatefulWidget {
   State<_TypingIndicator> createState() => _TypingIndicatorState();
 }
 
-class _TypingIndicatorState extends State<_TypingIndicator> with TickerProviderStateMixin {
+class _TypingIndicatorState extends State<_TypingIndicator>
+    with TickerProviderStateMixin {
   late List<AnimationController> _controllers;
   @override
   void initState() {
     super.initState();
-    _controllers = List.generate(3, (i) => AnimationController(vsync: this, duration: const Duration(milliseconds: 600)));
+    _controllers = List.generate(
+      3,
+      (i) => AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 600),
+      ),
+    );
     for (int i = 0; i < 3; i++) {
-      Future.delayed(Duration(milliseconds: i * 200), () { if (mounted) _controllers[i].repeat(reverse: true); });
+      Future.delayed(Duration(milliseconds: i * 200), () {
+        if (mounted) _controllers[i].repeat(reverse: true);
+      });
     }
   }
+
   @override
-  void dispose() { for (var c in _controllers) c.dispose(); super.dispose(); }
+  void dispose() {
+    for (var c in _controllers) c.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -845,17 +1049,42 @@ class _TypingIndicatorState extends State<_TypingIndicator> with TickerProviderS
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
         children: [
-          CircleAvatar(backgroundColor: AppColors.brand, radius: 12, child: const Icon(Icons.auto_awesome, color: AppColors.surface, size: 12)),
+          CircleAvatar(
+            backgroundColor: AppColors.brand,
+            radius: 12,
+            child: const Icon(
+              Icons.auto_awesome,
+              color: AppColors.surface,
+              size: 12,
+            ),
+          ),
           const SizedBox(width: 10),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(color: AppColors.surface.withValues(alpha: 0.8), borderRadius: BorderRadius.circular(15)),
+            decoration: BoxDecoration(
+              color: AppColors.surface.withValues(alpha: 0.8),
+              borderRadius: BorderRadius.circular(15),
+            ),
             child: Row(
-              children: List.generate(3, (i) => AnimatedBuilder(
-                animation: _controllers[i],
-                builder: (context, child) => Transform.translate(offset: Offset(0, -4 * _controllers[i].value), child: child),
-                child: Container(margin: const EdgeInsets.symmetric(horizontal: 2), width: 6, height: 6, decoration: const BoxDecoration(color: AppColors.statusNone, shape: BoxShape.circle)),
-              )),
+              children: List.generate(
+                3,
+                (i) => AnimatedBuilder(
+                  animation: _controllers[i],
+                  builder: (context, child) => Transform.translate(
+                    offset: Offset(0, -4 * _controllers[i].value),
+                    child: child,
+                  ),
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(
+                      color: AppColors.statusNone,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
         ],
