@@ -9,6 +9,8 @@ import '../db/food.dart';
 import 'package:nutrition_assistant/navigation/nav_helper.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
 import 'package:nutrition_assistant/widgets/fatsecret_attribution.dart';
+import '../widgets/top_bar.dart';
+
 
 class FoodSearchScreen extends ConsumerStatefulWidget {
   final bool isInPageView;
@@ -525,112 +527,82 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final authUser = ref.watch(authServiceProvider);
+    final userId = authUser?.uid;
+    final userProfileAsync = userId != null
+    ? ref.watch(firestoreUserProfileProvider(userId))
+    : const AsyncValue.loading();
+    final name = userProfileAsync.valueOrNull?.firstname ?? 'User';
+
+
     final bodyContent = SafeArea(
       top: false,
       child: Column(
         children: [
           // Header
-          Container(
-            padding: EdgeInsets.fromLTRB(
-              16,
-              MediaQuery.of(context).padding.top + 20,
-              16,
-              16,
-            ),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppColors.brand,
-                  AppColors.brand.withValues(alpha: 0.85),
+          top_bar(),
+          // Search bar
+          Padding(
+            padding: const EdgeInsets.only(top: 20.0), // Increase this number to push it further down
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05), 
+                    blurRadius: 10,
+                    offset: const Offset(0, 4), 
+                  ),
                 ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
               ),
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(24),
-                bottomRight: Radius.circular(24),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.brand.withValues(alpha: 0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Text(
-                    'Food Search',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.surface,
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Search for Foods using FatSecret ... ',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchController.text.isEmpty
+                      ? null
+                      : IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _searchController.clear();
+                            _runSearch('');
+                            setState(() {});
+                          },
+                        ),
+                  filled: true,
+                  fillColor: AppColors.surface,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: AppColors.accentBrown.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: AppColors.accentBrown.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: AppColors.accentBrown,
+                      width: 2,
                     ),
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Search for any food and add it to your log',
-                  style: TextStyle(
-                    color: AppColors.surface.withValues(alpha: 0.9),
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Search bar
-          Container(
-            padding: const EdgeInsets.all(16),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search foods (FatSecret)...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchController.text.isEmpty
-                    ? null
-                    : IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                          _runSearch('');
-                          setState(() {});
-                        },
-                      ),
-                filled: true,
-                fillColor: AppColors.surface,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: AppColors.accentBrown.withValues(alpha: 0.3),
-                  ),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: AppColors.accentBrown.withValues(alpha: 0.3),
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: AppColors.accentBrown,
-                    width: 2,
-                  ),
-                ),
+                onChanged: (value) {
+                  setState(() {});
+                  _onSearchQueryChanged(value);
+                },
+                onSubmitted: (value) {
+                  _debounce?.cancel();
+                  FocusScope.of(context).unfocus();
+                  _runSearch(value, includeSuggestions: false);
+                },
+                onTapOutside: (_) => FocusScope.of(context).unfocus(),
               ),
-              onChanged: (value) {
-                setState(() {});
-                _onSearchQueryChanged(value);
-              },
-              onSubmitted: (value) {
-                _debounce?.cancel();
-                FocusScope.of(context).unfocus();
-                _runSearch(value, includeSuggestions: false);
-              },
-              onTapOutside: (_) => FocusScope.of(context).unfocus(),
             ),
           ),
           if (_suggestions.isNotEmpty)
@@ -699,8 +671,8 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                         const SizedBox(height: 16),
                         Text(
                           _searchController.text.isEmpty
-                              ? 'Start typing to search for foods'
-                              : 'No results found',
+                              ? 'What\'s on the menu today, $name?'
+                              : 'No Results Found',
                           style: TextStyle(
                             fontSize: 16,
                             color: AppColors.textHint,
@@ -709,7 +681,7 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                         if (_searchController.text.isEmpty) ...[
                           const SizedBox(height: 8),
                           Text(
-                            'Try searching for "apple", "chicken", or "rice"',
+                            'Try: "Chobani", "Chicken", or any fast food!',
                             style: TextStyle(
                               fontSize: 14,
                               color: AppColors.statusNone,
