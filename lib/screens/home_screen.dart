@@ -19,6 +19,13 @@ class HomeScreen extends ConsumerWidget {
 
   const HomeScreen({super.key, this.isInPageView = false});
 
+  String _timeBasedGreeting(DateTime now) {
+    final hour = now.hour;
+    if (hour < 12) return 'Good Morning'; //midnight to noon
+    if (hour < 17) return 'Good Afternoon'; //noon to 5pm
+    return 'Good Evening'; //5pm to midnight
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authUser = ref.watch(authServiceProvider);
@@ -31,6 +38,8 @@ class HomeScreen extends ConsumerWidget {
         : const AsyncValue.loading();
     final foodSuggestionsAsync = ref.watch(foodSuggestionsProvider);
     final name = userProfileAsync.valueOrNull?.firstname ?? 'User';
+    final now = DateTime.now();
+    final greeting = _timeBasedGreeting(now);
 
     final bodyContent = SafeArea(
       top: false,
@@ -48,7 +57,7 @@ class HomeScreen extends ConsumerWidget {
                   children: [
                     Semantics(
                       button: true,
-                      label: 'Go to profile. Good Morning, $name!',
+                      label: 'Go to profile. $greeting, $name!',
                       excludeSemantics: true,
                       child: GestureDetector(
                         onTap: () {
@@ -86,7 +95,7 @@ class HomeScreen extends ConsumerWidget {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
-                                    'Good Morning,',
+                                    '$greeting,',
                                     style: TextStyle(
                                       fontSize:
                                           MediaQuery.of(context).size.height *
@@ -109,7 +118,7 @@ class HomeScreen extends ConsumerWidget {
                                   Text(
                                     DateFormat(
                                       'EEEE, MMM d',
-                                    ).format(DateTime.now()),
+                                    ).format(now),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
