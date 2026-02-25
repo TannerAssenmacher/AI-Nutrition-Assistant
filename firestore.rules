@@ -1,7 +1,61 @@
+rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function ownsByUid(data) {
+      return isSignedIn() &&
+        data.userId is string &&
+        data.userId == request.auth.uid;
+    }
+
+    function ownsByEmail(data) {
+      return isSignedIn() &&
+        request.auth.token.email != null &&
+        data.userEmail is string &&
+        data.userEmail == request.auth.token.email;
+    }
+
+    function ownsLegacyDoc(data) {
+      return ownsByUid(data) || ownsByEmail(data);
+    }
+
+    match /Users/{userId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+
+      match /food_log/{entryId} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
+      }
+
+      match /scheduled_meals/{mealId} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
+      }
+    }
+
+    // Recipe catalog is read-only for clients.
+    // Cloud Functions/Admin SDK can still write via service account.
+    match /recipes/{recipeId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // Legacy top-level collections kept user-scoped for backward compatibility.
+    match /Meals/{mealId} {
+      allow create: if ownsLegacyDoc(request.resource.data);
+      allow read, update, delete: if ownsLegacyDoc(resource.data);
+    }
+
+    match /DailyLogs/{logId} {
+      allow create: if ownsLegacyDoc(request.resource.data);
+      allow read, update, delete: if ownsLegacyDoc(resource.data);
+    }
+
+    // Default deny for everything else.
     match /{document=**} {
-      allow read, write: if true; // ⚠️ testing only
+      allow read, write: if false;
     }
   }
 }
