@@ -1188,6 +1188,10 @@ PODS:
     - abseil/meta/type_traits
     - abseil/xcprivacy
   - abseil/xcprivacy (1.20240722.0)
+  - AppCheckCore (11.2.0):
+    - GoogleUtilities/Environment (~> 8.0)
+    - GoogleUtilities/UserDefaults (~> 8.0)
+    - PromisesObjC (~> 2.4)
   - BoringSSL-GRPC (0.0.37):
     - BoringSSL-GRPC/Implementation (= 0.0.37)
     - BoringSSL-GRPC/Interface (= 0.0.37)
@@ -1218,6 +1222,11 @@ PODS:
   - Firebase/Storage (12.8.0):
     - Firebase/CoreOnly
     - FirebaseStorage (~> 12.8.0)
+  - firebase_app_check (0.4.1-4):
+    - Firebase/CoreOnly (~> 12.8.0)
+    - firebase_core
+    - FirebaseAppCheck (~> 12.8.0)
+    - Flutter
   - firebase_auth (6.1.4):
     - Firebase/Auth (= 12.8.0)
     - firebase_core
@@ -1229,6 +1238,12 @@ PODS:
     - Firebase/Storage (= 12.8.0)
     - firebase_core
     - Flutter
+  - FirebaseAppCheck (12.8.0):
+    - AppCheckCore (~> 11.0)
+    - FirebaseAppCheckInterop (~> 12.8.0)
+    - FirebaseCore (~> 12.8.0)
+    - GoogleUtilities/Environment (~> 8.1)
+    - GoogleUtilities/UserDefaults (~> 8.1)
   - FirebaseAppCheckInterop (12.8.0)
   - FirebaseAuth (12.8.0):
     - FirebaseAppCheckInterop (~> 12.8.0)
@@ -1307,6 +1322,9 @@ PODS:
     - GoogleUtilities/Privacy
   - GoogleUtilities/Privacy (8.1.0)
   - GoogleUtilities/Reachability (8.1.0):
+    - GoogleUtilities/Logger
+    - GoogleUtilities/Privacy
+  - GoogleUtilities/UserDefaults (8.1.0):
     - GoogleUtilities/Logger
     - GoogleUtilities/Privacy
   - "gRPC-C++ (1.69.0)":
@@ -1416,6 +1434,7 @@ PODS:
   - path_provider_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
+  - PromisesObjC (2.4.0)
   - RecaptchaInterop (101.0.0)
   - sqflite_darwin (0.0.4):
     - Flutter
@@ -1427,6 +1446,7 @@ DEPENDENCIES:
   - camera_avfoundation (from `.symlinks/plugins/camera_avfoundation/ios`)
   - cloud_firestore (from `.symlinks/plugins/cloud_firestore/ios`)
   - cloud_functions (from `.symlinks/plugins/cloud_functions/ios`)
+  - firebase_app_check (from `.symlinks/plugins/firebase_app_check/ios`)
   - firebase_auth (from `.symlinks/plugins/firebase_auth/ios`)
   - firebase_core (from `.symlinks/plugins/firebase_core/ios`)
   - firebase_storage (from `.symlinks/plugins/firebase_storage/ios`)
@@ -1441,8 +1461,10 @@ DEPENDENCIES:
 SPEC REPOS:
   trunk:
     - abseil
+    - AppCheckCore
     - BoringSSL-GRPC
     - Firebase
+    - FirebaseAppCheck
     - FirebaseAppCheckInterop
     - FirebaseAuth
     - FirebaseAuthInterop
@@ -1461,6 +1483,7 @@ SPEC REPOS:
     - GTMSessionFetcher
     - leveldb-library
     - nanopb
+    - PromisesObjC
     - RecaptchaInterop
 
 EXTERNAL SOURCES:
@@ -1470,6 +1493,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/cloud_firestore/ios"
   cloud_functions:
     :path: ".symlinks/plugins/cloud_functions/ios"
+  firebase_app_check:
+    :path: ".symlinks/plugins/firebase_app_check/ios"
   firebase_auth:
     :path: ".symlinks/plugins/firebase_auth/ios"
   firebase_core:
@@ -1493,14 +1518,17 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   abseil: a05cc83bf02079535e17169a73c5be5ba47f714b
+  AppCheckCore: cc8fd0a3a230ddd401f326489c99990b013f0c4f
   BoringSSL-GRPC: dded2a44897e45f28f08ae87a55ee4bcd19bc508
   camera_avfoundation: 5675ca25298b6f81fa0a325188e7df62cc217741
   cloud_firestore: 4bd00c3464706d9e09dabac0bb8e9610456109f5
   cloud_functions: 20f0d60aa8a30d7bb3dc3c796665e2d9de828b61
   Firebase: 9a58fdbc9d8655ed7b79a19cf9690bb007d3d46d
+  firebase_app_check: 21e404a225ce29ae2ec6dbad503e83fd1c4ac1fb
   firebase_auth: e9031a1dbe04a90d98e8d11ff2302352a1c6d9e8
   firebase_core: ee30637e6744af8e0c12a6a1e8a9718506ec2398
   firebase_storage: 74ebe330dac8084b22991cd1e1abd4a49bc14daf
+  FirebaseAppCheck: 11da425929a45c677d537adfff3520ccd57c1690
   FirebaseAppCheckInterop: ba3dc604a89815379e61ec2365101608d365cf7d
   FirebaseAuth: 4c289b1a43f5955283244a55cf6bd616de344be5
   FirebaseAuthInterop: 95363fe96493cb4f106656666a0768b420cba090
@@ -1524,6 +1552,7 @@ SPEC CHECKSUMS:
   mobile_scanner: 9157936403f5a0644ca3779a38ff8404c5434a93
   nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
   path_provider_foundation: bb55f6dbba17d0dccd6737fe6f7f34fbd0376880
+  PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
   RecaptchaInterop: 11e0b637842dfb48308d242afc3f448062325aba
   sqflite_darwin: 20b2a3a3b70e43edae938624ce550a3cbf66a3d0
   url_launcher_ios: 7a95fa5b60cc718a708b8f2966718e93db0cef1b

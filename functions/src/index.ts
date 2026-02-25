@@ -34,6 +34,40 @@ const FATSECRET_API_BASE_URL = "https://platform.fatsecret.com/rest";
 const FATSECRET_SEARCH_OAUTH_SCOPE = "premier";
 const FATSECRET_BARCODE_OAUTH_SCOPE = "barcode";
 const FATSECRET_TOKEN_REFRESH_BUFFER_MS = 60_000;
+const MAX_IMAGE_PAYLOAD_BYTES = 5 * 1024 * 1024;
+const MAX_IMAGE_BASE64_CHARS = Math.ceil((MAX_IMAGE_PAYLOAD_BYTES * 4) / 3) + 4;
+const MAX_GEMINI_PROMPT_CHARS = 4_000;
+const MAX_GEMINI_SYSTEM_INSTRUCTION_CHARS = 4_000;
+const MAX_HISTORY_ITEMS = 20;
+const MAX_HISTORY_TEXT_CHARS = 1_000;
+const MAX_SEARCH_QUERY_CHARS = 500;
+const MAX_FILTER_ITEMS = 40;
+const MAX_FILTER_TEXT_CHARS = 80;
+const MAX_EXCLUDE_IDS = 200;
+const MAX_SEARCH_LIMIT = 20;
+const MAX_ANALYZED_FOOD_ITEMS = 25;
+const PROXY_IMAGE_TIMEOUT_MS = 8_000;
+const PROXY_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+const PROXY_IMAGE_HOST = "img.spoonacular.com";
+const OPENAI_TIMEOUT_MS = 30_000;
+const ALLOWED_IMAGE_MIME_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+]);
+const ALLOWED_GEMINI_MODELS = new Set([
+  "gemini-2.5-flash",
+  "gemini-2.5-pro",
+  "gemini-1.5-flash",
+  "gemini-1.5-pro",
+]);
+const ALLOWED_PROXY_ORIGINS = [
+  /^https:\/\/ai-nutrition-assistant-e2346\.web\.app$/,
+  /^https:\/\/ai-nutrition-assistant-e2346\.firebaseapp\.com$/,
+  /^http:\/\/localhost(?::\d+)?$/,
+];
 
 // PostgreSQL connection pool (lazy initialization)
 let pool: Pool | null = null;
@@ -75,12 +109,13 @@ async function generateEmbedding(text: string): Promise<number[]> {
   // Use v1beta API with gemini-embedding-001
   // Note: text-embedding-004 was shut down on January 14, 2026
   // Using outputDimensionality=768 for compatibility with existing embeddings
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${apiKey}`;
-
-  const fetch = (await import("node-fetch")).default;
+  const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent";
   const response = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": apiKey,
+    },
     body: JSON.stringify({
       model: "models/gemini-embedding-001",
       content: { parts: [{ text }] },
@@ -89,11 +124,8 @@ async function generateEmbedding(text: string): Promise<number[]> {
   });
 
   if (!response.ok) {
-    const error = await response.text();
-    console.error(`Embedding API error: ${response.status}`);
-    console.error(`Full error response: ${error}`);
-    console.error(`Request URL: ${url}`);
-    throw new Error(`Embedding API error: ${response.status} - ${error}`);
+    console.error(`Embedding API failed with status ${response.status}`);
+    throw new Error(`Embedding API error: ${response.status}`);
   }
 
   const data = await response.json() as any;
@@ -568,34 +600,88 @@ function scoreRecipe(
  * Proxies Spoonacular images so they can be loaded on Flutter Web
  */
 export const proxyImage = onRequest(
-  { cors: true },
+  { cors: ALLOWED_PROXY_ORIGINS },
   async (request, response) => {
-    const imageUrl = request.query.url as string;
+    const imageUrlRaw = (request.query.url || "").toString().trim();
 
-    if (!imageUrl || !imageUrl.startsWith('https://img.spoonacular.com/')) {
-      response.status(400).send('Invalid image URL');
+    if (!imageUrlRaw) {
+      response.status(400).send("Missing image URL");
+      return;
+    }
+
+    let imageUrl: URL;
+    try {
+      imageUrl = new URL(imageUrlRaw);
+    } catch (_) {
+      response.status(400).send("Invalid image URL");
+      return;
+    }
+
+    if (
+      imageUrl.protocol !== "https:" ||
+      imageUrl.hostname.toLowerCase() !== PROXY_IMAGE_HOST
+    ) {
+      response.status(400).send("Invalid image URL");
       return;
     }
 
     try {
-      const fetch = (await import('node-fetch')).default;
-      const imageResponse = await fetch(imageUrl);
+      const abortController = new AbortController();
+      const timeoutHandle = setTimeout(
+        () => abortController.abort(),
+        PROXY_IMAGE_TIMEOUT_MS
+      );
+      let imageResponse: Response;
+      try {
+        imageResponse = await fetch(imageUrl.toString(), {
+          signal: abortController.signal,
+        });
+      } finally {
+        clearTimeout(timeoutHandle);
+      }
 
       if (!imageResponse.ok) {
-        response.status(404).send('Image not found');
+        response.status(404).send("Image not found");
         return;
       }
 
-      // Set CORS headers
-      response.set('Access-Control-Allow-Origin', '*');
-      response.set('Cache-Control', 'public, max-age=86400'); // Cache for 1 day
-      response.set('Content-Type', imageResponse.headers.get('content-type') || 'image/jpeg');
+      const contentTypeRaw = (imageResponse.headers.get("content-type") || "")
+        .split(";")[0]
+        .trim()
+        .toLowerCase();
+      if (!ALLOWED_IMAGE_MIME_TYPES.has(contentTypeRaw)) {
+        response.status(415).send("Unsupported image format");
+        return;
+      }
+
+      const contentLengthHeader = imageResponse.headers.get("content-length");
+      const contentLength =
+        contentLengthHeader === null ? null : Number(contentLengthHeader);
+      if (
+        contentLength !== null &&
+        Number.isFinite(contentLength) &&
+        contentLength > PROXY_IMAGE_MAX_BYTES
+      ) {
+        response.status(413).send("Image too large");
+        return;
+      }
 
       const arrayBuffer = await imageResponse.arrayBuffer();
+      if (arrayBuffer.byteLength > PROXY_IMAGE_MAX_BYTES) {
+        response.status(413).send("Image too large");
+        return;
+      }
+
+      response.set("Cache-Control", "public, max-age=86400");
+      response.set("Content-Type", contentTypeRaw || "image/jpeg");
       response.send(Buffer.from(arrayBuffer));
     } catch (error) {
-      console.error('Error proxying image:', error);
-      response.status(500).send('Error loading image');
+      if (error instanceof Error && error.name === "AbortError") {
+        response.status(504).send("Image fetch timed out");
+        return;
+      }
+      console.error("Error proxying image:", error);
+      response.status(502).send("Error loading image");
     }
   }
 );
@@ -620,15 +706,21 @@ export const callGemini = onCall(
       );
     }
 
-    const prompt = (request.data?.prompt || '').toString();
-    const systemInstruction = (request.data?.systemInstruction || '').toString();
-    const modelName =
-      (request.data?.model || 'gemini-2.5-flash').toString().trim() ||
-      'gemini-2.5-flash';
-    const imageBase64 = normalizeBase64Payload(
-      (request.data?.imageBase64 || '').toString()
+    const data = toRequestData(request.data);
+    const prompt = sanitizeTextInput(data.prompt, MAX_GEMINI_PROMPT_CHARS);
+    const systemInstruction = sanitizeTextInput(
+      data.systemInstruction,
+      MAX_GEMINI_SYSTEM_INSTRUCTION_CHARS
     );
-    const mimeType = (request.data?.mimeType || 'image/jpeg').toString();
+    const requestedModel = sanitizeTextInput(
+      data.model || 'gemini-2.5-flash',
+      64
+    ).toLowerCase();
+    const modelName = ALLOWED_GEMINI_MODELS.has(requestedModel)
+      ? requestedModel
+      : 'gemini-2.5-flash';
+    const imageBase64 = normalizeBase64Payload((data.imageBase64 || '').toString());
+    const mimeType = sanitizeTextInput(data.mimeType || 'image/jpeg', 64).toLowerCase();
 
     if (!prompt.trim() && !imageBase64) {
       throw new HttpsError(
@@ -637,24 +729,37 @@ export const callGemini = onCall(
       );
     }
 
-    const rawHistory = Array.isArray(request.data?.history)
-      ? request.data.history
+    if (imageBase64.length > MAX_IMAGE_BASE64_CHARS) {
+      throw new HttpsError('invalid-argument', 'imageBase64 exceeds size limits');
+    }
+
+    if (imageBase64) {
+      validateImagePayload(imageBase64, mimeType);
+    }
+
+    const rawHistory = Array.isArray(data.history)
+      ? data.history.slice(-MAX_HISTORY_ITEMS)
       : [];
     const history = rawHistory
       .map((entry: any) => {
-        const text = (entry?.text || '').toString().trim();
+        const text = sanitizeTextInput(entry?.text, MAX_HISTORY_TEXT_CHARS);
         if (!text) {
           return null;
         }
         const roleRaw = (entry?.role || '').toString().toLowerCase();
-        const role = roleRaw === 'model' ? 'model' : 'user';
+        const role: 'model' | 'user' = roleRaw === 'model' ? 'model' : 'user';
         return {
           role,
           parts: [{ text }],
         };
       })
-      .filter((entry: any) => entry !== null)
-      .slice(-20);
+      .filter(
+        (
+          entry
+        ): entry is { role: 'model' | 'user'; parts: Array<{ text: string }> } =>
+          entry !== null
+      )
+      .slice(-MAX_HISTORY_ITEMS);
 
     try {
       const { GoogleGenerativeAI } = await import('@google/generative-ai');
@@ -699,9 +804,8 @@ export const callGemini = onCall(
       if (error instanceof HttpsError) {
         throw error;
       }
-      const errMsg = error instanceof Error ? error.message : String(error);
-      console.error('Gemini callable failed:', errMsg);
-      throw new HttpsError('internal', `Gemini request failed: ${errMsg}`);
+      console.error('Gemini callable failed:', error);
+      throw new HttpsError('internal', 'Gemini request failed');
     }
   }
 );
@@ -715,6 +819,8 @@ export const analyzeMealImage = onCall(
     cors: true,
     invoker: 'public',
     secrets: [openAiApiKey],
+    timeoutSeconds: 120,
+    memory: '512MiB',
   },
   async (request) => {
     if (!request.auth) {
@@ -724,79 +830,92 @@ export const analyzeMealImage = onCall(
       );
     }
 
-    const imageBase64Raw = (request.data?.imageBase64 || '').toString();
+    const data = toRequestData(request.data);
+    const imageBase64Raw = (data.imageBase64 || '').toString();
     const imageBase64 = normalizeBase64Payload(imageBase64Raw);
-    const mimeType = (request.data?.mimeType || 'image/jpeg').toString();
-    const userContextRaw = (request.data?.userContext || '').toString().trim();
-    const userContext = userContextRaw.length > 500
-      ? userContextRaw.substring(0, 500)
-      : userContextRaw;
+    const mimeType = sanitizeTextInput(data.mimeType || 'image/jpeg', 64).toLowerCase();
+    const userContext = sanitizeTextInput(data.userContext, 500);
 
     if (!imageBase64) {
       throw new HttpsError('invalid-argument', 'imageBase64 is required');
     }
+    if (imageBase64.length > MAX_IMAGE_BASE64_CHARS) {
+      throw new HttpsError('invalid-argument', 'imageBase64 exceeds size limits');
+    }
+    validateImagePayload(imageBase64, mimeType);
 
     const imageUrl = `data:${mimeType};base64,${imageBase64}`;
 
     try {
-      const response = await fetch('https://api.openai.com/v1/responses', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${openAiApiKey.value()}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-5.2',
-          reasoning: { effort: 'low' },
-          max_output_tokens: 3000,
-          input: [
-            {
-              role: 'system',
-              content: [
-                {
-                  type: 'input_text',
-                  text: 'You are a nutrition expert. Analyze meal images and return ONLY valid JSON. '
-                    + 'THINK STEP-BY-STEP (internally) BEFORE ANSWERING: identify foods → determine mass → derive per-gram macros → scale to mass → compute calories with 4/4/9 → sanity-check totals. '
-                    + 'DO NOT return your reasoning, only the final JSON. '
-                    + 'OUTPUT FORMAT: {"f":[{"n":"food name","m":grams,"k":calories,"p":protein_g,"c":carbs_g,"a":fat_g}]} '
-                    + 'RULES: '
-                    + '- All numeric values must be numbers, not strings. '
-                    + '- Use at least 1 decimal place for grams/calories when appropriate. '
-                    + '- k MUST equal (p×4)+(c×4)+(a×9) exactly. '
-                    + '- If a scale shows weight, that is the authoritative mass; for multiple items on one scale, estimate proportional weight per item. '
-                    + '- Prefer slightly conservative estimates over overestimates when uncertain. '
-                    + 'Example: 150g chicken breast → ~46.5g protein, ~0g carbs, ~4.5g fat → (46.5×4)+(0×4)+(4.5×9) = 226.5 calories',
-                },
-              ],
-            },
-            {
-              role: 'user',
-              content: [
-                {
-                  type: 'input_text',
-                  text: 'Analyze this meal and break down each food item.',
-                },
-                ...(userContext
-                  ? [{
+      const abortController = new AbortController();
+      const timeoutHandle = setTimeout(
+        () => abortController.abort(),
+        OPENAI_TIMEOUT_MS
+      );
+      let response: Response;
+      try {
+        response = await fetch('https://api.openai.com/v1/responses', {
+          method: 'POST',
+          signal: abortController.signal,
+          headers: {
+            Authorization: `Bearer ${openAiApiKey.value()}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'gpt-5.2',
+            reasoning: { effort: 'low' },
+            max_output_tokens: 3000,
+            input: [
+              {
+                role: 'system',
+                content: [
+                  {
                     type: 'input_text',
-                    text: `User context (optional): ${userContext}`,
-                  }]
-                  : []),
-                {
-                  type: 'input_image',
-                  image_url: imageUrl,
-                },
-              ],
-            },
-          ],
-        }),
-      });
+                    text: 'You are a nutrition expert. Analyze meal images and return ONLY valid JSON. '
+                      + 'THINK STEP-BY-STEP (internally) BEFORE ANSWERING: identify foods → determine mass → derive per-gram macros → scale to mass → compute calories with 4/4/9 → sanity-check totals. '
+                      + 'DO NOT return your reasoning, only the final JSON. '
+                      + 'OUTPUT FORMAT: {"f":[{"n":"food name","m":grams,"k":calories,"p":protein_g,"c":carbs_g,"a":fat_g}]} '
+                      + 'RULES: '
+                      + '- All numeric values must be numbers, not strings. '
+                      + '- Use at least 1 decimal place for grams/calories when appropriate. '
+                      + '- k MUST equal (p×4)+(c×4)+(a×9) exactly. '
+                      + '- If a scale shows weight, that is the authoritative mass; for multiple items on one scale, estimate proportional weight per item. '
+                      + '- Prefer slightly conservative estimates over overestimates when uncertain. '
+                      + 'Example: 150g chicken breast → ~46.5g protein, ~0g carbs, ~4.5g fat → (46.5×4)+(0×4)+(4.5×9) = 226.5 calories',
+                  },
+                ],
+              },
+              {
+                role: 'user',
+                content: [
+                  {
+                    type: 'input_text',
+                    text: 'Analyze this meal and break down each food item.',
+                  },
+                  ...(userContext
+                    ? [{
+                      type: 'input_text',
+                      text: `User context (optional): ${userContext}`,
+                    }]
+                    : []),
+                  {
+                    type: 'input_image',
+                    image_url: imageUrl,
+                  },
+                ],
+              },
+            ],
+          }),
+        });
+      } finally {
+        clearTimeout(timeoutHandle);
+      }
 
       if (!response.ok) {
-        const body = await response.text();
+        console.error(`OpenAI image analysis failed with status ${response.status}`);
         throw new HttpsError(
           'unavailable',
-          `OpenAI API error: ${response.status} ${response.statusText} - ${body}`
+          'Meal analysis provider request failed'
         );
       }
 
@@ -809,6 +928,9 @@ export const analyzeMealImage = onCall(
     } catch (error) {
       if (error instanceof HttpsError) {
         throw error;
+      }
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new HttpsError('deadline-exceeded', 'Meal analysis request timed out');
       }
       console.error('analyzeMealImage failed:', error);
       throw new HttpsError('internal', 'Meal analysis failed');
@@ -1537,7 +1659,7 @@ export const searchFoods = onCall(
       );
     }
 
-    const query = (request.data?.query || "").toString().trim();
+    const query = sanitizeTextInput(request.data?.query, 120);
     if (!query) {
       throw new HttpsError("invalid-argument", "Query is required");
     }
@@ -1597,7 +1719,7 @@ export const autocompleteFoods = onCall(
       );
     }
 
-    const expression = (request.data?.expression || "").toString().trim();
+    const expression = sanitizeTextInput(request.data?.expression, 120);
     if (expression.length < 2) {
       return { suggestions: [] as string[] };
     }
@@ -1661,6 +1783,88 @@ function toNullableNumber(value: unknown): number | null {
     return Number.isFinite(parsed) ? parsed : null;
   }
   return null;
+}
+
+function clampNumber(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) {
+    return min;
+  }
+  return Math.min(max, Math.max(min, value));
+}
+
+function toRequestData(value: unknown): Record<string, any> {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, any>;
+  }
+  return {};
+}
+
+function sanitizeTextInput(value: unknown, maxLength: number): string {
+  const normalized = (value ?? "").toString().trim();
+  if (!normalized) {
+    return "";
+  }
+  return normalized.substring(0, maxLength);
+}
+
+function sanitizeStringArray(
+  value: unknown,
+  maxItems: number,
+  maxItemLength: number
+): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const sanitized: string[] = [];
+  const seen = new Set<string>();
+  for (const entry of value) {
+    const item = sanitizeTextInput(entry, maxItemLength);
+    if (!item) {
+      continue;
+    }
+    const key = item.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    sanitized.push(item);
+    if (sanitized.length >= maxItems) {
+      break;
+    }
+  }
+
+  return sanitized;
+}
+
+function estimateBase64DecodedBytes(base64: string): number {
+  const normalized = base64.replace(/\s+/g, "");
+  if (!normalized) {
+    return 0;
+  }
+
+  let padding = 0;
+  if (normalized.endsWith("==")) {
+    padding = 2;
+  } else if (normalized.endsWith("=")) {
+    padding = 1;
+  }
+
+  return Math.max(0, Math.floor((normalized.length * 3) / 4) - padding);
+}
+
+function validateImagePayload(base64: string, mimeType: string): void {
+  if (!ALLOWED_IMAGE_MIME_TYPES.has(mimeType)) {
+    throw new HttpsError("invalid-argument", "Unsupported image mimeType");
+  }
+
+  const decodedSize = estimateBase64DecodedBytes(base64);
+  if (decodedSize <= 0 || decodedSize > MAX_IMAGE_PAYLOAD_BYTES) {
+    throw new HttpsError(
+      "invalid-argument",
+      "Image payload exceeds the maximum allowed size"
+    );
+  }
 }
 
 function normalizeBase64Payload(value: string): string {
@@ -1763,11 +1967,13 @@ function roundTo(value: number, decimals: number): number {
 }
 
 function normalizeMealAnalysisPayload(payload: any): { f: Array<{ n: string; m: number; k: number; p: number; c: number; a: number }> } {
-  const foodsRaw = Array.isArray(payload?.f)
-    ? payload.f
-    : Array.isArray(payload?.foods)
-      ? payload.foods
-      : [];
+  const foodsRaw = (
+    Array.isArray(payload?.f)
+      ? payload.f
+      : Array.isArray(payload?.foods)
+        ? payload.foods
+        : []
+  ).slice(0, MAX_ANALYZED_FOOD_ITEMS);
 
   const foods = foodsRaw.map((item: any, index: number) => {
     const nameRaw =
@@ -1799,32 +2005,88 @@ export const searchRecipes = onCall<SearchParams>(
     secrets: [pgPassword, geminiApiKey],
   },
   async (request) => {
-    const {
-      query,
-      mealType,
-      cuisineType,
-      healthRestrictions = [],
-      dietaryHabits = [],
-      dislikes = [],
-      likes = [],
-      excludeIds = [],
-      limit = 10,
-      // User profile data
-      sex,
-      activityLevel,
-      dietaryGoal,
-      dailyCalorieGoal,
-      macroGoals,
-      // Today's consumption data
-      consumedCalories,
-      consumedMealTypes = [],
-      // consumedMacros is sent by client but not yet used in scoring
-      // (macro matching uses percentage goals, not remaining grams)
-      // Physical profile
-      dob,
-      height,
-      weight,
-    } = request.data;
+    if (!request.auth) {
+      throw new HttpsError(
+        "unauthenticated",
+        "User must be authenticated to search recipes"
+      );
+    }
+
+    const data = toRequestData(request.data);
+    const query = sanitizeTextInput(data.query, MAX_SEARCH_QUERY_CHARS);
+    const mealType = sanitizeTextInput(data.mealType, 24).toLowerCase();
+    const cuisineType = sanitizeTextInput(data.cuisineType, 40);
+    const healthRestrictions = sanitizeStringArray(
+      data.healthRestrictions,
+      MAX_FILTER_ITEMS,
+      MAX_FILTER_TEXT_CHARS
+    );
+    const dietaryHabits = sanitizeStringArray(
+      data.dietaryHabits,
+      MAX_FILTER_ITEMS,
+      MAX_FILTER_TEXT_CHARS
+    );
+    const dislikes = sanitizeStringArray(
+      data.dislikes,
+      MAX_FILTER_ITEMS,
+      MAX_FILTER_TEXT_CHARS
+    );
+    const likes = sanitizeStringArray(
+      data.likes,
+      MAX_FILTER_ITEMS,
+      MAX_FILTER_TEXT_CHARS
+    );
+    const excludeIds = sanitizeStringArray(data.excludeIds, MAX_EXCLUDE_IDS, 128);
+    const limitInput = toNullableNumber(data.limit) ?? 10;
+    const limit = Math.floor(clampNumber(limitInput, 1, MAX_SEARCH_LIMIT));
+    const activityLevel = sanitizeTextInput(data.activityLevel, 40);
+    const dietaryGoal = sanitizeTextInput(data.dietaryGoal, 48);
+    const dailyCalorieGoalInput = toNullableNumber(data.dailyCalorieGoal);
+    const dailyCalorieGoal =
+      dailyCalorieGoalInput !== null && dailyCalorieGoalInput > 0
+        ? Math.floor(clampNumber(dailyCalorieGoalInput, 500, 10_000))
+        : undefined;
+    const macroGoalInput =
+      data.macroGoals && typeof data.macroGoals === "object"
+        ? (data.macroGoals as Record<string, unknown>)
+        : null;
+    const macroGoals = macroGoalInput
+      ? {
+          protein: clampNumber(
+            toNullableNumber(macroGoalInput.protein) ?? 20,
+            5,
+            70
+          ),
+          carbs: clampNumber(
+            toNullableNumber(macroGoalInput.carbs) ?? 50,
+            5,
+            80
+          ),
+          fat: clampNumber(
+            toNullableNumber(macroGoalInput.fat) ?? 30,
+            5,
+            60
+          ),
+        }
+      : undefined;
+    const consumedCaloriesInput = toNullableNumber(data.consumedCalories);
+    const consumedCalories =
+      consumedCaloriesInput === null
+        ? undefined
+        : clampNumber(consumedCaloriesInput, 0, 15_000);
+    const consumedMealTypes = sanitizeStringArray(
+      data.consumedMealTypes,
+      ALL_MEAL_TYPES.length,
+      24
+    )
+      .map((meal) => meal.toLowerCase())
+      .filter(
+        (meal, index, values) =>
+          ALL_MEAL_TYPES.includes(meal) && values.indexOf(meal) === index
+      );
+    const dob = sanitizeTextInput(data.dob, 40);
+    const height = clampNumber(toNullableNumber(data.height) ?? 0, 0, 120);
+    const weight = clampNumber(toNullableNumber(data.weight) ?? 0, 0, 1_400);
 
     try {
       // Build rich query text for semantic search incorporating user goals
@@ -1891,21 +2153,18 @@ export const searchRecipes = onCall<SearchParams>(
           if (age >= 13 && age <= 19) queryParts.push('growth supporting');
         }
 
-        queryText = queryParts.filter(Boolean).join(' ');
+        queryText = queryParts
+          .filter(Boolean)
+          .join(' ')
+          .substring(0, MAX_SEARCH_QUERY_CHARS);
       }
       
       if (!queryText) {
         queryText = 'delicious healthy meal';  // Fallback
       }
 
-      console.log('Searching with query:', queryText);
-      console.log('User profile - Goal:', dietaryGoal, 'Calories:', dailyCalorieGoal, 'Macros:', macroGoals,
-        'Activity:', activityLevel, 'Sex:', sex);
-
       // Generate query embedding
-      console.log('Generating embedding for query...');
       const queryEmbedding = await generateEmbedding(queryText);
-      console.log('Embedding generated successfully. Length:', queryEmbedding.length);
 
       // Build SQL query with filters and vector similarity
       let sql = `
@@ -1984,12 +2243,8 @@ export const searchRecipes = onCall<SearchParams>(
       sql += ` ORDER BY similarity DESC LIMIT $${paramIndex}`;
       params.push(fetchLimit);
 
-      console.log("Executing search query:", sql);
-      console.log("Params:", params.slice(1)); // Skip embedding for logging
-
-      console.log('Querying PostgreSQL...');
       let result = await getPool().query(sql, params);
-      console.log(`PostgreSQL returned ${result.rows.length} results`);
+      console.log(`Recipe search returned ${result.rows.length} initial candidates`);
       let isExactMatch = true;
 
       // If no results with strict filters, try graduated relaxation.
@@ -2062,7 +2317,6 @@ export const searchRecipes = onCall<SearchParams>(
         relaxedSql += ` ORDER BY similarity DESC LIMIT $${relaxedParamIndex}`;
         relaxedParams.push(relaxedFetchLimit);
 
-        console.log("Executing relaxed search (no health restrictions):", relaxedSql);
         result = await getPool().query(relaxedSql, relaxedParams);
 
         // Fallback 2: If still no results, drop cuisine but keep mealType
@@ -2105,7 +2359,6 @@ export const searchRecipes = onCall<SearchParams>(
           fallback2Sql += ` ORDER BY similarity DESC LIMIT $${fb2Index}`;
           fb2Params.push(relaxedFetchLimit);
 
-          console.log("Executing fallback 2 (mealType only):", fallback2Sql);
           result = await getPool().query(fallback2Sql, fb2Params);
         }
       }
@@ -2116,11 +2369,6 @@ export const searchRecipes = onCall<SearchParams>(
         ? calculateSmartCalorieTarget(dailyCalorieGoal, mealType, consumedCalories, consumedMealTypes)
         : { targetCalories: 0, minCalories: 0, maxCalories: 0 };
 
-      console.log('Smart calorie target:', calorieTarget);
-      if (consumedCalories !== undefined) {
-        console.log(`Consumed today: ${consumedCalories} cal, meals: [${consumedMealTypes.join(', ')}]`);
-      }
-
       // Step 2: Filter out label-matched dislikes (hard filter in TypeScript)
       let candidates = result.rows;
       if (dislikes.length > 0) {
@@ -2129,7 +2377,6 @@ export const searchRecipes = onCall<SearchParams>(
           const labelLower = (row.label || '').toLowerCase();
           return !dislikesLower.some(d => labelLower.includes(d));
         });
-        console.log(`After label dislikes filter: ${candidates.length} candidates`);
       }
 
       // Step 3: Score all candidates
@@ -2140,14 +2387,6 @@ export const searchRecipes = onCall<SearchParams>(
       // Step 4: Sort by score descending, take top `limit`
       scored.sort((a, b) => b.totalScore - a.totalScore);
       const topResults = scored.slice(0, limit);
-
-      console.log('Top scored results:', topResults.map(s => ({
-        label: s.row.label,
-        score: s.totalScore.toFixed(3),
-        breakdown: Object.fromEntries(
-          Object.entries(s.breakdown).map(([k, v]) => [k, (v as number).toFixed(3)])
-        ),
-      })));
 
       // Step 5: Firestore enrichment (only for top results — same cost as before)
       const recipes = await Promise.all(
