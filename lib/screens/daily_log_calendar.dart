@@ -552,7 +552,7 @@ class _DailyLogCalendarScreenState
                                 style: Theme.of(context).textTheme.titleSmall
                                     ?.copyWith(
                                       fontWeight: FontWeight.w600,
-                                      color: AppColors.selectionColor,
+                                      color: AppColors.black,
                                     ),
                               ),
                               const SizedBox(height: 8),
@@ -1834,19 +1834,13 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
   OverlayEntry? _statusOverlay;
   Timer? _statusTimer;
   late final TextEditingController _nameController;
-  late final TextEditingController _calController;
-  late final TextEditingController _proteinController;
-  late final TextEditingController _carbController;
-  late final TextEditingController _fatController;
+  late final TextEditingController _gramsController;
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController();
-    _calController = TextEditingController();
-    _proteinController = TextEditingController();
-    _carbController = TextEditingController();
-    _fatController = TextEditingController();
+    _gramsController = TextEditingController();
     _resetControllersFromRow();
   }
 
@@ -1864,19 +1858,13 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
     _statusTimer?.cancel();
     _statusOverlay?.remove();
     _nameController.dispose();
-    _calController.dispose();
-    _proteinController.dispose();
-    _carbController.dispose();
-    _fatController.dispose();
+    _gramsController.dispose();
     super.dispose();
   }
 
   void _resetControllersFromRow() {
     _nameController.text = widget.row.name;
-    _calController.text = widget.row.calories.toStringAsFixed(1);
-    _proteinController.text = widget.row.protein.toStringAsFixed(1);
-    _carbController.text = widget.row.carbs.toStringAsFixed(1);
-    _fatController.text = widget.row.fat.toStringAsFixed(1);
+    _gramsController.text = widget.row.massG.toStringAsFixed(0);
   }
 
   double? _parseMacro(String raw) {
@@ -1930,29 +1918,27 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
 
   Future<void> _saveEdits() async {
     final name = _nameController.text.trim();
-    final calories = _parseMacro(_calController.text);
-    final protein = _parseMacro(_proteinController.text);
-    final carbs = _parseMacro(_carbController.text);
-    final fat = _parseMacro(_fatController.text);
+    final grams = _parseMacro(_gramsController.text);
 
-    if (name.isEmpty ||
-        calories == null ||
-        protein == null ||
-        carbs == null ||
-        fat == null) {
-      _showStatusSnack(
-        'Please enter valid name and macro values.',
-        isError: true,
-      );
+    if (name.isEmpty || grams == null || grams <= 0) {
+      _showStatusSnack('Please enter valid name and grams.', isError: true);
       return;
     }
 
+    final baseMass = widget.row.massG > 0 ? widget.row.massG : 1.0;
+    final caloriesPerGram = widget.row.calories / baseMass;
+    final proteinPerGram = widget.row.protein / baseMass;
+    final carbsPerGram = widget.row.carbs / baseMass;
+    final fatPerGram = widget.row.fat / baseMass;
+
     final updatedRow = widget.row.copyWith(
       name: name,
-      calories: calories,
-      protein: protein,
-      carbs: carbs,
-      fat: fat,
+      amount: '${grams.toStringAsFixed(0)} g',
+      massG: grams,
+      calories: caloriesPerGram * grams,
+      protein: proteinPerGram * grams,
+      carbs: carbsPerGram * grams,
+      fat: fatPerGram * grams,
     );
 
     try {
@@ -2005,36 +1991,23 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
   Widget _macroStatTile({
     required String label,
     required Color color,
-    required bool isEditing,
-    required TextEditingController controller,
     required String value,
     required String unit,
   }) {
-    final textScale = MediaQuery.textScalerOf(
-      context,
-    ).scale(1.0).clamp(1.0, 1.35).toDouble();
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 150),
-      height: 54 * textScale,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+    return Container(
+      height: 60,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: isEditing ? color.withValues(alpha: 0.12) : AppColors.surface,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isEditing
-              ? color.withValues(alpha: 0.45)
-              : AppColors.warmBorder,
-        ),
-        boxShadow: isEditing
-            ? []
-            : [
-                BoxShadow(
-                  color: AppColors.black.withValues(alpha: 0.03),
-                  blurRadius: 5,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+        border: Border.all(color: AppColors.warmBorder),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.black.withValues(alpha: 0.03),
+            blurRadius: 5,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2045,55 +2018,23 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontSize: 10,
+              fontSize: 13,
               fontWeight: FontWeight.w700,
               color: color.withValues(alpha: 0.9),
             ),
           ),
           const SizedBox(height: 2),
-          if (isEditing)
-            Expanded(
-              child: TextField(
-                controller: controller,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                textAlign: TextAlign.right,
-                decoration: InputDecoration(
-                  isDense: true,
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.zero,
-                  hintText: '0 $unit',
-                  hintStyle: TextStyle(
-                    fontSize: 13,
-                    color: color.withValues(alpha: 0.6),
-                  ),
-                ),
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: color.withValues(alpha: 0.95),
-                ),
-              ),
-            )
-          else
-            Expanded(
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerRight,
-                  child: Text(
-                    '$value $unit',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      color: color.withValues(alpha: 0.95),
-                    ),
-                  ),
-                ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              '$value $unit',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: color.withValues(alpha: 0.95),
               ),
             ),
+          ),
         ],
       ),
     );
@@ -2102,7 +2043,7 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -2164,7 +2105,7 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
                                   hintText: 'Meal name',
                                 ),
                                 style: const TextStyle(
-                                  fontSize: 16,
+                                  fontSize: 18,
                                   fontWeight: FontWeight.w800,
                                   color: AppColors.mealText,
                                 ),
@@ -2179,7 +2120,7 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
                                   forceStrutHeight: true,
                                 ),
                                 style: const TextStyle(
-                                  fontSize: 16,
+                                  fontSize: 18,
                                   fontWeight: FontWeight.w800,
                                   color: AppColors.mealText,
                                 ),
@@ -2192,7 +2133,7 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
                       child: Text(
                         '${widget.row.mealType.toUpperCase()} • ${widget.row.amount}',
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 13,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 0.3,
                           color: AppColors.warmDark,
@@ -2226,6 +2167,24 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
               ),
             ],
           ),
+          if (_isEditing) ...[
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: TextField(
+                controller: _gramsController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                textAlign: TextAlign.right,
+                decoration: const InputDecoration(
+                  isDense: true,
+                  labelText: 'Grams',
+                  suffixText: 'g',
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 10),
           Row(
             children: [
@@ -2233,8 +2192,6 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
                 child: _macroStatTile(
                   label: 'Calories',
                   color: AppColors.caloriesCircle,
-                  isEditing: _isEditing,
-                  controller: _calController,
                   value: widget.row.calories.toStringAsFixed(0),
                   unit: 'Cal',
                 ),
@@ -2244,8 +2201,6 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
                 child: _macroStatTile(
                   label: 'Protein',
                   color: AppColors.protein,
-                  isEditing: _isEditing,
-                  controller: _proteinController,
                   value: widget.row.protein.toStringAsFixed(1),
                   unit: 'g',
                 ),
@@ -2259,8 +2214,6 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
                 child: _macroStatTile(
                   label: 'Carbs',
                   color: AppColors.carbs,
-                  isEditing: _isEditing,
-                  controller: _carbController,
                   value: widget.row.carbs.toStringAsFixed(1),
                   unit: 'g',
                 ),
@@ -2270,8 +2223,6 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
                 child: _macroStatTile(
                   label: 'Fat',
                   color: AppColors.fat,
-                  isEditing: _isEditing,
-                  controller: _fatController,
                   value: widget.row.fat.toStringAsFixed(1),
                   unit: 'g',
                 ),
@@ -2529,6 +2480,8 @@ class _FoodRow {
 
   _FoodRow copyWith({
     String? name,
+    String? amount,
+    double? massG,
     double? calories,
     double? protein,
     double? carbs,
@@ -2538,13 +2491,13 @@ class _FoodRow {
       id: id,
       mealType: mealType,
       name: name ?? this.name,
-      amount: amount,
+      amount: amount ?? this.amount,
       calories: calories ?? this.calories,
       protein: protein ?? this.protein,
       carbs: carbs ?? this.carbs,
       fat: fat ?? this.fat,
       fiber: fiber,
-      massG: massG,
+      massG: massG ?? this.massG,
       consumedAt: consumedAt,
     );
   }
@@ -2938,78 +2891,98 @@ class _ScheduledMealCard extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
+                      child: Container(
+                        height: 44,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
                             recipeName,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              fontSize: 16,
+                              fontSize: 18,
                               fontWeight: FontWeight.w800,
                               color: AppColors.mealText,
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${meal.mealType.toUpperCase()} • $dayLabel',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.3,
-                              color: AppColors.warmDark,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          onPressed: () => _confirmAndLogScheduledMeal(
-                            context: context,
-                            ref: ref,
-                            recipeName: recipeName,
-                            calories: calories,
-                            protein: protein,
-                            carbs: carbs,
-                            fat: fat,
-                            dayLabel: dayLabel,
-                          ),
-                          icon: Icon(
-                            Icons.playlist_add_check_rounded,
-                            color: AppColors.accentBrown,
-                          ),
-                          tooltip: 'Log meal',
-                        ),
-                        IconButton(
-                          onPressed: onEdit,
-                          icon: Icon(
-                            Icons.edit,
-                            size: 20,
-                            color: AppColors.warmDarker,
-                          ),
-                          tooltip: 'Edit scheduled meal',
-                        ),
-                        IconButton(
-                          onPressed: onDelete,
-                          icon: Icon(
-                            Icons.delete_outline,
-                            color: AppColors.error,
-                          ),
-                          tooltip: 'Remove scheduled meal',
-                        ),
-                      ],
+                    IconButton(
+                      onPressed: () => _confirmAndLogScheduledMeal(
+                        context: context,
+                        ref: ref,
+                        recipeName: recipeName,
+                        calories: calories,
+                        protein: protein,
+                        carbs: carbs,
+                        fat: fat,
+                        dayLabel: dayLabel,
+                      ),
+                      icon: const Icon(Icons.playlist_add_check_rounded),
+                      tooltip: 'Log meal',
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 32,
+                        minHeight: 32,
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 4),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      child: Text(
+                        '${meal.mealType.toUpperCase()}',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.3,
+                          color: AppColors.warmDark,
+                        ),
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.edit, size: 20),
+                      tooltip: 'Edit scheduled meal',
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 28,
+                        minHeight: 28,
+                      ),
+                      onPressed: onEdit,
+                    ),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        size: 20,
+                        color: AppColors.error,
+                      ),
+                      tooltip: 'Remove scheduled meal',
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 28,
+                        minHeight: 28,
+                      ),
+                      onPressed: onDelete,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
                 Row(
                   children: [
                     Expanded(
@@ -3153,8 +3126,8 @@ class _ScheduledMealCard extends ConsumerWidget {
     required Color color,
   }) {
     return Container(
-      height: 54,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      height: 60,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
@@ -3174,7 +3147,7 @@ class _ScheduledMealCard extends ConsumerWidget {
           Text(
             label,
             style: TextStyle(
-              fontSize: 10,
+              fontSize: 13,
               fontWeight: FontWeight.w700,
               color: color.withValues(alpha: 0.9),
             ),
@@ -3206,123 +3179,76 @@ class _ScheduledMealDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final recipeName = (recipe['label'] ?? 'Recipe').toString();
-    final ingredients = _parseIngredients(recipe['ingredients']);
+    final ingredientSource = meal.ingredientLines.isNotEmpty
+        ? meal.ingredientLines
+        : (recipe['ingredientLines'] ?? recipe['ingredients']);
+    final ingredients = _parseIngredients(ingredientSource);
     final instructions = _parseInstructions(recipe['instructions']);
-    const baseColor = AppColors.recipeSurface;
-    final cardColor = AppColors.surface.withValues(alpha: 0.05);
 
     return Scaffold(
-      backgroundColor: baseColor,
+      backgroundColor: const Color(0xFFF5EDE2),
       appBar: AppBar(
-        backgroundColor: baseColor,
-        foregroundColor: AppColors.surface,
+        backgroundColor: AppColors.mealText,
+        foregroundColor: AppColors.warmLight,
         elevation: 0,
         title: const Text('Recipe Details'),
       ),
       body: SafeArea(
-        child: Stack(
+        child: ListView(
+          padding: const EdgeInsets.all(16),
           children: [
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      AppColors.recipeOverlayHigh,
-                      AppColors.recipeOverlayMid,
-                      AppColors.recipeOverlayFade,
-                    ],
-                    stops: [0.0, 0.34, 0.62],
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFFFFF),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.warmBorder),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    recipeName,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 40,
+                      height: 1.1,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.black,
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 8),
+                  Text(
+                    meal.mealType.toUpperCase(),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      letterSpacing: 1.2,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.black,
+                    ),
+                  ),
+                ],
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: cardColor,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: AppColors.surface.withValues(alpha: 0.14),
-                  ),
-                ),
-                child: ListView(
-                  padding: const EdgeInsets.all(20),
-                  children: [
-                    Text(
-                      recipeName,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 48,
-                        height: 1.1,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.recipeText,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      meal.mealType.toUpperCase(),
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12,
-                        letterSpacing: 1.2,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.navBar,
-                      ),
-                    ),
-                    const SizedBox(height: 22),
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final isWide = constraints.maxWidth >= 700;
-                        if (isWide) {
-                          return IntrinsicHeight(
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: _IngredientsSection(
-                                    ingredients: ingredients,
-                                  ),
-                                ),
-                                Container(
-                                  margin: const EdgeInsets.symmetric(
-                                    horizontal: 18,
-                                  ),
-                                  width: 1.5,
-                                  color: AppColors.black.withValues(
-                                    alpha: 0.18,
-                                  ),
-                                ),
-                                Expanded(
-                                  child: _InstructionsSection(
-                                    instructions: instructions,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }
-
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _IngredientsSection(ingredients: ingredients),
-                            const SizedBox(height: 16),
-                            Container(
-                              height: 1.5,
-                              color: AppColors.surface.withValues(alpha: 0.18),
-                            ),
-                            const SizedBox(height: 16),
-                            _InstructionsSection(instructions: instructions),
-                          ],
-                        );
-                      },
-                    ),
-                  ],
-                ),
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFFFFF),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.warmBorder),
               ),
+              child: _IngredientsSection(ingredients: ingredients),
+            ),
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFFFFF),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.warmBorder),
+              ),
+              child: _InstructionsSection(instructions: instructions),
             ),
           ],
         ),
@@ -3386,7 +3312,7 @@ class _IngredientsSection extends StatelessWidget {
         if (ingredients.isEmpty)
           const Text(
             'No ingredients available.',
-            style: TextStyle(color: AppColors.recipeSubtext, fontSize: 18),
+            style: TextStyle(color: AppColors.black, fontSize: 18),
           )
         else
           ...ingredients.map(
@@ -3400,7 +3326,7 @@ class _IngredientsSection extends StatelessWidget {
                     child: Icon(
                       Icons.circle,
                       size: 10,
-                      color: AppColors.recipeAccent,
+                      color: AppColors.black,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -3410,7 +3336,7 @@ class _IngredientsSection extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 19,
                         height: 1.35,
-                        color: AppColors.recipeBody,
+                        color: AppColors.black,
                       ),
                     ),
                   ),
@@ -3438,7 +3364,7 @@ class _InstructionsSection extends StatelessWidget {
         if (instructions.isEmpty)
           const Text(
             'No instructions available.',
-            style: TextStyle(color: AppColors.recipeSubtext, fontSize: 18),
+            style: TextStyle(color: AppColors.black, fontSize: 18),
           )
         else
           ...instructions.asMap().entries.map(
@@ -3453,12 +3379,12 @@ class _InstructionsSection extends StatelessWidget {
                     alignment: Alignment.center,
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppColors.recipeAccent,
+                      color: AppColors.black,
                     ),
                     child: Text(
                       '${entry.key + 1}',
                       style: const TextStyle(
-                        color: AppColors.surface,
+                        color: AppColors.warmLight,
                         fontWeight: FontWeight.w700,
                         fontSize: 19,
                       ),
@@ -3471,7 +3397,7 @@ class _InstructionsSection extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 19,
                         height: 1.35,
-                        color: AppColors.recipeBody,
+                        color: AppColors.black,
                       ),
                     ),
                   ),
@@ -3497,7 +3423,7 @@ class _RecipeSectionTitle extends StatelessWidget {
         fontSize: 42,
         height: 1,
         fontWeight: FontWeight.w800,
-        color: AppColors.recipeAccent,
+        color: AppColors.black,
       ),
     );
   }
@@ -3785,3 +3711,4 @@ class _AddSearchResultDialogState
     }
   }
 }
+

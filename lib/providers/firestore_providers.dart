@@ -120,6 +120,7 @@ class FirestoreScheduledMeals extends _$FirestoreScheduledMeals {
           recipeId: parsed.recipeId,
           date: parsed.date,
           mealType: parsed.mealType,
+          ingredientLines: parsed.ingredientLines,
         );
       }).toList();
     });
