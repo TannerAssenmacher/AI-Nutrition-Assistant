@@ -50,6 +50,7 @@ const PROXY_IMAGE_TIMEOUT_MS = 8_000;
 const PROXY_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 const PROXY_IMAGE_HOST = "img.spoonacular.com";
 const OPENAI_TIMEOUT_MS = 30_000;
+const MAX_GEMINI_MESSAGES_PER_DAY = 5;
 const ALLOWED_IMAGE_MIME_TYPES = new Set([
   "image/jpeg",
   "image/png",
@@ -62,6 +63,7 @@ const ALLOWED_GEMINI_MODELS = new Set([
   "gemini-2.5-pro",
   "gemini-1.5-flash",
   "gemini-1.5-pro",
+  "gemini-3.0-flash-preview",
 ]);
 const ALLOWED_PROXY_ORIGINS = [
   /^https:\/\/ai-nutrition-assistant-e2346\.web\.app$/,
@@ -98,7 +100,42 @@ function getPool(): Pool {
       });
     }
   }
+
   return pool;
+}
+
+/**
+ * Check and track daily Gemini chat message usage for rate limiting.
+ * Throws HttpsError if user has exceeded daily limit.
+ */
+async function checkAndTrackGeminiUsage(userId: string): Promise<void> {
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+  const usageRef = db.collection('users').doc(userId).collection('chatUsage').doc(today);
+  
+  try {
+    await db.runTransaction(async (transaction) => {
+      const usageDoc = await transaction.get(usageRef);
+      const currentCount = usageDoc.exists ? (usageDoc.data()?.count || 0) : 0;
+      
+      if (currentCount >= MAX_GEMINI_MESSAGES_PER_DAY) {
+        throw new HttpsError(
+          'resource-exhausted',
+          `Daily chat limit reached. You can send up to ${MAX_GEMINI_MESSAGES_PER_DAY} messages per day. Please try again tomorrow.`
+        );
+      }
+      
+      transaction.set(usageRef, {
+        count: currentCount + 1,
+        lastUpdated: new Date(),
+      }, { merge: true });
+    });
+  } catch (error) {
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+    console.error('Error tracking Gemini usage:', error);
+    // Don't block the request if tracking fails
+  }
 }
 
 /**
@@ -705,6 +742,9 @@ export const callGemini = onCall(
         'User must be authenticated to call Gemini'
       );
     }
+
+    // Check and track daily usage limit
+    await checkAndTrackGeminiUsage(request.auth.uid);
 
     const data = toRequestData(request.data);
     const prompt = sanitizeTextInput(data.prompt, MAX_GEMINI_PROMPT_CHARS);
