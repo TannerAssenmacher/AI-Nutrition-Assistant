@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'dart:io';
 import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/cupertino.dart';
@@ -12,6 +13,7 @@ import '../db/planned_food.dart';
 import 'package:nutrition_assistant/navigation/nav_helper.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
 import 'package:nutrition_assistant/services/food_search_service.dart';
+import 'package:nutrition_assistant/services/food_image_service.dart';
 import 'package:nutrition_assistant/services/notification_service.dart';
 import '../theme/app_colors.dart';
 
@@ -115,6 +117,12 @@ class _DailyLogCalendarScreenState
         final protein = item.protein_g * item.mass_g;
         final carbs = item.carbs_g * item.mass_g;
         final fat = item.fat * item.mass_g;
+        final imageUrlRaw = (item.imageUrl ?? '').trim();
+        final imageUrl =
+            imageUrlRaw.isNotEmpty &&
+                FoodImageService.shouldShowImageForEntry(item.consumedAt)
+            ? imageUrlRaw
+            : null;
 
         rows.add(
           _FoodRow(
@@ -128,6 +136,7 @@ class _DailyLogCalendarScreenState
             fat: fat,
             fiber: 0,
             massG: item.mass_g,
+            imageUrl: imageUrl,
             consumedAt: item.consumedAt,
           ),
         );
@@ -673,6 +682,7 @@ class _DailyLogCalendarScreenState
                                       carbs_g: updatedRow.carbs / mass,
                                       fat: updatedRow.fat / mass,
                                       mealType: updatedRow.mealType,
+                                      imageUrl: updatedRow.imageUrl,
                                       consumedAt: updatedRow.consumedAt,
                                     );
                                     await ref
@@ -2150,6 +2160,10 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if ((widget.row.imageUrl ?? '').isNotEmpty) ...[
+                _FoodLogImageThumbnail(imageUrl: widget.row.imageUrl!),
+                const SizedBox(width: 10),
+              ],
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -2305,6 +2319,54 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
   }
 }
 
+class _FoodLogImageThumbnail extends StatelessWidget {
+  final String imageUrl;
+  static const double _size = 56;
+
+  const _FoodLogImageThumbnail({required this.imageUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    final uri = Uri.tryParse(imageUrl);
+    final isFileImage = uri != null && uri.scheme == 'file';
+
+    Widget placeholder() {
+      return Container(
+        width: _size,
+        height: _size,
+        color: AppColors.brand.withValues(alpha: 0.08),
+        alignment: Alignment.center,
+        child: Icon(
+          Icons.restaurant,
+          color: AppColors.brand,
+          size: _size * 0.45,
+        ),
+      );
+    }
+
+    final imageWidget = isFileImage
+        ? Image.file(
+            File.fromUri(uri),
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => placeholder(),
+          )
+        : Image.network(
+            imageUrl,
+            fit: BoxFit.cover,
+            loadingBuilder: (context, child, progress) {
+              if (progress == null) return child;
+              return placeholder();
+            },
+            errorBuilder: (_, __, ___) => placeholder(),
+          );
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: SizedBox(width: _size, height: _size, child: imageWidget),
+    );
+  }
+}
+
 // FIX 4: Search result tile with wrapping macro text
 class _FoodSearchResultTile extends StatelessWidget {
   const _FoodSearchResultTile({required this.result, required this.onAdd});
@@ -2316,6 +2378,8 @@ class _FoodSearchResultTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final serving = result.defaultServingOption;
     final calories = (serving.caloriesPerGram * serving.grams).round();
+    final imageUrl = (result.imageUrl ?? '').trim();
+    final hasImage = imageUrl.isNotEmpty;
 
     return Container(
       padding: const EdgeInsets.all(10),
@@ -2326,6 +2390,36 @@ class _FoodSearchResultTile extends StatelessWidget {
       ),
       child: Row(
         children: [
+          if (hasImage)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                imageUrl,
+                width: 46,
+                height: 46,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: AppColors.brand.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(Icons.restaurant, color: AppColors.brand),
+                ),
+              ),
+            )
+          else
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: AppColors.brand.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.restaurant, color: AppColors.brand),
+            ),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2532,6 +2626,7 @@ class _FoodRow {
   final double fat;
   final double fiber;
   final double massG;
+  final String? imageUrl;
   final DateTime consumedAt;
 
   const _FoodRow({
@@ -2545,6 +2640,7 @@ class _FoodRow {
     required this.fat,
     required this.fiber,
     required this.massG,
+    this.imageUrl,
     required this.consumedAt,
   });
 
@@ -2554,6 +2650,7 @@ class _FoodRow {
     double? protein,
     double? carbs,
     double? fat,
+    String? imageUrl,
   }) {
     return _FoodRow(
       id: id,
@@ -2566,6 +2663,7 @@ class _FoodRow {
       fat: fat ?? this.fat,
       fiber: fiber,
       massG: massG,
+      imageUrl: imageUrl ?? this.imageUrl,
       consumedAt: consumedAt,
     );
   }
@@ -3641,12 +3739,46 @@ class _AddSearchResultDialogState
 
   @override
   Widget build(BuildContext context) {
+    final imageUrl = (widget.result.imageUrl ?? '').trim();
+
     return AlertDialog(
       title: Text('Add ${widget.result.name}'),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (imageUrl.isNotEmpty) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(
+                  imageUrl,
+                  width: double.infinity,
+                  height: 140,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    width: double.infinity,
+                    height: 140,
+                    color: AppColors.surface,
+                    alignment: Alignment.center,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.broken_image, color: AppColors.textHint),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Image unavailable',
+                          style: TextStyle(
+                            color: AppColors.textHint,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
             DropdownButtonFormField<String>(
               value: _mealType,
               decoration: const InputDecoration(labelText: 'Meal type'),
@@ -3783,6 +3915,12 @@ class _AddSearchResultDialogState
       widget.day.day,
       12,
     );
+    final trimmedImageUrl = (widget.result.imageUrl ?? '').trim();
+    final imageUrlForLog =
+        trimmedImageUrl.isNotEmpty &&
+            FoodImageService.shouldShowImageForEntry(consumedAt)
+        ? trimmedImageUrl
+        : null;
 
     final item = FoodItem(
       id: 'search-${DateTime.now().microsecondsSinceEpoch}',
@@ -3793,6 +3931,7 @@ class _AddSearchResultDialogState
       carbs_g: _selectedServing.carbsPerGram,
       fat: _selectedServing.fatPerGram,
       mealType: _mealType,
+      imageUrl: imageUrlForLog,
       consumedAt: consumedAt,
     );
 
