@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:async';
 import '../services/food_search_service.dart';
+import '../services/food_image_service.dart';
 import '../theme/app_colors.dart';
 import '../providers/auth_providers.dart';
 import '../providers/firestore_providers.dart';
@@ -10,7 +11,6 @@ import 'package:nutrition_assistant/navigation/nav_helper.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
 import 'package:nutrition_assistant/widgets/fatsecret_attribution.dart';
 import '../widgets/top_bar.dart';
-
 
 class FoodSearchScreen extends ConsumerStatefulWidget {
   final bool isInPageView;
@@ -128,6 +128,7 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
     }
 
     final rootContext = context;
+    final trimmedResultImageUrl = (result.imageUrl ?? '').trim();
     final hasExplicitServingOptions = result.servingOptions.isNotEmpty;
     List<FoodServingOption> normalizeServingOptions(
       List<FoodServingOption> options,
@@ -218,6 +219,57 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    if (trimmedResultImageUrl.isNotEmpty) ...[
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.network(
+                          trimmedResultImageUrl,
+                          width: double.infinity,
+                          height: 140,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, progress) {
+                            if (progress == null) return child;
+                            return Container(
+                              width: double.infinity,
+                              height: 140,
+                              color: AppColors.surface,
+                              alignment: Alignment.center,
+                              child: const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            );
+                          },
+                          errorBuilder: (_, __, ___) => Container(
+                            width: double.infinity,
+                            height: 140,
+                            color: AppColors.surface,
+                            alignment: Alignment.center,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.broken_image,
+                                  color: AppColors.textHint,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Image unavailable',
+                                  style: TextStyle(
+                                    color: AppColors.textHint,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
                     DropdownButtonFormField<String>(
                       initialValue: mealType,
                       decoration: const InputDecoration(labelText: 'Meal type'),
@@ -468,6 +520,11 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                       DateTime.now().hour,
                       DateTime.now().minute,
                     );
+                    final imageUrlForLog =
+                        trimmedResultImageUrl.isNotEmpty &&
+                            FoodImageService.shouldShowImageForEntry(consumedAt)
+                        ? trimmedResultImageUrl
+                        : null;
 
                     final item = FoodItem(
                       id: 'search-${DateTime.now().microsecondsSinceEpoch}',
@@ -478,6 +535,7 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                       carbs_g: selectedServing.carbsPerGram,
                       fat: selectedServing.fatPerGram,
                       mealType: mealType,
+                      imageUrl: imageUrlForLog,
                       consumedAt: consumedAt,
                     );
 
@@ -530,10 +588,9 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
     final authUser = ref.watch(authServiceProvider);
     final userId = authUser?.uid;
     final userProfileAsync = userId != null
-    ? ref.watch(firestoreUserProfileProvider(userId))
-    : const AsyncValue.loading();
+        ? ref.watch(firestoreUserProfileProvider(userId))
+        : const AsyncValue.loading();
     final name = userProfileAsync.valueOrNull?.firstname ?? 'User';
-
 
     final bodyContent = SafeArea(
       top: false,
@@ -543,15 +600,17 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
           top_bar(),
           // Search bar
           Padding(
-            padding: const EdgeInsets.only(top: 20.0), // Increase this number to push it further down
+            padding: const EdgeInsets.only(
+              top: 20.0,
+            ), // Increase this number to push it further down
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05), 
+                    color: Colors.black.withOpacity(0.05),
                     blurRadius: 10,
-                    offset: const Offset(0, 4), 
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
@@ -745,6 +804,8 @@ class _FoodSearchResultTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final serving = result.defaultServingOption;
     final calories = (serving.caloriesPerGram * serving.grams).round();
+    final imageUrl = (result.imageUrl ?? '').trim();
+    final hasImage = imageUrl.isNotEmpty;
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -764,14 +825,38 @@ class _FoodSearchResultTile extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.brand.withValues(alpha: 0.1),
+          if (hasImage)
+            ClipRRect(
               borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                imageUrl,
+                width: 48,
+                height: 48,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: AppColors.brand.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.restaurant,
+                    color: AppColors.brand,
+                    size: 24,
+                  ),
+                ),
+              ),
+            )
+          else
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.brand.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.restaurant, color: AppColors.brand, size: 24),
             ),
-            child: Icon(Icons.restaurant, color: AppColors.brand, size: 24),
-          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(

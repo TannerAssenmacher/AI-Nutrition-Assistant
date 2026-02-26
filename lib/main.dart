@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
+import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
@@ -16,6 +17,7 @@ import 'screens/main_navigation_screen.dart';
 import 'screens/profile_screen.dart';
 import 'navigation/nav_helper.dart';
 import 'services/notification_service.dart';
+import 'services/food_image_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,6 +38,7 @@ void main() async {
     // Schedule daily reminders
     await NotificationService.scheduleStreakReminder();
     await NotificationService.scheduleMacroCheckReminder();
+    _scheduleFoodImageCleanup();
 
     // On web, Firebase restores auth state from IndexedDB asynchronously.
     // Reading currentUser synchronously can return null even when the user IS
@@ -80,6 +83,14 @@ void main() async {
   }
 
   runApp(ProviderScope(child: MyApp(initialRoute: initialRoute)));
+}
+
+void _scheduleFoodImageCleanup() {
+  unawaited(
+    FoodImageService.purgeExpiredCapturedImages().catchError((Object error) {
+      debugPrint('Food image cleanup failed: $error');
+    }),
+  );
 }
 
 Future<void> _initializeFirebase() async {

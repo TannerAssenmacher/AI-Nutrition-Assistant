@@ -1050,7 +1050,11 @@ function toHttpUrl(value: unknown): string | null {
     if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
       return null;
     }
-    return trimmed;
+    if (parsed.protocol === "http:") {
+      parsed.protocol = "https:";
+      return parsed.toString();
+    }
+    return parsed.toString();
   } catch (_) {
     return null;
   }
@@ -1250,6 +1254,45 @@ function parseFatSecretFoodResult(
     brand: (food?.brand_name || "").toString().trim() || undefined,
     imageUrl: imageUrl || undefined,
   };
+}
+
+async function fetchFatSecretFoodImageById(
+  foodIdRaw: string,
+  options?: {
+    oauthScope?: string;
+    fallbackScope?: string;
+    allowScopeFallback?: boolean;
+  }
+): Promise<string | null> {
+  const foodId = foodIdRaw.trim();
+  if (!foodId) {
+    return null;
+  }
+
+  try {
+    const payload = await callFatSecretJson(
+      "/food/v5",
+      {
+        food_id: foodId,
+        format: "json",
+        flag_default_serving: "true",
+        include_food_images: "true",
+      },
+      {
+        oauthScope: options?.oauthScope,
+        fallbackScope: options?.fallbackScope,
+        allowScopeFallback: options?.allowScopeFallback,
+      }
+    );
+
+    return resolveFatSecretImageUrl(payload?.food);
+  } catch (error) {
+    console.warn(
+      `FatSecret image fallback lookup failed for food_id=${foodId}:`,
+      error
+    );
+    return null;
+  }
 }
 
 function parseFatSecretSuggestions(payload: any): string[] {
@@ -1603,6 +1646,22 @@ export const lookupFoodByBarcode = onCall(
             idPrefix: "fatsecret_barcode_",
             barcode: normalizedBarcode,
           });
+          if (resolvedResult && !resolvedResult.imageUrl) {
+            const fallbackImageUrl = await fetchFatSecretFoodImageById(
+              (food?.food_id || "").toString(),
+              {
+                oauthScope: FATSECRET_BARCODE_OAUTH_SCOPE,
+                fallbackScope: FATSECRET_SEARCH_OAUTH_SCOPE,
+                allowScopeFallback: true,
+              }
+            );
+            if (fallbackImageUrl) {
+              resolvedResult = {
+                ...resolvedResult,
+                imageUrl: fallbackImageUrl,
+              };
+            }
+          }
           if (resolvedResult) {
             break;
           }
@@ -1626,6 +1685,12 @@ export const lookupFoodByBarcode = onCall(
           `No nutrition facts found for barcode ${normalizedBarcode}`
         );
       }
+
+      console.log(
+        `FatSecret barcode lookup resolved result with image=${Boolean(
+          (resolvedResult.imageUrl || "").trim()
+        )}`
+      );
 
       return { result: resolvedResult };
     } catch (error) {
@@ -1680,14 +1745,51 @@ export const searchFoods = onCall(
         allowScopeFallback: true,
       });
       const foods = ensureArray<any>(payload?.foods_search?.results?.food);
-      const results = foods
-        .map((food) => parseFatSecretFoodResult(food))
-        .filter(
-          (item): item is FatSecretFoodResultPayload =>
-            item !== null
-        );
+      const fallbackImageLookupByFoodId = new Map<string, Promise<string | null>>();
+      const results = (
+        await Promise.all(
+          foods.map(async (food) => {
+            const parsed = parseFatSecretFoodResult(food);
+            if (!parsed) {
+              return null;
+            }
+            if ((parsed.imageUrl || "").trim()) {
+              return parsed;
+            }
 
-      console.log(`FatSecret returned ${results.length} search results`);
+            const foodId = (food?.food_id || "").toString().trim();
+            if (!foodId) {
+              return parsed;
+            }
+
+            let lookupPromise = fallbackImageLookupByFoodId.get(foodId);
+            if (!lookupPromise) {
+              lookupPromise = fetchFatSecretFoodImageById(foodId, {
+                oauthScope: FATSECRET_SEARCH_OAUTH_SCOPE,
+                allowScopeFallback: true,
+              });
+              fallbackImageLookupByFoodId.set(foodId, lookupPromise);
+            }
+
+            const fallbackImageUrl = await lookupPromise;
+            if (!fallbackImageUrl) {
+              return parsed;
+            }
+
+            return {
+              ...parsed,
+              imageUrl: fallbackImageUrl,
+            };
+          })
+        )
+      ).filter((item): item is FatSecretFoodResultPayload => item !== null);
+
+      const imageCount = results.filter((item) =>
+        Boolean((item.imageUrl || "").trim())
+      ).length;
+      console.log(
+        `FatSecret returned ${results.length} search results (${imageCount} with images)`
+      );
       return { results };
     } catch (error) {
       if (error instanceof HttpsError) {
