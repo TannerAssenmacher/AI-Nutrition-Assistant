@@ -46,8 +46,8 @@ class _ProfilePageState extends State<ProfilePage> {
   String? _email;
   String? _dob;
   String? _sex;
-  String? _activityLevel;
-  String? _dietaryGoal;
+  double _activityLevel = 1;
+  double _dietaryGoal = 0;
   List<String> _dietaryHabits = [];
   List<String> _health = [];
 
@@ -55,13 +55,13 @@ class _ProfilePageState extends State<ProfilePage> {
   double _carbs = 0;
   double _fats = 0;
 
-  final _activityLevels = [
+  /*final _activityLevels = [
     'Sedentary',
     'Lightly Active',
     'Moderately Active',
     'Very Active',
-  ];
-  final _dietGoals = ['Lose Weight', 'Maintain Weight', 'Gain Muscle'];
+  ];*/
+  final _dietGoals = ['Large Weight Loss', 'Weight Loss', 'Weight Maintenance', 'Muscle Growth', 'Large Muscle Growth'];
   final _dietaryHabitOptions = [
     'balanced',
     'high-protein',
@@ -129,7 +129,6 @@ class _ProfilePageState extends State<ProfilePage> {
     if (_heightCm == null ||
         weight == null ||
         _sex == null ||
-        _activityLevel == null ||
         _dob == null ||
         _dob!.isEmpty)
       return 0;
@@ -148,22 +147,19 @@ class _ProfilePageState extends State<ProfilePage> {
           ? (10 * weightKg) + (6.25 * height) - (5 * age) + 5
           : (10 * weightKg) + (6.25 * height) - (5 * age) - 161;
 
-      final multipliers = {
-        'Sedentary': 1.2,
-        'Lightly Active': 1.375,
-        'Moderately Active': 1.55,
-        'Very Active': 1.725,
-      };
-
       final weightfactor = {
-        'Lose Weight': -500,
-        'Maintain Weight': 0,
-        'Gain Muscle': 500,
+        'Large Weight Loss': -1000,
+        'Weight Loss': -500,
+        'Weight Maintenance': 0,
+        'Muscle Growth': 500,
+        'Large Muscle Growth': 1000,
       };
-      return (bmr * (multipliers[_activityLevel] ?? 1.375) +
-              weightfactor[_dietaryGoal]!)
+      
+      return (bmr * _activityLevel +
+          weightfactor[_dietGoals[_dietaryGoal.toInt()]]!)
           .round();
-    } catch (e) {
+    } 
+    catch (e) {
       return 0;
     }
   }
@@ -173,7 +169,7 @@ class _ProfilePageState extends State<ProfilePage> {
     double carbs = 40;
     double fats = 30;
 
-    switch (_activityLevel) {
+    /*switch (_activityLevel) {
       case 'Sedentary':
         protein += 2;
         carbs -= 5;
@@ -191,9 +187,9 @@ class _ProfilePageState extends State<ProfilePage> {
         carbs += 10;
         fats -= 15;
         break;
-    }
+    }*/
 
-    switch (_dietaryGoal) {
+    /*switch (_dietaryGoal) {
       case 'Lose Weight':
         protein += 10;
         carbs -= 7;
@@ -206,7 +202,7 @@ class _ProfilePageState extends State<ProfilePage> {
         carbs += 8;
         fats -= 16;
         break;
-    }
+    }*/
 
     for (final habit in _dietaryHabits) {
       switch (habit) {
@@ -264,7 +260,7 @@ class _ProfilePageState extends State<ProfilePage> {
       _fats = suggested['fat']!;
     });
 
-    if (!silent && (_activityLevel == null || _dietaryGoal == null)) {
+    if (!silent) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -313,9 +309,9 @@ class _ProfilePageState extends State<ProfilePage> {
               : weight.toString();
         }
 
-        _activityLevel = data['activityLevel'];
+        _activityLevel = (data['activityLevel'] as num?)?.toDouble() ?? 1.0;
         final mealProfile = data['mealProfile'] ?? {};
-        _dietaryGoal = mealProfile['dietaryGoal'];
+        _dietaryGoal = (mealProfile['dietaryGoal'] as num?)?.toDouble() ?? 0.0;
         _dailyCaloriesController.text =
             mealProfile['dailyCalorieGoal']?.toString() ?? '';
 
@@ -704,7 +700,10 @@ class _ProfilePageState extends State<ProfilePage> {
                         (v) => setState(() => _sex = v),
                       ),
                     ),
-                    _buildListTile(
+                    _buildActivitySlider(),
+                    _buildDietaryGoalSlider(),
+                    
+                    /*_buildListTile(
                       Icons.bolt,
                       "Activity Level",
                       _activityLevel ?? "Select",
@@ -717,8 +716,8 @@ class _ProfilePageState extends State<ProfilePage> {
                           _applyRecommendedMacroGoals(silent: true);
                         },
                       ),
-                    ),
-                    _buildListTile(
+                    ),*/
+                    /*_buildListTile(
                       Icons.track_changes,
                       "Dietary Goal",
                       _dietaryGoal ?? "Select",
@@ -731,7 +730,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           _applyRecommendedMacroGoals(silent: true);
                         },
                       ),
-                    ),
+                    ),*/
                   ]),
                   const SizedBox(height: 25),
                   _sectionHeader("Meal Profile"),
@@ -1241,6 +1240,93 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
     );
   }
+  Widget _buildDietaryGoalSlider() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.track_changes, color: brandColor, size: 22),
+              const Text(
+                "  Dietary Goal",
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.info_outline,
+                    color: AppColors.textSecondary),
+                onPressed: _showDietaryGoalInfo,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                tooltip: 'Dietary Goal Definitions',
+              ),
+            ],
+          ),
+          Slider(
+            value: _dietaryGoal,
+            min: 0,
+            max: 4,
+            divisions: 4,
+            label: _dietGoals[_dietaryGoal.toInt()],
+            onChanged: (value) {
+              setState(() => _dietaryGoal = value);
+              _applyRecommendedMacroGoals(silent: true);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+  Widget _buildActivitySlider() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.bolt, color: brandColor, size: 22),
+              const Text(
+                
+                "  Activity Level",
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.info_outline,
+                    color: AppColors.textSecondary),
+                onPressed: _showActivityLevelInfo,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                tooltip: 'Activity Level Definitions',
+              ),
+            ],
+          ),
+          Slider(
+            value: _activityLevel,
+            min: 1.0,
+            max: 1.9,
+            divisions: 5,
+            label: activityLevelLabels(_activityLevel),
+            onChanged: (value) {
+              setState(() => _activityLevel = value);
+              _applyRecommendedMacroGoals(silent: true);
+            },
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildMultiSelectTile(
     String title,
@@ -1281,7 +1367,16 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
     );
   }
-
+  //STRING FUNC FOR SHOWING THE ACTIVITY LEVEL IN THE SLIDER
+  String activityLevelLabels(double value) {
+    if (value == 1.0) return 'Completely Sedentary';
+    else if (value > 1.0 && value <= 1.25) return 'Basic Daily Activity';
+    else if (value > 1.25 && value <= 1.45) return 'Lightly Active';
+    else if (value > 1.45 && value <= 1.65) return 'Moderately Active';
+    else if (value > 1.65 && value <= 1.8) return 'Very Active';
+    else if (value > 1.8) return 'Daily Athlete';
+    return 'NA';
+  }
   void _showPicker(
     String title,
     List<String> options,
@@ -1324,6 +1419,129 @@ class _ProfilePageState extends State<ProfilePage> {
             const SizedBox(height: 20),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showDietaryGoalInfo() {
+    final dietGoalsInfo = [
+      {
+        'goal': 'Large Weight Loss',
+        'definition':
+            'Losing 2 lbs. per week. Going over this is not recommended.'
+      },
+      {
+        'goal': 'Weight Loss',
+        'definition':
+            'Losing 1 lb. per week, the recommended rate for weight loss.'
+      },
+      {
+        'goal': 'Weight Maintenance',
+        'definition':
+            'Gaining/Losing 0 lbs. per week.'
+      },
+      {
+        'goal': 'Muscle Growth',
+        'definition':
+            'Sets the caloric excess 1 lb. per week. High protein & training grows muscle!'
+      },
+      {
+        'goal': 'Large Muscle Growth',
+        'definition':
+            'Set to gain 2 lbs. per week in muscle. This is aggressive and only for committed athletes.'
+      },
+    ];
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Dietary Goal Definitions'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.separated(
+            shrinkWrap: true,
+            itemCount: dietGoalsInfo.length,
+            separatorBuilder: (context, index) => const Divider(),
+            itemBuilder: (context, index) {
+              final info = dietGoalsInfo[index];
+              return ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                title: Text(info['goal']!,
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text(info['definition']!),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showActivityLevelInfo() {
+    final activityLevelsInfo = [
+      {
+        'level': 'Completely Sedentary',
+        'definition': 'Little to no walking or cycling. 0-1 hours per week.'
+      },
+      {
+        'level': 'Basic Daily Activity',
+        'definition':
+            'Minimal physical activity (e.g., walking to car, light housework).'
+      },
+      {
+        'level': 'Lightly Active',
+        'definition': 'Light exercise or sports 1-3 days per week.'
+      },
+      {
+        'level': 'Moderately Active',
+        'definition': 'Moderate exercise or sports 3-5 days per week.'
+      },
+      {
+        'level': 'Very Active',
+        'definition': 'Hard exercise (elevated heart rate for 30+ minutes) or sports 5-6 days a week.'
+      },
+      {
+        'level': 'Daily Athlete',
+        'definition':
+            'Hard exercise/sports every day, often with a physical job.'
+      },
+    ];
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Activity Level Definitions'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.separated(
+            shrinkWrap: true,
+            itemCount: activityLevelsInfo.length,
+            separatorBuilder: (context, index) => const Divider(),
+            itemBuilder: (context, index) {
+              final info = activityLevelsInfo[index];
+              return ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                title: Text(info['level']!,
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text(info['definition']!),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
       ),
     );
   }
