@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/cupertino.dart';
@@ -136,20 +137,52 @@ class _DailyLogCalendarScreenState
     return rows;
   }
 
-  Future<Map<String, double>> _scheduledTotals(
-    List<PlannedFood> scheduledMeals,
-    WidgetRef ref,
+  Future<Map<String, Map<String, dynamic>>> _fetchRecipeMapForIds(
+    List<String> recipeIds,
   ) async {
-    double calories = 0, protein = 0, carbs = 0, fat = 0;
+    final uniqueIds = recipeIds.toSet().toList()..sort();
+    if (uniqueIds.isEmpty) {
+      return const {};
+    }
 
+    const chunkSize = 30;
+    final recipesById = <String, Map<String, dynamic>>{};
+    for (int index = 0; index < uniqueIds.length; index += chunkSize) {
+      final end =
+          index + chunkSize > uniqueIds.length
+              ? uniqueIds.length
+              : index + chunkSize;
+      final chunk = uniqueIds.sublist(
+        index,
+        end,
+      );
+      final snapshot = await FirebaseFirestore.instance
+          .collection('recipes')
+          .where(FieldPath.documentId, whereIn: chunk)
+          .get();
+      for (final doc in snapshot.docs) {
+        recipesById[doc.id] = doc.data();
+      }
+    }
+
+    return recipesById;
+  }
+
+  Map<String, double> _scheduledTotalsFromRecipeMap(
+    List<PlannedFood> scheduledMeals,
+    Map<String, Map<String, dynamic>> recipesById,
+  ) {
+    double calories = 0, protein = 0, carbs = 0, fat = 0;
     for (final meal in scheduledMeals) {
-      final recipe = await ref.read(recipeByIdProvider(meal.recipeId).future);
+      final recipe = recipesById[meal.recipeId];
+      if (recipe == null) {
+        continue;
+      }
       calories += (recipe['calories'] ?? 0).toDouble();
       protein += (recipe['protein'] ?? 0).toDouble();
       carbs += (recipe['carbs'] ?? 0).toDouble();
       fat += (recipe['fat'] ?? 0).toDouble();
     }
-
     return {
       'calories': calories,
       'protein': protein,
@@ -395,6 +428,8 @@ class _DailyLogCalendarScreenState
     String userId,
   ) {
     int segment = 0; // 0 = history, 1 = scheduled
+    final recipesByIdFutureCache =
+        <String, Future<Map<String, Map<String, dynamic>>>>{};
     showModalBottomSheet(
       context: context,
       showDragHandle: true,
@@ -426,9 +461,15 @@ class _DailyLogCalendarScreenState
                   data: (meals) => _scheduledMealsForDay(day, meals),
                   orElse: () => <PlannedFood>[],
                 );
-                final scheduledTotalsFuture = _scheduledTotals(
-                  scheduledMeals,
-                  ref,
+                final recipeIds = scheduledMeals
+                    .map((meal) => meal.recipeId)
+                    .toSet()
+                    .toList()
+                  ..sort();
+                final recipeLookupKey = recipeIds.join('|');
+                final recipesByIdFuture = recipesByIdFutureCache.putIfAbsent(
+                  recipeLookupKey,
+                  () => _fetchRecipeMapForIds(recipeIds),
                 );
 
                 return StatefulBuilder(
@@ -486,7 +527,12 @@ class _DailyLogCalendarScreenState
 
                             // Macro summary card
                             FutureBuilder<Map<String, double>>(
-                              future: scheduledTotalsFuture,
+                              future: recipesByIdFuture.then(
+                                (recipesById) => _scheduledTotalsFromRecipeMap(
+                                  scheduledMeals,
+                                  recipesById,
+                                ),
+                              ),
                               builder: (context, snapshot) {
                                 final scheduledTotals =
                                     snapshot.data ??
@@ -574,64 +620,95 @@ class _DailyLogCalendarScreenState
                                   ),
                                 )
                               else
-                                for (final meal in scheduledMeals)
-                                  _ScheduledMealCard(
-                                    meal: meal,
-                                    onEdit: () async {
-                                      await _showEditScheduledMealDialog(
-                                        userId,
-                                        meal,
+                                FutureBuilder<Map<String, Map<String, dynamic>>>(
+                                  future: recipesByIdFuture,
+                                  builder: (context, recipeSnapshot) {
+                                    final recipesById =
+                                        recipeSnapshot.data ?? const {};
+                                    if (recipeSnapshot.connectionState ==
+                                            ConnectionState.waiting &&
+                                        recipesById.isEmpty) {
+                                      return const Padding(
+                                        padding:
+                                            EdgeInsets.symmetric(vertical: 12),
+                                        child: Center(
+                                          child: CircularProgressIndicator(),
+                                        ),
                                       );
-                                    },
-                                    onDelete: () async {
-                                      if (meal.id == null) return;
+                                    }
 
-                                      final shouldDelete = await showDialog<bool>(
-                                        context: context,
-                                        builder: (context) {
-                                          return AlertDialog(
-                                            title: const Text(
-                                              'Delete scheduled meal?',
-                                            ),
-                                            content: const Text(
-                                              'Remove this scheduled meal from this day?',
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                onPressed: () => Navigator.of(
-                                                  context,
-                                                ).pop(false),
-                                                child: const Text('Cancel'),
-                                              ),
-                                              FilledButton(
-                                                onPressed: () => Navigator.of(
-                                                  context,
-                                                ).pop(true),
-                                                style: FilledButton.styleFrom(
-                                                  backgroundColor:
-                                                      AppColors.deleteRed,
-                                                ),
-                                                child: const Text('Delete'),
-                                              ),
-                                            ],
-                                          );
-                                        },
-                                      );
+                                    return Column(
+                                      children: [
+                                        for (final meal in scheduledMeals)
+                                          _ScheduledMealCard(
+                                            meal: meal,
+                                            recipe: recipesById[meal.recipeId],
+                                            onEdit: () async {
+                                              await _showEditScheduledMealDialog(
+                                                userId,
+                                                meal,
+                                              );
+                                            },
+                                            onDelete: () async {
+                                              if (meal.id == null) return;
 
-                                      if (shouldDelete != true) return;
+                                              final shouldDelete =
+                                                  await showDialog<bool>(
+                                                context: context,
+                                                builder: (context) {
+                                                  return AlertDialog(
+                                                    title: const Text(
+                                                      'Delete scheduled meal?',
+                                                    ),
+                                                    content: const Text(
+                                                      'Remove this scheduled meal from this day?',
+                                                    ),
+                                                    actions: [
+                                                      TextButton(
+                                                        onPressed: () =>
+                                                            Navigator.of(
+                                                          context,
+                                                        ).pop(false),
+                                                        child:
+                                                            const Text('Cancel'),
+                                                      ),
+                                                      FilledButton(
+                                                        onPressed: () =>
+                                                            Navigator.of(
+                                                          context,
+                                                        ).pop(true),
+                                                        style:
+                                                            FilledButton.styleFrom(
+                                                          backgroundColor:
+                                                              AppColors
+                                                                  .deleteRed,
+                                                        ),
+                                                        child:
+                                                            const Text('Delete'),
+                                                      ),
+                                                    ],
+                                                  );
+                                                },
+                                              );
 
-                                      await ref
-                                          .read(
-                                            firestoreScheduledMealsProvider(
-                                              userId,
-                                            ).notifier,
-                                          )
-                                          .removeScheduledMeal(
-                                            userId,
-                                            meal.id!,
-                                          );
-                                    },
-                                  ),
+                                              if (shouldDelete != true) return;
+
+                                              await ref
+                                                  .read(
+                                                    firestoreScheduledMealsProvider(
+                                                      userId,
+                                                    ).notifier,
+                                                  )
+                                                  .removeScheduledMeal(
+                                                    userId,
+                                                    meal.id!,
+                                                  );
+                                            },
+                                          ),
+                                      ],
+                                    );
+                                  },
+                                ),
                             ] else ...[
                               Text(
                                 'Logged Foods',
@@ -2901,208 +2978,210 @@ class _DayHeader extends StatelessWidget {
 
 class _ScheduledMealCard extends ConsumerWidget {
   final PlannedFood meal;
+  final Map<String, dynamic>? recipe;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
   const _ScheduledMealCard({
     required this.meal,
+    required this.recipe,
     required this.onEdit,
     required this.onDelete,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final recipeAsync = ref.watch(recipeByIdProvider(meal.recipeId));
+    final recipeData = recipe;
+    if (recipeData == null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Text(
+          'Recipe unavailable for scheduled entry (${meal.recipeId}).',
+          style: const TextStyle(color: AppColors.error),
+        ),
+      );
+    }
 
-    return recipeAsync.when(
-      loading: () => const Padding(
-        padding: EdgeInsets.all(12),
-        child: Center(child: CircularProgressIndicator()),
-      ),
-      error: (e, _) => Text('Error: $e'),
-      data: (recipe) {
-        final recipeName = (recipe['label'] ?? 'Unknown').toString();
-        final calories = (recipe['calories'] ?? 0).toDouble();
-        final protein = (recipe['protein'] ?? 0).toDouble();
-        final carbs = (recipe['carbs'] ?? 0).toDouble();
-        final fat = (recipe['fat'] ?? 0).toDouble();
-        final dayLabel = DateFormat('MMMM d, yyyy').format(meal.date);
+    final recipeName = (recipeData['label'] ?? 'Unknown').toString();
+    final calories = (recipeData['calories'] ?? 0).toDouble();
+    final protein = (recipeData['protein'] ?? 0).toDouble();
+    final carbs = (recipeData['carbs'] ?? 0).toDouble();
+    final fat = (recipeData['fat'] ?? 0).toDouble();
+    final dayLabel = DateFormat('MMMM d, yyyy').format(meal.date);
 
-        return InkWell(
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) =>
-                    _ScheduledMealDetailScreen(meal: meal, recipe: recipe),
-              ),
-            );
-          },
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  AppColors.surface,
-                  AppColors.warmLight.withValues(alpha: 0.65),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.warmBorder),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.black.withValues(alpha: 0.04),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            recipeName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.mealText,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${meal.mealType.toUpperCase()} • $dayLabel',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.3,
-                              color: AppColors.warmDark,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          onPressed: () => _confirmAndLogScheduledMeal(
-                            context: context,
-                            ref: ref,
-                            recipeName: recipeName,
-                            calories: calories,
-                            protein: protein,
-                            carbs: carbs,
-                            fat: fat,
-                            dayLabel: dayLabel,
-                          ),
-                          icon: Icon(
-                            Icons.playlist_add_check_rounded,
-                            color: AppColors.accentBrown,
-                          ),
-                          tooltip: 'Log meal',
-                        ),
-                        IconButton(
-                          onPressed: onEdit,
-                          icon: Icon(
-                            Icons.edit,
-                            size: 20,
-                            color: AppColors.warmDarker,
-                          ),
-                          tooltip: 'Edit scheduled meal',
-                        ),
-                        IconButton(
-                          onPressed: onDelete,
-                          icon: Icon(
-                            Icons.delete_outline,
-                            color: AppColors.error,
-                          ),
-                          tooltip: 'Remove scheduled meal',
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _scheduledMacroStatTile(
-                        label: 'Calories',
-                        value: calories.toStringAsFixed(0),
-                        unit: 'Cal',
-                        color: AppColors.caloriesCircle,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _scheduledMacroStatTile(
-                        label: 'Protein',
-                        value: protein.toStringAsFixed(1),
-                        unit: 'g',
-                        color: AppColors.protein,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _scheduledMacroStatTile(
-                        label: 'Carbs',
-                        value: carbs.toStringAsFixed(1),
-                        unit: 'g',
-                        color: AppColors.carbs,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _scheduledMacroStatTile(
-                        label: 'Fat',
-                        value: fat.toStringAsFixed(1),
-                        unit: 'g',
-                        color: AppColors.fat,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.chevron_right,
-                      size: 18,
-                      color: AppColors.selectionColor,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Tap to view ingredients and instructions',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppColors.selectionColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+    return InkWell(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) =>
+                _ScheduledMealDetailScreen(meal: meal, recipe: recipeData),
           ),
         );
       },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              AppColors.surface,
+              AppColors.warmLight.withValues(alpha: 0.65),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.warmBorder),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        recipeName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.mealText,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${meal.mealType.toUpperCase()} • $dayLabel',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.3,
+                          color: AppColors.warmDark,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      onPressed: () => _confirmAndLogScheduledMeal(
+                        context: context,
+                        ref: ref,
+                        recipeName: recipeName,
+                        calories: calories,
+                        protein: protein,
+                        carbs: carbs,
+                        fat: fat,
+                        dayLabel: dayLabel,
+                      ),
+                      icon: Icon(
+                        Icons.playlist_add_check_rounded,
+                        color: AppColors.accentBrown,
+                      ),
+                      tooltip: 'Log meal',
+                    ),
+                    IconButton(
+                      onPressed: onEdit,
+                      icon: Icon(
+                        Icons.edit,
+                        size: 20,
+                        color: AppColors.warmDarker,
+                      ),
+                      tooltip: 'Edit scheduled meal',
+                    ),
+                    IconButton(
+                      onPressed: onDelete,
+                      icon: Icon(
+                        Icons.delete_outline,
+                        color: AppColors.error,
+                      ),
+                      tooltip: 'Remove scheduled meal',
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: _scheduledMacroStatTile(
+                    label: 'Calories',
+                    value: calories.toStringAsFixed(0),
+                    unit: 'Cal',
+                    color: AppColors.caloriesCircle,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _scheduledMacroStatTile(
+                    label: 'Protein',
+                    value: protein.toStringAsFixed(1),
+                    unit: 'g',
+                    color: AppColors.protein,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _scheduledMacroStatTile(
+                    label: 'Carbs',
+                    value: carbs.toStringAsFixed(1),
+                    unit: 'g',
+                    color: AppColors.carbs,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _scheduledMacroStatTile(
+                    label: 'Fat',
+                    value: fat.toStringAsFixed(1),
+                    unit: 'g',
+                    color: AppColors.fat,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(
+                  Icons.chevron_right,
+                  size: 18,
+                  color: AppColors.selectionColor,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'Tap to view ingredients and instructions',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.selectionColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 

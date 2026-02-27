@@ -535,8 +535,7 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
     String? imageBase64,
     String mimeType = 'image/jpeg',
   }) async {
-    final user = await _ensureSignedInUser();
-    await user.getIdToken(true);
+    await _ensureSignedInUser();
 
     final callable = _functions.httpsCallable('callGemini');
     final response = await callable.call({

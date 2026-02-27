@@ -130,8 +130,7 @@ class MealAnalysisService {
               : trimmedContext);
 
       onStageChanged?.call(AnalysisStage.analyzing);
-      final user = await _ensureSignedInUser();
-      await user.getIdToken(true);
+      await _ensureSignedInUser();
 
       final callable = _functionsInstance.httpsCallable('analyzeMealImage');
       final response = await callable.call({

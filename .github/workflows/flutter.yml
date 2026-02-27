@@ -34,8 +34,11 @@ jobs:
       - name: Run build_runner
         run: flutter pub run build_runner build --delete-conflicting-outputs
 
+      - name: Verify generated serializers exist
+        run: test -f lib/db/food.g.dart
+
       - name: Analyze project
-        run: flutter analyze || true
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
       - name: Run unit and widget tests
         run: flutter test --no-pub --coverage

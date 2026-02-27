@@ -220,7 +220,6 @@ class FoodSearchService {
     if (currentUser == null) {
       throw Exception('User must be signed in to search foods');
     }
-    await currentUser.getIdToken(true);
   }
 
   FoodSearchResult _parseResult(Map<String, dynamic> map) {
