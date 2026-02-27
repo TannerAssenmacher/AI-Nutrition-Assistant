@@ -150,13 +150,39 @@ class _DailyLogCalendarScreenState
     WidgetRef ref,
   ) async {
     double calories = 0, protein = 0, carbs = 0, fat = 0;
+    if (scheduledMeals.isEmpty) {
+      return {
+        'calories': calories,
+        'protein': protein,
+        'carbs': carbs,
+        'fat': fat,
+      };
+    }
 
-    for (final meal in scheduledMeals) {
-      final recipe = await ref.read(recipeByIdProvider(meal.recipeId).future);
-      calories += (recipe['calories'] ?? 0).toDouble();
-      protein += (recipe['protein'] ?? 0).toDouble();
-      carbs += (recipe['carbs'] ?? 0).toDouble();
-      fat += (recipe['fat'] ?? 0).toDouble();
+    double asDouble(dynamic value) {
+      if (value is num) return value.toDouble();
+      if (value is String) return double.tryParse(value) ?? 0;
+      return 0;
+    }
+
+    final recipes = await Future.wait(
+      scheduledMeals.map((meal) async {
+        try {
+          return await ref.read(recipeByIdProvider(meal.recipeId).future);
+        } catch (e) {
+          debugPrint(
+            'Failed to load recipe ${meal.recipeId} for scheduled totals: $e',
+          );
+          return const <String, dynamic>{};
+        }
+      }),
+    );
+
+    for (final recipe in recipes) {
+      calories += asDouble(recipe['calories']);
+      protein += asDouble(recipe['protein']);
+      carbs += asDouble(recipe['carbs']);
+      fat += asDouble(recipe['fat']);
     }
 
     return {
@@ -404,6 +430,8 @@ class _DailyLogCalendarScreenState
     String userId,
   ) {
     int segment = 0; // 0 = history, 1 = scheduled
+    Future<Map<String, double>>? scheduledTotalsFuture;
+    String scheduledTotalsKey = '';
     showModalBottomSheet(
       context: context,
       showDragHandle: true,
@@ -435,10 +463,17 @@ class _DailyLogCalendarScreenState
                   data: (meals) => _scheduledMealsForDay(day, meals),
                   orElse: () => <PlannedFood>[],
                 );
-                final scheduledTotalsFuture = _scheduledTotals(
-                  scheduledMeals,
-                  ref,
-                );
+                final nextTotalsKey = scheduledMeals
+                    .map(
+                      (meal) =>
+                          '${meal.id ?? ''}|${meal.recipeId}|${meal.date.millisecondsSinceEpoch}|${meal.mealType}',
+                    )
+                    .join('||');
+                if (scheduledTotalsFuture == null ||
+                    nextTotalsKey != scheduledTotalsKey) {
+                  scheduledTotalsKey = nextTotalsKey;
+                  scheduledTotalsFuture = _scheduledTotals(scheduledMeals, ref);
+                }
 
                 return StatefulBuilder(
                   builder: (context, setSheetState) {
@@ -1568,14 +1603,18 @@ class _AddFoodModalState extends ConsumerState<_AddFoodModal> {
                                     ? AppColors.surface
                                     : AppColors.accentBrown,
                               ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Search Online',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  color: _isSearchMode
-                                      ? AppColors.surface
-                                      : AppColors.accentBrown,
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  'Search Online',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: _isSearchMode
+                                        ? AppColors.surface
+                                        : AppColors.accentBrown,
+                                  ),
                                 ),
                               ),
                             ],
@@ -1604,14 +1643,18 @@ class _AddFoodModalState extends ConsumerState<_AddFoodModal> {
                                     ? AppColors.surface
                                     : AppColors.accentBrown,
                               ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Manual Entry',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  color: !_isSearchMode
-                                      ? AppColors.surface
-                                      : AppColors.accentBrown,
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  'Manual Entry',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: !_isSearchMode
+                                        ? AppColors.surface
+                                        : AppColors.accentBrown,
+                                  ),
                                 ),
                               ),
                             ],
@@ -2329,6 +2372,7 @@ class _FoodLogImageThumbnail extends StatelessWidget {
   Widget build(BuildContext context) {
     final uri = Uri.tryParse(imageUrl);
     final isFileImage = uri != null && uri.scheme == 'file';
+    final pixelSize = (_size * MediaQuery.devicePixelRatioOf(context)).round();
 
     Widget placeholder() {
       return Container(
@@ -2348,11 +2392,15 @@ class _FoodLogImageThumbnail extends StatelessWidget {
         ? Image.file(
             File.fromUri(uri),
             fit: BoxFit.cover,
+            cacheWidth: pixelSize,
+            cacheHeight: pixelSize,
             errorBuilder: (_, __, ___) => placeholder(),
           )
         : Image.network(
             imageUrl,
             fit: BoxFit.cover,
+            cacheWidth: pixelSize,
+            cacheHeight: pixelSize,
             loadingBuilder: (context, child, progress) {
               if (progress == null) return child;
               return placeholder();
@@ -3740,150 +3788,160 @@ class _AddSearchResultDialogState
   @override
   Widget build(BuildContext context) {
     final imageUrl = (widget.result.imageUrl ?? '').trim();
+    final dialogWidth =
+        (MediaQuery.sizeOf(context).width - 48).clamp(280.0, 420.0).toDouble();
 
     return AlertDialog(
       title: Text('Add ${widget.result.name}'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (imageUrl.isNotEmpty) ...[
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  imageUrl,
-                  width: double.infinity,
-                  height: 140,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    width: double.infinity,
+      content: SizedBox(
+        width: dialogWidth,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (imageUrl.isNotEmpty) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(
+                    imageUrl,
+                    width: dialogWidth,
                     height: 140,
-                    color: AppColors.surface,
-                    alignment: Alignment.center,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.broken_image, color: AppColors.textHint),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Image unavailable',
-                          style: TextStyle(
-                            color: AppColors.textHint,
-                            fontSize: 12,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      width: dialogWidth,
+                      height: 140,
+                      color: AppColors.surface,
+                      alignment: Alignment.center,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.broken_image, color: AppColors.textHint),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Image unavailable',
+                            style: TextStyle(
+                              color: AppColors.textHint,
+                              fontSize: 12,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 10),
-            ],
-            DropdownButtonFormField<String>(
-              value: _mealType,
-              decoration: const InputDecoration(labelText: 'Meal type'),
-              items: const [
-                DropdownMenuItem(value: 'breakfast', child: Text('Breakfast')),
-                DropdownMenuItem(value: 'lunch', child: Text('Lunch')),
-                DropdownMenuItem(value: 'dinner', child: Text('Dinner')),
-                DropdownMenuItem(value: 'snack', child: Text('Snack')),
+                const SizedBox(height: 10),
               ],
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() => _mealType = value);
-                }
-              },
-            ),
-            const SizedBox(height: 8),
-            if (_hasExplicitServingOptions) ...[
-              if (_availableServings.length > 1) ...[
-                DropdownButtonFormField<FoodServingOption>(
-                  value: _selectedServing,
-                  isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Serving size'),
-                  selectedItemBuilder: (context) => _availableServings
-                      .map(
-                        (option) => Align(
-                          alignment: AlignmentDirectional.centerStart,
-                          child: Text(
-                            _servingLabel(option),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
+              DropdownButtonFormField<String>(
+                value: _mealType,
+                decoration: const InputDecoration(labelText: 'Meal type'),
+                items: const [
+                  DropdownMenuItem(
+                    value: 'breakfast',
+                    child: Text('Breakfast'),
+                  ),
+                  DropdownMenuItem(value: 'lunch', child: Text('Lunch')),
+                  DropdownMenuItem(value: 'dinner', child: Text('Dinner')),
+                  DropdownMenuItem(value: 'snack', child: Text('Snack')),
+                ],
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() => _mealType = value);
+                  }
+                },
+              ),
+              const SizedBox(height: 8),
+              if (_hasExplicitServingOptions) ...[
+                if (_availableServings.length > 1) ...[
+                  DropdownButtonFormField<FoodServingOption>(
+                    value: _selectedServing,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Serving size',
+                    ),
+                    selectedItemBuilder: (context) => _availableServings
+                        .map(
+                          (option) => Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Text(
+                              _servingLabel(option),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
                           ),
-                        ),
-                      )
-                      .toList(),
-                  items: _availableServings
-                      .map(
-                        (option) => DropdownMenuItem<FoodServingOption>(
-                          value: option,
-                          child: Text(
-                            _servingLabel(option),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
+                        )
+                        .toList(),
+                    items: _availableServings
+                        .map(
+                          (option) => DropdownMenuItem<FoodServingOption>(
+                            value: option,
+                            child: Text(
+                              _servingLabel(option),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
                           ),
-                        ),
-                      )
-                      .toList(),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() {
+                        _selectedServing = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                DropdownButtonFormField<int>(
+                  value: _quantity,
+                  decoration: const InputDecoration(labelText: 'Servings'),
+                  items: List.generate(
+                    10,
+                    (index) => DropdownMenuItem<int>(
+                      value: index + 1,
+                      child: Text('${index + 1}'),
+                    ),
+                  ),
                   onChanged: (value) {
                     if (value == null) return;
                     setState(() {
-                      _selectedServing = value;
+                      _quantity = value;
                     });
                   },
                 ),
                 const SizedBox(height: 8),
-              ],
-              DropdownButtonFormField<int>(
-                value: _quantity,
-                decoration: const InputDecoration(labelText: 'Servings'),
-                items: List.generate(
-                  10,
-                  (index) => DropdownMenuItem<int>(
-                    value: index + 1,
-                    child: Text('${index + 1}'),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Total: ${(_selectedServing.grams * _quantity).toStringAsFixed(0)} g',
+                    style: TextStyle(color: AppColors.textHint, fontSize: 12),
                   ),
                 ),
-                onChanged: (value) {
-                  if (value == null) return;
-                  setState(() {
-                    _quantity = value;
-                  });
-                },
-              ),
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Total: ${(_selectedServing.grams * _quantity).toStringAsFixed(0)} g',
-                  style: TextStyle(color: AppColors.textHint, fontSize: 12),
-                ),
-              ),
-            ] else
-              TextField(
-                controller: _gramsController,
-                decoration: InputDecoration(
-                  labelText: 'Weight (g)',
-                  suffixIcon: IconButton(
-                    tooltip: 'Done',
-                    icon: const Icon(Icons.check),
-                    onPressed: () =>
-                        FocusManager.instance.primaryFocus?.unfocus(),
+              ] else
+                TextField(
+                  controller: _gramsController,
+                  decoration: InputDecoration(
+                    labelText: 'Weight (g)',
+                    suffixIcon: IconButton(
+                      tooltip: 'Done',
+                      icon: const Icon(Icons.check),
+                      onPressed: () =>
+                          FocusManager.instance.primaryFocus?.unfocus(),
+                    ),
                   ),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) =>
+                      FocusManager.instance.primaryFocus?.unfocus(),
+                  onTapOutside: (_) =>
+                      FocusManager.instance.primaryFocus?.unfocus(),
+                  onChanged: (_) {
+                    setState(() {});
+                  },
                 ),
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                textInputAction: TextInputAction.done,
-                onSubmitted: (_) =>
-                    FocusManager.instance.primaryFocus?.unfocus(),
-                onTapOutside: (_) =>
-                    FocusManager.instance.primaryFocus?.unfocus(),
-                onChanged: (_) {
-                  setState(() {});
-                },
-              ),
-          ],
+            ],
+          ),
         ),
       ),
       actions: [

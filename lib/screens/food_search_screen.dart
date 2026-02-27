@@ -213,279 +213,295 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
             final fat = (selectedServing.fatPerGram * currentGrams)
                 .toStringAsFixed(1);
 
+            final dialogWidth =
+                (MediaQuery.sizeOf(context).width - 48).clamp(280.0, 420.0)
+                    .toDouble();
+
             return AlertDialog(
               title: Text('Add ${result.name}'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (trimmedResultImageUrl.isNotEmpty) ...[
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.network(
-                          trimmedResultImageUrl,
-                          width: double.infinity,
-                          height: 140,
-                          fit: BoxFit.cover,
-                          loadingBuilder: (context, child, progress) {
-                            if (progress == null) return child;
-                            return Container(
-                              width: double.infinity,
+              content: SizedBox(
+                width: dialogWidth,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (trimmedResultImageUrl.isNotEmpty) ...[
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.network(
+                            trimmedResultImageUrl,
+                            width: dialogWidth,
+                            height: 140,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, progress) {
+                              if (progress == null) return child;
+                              return Container(
+                                width: dialogWidth,
+                                height: 140,
+                                color: AppColors.surface,
+                                alignment: Alignment.center,
+                                child: const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              );
+                            },
+                            errorBuilder: (_, __, ___) => Container(
+                              width: dialogWidth,
                               height: 140,
                               color: AppColors.surface,
                               alignment: Alignment.center,
-                              child: const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              ),
-                            );
-                          },
-                          errorBuilder: (_, __, ___) => Container(
-                            width: double.infinity,
-                            height: 140,
-                            color: AppColors.surface,
-                            alignment: Alignment.center,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.broken_image,
-                                  color: AppColors.textHint,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  'Image unavailable',
-                                  style: TextStyle(
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.broken_image,
                                     color: AppColors.textHint,
-                                    fontSize: 12,
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Image unavailable',
+                                    style: TextStyle(
+                                      color: AppColors.textHint,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 10),
-                    ],
-                    DropdownButtonFormField<String>(
-                      initialValue: mealType,
-                      decoration: const InputDecoration(labelText: 'Meal type'),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'breakfast',
-                          child: Text('Breakfast'),
-                        ),
-                        DropdownMenuItem(value: 'lunch', child: Text('Lunch')),
-                        DropdownMenuItem(
-                          value: 'dinner',
-                          child: Text('Dinner'),
-                        ),
-                        DropdownMenuItem(value: 'snack', child: Text('Snack')),
+                        const SizedBox(height: 10),
                       ],
-                      onChanged: (value) {
-                        if (value != null) {
-                          setDialogState(() {
-                            mealType = value;
-                          });
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 8),
-                    if (hasExplicitServingOptions) ...[
-                      if (availableServings.length > 1) ...[
-                        DropdownButtonFormField<FoodServingOption>(
-                          initialValue: selectedServing,
-                          isExpanded: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Serving size',
+                      DropdownButtonFormField<String>(
+                        initialValue: mealType,
+                        decoration: const InputDecoration(
+                          labelText: 'Meal type',
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'breakfast',
+                            child: Text('Breakfast'),
                           ),
-                          selectedItemBuilder: (context) => availableServings
-                              .map(
-                                (option) => Align(
-                                  alignment: AlignmentDirectional.centerStart,
-                                  child: Text(
-                                    servingLabel(option),
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1,
+                          DropdownMenuItem(
+                            value: 'lunch',
+                            child: Text('Lunch'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'dinner',
+                            child: Text('Dinner'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'snack',
+                            child: Text('Snack'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            setDialogState(() {
+                              mealType = value;
+                            });
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      if (hasExplicitServingOptions) ...[
+                        if (availableServings.length > 1) ...[
+                          DropdownButtonFormField<FoodServingOption>(
+                            initialValue: selectedServing,
+                            isExpanded: true,
+                            decoration: const InputDecoration(
+                              labelText: 'Serving size',
+                            ),
+                            selectedItemBuilder: (context) => availableServings
+                                .map(
+                                  (option) => Align(
+                                    alignment: AlignmentDirectional.centerStart,
+                                    child: Text(
+                                      servingLabel(option),
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 1,
+                                    ),
                                   ),
-                                ),
-                              )
-                              .toList(),
-                          items: availableServings
-                              .map(
-                                (option) => DropdownMenuItem<FoodServingOption>(
-                                  value: option,
-                                  child: Text(
-                                    servingLabel(option),
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1,
-                                  ),
-                                ),
-                              )
-                              .toList(),
+                                )
+                                .toList(),
+                            items: availableServings
+                                .map(
+                                  (option) =>
+                                      DropdownMenuItem<FoodServingOption>(
+                                        value: option,
+                                        child: Text(
+                                          servingLabel(option),
+                                          overflow: TextOverflow.ellipsis,
+                                          maxLines: 1,
+                                        ),
+                                      ),
+                                )
+                                .toList(),
+                            onChanged: (value) {
+                              if (value == null) return;
+                              setDialogState(() {
+                                selectedServing = value;
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 8),
+                        ],
+                        DropdownButtonFormField<int>(
+                          initialValue: quantity,
+                          decoration: const InputDecoration(
+                            labelText: 'Servings',
+                          ),
+                          items: List.generate(
+                            10,
+                            (index) => DropdownMenuItem<int>(
+                              value: index + 1,
+                              child: Text('${index + 1}'),
+                            ),
+                          ),
                           onChanged: (value) {
                             if (value == null) return;
                             setDialogState(() {
-                              selectedServing = value;
+                              quantity = value;
                             });
                           },
                         ),
                         const SizedBox(height: 8),
-                      ],
-                      DropdownButtonFormField<int>(
-                        initialValue: quantity,
-                        decoration: const InputDecoration(
-                          labelText: 'Servings',
-                        ),
-                        items: List.generate(
-                          10,
-                          (index) => DropdownMenuItem<int>(
-                            value: index + 1,
-                            child: Text('${index + 1}'),
-                          ),
-                        ),
-                        onChanged: (value) {
-                          if (value == null) return;
-                          setDialogState(() {
-                            quantity = value;
-                          });
-                        },
-                      ),
-                      const SizedBox(height: 8),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Total: ${(selectedServing.grams * quantity).toStringAsFixed(0)} g',
-                          style: TextStyle(
-                            color: AppColors.textHint,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ] else
-                      TextField(
-                        controller: gramsController,
-                        decoration: InputDecoration(
-                          labelText: 'Weight (g)',
-                          suffixIcon: IconButton(
-                            tooltip: 'Done',
-                            icon: const Icon(Icons.check),
-                            onPressed: () =>
-                                FocusManager.instance.primaryFocus?.unfocus(),
-                          ),
-                        ),
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        textInputAction: TextInputAction.done,
-                        onSubmitted: (_) =>
-                            FocusManager.instance.primaryFocus?.unfocus(),
-                        onTapOutside: (_) =>
-                            FocusManager.instance.primaryFocus?.unfocus(),
-                        onChanged: (_) {
-                          setDialogState(() {});
-                        },
-                      ),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceVariant,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.borderLight),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text(
-                            'Nutrition Info',
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Total: ${(selectedServing.grams * quantity).toStringAsFixed(0)} g',
                             style: TextStyle(
+                              color: AppColors.textHint,
                               fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textSecondary,
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Expanded(
-                                child: _NutritionIndicator(
-                                  label: 'Calories',
-                                  value: '$calories',
-                                  unit: 'Cal',
-                                  color: AppColors.error,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: _NutritionIndicator(
-                                  label: 'Protein',
-                                  value: protein,
-                                  unit: 'g',
-                                  color: AppColors.protein,
-                                ),
-                              ),
-                            ],
+                        ),
+                      ] else
+                        TextField(
+                          controller: gramsController,
+                          decoration: InputDecoration(
+                            labelText: 'Weight (g)',
+                            suffixIcon: IconButton(
+                              tooltip: 'Done',
+                              icon: const Icon(Icons.check),
+                              onPressed: () =>
+                                  FocusManager.instance.primaryFocus?.unfocus(),
+                            ),
                           ),
-                          const SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Expanded(
-                                child: _NutritionIndicator(
-                                  label: 'Carbs',
-                                  value: carbs,
-                                  unit: 'g',
-                                  color: AppColors.carbs,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: _NutritionIndicator(
-                                  label: 'Fat',
-                                  value: fat,
-                                  unit: 'g',
-                                  color: AppColors.fat,
-                                ),
-                              ),
-                            ],
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
                           ),
-                        ],
+                          textInputAction: TextInputAction.done,
+                          onSubmitted: (_) =>
+                              FocusManager.instance.primaryFocus?.unfocus(),
+                          onTapOutside: (_) =>
+                              FocusManager.instance.primaryFocus?.unfocus(),
+                          onChanged: (_) {
+                            setDialogState(() {});
+                          },
+                        ),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceVariant,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.borderLight),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              'Nutrition Info',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Expanded(
+                                  child: _NutritionIndicator(
+                                    label: 'Calories',
+                                    value: '$calories',
+                                    unit: 'Cal',
+                                    color: AppColors.error,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: _NutritionIndicator(
+                                    label: 'Protein',
+                                    value: protein,
+                                    unit: 'g',
+                                    color: AppColors.protein,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Expanded(
+                                  child: _NutritionIndicator(
+                                    label: 'Carbs',
+                                    value: carbs,
+                                    unit: 'g',
+                                    color: AppColors.carbs,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: _NutritionIndicator(
+                                    label: 'Fat',
+                                    value: fat,
+                                    unit: 'g',
+                                    color: AppColors.fat,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    OutlinedButton.icon(
-                      onPressed: () async {
-                        final pickedDate = await showDatePicker(
-                          context: dialogContext,
-                          initialDate: selectedDate,
-                          firstDate: DateTime.now().subtract(
-                            const Duration(days: 365),
-                          ),
-                          lastDate: DateTime.now().add(
-                            const Duration(days: 30),
-                          ),
-                        );
-                        if (pickedDate != null) {
-                          setDialogState(() {
-                            selectedDate = pickedDate;
-                          });
-                        }
-                      },
-                      icon: const Icon(Icons.calendar_today),
-                      label: Text(
-                        selectedDate.day == DateTime.now().day &&
-                                selectedDate.month == DateTime.now().month &&
-                                selectedDate.year == DateTime.now().year
-                            ? 'Today'
-                            : '${selectedDate.month}/${selectedDate.day}/${selectedDate.year}',
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        onPressed: () async {
+                          final pickedDate = await showDatePicker(
+                            context: dialogContext,
+                            initialDate: selectedDate,
+                            firstDate: DateTime.now().subtract(
+                              const Duration(days: 365),
+                            ),
+                            lastDate: DateTime.now().add(
+                              const Duration(days: 30),
+                            ),
+                          );
+                          if (pickedDate != null) {
+                            setDialogState(() {
+                              selectedDate = pickedDate;
+                            });
+                          }
+                        },
+                        icon: const Icon(Icons.calendar_today),
+                        label: Text(
+                          selectedDate.day == DateTime.now().day &&
+                                  selectedDate.month == DateTime.now().month &&
+                                  selectedDate.year == DateTime.now().year
+                              ? 'Today'
+                              : '${selectedDate.month}/${selectedDate.day}/${selectedDate.year}',
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               actions: [
