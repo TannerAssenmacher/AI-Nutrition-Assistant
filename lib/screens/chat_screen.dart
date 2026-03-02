@@ -42,7 +42,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   String? _selectedCuisineType;
 
   //list of cuisine
-  //:)
   final List<String> _cuisineTypes = [
     'No Preference',
     'African',
@@ -227,77 +226,89 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
     });
 
-    return Scaffold(
-      backgroundColor: bgColor,
-      appBar: AppBar(
-        backgroundColor: AppColors.surface.withValues(alpha: 0.8),
-        elevation: 0,
-        centerTitle: true,
-        flexibleSpace: ClipRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(color: Colors.transparent),
+    return Listener(
+      onPointerMove: (PointerMoveEvent event) {
+        if (event.delta.dx.abs() > 10 &&
+            event.delta.dx.abs() > event.delta.dy.abs()) {
+          if (FocusManager.instance.primaryFocus?.hasFocus ?? false) {
+            FocusManager.instance.primaryFocus?.unfocus();
+          }
+        }
+      },
+
+      child: Scaffold(
+        resizeToAvoidBottomInset: true,
+        backgroundColor: bgColor,
+        appBar: AppBar(
+          backgroundColor: AppColors.surface.withValues(alpha: 0.8),
+          elevation: 0,
+          centerTitle: true,
+          flexibleSpace: ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Container(color: Colors.transparent),
+            ),
           ),
-        ),
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(bottom: Radius.circular(25)),
-        ),
-        title: Column(
-          children: [
-            Text(
-              "NutriCoach",
-              style: TextStyle(
-                color: brandColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
-            ),
-            const Text(
-              "AI NUTRITION ASSISTANT",
-              style: TextStyle(
-                color: AppColors.statusNone,
-                fontSize: 9,
-                letterSpacing: 1.2,
-              ),
-            ),
-          ],
-        ),
-      ),
-      body: GestureDetector(
-        onTap: () => FocusScope.of(context).unfocus(),
-        child: SafeArea(
-          child: Column(
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(25)),
+          ),
+          title: Column(
             children: [
-              Expanded(
-                child: chatMessages.isEmpty
-                    ? _buildEmptyState()
-                    : ListView.builder(
-                        controller: _scrollController,
-                        //hides keyboard when swipe
-                        keyboardDismissBehavior:
-                            ScrollViewKeyboardDismissBehavior.onDrag,
-                        padding: const EdgeInsets.all(16),
-                        itemCount: chatMessages.length + (isLoading ? 1 : 0),
-                        itemBuilder: (context, index) {
-                          if (index == chatMessages.length)
-                            return const _TypingIndicator();
-                          final message = chatMessages[index];
-                          return _buildMessageNode(message);
-                        },
-                      ),
+              Text(
+                "NutriCoach",
+                style: TextStyle(
+                  color: brandColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
               ),
-              _choiceBar(),
-              _buildInputBar(),
+              const Text(
+                "AI NUTRITION ASSISTANT",
+                style: TextStyle(
+                  color: AppColors.statusNone,
+                  fontSize: 9,
+                  letterSpacing: 1.2,
+                ),
+              ),
             ],
           ),
         ),
-      ),
-      bottomNavigationBar: widget.isInPageView
-          ? null
-          : NavBar(
-              currentIndex: navIndexChat,
-              onTap: (index) => handleNavTap(context, index),
+        body: GestureDetector(
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: SafeArea(
+            child: Column(
+              children: [
+                Expanded(
+                  child: chatMessages.isEmpty
+                      ? _buildEmptyState()
+                      : ListView.builder(
+                          controller: _scrollController,
+                          //hides keyboard when swipe
+                          keyboardDismissBehavior:
+                              ScrollViewKeyboardDismissBehavior.onDrag,
+                          padding: const EdgeInsets.all(16),
+                          itemCount: chatMessages.length + (isLoading ? 1 : 0),
+                          itemBuilder: (context, index) {
+                            if (index == chatMessages.length)
+                              return const _TypingIndicator();
+                            final message = chatMessages[index];
+                            return _buildMessageNode(message);
+                          },
+                        ),
+                ),
+                _choiceBar(),
+                _buildInputBar(),
+              ],
             ),
+          ),
+        ),
+        bottomNavigationBar: widget.isInPageView
+            ? null
+            : NavBar(
+                currentIndex: navIndexChat,
+                onTap: (index) => handleNavTap(context, index),
+              ),
+      ),
     );
   }
 
