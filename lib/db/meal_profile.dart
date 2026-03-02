@@ -14,7 +14,14 @@ class MealProfile {
   final Preferences preferences;
   final Map<String, double> macroGoals; // {protein: g, carbs: g, fat: g}
   final int dailyCalorieGoal;
+  @JsonKey(fromJson: _dietaryGoalFromJson)
   final String dietaryGoal;
+
+  static String _dietaryGoalFromJson(dynamic value) {
+    if (value is String) return value;
+    if (value is num) return value.toString();
+    return '';
+  }
 
   MealProfile({
     required this.dietaryHabits,

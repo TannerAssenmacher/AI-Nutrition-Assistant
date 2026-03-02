@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -17,6 +18,41 @@ import '../providers/food_providers.dart';
 import '../providers/firestore_providers.dart';
 import '../theme/app_colors.dart';
 import 'camera_capture_screen.dart';
+
+final mealProfileGoalSnapshotProvider =
+    StreamProvider.family<Map<String, double>?, String>((ref, userId) {
+      return FirebaseFirestore.instance
+          .collection('Users')
+          .doc(userId)
+          .snapshots()
+          .map((doc) {
+            if (!doc.exists) return null;
+            final data = doc.data();
+            if (data == null) return null;
+
+            final mealProfile = data['mealProfile'];
+            if (mealProfile is! Map) return null;
+
+            final macroGoalsRaw = mealProfile['macroGoals'];
+            if (macroGoalsRaw is! Map) return null;
+
+            double asDouble(dynamic value) {
+              if (value is num) return value.toDouble();
+              if (value is String) return double.tryParse(value) ?? 0.0;
+              return 0.0;
+            }
+
+            // Read the actual calorie goal, not a default
+            final calorieGoal = asDouble(mealProfile['dailyCalorieGoal']);
+
+            return {
+              'protein': asDouble(macroGoalsRaw['protein']),
+              'carbs': asDouble(macroGoalsRaw['carbs']),
+              'fat': asDouble(macroGoalsRaw['fat'] ?? macroGoalsRaw['fats']),
+              'calories': calorieGoal > 0 ? calorieGoal : 2000.0,
+            };
+          });
+    });
 
 class CameraScreen extends ConsumerStatefulWidget {
   final bool isInPageView;
@@ -615,9 +651,32 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     }
 
     if (_analysisResult != null) {
+      final userId = FirebaseAuth.instance.currentUser?.uid;
+      Map<String, double>? goalSnapshot;
+      if (userId != null) {
+        final goalsAsync = ref.watch(mealProfileGoalSnapshotProvider(userId));
+        // Use valueOrNull but prefer waiting for data when available
+        goalSnapshot = goalsAsync.valueOrNull;
+
+        // If data is loading and we don't have a value yet, show loading indicator
+        if (goalsAsync.isLoading && goalSnapshot == null) {
+          return const Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 12),
+                Text('Loading your nutrition goals...'),
+              ],
+            ),
+          );
+        }
+      }
+
       return MealAnalysisResultWidget(
         key: const ValueKey('analysis_result'),
         analysis: _analysisResult!,
+        goalSnapshot: goalSnapshot,
         onCapture: _captureAndAnalyze,
         onEditName: _promptEditName,
         onEditWeight: _promptEditWeight,
@@ -1310,6 +1369,7 @@ class _EditableChip extends StatelessWidget {
 // Widget to display the meal analysis results.
 class MealAnalysisResultWidget extends StatelessWidget {
   final MealAnalysis analysis;
+  final Map<String, double>? goalSnapshot;
   final VoidCallback onCapture;
   final void Function(int) onEditName;
   final void Function(int) onEditWeight;
@@ -1319,6 +1379,7 @@ class MealAnalysisResultWidget extends StatelessWidget {
   const MealAnalysisResultWidget({
     super.key,
     required this.analysis,
+    this.goalSnapshot,
     required this.onCapture,
     required this.onEditName,
     required this.onEditWeight,
@@ -1326,9 +1387,66 @@ class MealAnalysisResultWidget extends StatelessWidget {
     required this.isSavingToCalendar,
   });
 
+  /// Converts the user's daily macro goals to grams.
+  Map<String, double>? _dailyGoalsInGrams() {
+    final goals = goalSnapshot;
+    if (goals == null || goals.isEmpty) {
+      return null;
+    }
+
+    final calorieGoal = goals['calories'] ?? 0.0;
+    if (calorieGoal <= 0) {
+      return null; // Can't calculate without valid calorie goal
+    }
+
+    final proteinRaw = goals['protein'] ?? 0.0;
+    final carbsRaw = goals['carbs'] ?? 0.0;
+    final fatRaw = goals['fat'] ?? goals['fats'] ?? 0.0;
+
+    final values = [proteinRaw, carbsRaw, fatRaw].where((v) => v > 0).toList();
+    final looksLikePercentages =
+        values.isNotEmpty && values.every((v) => v <= 100.0);
+
+    // If stored as percentages, convert to grams based on calorie goal
+    if (looksLikePercentages) {
+      return {
+        'protein': (proteinRaw / 100) * calorieGoal / 4,
+        'carbs': (carbsRaw / 100) * calorieGoal / 4,
+        'fat': (fatRaw / 100) * calorieGoal / 9,
+      };
+    }
+
+    // If already stored as grams, use directly
+    if (proteinRaw > 0 || carbsRaw > 0 || fatRaw > 0) {
+      return {'protein': proteinRaw, 'carbs': carbsRaw, 'fat': fatRaw};
+    }
+
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final topInset = MediaQuery.of(context).padding.top;
+
+    // Calculate what percentage of the user's daily goals this meal represents
+    final dailyGoals = _dailyGoalsInGrams();
+
+    // Always calculate percentage of daily goals if goals are available
+    double proteinPercent = analysis.proteinPercentage;
+    double carbsPercent = analysis.carbsPercentage;
+    double fatPercent = analysis.fatPercentage;
+
+    if (dailyGoals != null) {
+      if (dailyGoals['protein'] != null && dailyGoals['protein']! > 0) {
+        proteinPercent = (analysis.totalProtein / dailyGoals['protein']!) * 100;
+      }
+      if (dailyGoals['carbs'] != null && dailyGoals['carbs']! > 0) {
+        carbsPercent = (analysis.totalCarbs / dailyGoals['carbs']!) * 100;
+      }
+      if (dailyGoals['fat'] != null && dailyGoals['fat']! > 0) {
+        fatPercent = (analysis.totalFat / dailyGoals['fat']!) * 100;
+      }
+    }
 
     return SingleChildScrollView(
       child: Column(
@@ -1375,21 +1493,21 @@ class MealAnalysisResultWidget extends StatelessWidget {
                   _MacroBar(
                     label: 'Protein',
                     grams: analysis.totalProtein,
-                    percentage: analysis.proteinPercentage,
+                    percentage: proteinPercent,
                     color: AppColors.protein,
                   ),
                   const SizedBox(height: 8),
                   _MacroBar(
                     label: 'Carbs',
                     grams: analysis.totalCarbs,
-                    percentage: analysis.carbsPercentage,
+                    percentage: carbsPercent,
                     color: AppColors.carbs,
                   ),
                   const SizedBox(height: 8),
                   _MacroBar(
                     label: 'Fat',
                     grams: analysis.totalFat,
-                    percentage: analysis.fatPercentage,
+                    percentage: fatPercent,
                     color: AppColors.fat,
                   ),
                 ],
