@@ -1173,20 +1173,41 @@ class _ProfilePageState extends State<ProfilePage> {
     TextEditingController controller,
     List<String> list,
   ) {
+    void addItem() {
+      final item = controller.text.trim();
+      if (item.isNotEmpty && !list.contains(item)) {
+        setState(() {
+          list.add(item);
+          controller.clear();
+          _refreshEditedState();
+        });
+      }
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: TextField(
                   controller: controller,
                   decoration: InputDecoration(
-                    labelText: "Add $title",
-                    hintText: "Letters only",
-                    border: InputBorder.none,
+                    hintText: "Add $title",
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    filled: true,
+                    fillColor: bgColor.withValues(alpha: 0.5),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
                   ),
                   onChanged: (value) {
                     String filtered = value.replaceAll(
@@ -1200,20 +1221,30 @@ class _ProfilePageState extends State<ProfilePage> {
                       );
                     }
                   },
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => addItem(),
                 ),
               ),
-              IconButton(
-                icon: Icon(Icons.add_circle, color: brandColor),
-                onPressed: () {
-                  final item = controller.text.trim();
-                  if (item.isNotEmpty && !list.contains(item)) {
-                    setState(() {
-                      list.add(item);
-                      controller.clear();
-                      _refreshEditedState();
-                    });
-                  }
-                },
+              const SizedBox(width: 8),
+              SizedBox(
+                height: 44,
+                child: ElevatedButton.icon(
+                  onPressed: addItem,
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text(
+                    'Add',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: brandColor,
+                    foregroundColor: AppColors.surface,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                  ),
+                ),
               ),
             ],
           ),
