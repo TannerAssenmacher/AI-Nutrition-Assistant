@@ -72,14 +72,16 @@ class _DailyLogCalendarScreenState
     _hasAutoScrolledToToday = true;
 
     // Calculate the scroll offset for the item.
-    // Each item is roughly: margin(6+6) + padding(16+16) + content_height(~140-180) = ~180-220 per item.
-    // Subtract a header offset so today appears lower, not hidden by the week selector.
-    final itemHeight = 180.0;
-    const headerOffset = 88.0;
-    final offset = (todayIndex * itemHeight - headerOffset).clamp(
-      0.0,
-      double.infinity,
-    );
+    // Now that Daily Goals is inside the ListView, we need to account for it.
+    // Daily Goals height: ~120-140px with margins
+    // Each day item is roughly: margin(6+6) + padding(16+16) + content_height(~140-180) = ~180-220 per item.
+    const dailyGoalsHeight = 140.0;
+    const itemHeight = 180.0;
+    const headerOffset = 20.0; // Small offset so today isn't at the very top
+
+    // Add Daily Goals height to the calculation since it's the first item in the list
+    final offset = (dailyGoalsHeight + todayIndex * itemHeight - headerOffset)
+        .clamp(0.0, double.infinity);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_weekListScrollController.hasClients) {
@@ -1104,94 +1106,102 @@ class _DailyLogCalendarScreenState
                         ],
                       ),
                     ),
-                    // Daily Goals Section
-                    Container(
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: AppColors.selectionColor.withValues(
-                            alpha: 0.3,
-                          ),
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.black.withValues(alpha: 0.05),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.track_changes,
-                                size: 18,
-                                color: AppColors.selectionColor,
-                              ),
-                              const SizedBox(width: 6),
-                              const Text(
-                                'Daily Goals',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color.fromARGB(255, 238, 223, 223),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: [
-                              _DailyGoalChip(
-                                label: 'Cal',
-                                value: calorieGoal.toInt().toString(),
-                                unit: 'Cal',
-                                color: AppColors.caloriesCircle,
-                              ),
-                              _DailyGoalChip(
-                                label: 'Pro',
-                                value: proteinGoal.toStringAsFixed(0),
-                                unit: 'g',
-                                percentage: proteinPercent,
-                                color: AppColors.protein,
-                              ),
-                              _DailyGoalChip(
-                                label: 'Carb',
-                                value: carbsGoal.toStringAsFixed(0),
-                                unit: 'g',
-                                percentage: carbsPercent,
-                                color: AppColors.carbs,
-                              ),
-                              _DailyGoalChip(
-                                label: 'Fat',
-                                value: fatGoal.toStringAsFixed(0),
-                                unit: 'g',
-                                percentage: fatPercent,
-                                color: AppColors.fat,
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
                     Expanded(
                       child: ListView(
                         controller: _weekListScrollController,
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                         children: [
+                          // Daily Goals Section
+                          Container(
+                            margin: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 8,
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: AppColors.selectionColor.withValues(
+                                  alpha: 0.3,
+                                ),
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.black.withValues(
+                                    alpha: 0.05,
+                                  ),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.track_changes,
+                                      size: 18,
+                                      color: AppColors.selectionColor,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    const Text(
+                                      'Daily Goals',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color.fromARGB(
+                                          255,
+                                          238,
+                                          223,
+                                          223,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceAround,
+                                  children: [
+                                    _DailyGoalChip(
+                                      label: 'Cal',
+                                      value: calorieGoal.toInt().toString(),
+                                      unit: 'Cal',
+                                      color: AppColors.caloriesCircle,
+                                    ),
+                                    _DailyGoalChip(
+                                      label: 'Pro',
+                                      value: proteinGoal.toStringAsFixed(0),
+                                      unit: 'g',
+                                      percentage: proteinPercent,
+                                      color: AppColors.protein,
+                                    ),
+                                    _DailyGoalChip(
+                                      label: 'Carb',
+                                      value: carbsGoal.toStringAsFixed(0),
+                                      unit: 'g',
+                                      percentage: carbsPercent,
+                                      color: AppColors.carbs,
+                                    ),
+                                    _DailyGoalChip(
+                                      label: 'Fat',
+                                      value: fatGoal.toStringAsFixed(0),
+                                      unit: 'g',
+                                      percentage: fatPercent,
+                                      color: AppColors.fat,
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
                           ...weekDays.map((day) {
                             final isSelected =
                                 _selectedDay != null &&
@@ -4158,6 +4168,7 @@ class _DailyGoalChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           label,
@@ -4176,6 +4187,7 @@ class _DailyGoalChip extends StatelessWidget {
             border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
           ),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Row(
                 mainAxisSize: MainAxisSize.min,
