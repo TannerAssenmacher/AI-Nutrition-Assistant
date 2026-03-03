@@ -498,34 +498,36 @@ class _FoodCarouselCard extends StatelessWidget {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final compact = constraints.maxHeight < 145 || textScale > 1.15;
+                final imageHeight = compact ? 60.0 : 70.0;
                 return Column(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (imageUrl != null) ...[
-                      _FoodImagePreview(imageUrl: imageUrl),
-                      const SizedBox(height: 10),
+                      _FoodImagePreview(
+                        imageUrl: imageUrl,
+                        height: imageHeight,
+                      ),
+                      const SizedBox(height: 6),
                     ],
-                    Expanded(
-                      child: Align(
-                        alignment: Alignment.topLeft,
-                        child: Text(
-                          food.name,
-                          style: TextStyle(
-                            fontSize: compact ? 16 : 18,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.accentBrown,
-                            height: 1.15,
-                          ),
-                          maxLines: compact ? 1 : 2,
-                          overflow: TextOverflow.ellipsis,
+                    Flexible(
+                      child: Text(
+                        food.name,
+                        style: TextStyle(
+                          fontSize: compact ? 15 : 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.accentBrown,
+                          height: 1.15,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 3),
                     Text(
                       '$calories Cal',
                       style: TextStyle(
-                        fontSize: compact ? 14 : 16,
+                        fontSize: compact ? 13 : 14,
                         fontWeight: FontWeight.w600,
                         color: AppColors.brand,
                       ),
@@ -535,7 +537,7 @@ class _FoodCarouselCard extends StatelessWidget {
                     Text(
                       food.mealType.toUpperCase(),
                       style: TextStyle(
-                        fontSize: compact ? 11 : 12,
+                        fontSize: compact ? 10 : 11,
                         color: AppColors.textHint,
                         fontWeight: FontWeight.w500,
                       ),

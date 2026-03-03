@@ -148,25 +148,6 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  double _dietGoalPercentOffset(String goal) {
-    // Percent adjustment applied to estimated TDEE (BMR * activity).
-    // Negative values are deficits; positive values are surpluses.
-    switch (goal) {
-      case 'Large Weight Loss':
-        return -0.25;
-      case 'Weight Loss':
-        return -0.15;
-      case 'Weight Maintenance':
-        return 0.0;
-      case 'Muscle Growth':
-        return 0.10;
-      case 'Large Muscle Growth':
-        return 0.20;
-      default:
-        return 0.0;
-    }
-  }
-
   int _calculateDailyCalories() {
     final weight = double.tryParse(_weightController.text);
     if (_heightCm == null ||
@@ -179,7 +160,7 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       final height = _heightCm!;
       final weightKg = weight / 2.2046226218;
-      final dobDate = DateTime.parse(_normalizedDob(_dob) ?? _dob!);
+      final dobDate = DateTime.parse(_dob!);
       final now = DateTime.now();
       int age = now.year - dobDate.year;
       if (now.month < dobDate.month ||
@@ -190,11 +171,17 @@ class _ProfilePageState extends State<ProfilePage> {
           ? (10 * weightKg) + (6.25 * height) - (5 * age) + 5
           : (10 * weightKg) + (6.25 * height) - (5 * age) - 161;
 
-      final tdee = bmr * _activityLevel;
-      final goalIndex = _dietaryGoal.toInt().clamp(0, _dietGoals.length - 1);
-      final goal = _dietGoals[goalIndex];
-      final target = tdee * (1.0 + _dietGoalPercentOffset(goal));
-      return target.round();
+      final weightfactor = {
+        'Large Weight Loss': -1000,
+        'Weight Loss': -500,
+        'Weight Maintenance': 0,
+        'Muscle Growth': 500,
+        'Large Muscle Growth': 1000,
+      };
+
+      return (bmr * _activityLevel +
+              weightfactor[_dietGoals[_dietaryGoal.toInt()]]!)
+          .round();
     } catch (e) {
       return 0;
     }
@@ -1173,20 +1160,41 @@ class _ProfilePageState extends State<ProfilePage> {
     TextEditingController controller,
     List<String> list,
   ) {
+    void addItem() {
+      final item = controller.text.trim();
+      if (item.isNotEmpty && !list.contains(item)) {
+        setState(() {
+          list.add(item);
+          controller.clear();
+          _refreshEditedState();
+        });
+      }
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: TextField(
                   controller: controller,
                   decoration: InputDecoration(
-                    labelText: "Add $title",
-                    hintText: "Letters only",
-                    border: InputBorder.none,
+                    hintText: "Add $title",
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    filled: true,
+                    fillColor: bgColor.withValues(alpha: 0.5),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
                   ),
                   onChanged: (value) {
                     String filtered = value.replaceAll(
@@ -1200,20 +1208,30 @@ class _ProfilePageState extends State<ProfilePage> {
                       );
                     }
                   },
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => addItem(),
                 ),
               ),
-              IconButton(
-                icon: Icon(Icons.add_circle, color: brandColor),
-                onPressed: () {
-                  final item = controller.text.trim();
-                  if (item.isNotEmpty && !list.contains(item)) {
-                    setState(() {
-                      list.add(item);
-                      controller.clear();
-                      _refreshEditedState();
-                    });
-                  }
-                },
+              const SizedBox(width: 8),
+              SizedBox(
+                height: 44,
+                child: ElevatedButton.icon(
+                  onPressed: addItem,
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text(
+                    'Add',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: brandColor,
+                    foregroundColor: AppColors.surface,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                  ),
+                ),
               ),
             ],
           ),
@@ -1749,27 +1767,26 @@ class _ProfilePageState extends State<ProfilePage> {
       {
         'goal': 'Large Weight Loss',
         'definition':
-            'Targets an aggressive deficit (about 25% below estimated maintenance). Actual weekly change varies by person.',
+            'Losing 2 lbs. per week. Going over this is not recommended.',
       },
       {
         'goal': 'Weight Loss',
         'definition':
-            'Targets a moderate deficit (about 15% below estimated maintenance). Actual weekly change varies by person.',
+            'Losing 1 lb. per week, the recommended rate for weight loss.',
       },
       {
         'goal': 'Weight Maintenance',
-        'definition':
-            'Targets estimated maintenance calories (no deficit or surplus applied).',
+        'definition': 'Gaining/Losing 0 lbs. per week.',
       },
       {
         'goal': 'Muscle Growth',
         'definition':
-            'Targets a small surplus (about 10% above estimated maintenance) to support training and recovery.',
+            'Sets the caloric excess 1 lb. per week. High protein & training grows muscle!',
       },
       {
         'goal': 'Large Muscle Growth',
         'definition':
-            'Targets a larger surplus (about 20% above estimated maintenance). This can increase fat gain for some people.',
+            'Set to gain 2 lbs. per week in muscle. This is aggressive and only for committed athletes.',
       },
     ];
 

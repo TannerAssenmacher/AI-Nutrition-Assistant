@@ -15,12 +15,16 @@ class AppUser {
   @JsonKey(includeFromJson: false, includeToJson: false)
   final String id; // Primary key (unique, never changes)
 
+  @JsonKey(fromJson: _stringFromJson)
   final String firstname;
+  @JsonKey(fromJson: _stringFromJson)
   final String lastname;
   final DateTime? dob; // nullable - some users may not have DOB set
+  @JsonKey(fromJson: _stringFromJson)
   final String sex;
   final double height; // inches
   final double weight; // pounds
+  @JsonKey(fromJson: _stringFromJson)
   final String activityLevel;
 
   final MealProfile mealProfile;
@@ -30,6 +34,12 @@ class AppUser {
 
   @JsonKey(fromJson: dateFromJson, toJson: dateToJson)
   final DateTime updatedAt;
+
+  static String _stringFromJson(dynamic value) {
+    if (value is String) return value;
+    if (value is num) return value.toString();
+    return '';
+  }
 
   AppUser({
     String? id,
