@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:async';
 import '../services/food_search_service.dart';
+import '../services/food_image_service.dart';
 import '../theme/app_colors.dart';
 import '../providers/auth_providers.dart';
 import '../providers/firestore_providers.dart';
@@ -9,6 +10,7 @@ import '../db/food.dart';
 import 'package:nutrition_assistant/navigation/nav_helper.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
 import 'package:nutrition_assistant/widgets/fatsecret_attribution.dart';
+import '../widgets/top_bar.dart';
 
 class FoodSearchScreen extends ConsumerStatefulWidget {
   final bool isInPageView;
@@ -126,6 +128,7 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
     }
 
     final rootContext = context;
+    final trimmedResultImageUrl = (result.imageUrl ?? '').trim();
     final hasExplicitServingOptions = result.servingOptions.isNotEmpty;
     List<FoodServingOption> normalizeServingOptions(
       List<FoodServingOption> options,
@@ -210,228 +213,295 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
             final fat = (selectedServing.fatPerGram * currentGrams)
                 .toStringAsFixed(1);
 
+            final dialogWidth =
+                (MediaQuery.sizeOf(context).width - 48).clamp(280.0, 420.0)
+                    .toDouble();
+
             return AlertDialog(
               title: Text('Add ${result.name}'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    DropdownButtonFormField<String>(
-                      initialValue: mealType,
-                      decoration: const InputDecoration(labelText: 'Meal type'),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'breakfast',
-                          child: Text('Breakfast'),
-                        ),
-                        DropdownMenuItem(value: 'lunch', child: Text('Lunch')),
-                        DropdownMenuItem(
-                          value: 'dinner',
-                          child: Text('Dinner'),
-                        ),
-                        DropdownMenuItem(value: 'snack', child: Text('Snack')),
-                      ],
-                      onChanged: (value) {
-                        if (value != null) {
-                          setDialogState(() {
-                            mealType = value;
-                          });
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 8),
-                    if (hasExplicitServingOptions) ...[
-                      if (availableServings.length > 1) ...[
-                        DropdownButtonFormField<FoodServingOption>(
-                          initialValue: selectedServing,
-                          isExpanded: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Serving size',
+              content: SizedBox(
+                width: dialogWidth,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (trimmedResultImageUrl.isNotEmpty) ...[
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.network(
+                            trimmedResultImageUrl,
+                            width: dialogWidth,
+                            height: 140,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, progress) {
+                              if (progress == null) return child;
+                              return Container(
+                                width: dialogWidth,
+                                height: 140,
+                                color: AppColors.surface,
+                                alignment: Alignment.center,
+                                child: const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              );
+                            },
+                            errorBuilder: (_, __, ___) => Container(
+                              width: dialogWidth,
+                              height: 140,
+                              color: AppColors.surface,
+                              alignment: Alignment.center,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.broken_image,
+                                    color: AppColors.textHint,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Image unavailable',
+                                    style: TextStyle(
+                                      color: AppColors.textHint,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
-                          selectedItemBuilder: (context) => availableServings
-                              .map(
-                                (option) => Align(
-                                  alignment: AlignmentDirectional.centerStart,
-                                  child: Text(
-                                    servingLabel(option),
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1,
+                        ),
+                        const SizedBox(height: 10),
+                      ],
+                      DropdownButtonFormField<String>(
+                        initialValue: mealType,
+                        decoration: const InputDecoration(
+                          labelText: 'Meal type',
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'breakfast',
+                            child: Text('Breakfast'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'lunch',
+                            child: Text('Lunch'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'dinner',
+                            child: Text('Dinner'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'snack',
+                            child: Text('Snack'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            setDialogState(() {
+                              mealType = value;
+                            });
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      if (hasExplicitServingOptions) ...[
+                        if (availableServings.length > 1) ...[
+                          DropdownButtonFormField<FoodServingOption>(
+                            initialValue: selectedServing,
+                            isExpanded: true,
+                            decoration: const InputDecoration(
+                              labelText: 'Serving size',
+                            ),
+                            selectedItemBuilder: (context) => availableServings
+                                .map(
+                                  (option) => Align(
+                                    alignment: AlignmentDirectional.centerStart,
+                                    child: Text(
+                                      servingLabel(option),
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 1,
+                                    ),
                                   ),
-                                ),
-                              )
-                              .toList(),
-                          items: availableServings
-                              .map(
-                                (option) => DropdownMenuItem<FoodServingOption>(
-                                  value: option,
-                                  child: Text(
-                                    servingLabel(option),
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1,
-                                  ),
-                                ),
-                              )
-                              .toList(),
+                                )
+                                .toList(),
+                            items: availableServings
+                                .map(
+                                  (option) =>
+                                      DropdownMenuItem<FoodServingOption>(
+                                        value: option,
+                                        child: Text(
+                                          servingLabel(option),
+                                          overflow: TextOverflow.ellipsis,
+                                          maxLines: 1,
+                                        ),
+                                      ),
+                                )
+                                .toList(),
+                            onChanged: (value) {
+                              if (value == null) return;
+                              setDialogState(() {
+                                selectedServing = value;
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 8),
+                        ],
+                        DropdownButtonFormField<int>(
+                          initialValue: quantity,
+                          decoration: const InputDecoration(
+                            labelText: 'Servings',
+                          ),
+                          items: List.generate(
+                            10,
+                            (index) => DropdownMenuItem<int>(
+                              value: index + 1,
+                              child: Text('${index + 1}'),
+                            ),
+                          ),
                           onChanged: (value) {
                             if (value == null) return;
                             setDialogState(() {
-                              selectedServing = value;
+                              quantity = value;
                             });
                           },
                         ),
                         const SizedBox(height: 8),
-                      ],
-                      DropdownButtonFormField<int>(
-                        initialValue: quantity,
-                        decoration: const InputDecoration(
-                          labelText: 'Servings',
-                        ),
-                        items: List.generate(
-                          10,
-                          (index) => DropdownMenuItem<int>(
-                            value: index + 1,
-                            child: Text('${index + 1}'),
-                          ),
-                        ),
-                        onChanged: (value) {
-                          if (value == null) return;
-                          setDialogState(() {
-                            quantity = value;
-                          });
-                        },
-                      ),
-                      const SizedBox(height: 8),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Total: ${(selectedServing.grams * quantity).toStringAsFixed(0)} g',
-                          style: TextStyle(
-                            color: AppColors.textHint,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ] else
-                      TextField(
-                        controller: gramsController,
-                        decoration: InputDecoration(
-                          labelText: 'Weight (g)',
-                          suffixIcon: IconButton(
-                            tooltip: 'Done',
-                            icon: const Icon(Icons.check),
-                            onPressed: () =>
-                                FocusManager.instance.primaryFocus?.unfocus(),
-                          ),
-                        ),
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        textInputAction: TextInputAction.done,
-                        onSubmitted: (_) =>
-                            FocusManager.instance.primaryFocus?.unfocus(),
-                        onTapOutside: (_) =>
-                            FocusManager.instance.primaryFocus?.unfocus(),
-                        onChanged: (_) {
-                          setDialogState(() {});
-                        },
-                      ),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceVariant,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.borderLight),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text(
-                            'Nutrition Info',
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Total: ${(selectedServing.grams * quantity).toStringAsFixed(0)} g',
                             style: TextStyle(
+                              color: AppColors.textHint,
                               fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textSecondary,
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Expanded(
-                                child: _NutritionIndicator(
-                                  label: 'Calories',
-                                  value: '$calories',
-                                  unit: 'Cal',
-                                  color: AppColors.error,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: _NutritionIndicator(
-                                  label: 'Protein',
-                                  value: protein,
-                                  unit: 'g',
-                                  color: AppColors.protein,
-                                ),
-                              ),
-                            ],
+                        ),
+                      ] else
+                        TextField(
+                          controller: gramsController,
+                          decoration: InputDecoration(
+                            labelText: 'Weight (g)',
+                            suffixIcon: IconButton(
+                              tooltip: 'Done',
+                              icon: const Icon(Icons.check),
+                              onPressed: () =>
+                                  FocusManager.instance.primaryFocus?.unfocus(),
+                            ),
                           ),
-                          const SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Expanded(
-                                child: _NutritionIndicator(
-                                  label: 'Carbs',
-                                  value: carbs,
-                                  unit: 'g',
-                                  color: AppColors.carbs,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: _NutritionIndicator(
-                                  label: 'Fat',
-                                  value: fat,
-                                  unit: 'g',
-                                  color: AppColors.fat,
-                                ),
-                              ),
-                            ],
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
                           ),
-                        ],
+                          textInputAction: TextInputAction.done,
+                          onSubmitted: (_) =>
+                              FocusManager.instance.primaryFocus?.unfocus(),
+                          onTapOutside: (_) =>
+                              FocusManager.instance.primaryFocus?.unfocus(),
+                          onChanged: (_) {
+                            setDialogState(() {});
+                          },
+                        ),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceVariant,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.borderLight),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              'Nutrition Info',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Expanded(
+                                  child: _NutritionIndicator(
+                                    label: 'Calories',
+                                    value: '$calories',
+                                    unit: 'Cal',
+                                    color: AppColors.error,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: _NutritionIndicator(
+                                    label: 'Protein',
+                                    value: protein,
+                                    unit: 'g',
+                                    color: AppColors.protein,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Expanded(
+                                  child: _NutritionIndicator(
+                                    label: 'Carbs',
+                                    value: carbs,
+                                    unit: 'g',
+                                    color: AppColors.carbs,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: _NutritionIndicator(
+                                    label: 'Fat',
+                                    value: fat,
+                                    unit: 'g',
+                                    color: AppColors.fat,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    OutlinedButton.icon(
-                      onPressed: () async {
-                        final pickedDate = await showDatePicker(
-                          context: dialogContext,
-                          initialDate: selectedDate,
-                          firstDate: DateTime.now().subtract(
-                            const Duration(days: 365),
-                          ),
-                          lastDate: DateTime.now().add(
-                            const Duration(days: 30),
-                          ),
-                        );
-                        if (pickedDate != null) {
-                          setDialogState(() {
-                            selectedDate = pickedDate;
-                          });
-                        }
-                      },
-                      icon: const Icon(Icons.calendar_today),
-                      label: Text(
-                        selectedDate.day == DateTime.now().day &&
-                                selectedDate.month == DateTime.now().month &&
-                                selectedDate.year == DateTime.now().year
-                            ? 'Today'
-                            : '${selectedDate.month}/${selectedDate.day}/${selectedDate.year}',
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        onPressed: () async {
+                          final pickedDate = await showDatePicker(
+                            context: dialogContext,
+                            initialDate: selectedDate,
+                            firstDate: DateTime.now().subtract(
+                              const Duration(days: 365),
+                            ),
+                            lastDate: DateTime.now().add(
+                              const Duration(days: 30),
+                            ),
+                          );
+                          if (pickedDate != null) {
+                            setDialogState(() {
+                              selectedDate = pickedDate;
+                            });
+                          }
+                        },
+                        icon: const Icon(Icons.calendar_today),
+                        label: Text(
+                          selectedDate.day == DateTime.now().day &&
+                                  selectedDate.month == DateTime.now().month &&
+                                  selectedDate.year == DateTime.now().year
+                              ? 'Today'
+                              : '${selectedDate.month}/${selectedDate.day}/${selectedDate.year}',
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               actions: [
@@ -466,6 +536,11 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                       DateTime.now().hour,
                       DateTime.now().minute,
                     );
+                    final imageUrlForLog =
+                        trimmedResultImageUrl.isNotEmpty &&
+                            FoodImageService.shouldShowImageForEntry(consumedAt)
+                        ? trimmedResultImageUrl
+                        : null;
 
                     final item = FoodItem(
                       id: 'search-${DateTime.now().microsecondsSinceEpoch}',
@@ -476,6 +551,7 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                       carbs_g: selectedServing.carbsPerGram,
                       fat: selectedServing.fatPerGram,
                       mealType: mealType,
+                      imageUrl: imageUrlForLog,
                       consumedAt: consumedAt,
                     );
 
@@ -525,112 +601,83 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final authUser = ref.watch(authServiceProvider);
+    final userId = authUser?.uid;
+    final userProfileAsync = userId != null
+        ? ref.watch(firestoreUserProfileProvider(userId))
+        : const AsyncValue.loading();
+    final name = userProfileAsync.valueOrNull?.firstname ?? 'User';
+
     final bodyContent = SafeArea(
       top: false,
       child: Column(
         children: [
           // Header
-          Container(
-            padding: EdgeInsets.fromLTRB(
-              16,
-              MediaQuery.of(context).padding.top + 20,
-              16,
-              16,
-            ),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppColors.brand,
-                  AppColors.brand.withValues(alpha: 0.85),
+          top_bar(),
+          // Search bar
+          Padding(
+            padding: const EdgeInsets.only(
+              top: 20.0,
+            ), // Increase this number to push it further down
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
                 ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
               ),
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(24),
-                bottomRight: Radius.circular(24),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.brand.withValues(alpha: 0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Text(
-                    'Food Search',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.surface,
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Search for Foods using FatSecret ... ',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchController.text.isEmpty
+                      ? null
+                      : IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _searchController.clear();
+                            _runSearch('');
+                            setState(() {});
+                          },
+                        ),
+                  filled: true,
+                  fillColor: AppColors.surface,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: AppColors.accentBrown.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: AppColors.accentBrown.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: AppColors.accentBrown,
+                      width: 2,
                     ),
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Search for any food and add it to your log',
-                  style: TextStyle(
-                    color: AppColors.surface.withValues(alpha: 0.9),
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Search bar
-          Container(
-            padding: const EdgeInsets.all(16),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search foods (FatSecret)...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchController.text.isEmpty
-                    ? null
-                    : IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                          _runSearch('');
-                          setState(() {});
-                        },
-                      ),
-                filled: true,
-                fillColor: AppColors.surface,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: AppColors.accentBrown.withValues(alpha: 0.3),
-                  ),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: AppColors.accentBrown.withValues(alpha: 0.3),
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: AppColors.accentBrown,
-                    width: 2,
-                  ),
-                ),
+                onChanged: (value) {
+                  setState(() {});
+                  _onSearchQueryChanged(value);
+                },
+                onSubmitted: (value) {
+                  _debounce?.cancel();
+                  FocusScope.of(context).unfocus();
+                  _runSearch(value, includeSuggestions: false);
+                },
+                onTapOutside: (_) => FocusScope.of(context).unfocus(),
               ),
-              onChanged: (value) {
-                setState(() {});
-                _onSearchQueryChanged(value);
-              },
-              onSubmitted: (value) {
-                _debounce?.cancel();
-                FocusScope.of(context).unfocus();
-                _runSearch(value, includeSuggestions: false);
-              },
-              onTapOutside: (_) => FocusScope.of(context).unfocus(),
             ),
           ),
           if (_suggestions.isNotEmpty)
@@ -699,8 +746,8 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                         const SizedBox(height: 16),
                         Text(
                           _searchController.text.isEmpty
-                              ? 'Start typing to search for foods'
-                              : 'No results found',
+                              ? 'What\'s on the menu today, $name?'
+                              : 'No Results Found',
                           style: TextStyle(
                             fontSize: 16,
                             color: AppColors.textHint,
@@ -709,7 +756,7 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                         if (_searchController.text.isEmpty) ...[
                           const SizedBox(height: 8),
                           Text(
-                            'Try searching for "apple", "chicken", or "rice"',
+                            'Try: "Chobani", "Chicken", or any fast food!',
                             style: TextStyle(
                               fontSize: 14,
                               color: AppColors.statusNone,
@@ -773,6 +820,8 @@ class _FoodSearchResultTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final serving = result.defaultServingOption;
     final calories = (serving.caloriesPerGram * serving.grams).round();
+    final imageUrl = (result.imageUrl ?? '').trim();
+    final hasImage = imageUrl.isNotEmpty;
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -792,14 +841,38 @@ class _FoodSearchResultTile extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.brand.withValues(alpha: 0.1),
+          if (hasImage)
+            ClipRRect(
               borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                imageUrl,
+                width: 48,
+                height: 48,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: AppColors.brand.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.restaurant,
+                    color: AppColors.brand,
+                    size: 24,
+                  ),
+                ),
+              ),
+            )
+          else
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.brand.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.restaurant, color: AppColors.brand, size: 24),
             ),
-            child: Icon(Icons.restaurant, color: AppColors.brand, size: 24),
-          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(

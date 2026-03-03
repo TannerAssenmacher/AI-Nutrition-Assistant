@@ -21,7 +21,7 @@ class FatSecretAttribution extends StatelessWidget {
       mode: LaunchMode.externalApplication,
     );
     if (!launched) {
-      throw Exception('Could not open fatsecret website');
+      throw Exception('Could not open FatSecret website');
     }
   }
 
@@ -43,12 +43,12 @@ class FatSecretAttribution extends StatelessWidget {
               image: const NetworkImage(_badgeImageUrl),
               errorBuilder: (_, __, ___) => TextButton(
                 onPressed: _openFatSecret,
-                child: const Text('Powered by fatsecret'),
+                child: const Text('Powered by FatsSecret'),
               ),
               width: 146,
               height: 28,
               fit: BoxFit.contain,
-              semanticLabel: 'Powered by fatsecret',
+              semanticLabel: 'Powered by FatSecret',
             ),
           ),
         ),
@@ -59,7 +59,7 @@ class FatSecretAttribution extends StatelessWidget {
       alignment: alignment,
       child: TextButton(
         onPressed: _openFatSecret,
-        child: const Text('Powered by fatsecret'),
+        child: const Text('Powered by FatSecret'),
       ),
     );
   }

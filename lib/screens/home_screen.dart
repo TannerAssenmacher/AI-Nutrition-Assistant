@@ -1,10 +1,8 @@
-import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 //import 'package:carousel_slider/carousel_slider.dart';
 import '../db/food.dart';
-import '../providers/food_providers.dart';
-import '../providers/user_providers.dart';
 import '../providers/firestore_providers.dart';
 import '../providers/auth_providers.dart';
 import '../widgets/top_bar.dart';
@@ -13,6 +11,7 @@ import 'package:nutrition_assistant/widgets/nav_bar.dart';
 import 'package:percent_indicator/percent_indicator.dart';
 import '../theme/app_colors.dart';
 import 'package:intl/intl.dart';
+import '../services/food_image_service.dart';
 
 class HomeScreen extends ConsumerWidget {
   final bool isInPageView;
@@ -36,7 +35,6 @@ class HomeScreen extends ConsumerWidget {
     final foodLogAsync = userId != null
         ? ref.watch(firestoreFoodLogProvider(userId))
         : const AsyncValue.loading();
-    final foodSuggestionsAsync = ref.watch(foodSuggestionsProvider);
     final name = userProfileAsync.valueOrNull?.firstname ?? 'User';
     final now = DateTime.now();
     final greeting = _timeBasedGreeting(now);
@@ -116,9 +114,7 @@ class HomeScreen extends ConsumerWidget {
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
-                                    DateFormat(
-                                      'EEEE, MMM d',
-                                    ).format(now),
+                                    DateFormat('EEEE, MMM d').format(now),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
@@ -468,6 +464,12 @@ class _FoodCarouselCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final calories = (food.calories_g * food.mass_g).round();
+    final imageUrlRaw = (food.imageUrl ?? '').trim();
+    final imageUrl =
+        imageUrlRaw.isNotEmpty &&
+            FoodImageService.shouldShowImageForEntry(food.consumedAt)
+        ? imageUrlRaw
+        : null;
     final textScale = MediaQuery.textScalerOf(
       context,
     ).scale(1.0).clamp(1.0, 1.3).toDouble();
@@ -499,6 +501,10 @@ class _FoodCarouselCard extends StatelessWidget {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (imageUrl != null) ...[
+                      _FoodImagePreview(imageUrl: imageUrl),
+                      const SizedBox(height: 10),
+                    ],
                     Expanded(
                       child: Align(
                         alignment: Alignment.topLeft,
@@ -547,6 +553,12 @@ class _FoodCarouselCard extends StatelessWidget {
   }
 
   void _showFoodDetails(BuildContext context, FoodItem food) {
+    final imageUrlRaw = (food.imageUrl ?? '').trim();
+    final imageUrl =
+        imageUrlRaw.isNotEmpty &&
+            FoodImageService.shouldShowImageForEntry(food.consumedAt)
+        ? imageUrlRaw
+        : null;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -562,6 +574,10 @@ class _FoodCarouselCard extends StatelessWidget {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (imageUrl != null) ...[
+              _FoodImagePreview(imageUrl: imageUrl, height: 120),
+              const SizedBox(height: 10),
+            ],
             _DetailRow(
               label: 'Calories',
               value: '${(food.calories_g * food.mass_g).round()} Cal',
@@ -594,6 +610,56 @@ class _FoodCarouselCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _FoodImagePreview extends StatelessWidget {
+  final String imageUrl;
+  final double height;
+
+  const _FoodImagePreview({required this.imageUrl, this.height = 88});
+
+  @override
+  Widget build(BuildContext context) {
+    final uri = Uri.tryParse(imageUrl);
+    final isFileImage = uri != null && uri.scheme == 'file';
+
+    Widget placeholder() {
+      return Container(
+        height: height,
+        decoration: BoxDecoration(
+          color: AppColors.brand.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        alignment: Alignment.center,
+        child: Icon(Icons.restaurant, color: AppColors.brand, size: 26),
+      );
+    }
+
+    final imageWidget = isFileImage
+        ? Image.file(
+            File.fromUri(uri),
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => placeholder(),
+          )
+        : Image.network(
+            imageUrl,
+            fit: BoxFit.cover,
+            loadingBuilder: (context, child, progress) {
+              if (progress == null) return child;
+              return placeholder();
+            },
+            errorBuilder: (_, __, ___) => placeholder(),
+          );
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: SizedBox(
+        width: double.infinity,
+        height: height,
+        child: imageWidget,
       ),
     );
   }

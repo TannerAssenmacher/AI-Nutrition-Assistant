@@ -15,6 +15,9 @@ part 'gemini_chat_service.g.dart';
 // Loading state for the chatbot
 final chatLoadingProvider = StateProvider<bool>((ref) => false);
 
+// Daily message limit for Gemini chat (enforced server-side)
+const int kMaxGeminiMessagesPerDay = 5;
+
 //controlling chatflow
 enum ChatStage { idle, awaitingMealType, awaitingCuisine }
 
@@ -22,8 +25,9 @@ enum ChatStage { idle, awaitingMealType, awaitingCuisine }
 @Riverpod(keepAlive: true)
 class GeminiChatService extends _$GeminiChatService {
   ChatStage stage = ChatStage.idle;
-  final FirebaseFunctions _functions =
-      FirebaseFunctions.instanceFor(region: 'us-central1');
+  final FirebaseFunctions _functions = FirebaseFunctions.instanceFor(
+    region: 'us-central1',
+  );
 
   //flags
   final Map<String, int> _recipeOffsets = {};
@@ -44,7 +48,7 @@ class GeminiChatService extends _$GeminiChatService {
     "condiment",
     "spread",
     "drink",
-    "cream"
+    "cream",
   ];
 
   final recipeGreetings = [
@@ -89,8 +93,9 @@ RULES FOR MODIFIED RECIPES:
   /// Recipe results are summarized to avoid token bloat.
   /// Gemini requires the first message to have role 'user'.
   List<Map<String, String>> _buildConversationHistory() {
-    final recentMessages =
-        state.length > 20 ? state.sublist(state.length - 20) : state;
+    final recentMessages = state.length > 20
+        ? state.sublist(state.length - 20)
+        : state;
 
     final history = recentMessages.map((msg) {
       String text = msg.content;
@@ -109,10 +114,7 @@ RULES FOR MODIFIED RECIPES:
         // Not JSON, use as-is
       }
 
-      return {
-        'role': msg.isUser ? 'user' : 'model',
-        'text': text,
-      };
+      return {'role': msg.isUser ? 'user' : 'model', 'text': text};
     }).toList();
 
     // Gemini requires the first message to have role 'user' — drop leading model messages
@@ -336,10 +338,7 @@ RULES FOR MODIFIED RECIPES:
     state = [
       ...state,
       ChatMessage(
-        content: jsonEncode({
-          "type": "recipe_results",
-          "recipes": recipes,
-        }),
+        content: jsonEncode({"type": "recipe_results", "recipes": recipes}),
         isUser: false,
       ),
     ];
@@ -352,13 +351,17 @@ RULES FOR MODIFIED RECIPES:
 
     final buffer = StringBuffer();
     buffer.writeln(
-        '\n--- RECIPES I SHOWED YOU (reference these when answering) ---');
+      '\n--- RECIPES I SHOWED YOU (reference these when answering) ---',
+    );
     buffer.writeln(
-        'IMPORTANT: When adjusting servings, calculate the multiplier as (desired servings / original servings).');
+      'IMPORTANT: When adjusting servings, calculate the multiplier as (desired servings / original servings).',
+    );
     buffer.writeln(
-        'Example: Recipe serves 4, user wants 2 servings -> multiplier is 2/4 = 0.5 (HALVE ingredients)');
+      'Example: Recipe serves 4, user wants 2 servings -> multiplier is 2/4 = 0.5 (HALVE ingredients)',
+    );
     buffer.writeln(
-        'Example: Recipe serves 2, user wants 4 servings -> multiplier is 4/2 = 2.0 (DOUBLE ingredients)');
+      'Example: Recipe serves 2, user wants 4 servings -> multiplier is 4/2 = 2.0 (DOUBLE ingredients)',
+    );
     buffer.writeln('');
 
     for (int i = 0; i < _lastShownRecipes.length; i++) {
@@ -374,26 +377,32 @@ RULES FOR MODIFIED RECIPES:
       buffer.writeln('Recipe ${i + 1}: ${r['label']}');
       buffer.writeln('  Cuisine: $cuisine');
       buffer.writeln(
-          '  SERVINGS: $servings (this is the original serving size - use for calculations!)');
+        '  SERVINGS: $servings (this is the original serving size - use for calculations!)',
+      );
       buffer.writeln('  Ready in: $readyInMinutes minutes');
       buffer.writeln(
-          '  Calories: ${r['calories']} | Protein: ${r['protein']}g | Carbs: ${r['carbs']}g | Fat: ${r['fat']}g');
+        '  Calories: ${r['calories']} | Protein: ${r['protein']}g | Carbs: ${r['carbs']}g | Fat: ${r['fat']}g',
+      );
       if (fiber != null) {
         buffer.writeln(
-            '  Fiber: ${fiber}g | Sugar: ${sugar}g | Sodium: ${sodium}g');
+          '  Fiber: ${fiber}g | Sugar: ${sugar}g | Sodium: ${sodium}g',
+        );
       }
       buffer.writeln('  Image URL: $imageUrl');
       buffer.writeln(
-          '  Ingredients: ${(r['ingredients'] as List?)?.join(', ') ?? 'N/A'}');
+        '  Ingredients: ${(r['ingredients'] as List?)?.join(', ') ?? 'N/A'}',
+      );
       buffer.writeln('  Instructions: ${r['instructions'] ?? 'N/A'}');
       buffer.writeln('');
     }
 
     buffer.writeln('--- END RECIPES ---');
     buffer.writeln(
-        'Use this information to answer questions about the recipes or suggest modifications.');
+      'Use this information to answer questions about the recipes or suggest modifications.',
+    );
     buffer.writeln(
-        'When adjusting for different serving sizes: ALWAYS check the original SERVINGS first, then multiply/divide ingredients accordingly.');
+      'When adjusting for different serving sizes: ALWAYS check the original SERVINGS first, then multiply/divide ingredients accordingly.',
+    );
     return buffer.toString();
   }
 
@@ -455,7 +464,7 @@ RULES FOR MODIFIED RECIPES:
       'show',
       'find',
       'need',
-      'want'
+      'want',
     ];
 
     for (final meal in mealTypes) {
@@ -471,7 +480,8 @@ RULES FOR MODIFIED RECIPES:
 
   /// Extract meal type and cuisine from user message using Gemini.
   Future<Map<String, String>> _extractMealAndCuisine(String message) async {
-    final extractionPrompt = '''
+    final extractionPrompt =
+        '''
 Extract the meal type and cuisine from this message. Return ONLY a JSON object with two keys.
 
 Message: "$message"
@@ -578,7 +588,7 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
 
     state = [
       ...state,
-      ChatMessage(content: userMessage, isUser: true)
+      ChatMessage(content: userMessage, isUser: true),
     ]; //add user's message to chat
 
     ref.read(chatLoadingProvider.notifier).state = true;
@@ -608,11 +618,17 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
 
       //create a simple nutrition calculation
       final totalCalories = foodLog.fold<int>(
-          0, (sum, food) => sum + (food.calories_g * food.mass_g).round());
-      final totalProtein =
-          foodLog.fold<double>(0, (sum, food) => sum + food.protein_g);
-      final totalCarbs =
-          foodLog.fold<double>(0, (sum, food) => sum + food.carbs_g);
+        0,
+        (sum, food) => sum + (food.calories_g * food.mass_g).round(),
+      );
+      final totalProtein = foodLog.fold<double>(
+        0,
+        (sum, food) => sum + food.protein_g,
+      );
+      final totalCarbs = foodLog.fold<double>(
+        0,
+        (sum, food) => sum + food.carbs_g,
+      );
       final totalFat = foodLog.fold<double>(0, (sum, food) => sum + food.fat);
 
       // Get user profile for personalized context
@@ -624,9 +640,10 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
           final mp = appUser.mealProfile;
           final age = appUser.dob != null
               ? ((DateTime.now().difference(appUser.dob!).inDays) / 365.25)
-                  .floor()
+                    .floor()
               : null;
-          profileContext = '''
+          profileContext =
+              '''
     User profile:
     - Sex: ${appUser.sex}, Age: ${age ?? 'unknown'}
     - Activity level: ${appUser.activityLevel}
@@ -642,7 +659,8 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
         }
       }
 
-      final contextualPrompt = '''
+      final contextualPrompt =
+          '''
     $profileContext
     User's current nutrition data today:
     - Calories consumed: $totalCalories
@@ -675,22 +693,20 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
       );
 
       //add gemini's response
-      state = [
-        ...state,
-        ChatMessage(
-          content: responseText,
-          isUser: false,
-        )
-      ];
+      state = [...state, ChatMessage(content: responseText, isUser: false)];
     } catch (e) {
-      state = [
-        ...state,
-        ChatMessage(
-          content:
-              "Sorry, I'm having trouble right now. Please try again. Error: $e",
-          isUser: false,
-        )
-      ];
+      // Check if it's a rate limit error
+      String errorMessage;
+      if (e.toString().contains('resource-exhausted') ||
+          e.toString().contains('Daily chat limit reached')) {
+        errorMessage =
+            "You've reached your daily limit of $kMaxGeminiMessagesPerDay chat messages. Please try again tomorrow! 🌙";
+      } else {
+        errorMessage =
+            "Sorry, I'm having trouble right now. Please try again. Error: $e";
+      }
+
+      state = [...state, ChatMessage(content: errorMessage, isUser: false)];
     } finally {
       ref.read(chatLoadingProvider.notifier).state = false;
     }
@@ -699,7 +715,9 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
   //start generate recipe flow!
   //call fetchrecipes
   Future<void> handleMealTypeSelection(
-      String mealType, String cuisineType) async {
+    String mealType,
+    String cuisineType,
+  ) async {
     await _fetchRecipes(mealType, cuisineType);
   }
 
@@ -776,14 +794,18 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
       final foodLog = ref.read(foodLogProvider);
       final today = DateTime.now();
       final todaysFoods = foodLog
-          .where((item) =>
-              item.consumedAt.year == today.year &&
-              item.consumedAt.month == today.month &&
-              item.consumedAt.day == today.day)
+          .where(
+            (item) =>
+                item.consumedAt.year == today.year &&
+                item.consumedAt.month == today.month &&
+                item.consumedAt.day == today.day,
+          )
           .toList();
 
       final consumedCalories = todaysFoods.fold<int>(
-          0, (sum, food) => sum + (food.calories_g * food.mass_g).round());
+        0,
+        (sum, food) => sum + (food.calories_g * food.mass_g).round(),
+      );
 
       double consumedProtein = 0, consumedCarbs = 0, consumedFat = 0;
       for (final item in todaysFoods) {
@@ -792,8 +814,10 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
         consumedFat += item.fat * item.mass_g;
       }
 
-      final consumedMealTypes =
-          todaysFoods.map((f) => f.mealType.toLowerCase()).toSet().toList();
+      final consumedMealTypes = todaysFoods
+          .map((f) => f.mealType.toLowerCase())
+          .toSet()
+          .toList();
 
       // Call RAG-based searchRecipes Cloud Function with full user profile
       final callable = _functions.httpsCallable('searchRecipes');
@@ -846,7 +870,7 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
             content:
                 "I couldn't find any recipes right now. Please try adjusting your preferences or selecting a different cuisine.",
             isUser: false,
-          )
+          ),
         ];
         return;
       }
@@ -863,7 +887,9 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
           ),
         ];
       } else {
-        final randomGreeting = (List<String>.from(recipeGreetings)..shuffle()).first;
+        final randomGreeting = (List<String>.from(
+          recipeGreetings,
+        )..shuffle()).first;
 
         state = [
           ...state,
@@ -895,10 +921,9 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
 
         // Get ingredients from Cloud Function response
         final rawIngredients = recipe['ingredients'] ?? [];
-        final ingredients = List<String>.from(rawIngredients)
-            .map((e) => e.trim())
-            .where((e) => e.isNotEmpty)
-            .toList();
+        final ingredients = List<String>.from(
+          rawIngredients,
+        ).map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
 
         print('ingredients: $ingredients');
 
@@ -913,7 +938,10 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
         String instructions = recipe['instructions'] ?? '';
         if (instructions.isEmpty) {
           instructions = await _generateInstructionsWithGemini(
-              label, ingredients, calories);
+            label,
+            ingredients,
+            calories,
+          );
         }
 
         recipeList.add({
@@ -949,7 +977,7 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
                 "I've shown you all the matching recipes I have. Try different options or adjust your preferences for more variety!",
             isUser: false,
             timestamp: DateTime.now(),
-          )
+          ),
         ];
         return;
       }
@@ -968,10 +996,7 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
     } catch (e) {
       state = [
         ...state,
-        ChatMessage(
-          content: "Error fetching recipes: $e",
-          isUser: false,
-        ),
+        ChatMessage(content: "Error fetching recipes: $e", isUser: false),
       ];
     } finally {
       ref.read(chatLoadingProvider.notifier).state = false;
@@ -980,9 +1005,13 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
 
   //instructions with gemini
   Future<String> _generateInstructionsWithGemini(
-      String title, List<String> ingredients, int calories,
-      {int retries = 3}) async {
-    final prompt = '''
+    String title,
+    List<String> ingredients,
+    int calories, {
+    int retries = 3,
+  }) async {
+    final prompt =
+        '''
         You are a nutrition and cooking expert.
         ONLY output plain text numbered step-by-step cooking instructions for the recipe below.
         Do NOT include any introductions, greetings, bold/markdown formatting, or commentary.
@@ -1040,9 +1069,10 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
 
   //call firestore provider to add scheduled meals to subcollection
   Future<void> scheduleRecipe(
-      String recipeId,
-      List<PlannedFoodInput> plannedInputs,
-      List<String> ingredientLines) async {
+    String recipeId,
+    List<PlannedFoodInput> plannedInputs,
+    List<String> ingredientLines,
+  ) async {
     final user = await _ensureSignedInUser();
 
     final normalizedIngredientLines = ingredientLines
@@ -1053,8 +1083,11 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
     // Add each scheduled meal to the subcollection
     for (final input in plannedInputs) {
       // Normalize date to midnight (remove time component) for consistent comparison
-      final normalizedDate =
-          DateTime(input.date.year, input.date.month, input.date.day);
+      final normalizedDate = DateTime(
+        input.date.year,
+        input.date.month,
+        input.date.day,
+      );
 
       final scheduledMeal = PlannedFood(
         recipeId: recipeId,
@@ -1087,16 +1120,26 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
           content: responseText,
           isUser: false,
           timestamp: DateTime.now(),
-        )
+        ),
       ];
     } catch (e) {
+      // Check if it's a rate limit error
+      String errorMessage;
+      if (e.toString().contains('resource-exhausted') ||
+          e.toString().contains('Daily chat limit reached')) {
+        errorMessage =
+            "You've reached your daily limit of $kMaxGeminiMessagesPerDay chat messages. Please try again tomorrow! 🌙";
+      } else {
+        errorMessage = "Error analyzing image: $e";
+      }
+
       state = [
         ...state,
         ChatMessage(
-          content: "Error analyzing image: $e",
+          content: errorMessage,
           isUser: false,
           timestamp: DateTime.now(),
-        )
+        ),
       ];
     }
   }
@@ -1115,18 +1158,12 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
 
   //adds a user bubble directly without gemini
   void addLocalUserMessage(String text) {
-    state = [
-      ...state,
-      ChatMessage(content: text, isUser: true),
-    ];
+    state = [...state, ChatMessage(content: text, isUser: true)];
   }
 
   //adds a bot bubble directly without gemini
   void addLocalBotMessage(String text) {
-    state = [
-      ...state,
-      ChatMessage(content: text, isUser: false),
-    ];
+    state = [...state, ChatMessage(content: text, isUser: false)];
   }
 }
 

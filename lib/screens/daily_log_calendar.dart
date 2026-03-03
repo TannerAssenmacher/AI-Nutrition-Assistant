@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'dart:io';
+import 'dart:ui' show FontFeature;
 import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/cupertino.dart';
@@ -12,6 +14,7 @@ import '../db/planned_food.dart';
 import 'package:nutrition_assistant/navigation/nav_helper.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
 import 'package:nutrition_assistant/services/food_search_service.dart';
+import 'package:nutrition_assistant/services/food_image_service.dart';
 import 'package:nutrition_assistant/services/notification_service.dart';
 import '../theme/app_colors.dart';
 
@@ -69,10 +72,15 @@ class _DailyLogCalendarScreenState
 
     _hasAutoScrolledToToday = true;
 
-    // Calculate the scroll offset for the item
-    // Each item is roughly: margin(6+6) + padding(16+16) + content_height(~140-180) = ~180-220 per item
+    // Calculate the scroll offset for the item.
+    // Each item is roughly: margin(6+6) + padding(16+16) + content_height(~140-180) = ~180-220 per item.
+    // Subtract a header offset so today appears lower, not hidden by the week selector.
     final itemHeight = 180.0;
-    final offset = todayIndex * itemHeight;
+    const headerOffset = 88.0;
+    final offset = (todayIndex * itemHeight - headerOffset).clamp(
+      0.0,
+      double.infinity,
+    );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_weekListScrollController.hasClients) {
@@ -110,6 +118,12 @@ class _DailyLogCalendarScreenState
         final protein = item.protein_g * item.mass_g;
         final carbs = item.carbs_g * item.mass_g;
         final fat = item.fat * item.mass_g;
+        final imageUrlRaw = (item.imageUrl ?? '').trim();
+        final imageUrl =
+            imageUrlRaw.isNotEmpty &&
+                FoodImageService.shouldShowImageForEntry(item.consumedAt)
+            ? imageUrlRaw
+            : null;
 
         rows.add(
           _FoodRow(
@@ -123,6 +137,7 @@ class _DailyLogCalendarScreenState
             fat: fat,
             fiber: 0,
             massG: item.mass_g,
+            imageUrl: imageUrl,
             consumedAt: item.consumedAt,
           ),
         );
@@ -136,13 +151,39 @@ class _DailyLogCalendarScreenState
     WidgetRef ref,
   ) async {
     double calories = 0, protein = 0, carbs = 0, fat = 0;
+    if (scheduledMeals.isEmpty) {
+      return {
+        'calories': calories,
+        'protein': protein,
+        'carbs': carbs,
+        'fat': fat,
+      };
+    }
 
-    for (final meal in scheduledMeals) {
-      final recipe = await ref.read(recipeByIdProvider(meal.recipeId).future);
-      calories += (recipe['calories'] ?? 0).toDouble();
-      protein += (recipe['protein'] ?? 0).toDouble();
-      carbs += (recipe['carbs'] ?? 0).toDouble();
-      fat += (recipe['fat'] ?? 0).toDouble();
+    double asDouble(dynamic value) {
+      if (value is num) return value.toDouble();
+      if (value is String) return double.tryParse(value) ?? 0;
+      return 0;
+    }
+
+    final recipes = await Future.wait(
+      scheduledMeals.map((meal) async {
+        try {
+          return await ref.read(recipeByIdProvider(meal.recipeId).future);
+        } catch (e) {
+          debugPrint(
+            'Failed to load recipe ${meal.recipeId} for scheduled totals: $e',
+          );
+          return const <String, dynamic>{};
+        }
+      }),
+    );
+
+    for (final recipe in recipes) {
+      calories += asDouble(recipe['calories']);
+      protein += asDouble(recipe['protein']);
+      carbs += asDouble(recipe['carbs']);
+      fat += asDouble(recipe['fat']);
     }
 
     return {
@@ -250,7 +291,10 @@ class _DailyLogCalendarScreenState
           actual: totals['carbs'] ?? 0,
           goal: goals['carbs'] ?? 0,
         ) +
-        _goalPointsForMacro(actual: totals['fat'] ?? 0, goal: goals['fat'] ?? 0);
+        _goalPointsForMacro(
+          actual: totals['fat'] ?? 0,
+          goal: goals['fat'] ?? 0,
+        );
   }
 
   _ThirtyDayGoalStats _calculateThirtyDayGoalStats({
@@ -387,6 +431,8 @@ class _DailyLogCalendarScreenState
     String userId,
   ) {
     int segment = 0; // 0 = history, 1 = scheduled
+    Future<Map<String, double>>? scheduledTotalsFuture;
+    String scheduledTotalsKey = '';
     showModalBottomSheet(
       context: context,
       showDragHandle: true,
@@ -418,10 +464,17 @@ class _DailyLogCalendarScreenState
                   data: (meals) => _scheduledMealsForDay(day, meals),
                   orElse: () => <PlannedFood>[],
                 );
-                final scheduledTotalsFuture = _scheduledTotals(
-                  scheduledMeals,
-                  ref,
-                );
+                final nextTotalsKey = scheduledMeals
+                    .map(
+                      (meal) =>
+                          '${meal.id ?? ''}|${meal.recipeId}|${meal.date.millisecondsSinceEpoch}|${meal.mealType}',
+                    )
+                    .join('||');
+                if (scheduledTotalsFuture == null ||
+                    nextTotalsKey != scheduledTotalsKey) {
+                  scheduledTotalsKey = nextTotalsKey;
+                  scheduledTotalsFuture = _scheduledTotals(scheduledMeals, ref);
+                }
 
                 return StatefulBuilder(
                   builder: (context, setSheetState) {
@@ -463,7 +516,9 @@ class _DailyLogCalendarScreenState
                                     vertical: 8,
                                     horizontal: 14,
                                   ),
-                                  child: Text('Scheduled (${scheduledMeals.length})'),
+                                  child: Text(
+                                    'Scheduled (${scheduledMeals.length})',
+                                  ),
                                 ),
                               },
                               onValueChanged: (value) {
@@ -567,6 +622,7 @@ class _DailyLogCalendarScreenState
                                 for (final meal in scheduledMeals)
                                   _ScheduledMealCard(
                                     meal: meal,
+                                    userId: userId,
                                     onEdit: () async {
                                       await _showEditScheduledMealDialog(
                                         userId,
@@ -663,6 +719,7 @@ class _DailyLogCalendarScreenState
                                       carbs_g: updatedRow.carbs / mass,
                                       fat: updatedRow.fat / mass,
                                       mealType: updatedRow.mealType,
+                                      imageUrl: updatedRow.imageUrl,
                                       consumedAt: updatedRow.consumedAt,
                                     );
                                     await ref
@@ -922,7 +979,9 @@ class _DailyLogCalendarScreenState
     }
 
     final foodLogAsync = ref.watch(firestoreFoodLogProvider(userId));
-    final scheduledMealsAsync = ref.watch(firestoreScheduledMealsProvider(userId));
+    final scheduledMealsAsync = ref.watch(
+      firestoreScheduledMealsProvider(userId),
+    );
     final userProfileAsync = ref.watch(firestoreUserProfileProvider(userId));
     final goals = _goalsFromProfile(userProfileAsync.valueOrNull);
     final calorieGoal = goals['calories'] ?? 2000.0;
@@ -1021,179 +1080,184 @@ class _DailyLogCalendarScreenState
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     children: [
                       ...weekDays.map((day) {
-                      final isSelected =
-                          _selectedDay != null &&
-                          day.year == _selectedDay!.year &&
-                          day.month == _selectedDay!.month &&
-                          day.day == _selectedDay!.day;
-                      final isToday =
-                          day.year == DateTime.now().year &&
-                          day.month == DateTime.now().month &&
-                          day.day == DateTime.now().day;
-                      final todayOnly = DateTime(
-                        DateTime.now().year,
-                        DateTime.now().month,
-                        DateTime.now().day,
-                      );
-                      final dayOnly = DateTime(day.year, day.month, day.day);
-                      final isFutureDay = dayOnly.isAfter(todayOnly);
-                      final foods = _foodsForDay(day, foodLog);
-                      final scheduledMealsForDay = scheduledMealsAsync.maybeWhen(
-                        data: (meals) => _scheduledMealsForDay(day, meals),
-                        orElse: () => <PlannedFood>[],
-                      );
-                      final summaryParts = <String>[
-                        if (foods.isNotEmpty)
-                          '${foods.length} Logged Food${foods.length == 1 ? '' : 's'}',
-                        if (scheduledMealsForDay.isNotEmpty)
-                          '${scheduledMealsForDay.length} Scheduled Meal${scheduledMealsForDay.length == 1 ? '' : 's'}',
-                      ];
-                      final daySummaryLabel = summaryParts.join(' - ');
-                      final dayTotals = _totalsForDay(day, foodLog);
-                      final goalPoints = isFutureDay
-                          ? 0.0
-                          : _calculateGoalPoints(
-                              totals: dayTotals,
-                              goals: {
-                                'calories': calorieGoal,
-                                'protein': proteinGoal,
-                                'carbs': carbsGoal,
-                                'fat': fatGoal,
-                              },
+                        final isSelected =
+                            _selectedDay != null &&
+                            day.year == _selectedDay!.year &&
+                            day.month == _selectedDay!.month &&
+                            day.day == _selectedDay!.day;
+                        final isToday =
+                            day.year == DateTime.now().year &&
+                            day.month == DateTime.now().month &&
+                            day.day == DateTime.now().day;
+                        final todayOnly = DateTime(
+                          DateTime.now().year,
+                          DateTime.now().month,
+                          DateTime.now().day,
+                        );
+                        final dayOnly = DateTime(day.year, day.month, day.day);
+                        final isFutureDay = dayOnly.isAfter(todayOnly);
+                        final foods = _foodsForDay(day, foodLog);
+                        final scheduledMealsForDay = scheduledMealsAsync
+                            .maybeWhen(
+                              data: (meals) =>
+                                  _scheduledMealsForDay(day, meals),
+                              orElse: () => <PlannedFood>[],
                             );
+                        final summaryParts = <String>[
+                          if (foods.isNotEmpty)
+                            '${foods.length} Logged Food${foods.length == 1 ? '' : 's'}',
+                          if (scheduledMealsForDay.isNotEmpty)
+                            '${scheduledMealsForDay.length} Scheduled Meal${scheduledMealsForDay.length == 1 ? '' : 's'}',
+                        ];
+                        final daySummaryLabel = summaryParts.join(' - ');
+                        final dayTotals = _totalsForDay(day, foodLog);
+                        final goalPoints = isFutureDay
+                            ? 0.0
+                            : _calculateGoalPoints(
+                                totals: dayTotals,
+                                goals: {
+                                  'calories': calorieGoal,
+                                  'protein': proteinGoal,
+                                  'carbs': carbsGoal,
+                                  'fat': fatGoal,
+                                },
+                              );
 
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _selectedDay = day;
-                          });
-                          _showFoodsSheet(day, foods, dayTotals, userId);
-                        },
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(
-                            vertical: 6,
-                            horizontal: 8,
-                          ),
-                          padding: const EdgeInsets.fromLTRB(16, 16, 10, 16),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isSelected
-                                  ? AppColors.selectionColor
-                                  : Colors.transparent,
-                              width: 2,
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedDay = day;
+                            });
+                            _showFoodsSheet(day, foods, dayTotals, userId);
+                          },
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(
+                              vertical: 6,
+                              horizontal: 8,
                             ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.black.withValues(alpha: 0.05),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
+                            padding: const EdgeInsets.fromLTRB(16, 16, 10, 16),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: isSelected
+                                    ? AppColors.selectionColor
+                                    : Colors.transparent,
+                                width: 2,
                               ),
-                            ],
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // FIX 3: Day indicator with mainAxisSize.min
-                              SizedBox(
-                                width: 48,
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      DateFormat('E').format(day),
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w500,
-                                        color: AppColors.textHint,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Container(
-                                      padding: const EdgeInsets.all(6),
-                                      decoration: BoxDecoration(
-                                        color: isToday
-                                            ? AppColors.selectionColor
-                                                  .withValues(alpha: 0.2)
-                                            : AppColors.surfaceVariant,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Text(
-                                        '${day.day}',
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.black.withValues(
+                                    alpha: 0.05,
+                                  ),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // FIX 3: Day indicator with mainAxisSize.min
+                                SizedBox(
+                                  width: 48,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        DateFormat('E').format(day),
                                         style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                          color: AppColors.textHint,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
                                           color: isToday
                                               ? AppColors.selectionColor
-                                              : AppColors.textPrimary,
+                                                    .withValues(alpha: 0.2)
+                                              : AppColors.surfaceVariant,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Text(
+                                          '${day.day}',
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: isToday
+                                                ? AppColors.selectionColor
+                                                : AppColors.textPrimary,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    _buildGoalStars(goalPoints),
-                                  ],
+                                      const SizedBox(height: 6),
+                                      _buildGoalStars(goalPoints),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 10),
-                              // Foods summary
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    if (daySummaryLabel.isNotEmpty)
-                                      Text(
-                                        daySummaryLabel,
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          color: AppColors.textPrimary,
+                                const SizedBox(width: 10),
+                                // Foods summary
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      if (daySummaryLabel.isNotEmpty)
+                                        Text(
+                                          daySummaryLabel,
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.textPrimary,
+                                          ),
                                         ),
+                                      const SizedBox(height: 8),
+                                      _MacroProgressIndicator(
+                                        label: 'Cal',
+                                        current: dayTotals['calories'] ?? 0,
+                                        goal: calorieGoal,
+                                        color: AppColors.caloriesCircle,
+                                        valueLabel:
+                                            '${dayTotals['calories']?.toInt() ?? 0} Cal',
                                       ),
-                                    const SizedBox(height: 8),
-                                    _MacroProgressIndicator(
-                                      label: 'Cal',
-                                      current: dayTotals['calories'] ?? 0,
-                                      goal: calorieGoal,
-                                      color: AppColors.caloriesCircle,
-                                      valueLabel:
-                                          '${dayTotals['calories']?.toInt() ?? 0} Cal',
-                                    ),
-                                    const SizedBox(height: 4),
-                                    _MacroProgressIndicator(
-                                      label: 'Pro',
-                                      current: dayTotals['protein'] ?? 0,
-                                      goal: proteinGoal,
-                                      color: AppColors.protein,
-                                      valueLabel:
-                                          '${dayTotals['protein']?.toStringAsFixed(0) ?? 0}g',
-                                    ),
-                                    const SizedBox(height: 4),
-                                    _MacroProgressIndicator(
-                                      label: 'Carb',
-                                      current: dayTotals['carbs'] ?? 0,
-                                      goal: carbsGoal,
-                                      color: AppColors.carbs,
-                                      valueLabel:
-                                          '${dayTotals['carbs']?.toStringAsFixed(0) ?? 0}g',
-                                    ),
-                                    const SizedBox(height: 4),
-                                    _MacroProgressIndicator(
-                                      label: 'Fat',
-                                      current: dayTotals['fat'] ?? 0,
-                                      goal: fatGoal,
-                                      color: AppColors.fat,
-                                      valueLabel:
-                                          '${dayTotals['fat']?.toStringAsFixed(0) ?? 0}g',
-                                    ),
-                                  ],
+                                      const SizedBox(height: 4),
+                                      _MacroProgressIndicator(
+                                        label: 'Pro',
+                                        current: dayTotals['protein'] ?? 0,
+                                        goal: proteinGoal,
+                                        color: AppColors.protein,
+                                        valueLabel:
+                                            '${dayTotals['protein']?.toStringAsFixed(0) ?? 0}g',
+                                      ),
+                                      const SizedBox(height: 4),
+                                      _MacroProgressIndicator(
+                                        label: 'Carb',
+                                        current: dayTotals['carbs'] ?? 0,
+                                        goal: carbsGoal,
+                                        color: AppColors.carbs,
+                                        valueLabel:
+                                            '${dayTotals['carbs']?.toStringAsFixed(0) ?? 0}g',
+                                      ),
+                                      const SizedBox(height: 4),
+                                      _MacroProgressIndicator(
+                                        label: 'Fat',
+                                        current: dayTotals['fat'] ?? 0,
+                                        goal: fatGoal,
+                                        color: AppColors.fat,
+                                        valueLabel:
+                                            '${dayTotals['fat']?.toStringAsFixed(0) ?? 0}g',
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                      );
-                    }).toList(),
+                        );
+                      }).toList(),
                       const SizedBox(height: 10),
                       Container(
                         margin: const EdgeInsets.symmetric(
@@ -1240,22 +1304,26 @@ class _DailyLogCalendarScreenState
                                 _StatChip(
                                   label: 'Calories',
                                   pointsEarned: thirtyDayStats.caloriePoints,
-                                  potentialPoints: thirtyDayStats.potentialPointsPerCategory,
+                                  potentialPoints:
+                                      thirtyDayStats.potentialPointsPerCategory,
                                 ),
                                 _StatChip(
                                   label: 'Protein',
                                   pointsEarned: thirtyDayStats.proteinPoints,
-                                  potentialPoints: thirtyDayStats.potentialPointsPerCategory,
+                                  potentialPoints:
+                                      thirtyDayStats.potentialPointsPerCategory,
                                 ),
                                 _StatChip(
                                   label: 'Carbs',
                                   pointsEarned: thirtyDayStats.carbsPoints,
-                                  potentialPoints: thirtyDayStats.potentialPointsPerCategory,
+                                  potentialPoints:
+                                      thirtyDayStats.potentialPointsPerCategory,
                                 ),
                                 _StatChip(
                                   label: 'Fat',
                                   pointsEarned: thirtyDayStats.fatPoints,
-                                  potentialPoints: thirtyDayStats.potentialPointsPerCategory,
+                                  potentialPoints:
+                                      thirtyDayStats.potentialPointsPerCategory,
                                 ),
                               ],
                             ),
@@ -1537,14 +1605,18 @@ class _AddFoodModalState extends ConsumerState<_AddFoodModal> {
                                     ? AppColors.surface
                                     : AppColors.accentBrown,
                               ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Search Online',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  color: _isSearchMode
-                                      ? AppColors.surface
-                                      : AppColors.accentBrown,
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  'Search Online',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: _isSearchMode
+                                        ? AppColors.surface
+                                        : AppColors.accentBrown,
+                                  ),
                                 ),
                               ),
                             ],
@@ -1573,14 +1645,18 @@ class _AddFoodModalState extends ConsumerState<_AddFoodModal> {
                                     ? AppColors.surface
                                     : AppColors.accentBrown,
                               ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Manual Entry',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  color: !_isSearchMode
-                                      ? AppColors.surface
-                                      : AppColors.accentBrown,
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  'Manual Entry',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: !_isSearchMode
+                                        ? AppColors.surface
+                                        : AppColors.accentBrown,
+                                  ),
                                 ),
                               ),
                             ],
@@ -1833,14 +1909,24 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
   bool _isEditing = false;
   OverlayEntry? _statusOverlay;
   Timer? _statusTimer;
-  late final TextEditingController _nameController;
+  bool _isSyncingCalories = false;
   late final TextEditingController _gramsController;
+  late final TextEditingController _caloriesController;
+  late final TextEditingController _proteinController;
+  late final TextEditingController _carbsController;
+  late final TextEditingController _fatController;
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController();
     _gramsController = TextEditingController();
+    _caloriesController = TextEditingController();
+    _proteinController = TextEditingController();
+    _carbsController = TextEditingController();
+    _fatController = TextEditingController();
+    _proteinController.addListener(_syncCaloriesFromMacros);
+    _carbsController.addListener(_syncCaloriesFromMacros);
+    _fatController.addListener(_syncCaloriesFromMacros);
     _resetControllersFromRow();
   }
 
@@ -1857,14 +1943,57 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
   void dispose() {
     _statusTimer?.cancel();
     _statusOverlay?.remove();
-    _nameController.dispose();
+    _proteinController.removeListener(_syncCaloriesFromMacros);
+    _carbsController.removeListener(_syncCaloriesFromMacros);
+    _fatController.removeListener(_syncCaloriesFromMacros);
     _gramsController.dispose();
+    _caloriesController.dispose();
+    _proteinController.dispose();
+    _carbsController.dispose();
+    _fatController.dispose();
     super.dispose();
   }
 
   void _resetControllersFromRow() {
-    _nameController.text = widget.row.name;
     _gramsController.text = widget.row.massG.toStringAsFixed(0);
+    _caloriesController.text = widget.row.calories.toStringAsFixed(0);
+    _proteinController.text = widget.row.protein.toStringAsFixed(1);
+    _carbsController.text = widget.row.carbs.toStringAsFixed(1);
+    _fatController.text = widget.row.fat.toStringAsFixed(1);
+  }
+
+  void _syncCaloriesFromMacros() {
+    if (_isSyncingCalories) return;
+
+    final protein = double.tryParse(_proteinController.text.trim());
+    final carbs = double.tryParse(_carbsController.text.trim());
+    final fat = double.tryParse(_fatController.text.trim());
+    if (protein == null || carbs == null || fat == null) return;
+
+    final calories = (protein * 4) + (carbs * 4) + (fat * 9);
+    final nextCaloriesText = calories.toStringAsFixed(0);
+    final macroMass = protein + carbs + fat;
+    final nextGramsText = macroMass.toStringAsFixed(1);
+    final shouldUpdateCalories = _caloriesController.text != nextCaloriesText;
+    final shouldUpdateGrams = _gramsController.text != nextGramsText;
+    if (!shouldUpdateCalories && !shouldUpdateGrams) return;
+
+    _isSyncingCalories = true;
+    if (shouldUpdateCalories) {
+      _caloriesController.value = _caloriesController.value.copyWith(
+        text: nextCaloriesText,
+        selection: TextSelection.collapsed(offset: nextCaloriesText.length),
+        composing: TextRange.empty,
+      );
+    }
+    if (shouldUpdateGrams) {
+      _gramsController.value = _gramsController.value.copyWith(
+        text: nextGramsText,
+        selection: TextSelection.collapsed(offset: nextGramsText.length),
+        composing: TextRange.empty,
+      );
+    }
+    _isSyncingCalories = false;
   }
 
   double? _parseMacro(String raw) {
@@ -1917,28 +2046,37 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
   }
 
   Future<void> _saveEdits() async {
-    final name = _nameController.text.trim();
     final grams = _parseMacro(_gramsController.text);
+    final calories = _parseMacro(_caloriesController.text);
+    final protein = _parseMacro(_proteinController.text);
+    final carbs = _parseMacro(_carbsController.text);
+    final fat = _parseMacro(_fatController.text);
 
-    if (name.isEmpty || grams == null || grams <= 0) {
-      _showStatusSnack('Please enter valid name and grams.', isError: true);
+    if (grams == null || grams <= 0) {
+      _showStatusSnack('Please enter valid grams.', isError: true);
+      return;
+    }
+    if (calories == null || protein == null || carbs == null || fat == null) {
+      _showStatusSnack('Please enter valid values for all macros.', isError: true);
       return;
     }
 
-    final baseMass = widget.row.massG > 0 ? widget.row.massG : 1.0;
-    final caloriesPerGram = widget.row.calories / baseMass;
-    final proteinPerGram = widget.row.protein / baseMass;
-    final carbsPerGram = widget.row.carbs / baseMass;
-    final fatPerGram = widget.row.fat / baseMass;
+    final expectedCalories = (fat * 9) + (protein * 4) + (carbs * 4);
+    if ((calories - expectedCalories).abs() > 2) {
+      _showStatusSnack(
+        'Calories must equal (fat×9)+(protein×4)+(carbs×4) = ${expectedCalories.toStringAsFixed(0)} Cal',
+        isError: true,
+      );
+      return;
+    }
 
     final updatedRow = widget.row.copyWith(
-      name: name,
-      amount: '${grams.toStringAsFixed(0)} g',
       massG: grams,
-      calories: caloriesPerGram * grams,
-      protein: proteinPerGram * grams,
-      carbs: carbsPerGram * grams,
-      fat: fatPerGram * grams,
+      amount: '${grams.toStringAsFixed(0)} g',
+      calories: calories,
+      protein: protein,
+      carbs: carbs,
+      fat: fat,
     );
 
     try {
@@ -1993,14 +2131,19 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
     required Color color,
     required String value,
     required String unit,
+    TextEditingController? editController,
+    bool readOnly = false,
   }) {
+    final editing = _isEditing && editController != null;
     return Container(
       height: 60,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: editing ? AppColors.warmLight : AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.warmBorder),
+        border: Border.all(
+          color: editing ? AppColors.warmMid : AppColors.warmBorder,
+        ),
         boxShadow: [
           BoxShadow(
             color: AppColors.black.withValues(alpha: 0.03),
@@ -2024,17 +2167,64 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
             ),
           ),
           const SizedBox(height: 2),
-          Align(
-            alignment: Alignment.centerRight,
-            child: Text(
-              '$value $unit',
+          if (editing)
+            TextField(
+              controller: editController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              textAlign: TextAlign.right,
+              readOnly: readOnly,
+              decoration: InputDecoration(
+                isDense: true,
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.zero,
+                suffixText: unit,
+                suffixStyle: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: color.withValues(alpha: 0.95),
+                ),
+              ),
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
                 color: color.withValues(alpha: 0.95),
               ),
+            )
+          else
+            Align(
+              alignment: Alignment.centerRight,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 44,
+                    child: Text(
+                      value,
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: color.withValues(alpha: 0.95),
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  SizedBox(
+                    width: 24,
+                    child: Text(
+                      unit,
+                      textAlign: TextAlign.left,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: color.withValues(alpha: 0.95),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -2070,6 +2260,10 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if ((widget.row.imageUrl ?? '').isNotEmpty) ...[
+                _FoodLogImageThumbnail(imageUrl: widget.row.imageUrl!),
+                const SizedBox(width: 10),
+              ],
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -2080,51 +2274,23 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
                         horizontal: 10,
                         vertical: 6,
                       ),
-                      decoration: _isEditing
-                          ? BoxDecoration(
-                              color: AppColors.warmLight,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: AppColors.warmMid),
-                            )
-                          : null,
                       child: Align(
                         alignment: Alignment.centerLeft,
-                        child: _isEditing
-                            ? TextField(
-                                controller: _nameController,
-                                textAlignVertical: TextAlignVertical.center,
-                                strutStyle: const StrutStyle(
-                                  fontSize: 16,
-                                  height: 1.0,
-                                  forceStrutHeight: true,
-                                ),
-                                decoration: const InputDecoration(
-                                  isDense: true,
-                                  border: InputBorder.none,
-                                  contentPadding: EdgeInsets.zero,
-                                  hintText: 'Meal name',
-                                ),
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.mealText,
-                                ),
-                              )
-                            : Text(
-                                widget.row.name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                strutStyle: const StrutStyle(
-                                  fontSize: 16,
-                                  height: 1.0,
-                                  forceStrutHeight: true,
-                                ),
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.mealText,
-                                ),
-                              ),
+                        child: Text(
+                          widget.row.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          strutStyle: const StrutStyle(
+                            fontSize: 16,
+                            height: 1.0,
+                            forceStrutHeight: true,
+                          ),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.mealText,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -2194,6 +2360,8 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
                   color: AppColors.caloriesCircle,
                   value: widget.row.calories.toStringAsFixed(0),
                   unit: 'Cal',
+                  editController: _caloriesController,
+                  readOnly: true,
                 ),
               ),
               const SizedBox(width: 8),
@@ -2203,6 +2371,7 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
                   color: AppColors.protein,
                   value: widget.row.protein.toStringAsFixed(1),
                   unit: 'g',
+                  editController: _proteinController,
                 ),
               ),
             ],
@@ -2216,6 +2385,7 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
                   color: AppColors.carbs,
                   value: widget.row.carbs.toStringAsFixed(1),
                   unit: 'g',
+                  editController: _carbsController,
                 ),
               ),
               const SizedBox(width: 8),
@@ -2225,12 +2395,66 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
                   color: AppColors.fat,
                   value: widget.row.fat.toStringAsFixed(1),
                   unit: 'g',
+                  editController: _fatController,
                 ),
               ),
             ],
           ),
         ],
       ),
+    );
+  }
+}
+
+class _FoodLogImageThumbnail extends StatelessWidget {
+  final String imageUrl;
+  static const double _size = 56;
+
+  const _FoodLogImageThumbnail({required this.imageUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    final uri = Uri.tryParse(imageUrl);
+    final isFileImage = uri != null && uri.scheme == 'file';
+    final pixelSize = (_size * MediaQuery.devicePixelRatioOf(context)).round();
+
+    Widget placeholder() {
+      return Container(
+        width: _size,
+        height: _size,
+        color: AppColors.brand.withValues(alpha: 0.08),
+        alignment: Alignment.center,
+        child: Icon(
+          Icons.restaurant,
+          color: AppColors.brand,
+          size: _size * 0.45,
+        ),
+      );
+    }
+
+    final imageWidget = isFileImage
+        ? Image.file(
+            File.fromUri(uri),
+            fit: BoxFit.cover,
+            cacheWidth: pixelSize,
+            cacheHeight: pixelSize,
+            errorBuilder: (_, __, ___) => placeholder(),
+          )
+        : Image.network(
+            imageUrl,
+            fit: BoxFit.cover,
+            cacheWidth: pixelSize,
+            cacheHeight: pixelSize,
+            loadingBuilder: (context, child, progress) {
+              if (progress == null) return child;
+              return placeholder();
+            },
+            errorBuilder: (_, __, ___) => placeholder(),
+          );
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: SizedBox(width: _size, height: _size, child: imageWidget),
     );
   }
 }
@@ -2246,6 +2470,8 @@ class _FoodSearchResultTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final serving = result.defaultServingOption;
     final calories = (serving.caloriesPerGram * serving.grams).round();
+    final imageUrl = (result.imageUrl ?? '').trim();
+    final hasImage = imageUrl.isNotEmpty;
 
     return Container(
       padding: const EdgeInsets.all(10),
@@ -2256,6 +2482,36 @@ class _FoodSearchResultTile extends StatelessWidget {
       ),
       child: Row(
         children: [
+          if (hasImage)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                imageUrl,
+                width: 46,
+                height: 46,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: AppColors.brand.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(Icons.restaurant, color: AppColors.brand),
+                ),
+              ),
+            )
+          else
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: AppColors.brand.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.restaurant, color: AppColors.brand),
+            ),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2462,6 +2718,7 @@ class _FoodRow {
   final double fat;
   final double fiber;
   final double massG;
+  final String? imageUrl;
   final DateTime consumedAt;
 
   const _FoodRow({
@@ -2475,6 +2732,7 @@ class _FoodRow {
     required this.fat,
     required this.fiber,
     required this.massG,
+    this.imageUrl,
     required this.consumedAt,
   });
 
@@ -2486,6 +2744,7 @@ class _FoodRow {
     double? protein,
     double? carbs,
     double? fat,
+    String? imageUrl,
   }) {
     return _FoodRow(
       id: id,
@@ -2498,6 +2757,7 @@ class _FoodRow {
       fat: fat ?? this.fat,
       fiber: fiber,
       massG: massG ?? this.massG,
+      imageUrl: imageUrl ?? this.imageUrl,
       consumedAt: consumedAt,
     );
   }
@@ -2545,7 +2805,9 @@ class _StatChip extends StatelessWidget {
     };
 
     final hasPotential = potentialPoints > 0;
-    final percentage = hasPotential ? (pointsEarned / potentialPoints) * 100 : 0.0;
+    final percentage = hasPotential
+        ? (pointsEarned / potentialPoints) * 100
+        : 0.0;
     final percentageLabel = hasPotential
         ? '${percentage.toStringAsFixed(0)}%'
         : '--';
@@ -2562,7 +2824,10 @@ class _StatChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: accentColor.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: accentColor.withValues(alpha: 0.45), width: 1.2),
+        border: Border.all(
+          color: accentColor.withValues(alpha: 0.45),
+          width: 1.2,
+        ),
         boxShadow: [
           BoxShadow(
             color: accentColor.withValues(alpha: 0.18),
@@ -2828,11 +3093,13 @@ class _DayHeader extends StatelessWidget {
 
 class _ScheduledMealCard extends ConsumerWidget {
   final PlannedFood meal;
+  final String userId;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
   const _ScheduledMealCard({
     required this.meal,
+    required this.userId,
     required this.onEdit,
     required this.onDelete,
   });
@@ -2840,6 +3107,7 @@ class _ScheduledMealCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final recipeAsync = ref.watch(recipeByIdProvider(meal.recipeId));
+    final foodLogAsync = ref.watch(firestoreFoodLogProvider(userId));
 
     return recipeAsync.when(
       loading: () => const Padding(
@@ -2854,6 +3122,21 @@ class _ScheduledMealCard extends ConsumerWidget {
         final carbs = (recipe['carbs'] ?? 0).toDouble();
         final fat = (recipe['fat'] ?? 0).toDouble();
         final dayLabel = DateFormat('MMMM d, yyyy').format(meal.date);
+        final normalizedRecipeName = recipeName.trim().toLowerCase();
+        final normalizedMealType = meal.mealType.trim().toLowerCase();
+        final isAlreadyLogged = foodLogAsync.maybeWhen(
+          data: (log) => log.any((item) {
+            final sameDay =
+                item.consumedAt.year == meal.date.year &&
+                item.consumedAt.month == meal.date.month &&
+                item.consumedAt.day == meal.date.day;
+            final sameMealType =
+                item.mealType.trim().toLowerCase() == normalizedMealType;
+            final sameName = item.name.trim().toLowerCase() == normalizedRecipeName;
+            return sameDay && sameMealType && sameName;
+          }),
+          orElse: () => false,
+        );
 
         return InkWell(
           onTap: () {
@@ -2916,23 +3199,33 @@ class _ScheduledMealCard extends ConsumerWidget {
                       ),
                     ),
                     IconButton(
-                      onPressed: () => _confirmAndLogScheduledMeal(
-                        context: context,
-                        ref: ref,
-                        recipeName: recipeName,
-                        calories: calories,
-                        protein: protein,
-                        carbs: carbs,
-                        fat: fat,
-                        dayLabel: dayLabel,
+                      onPressed: isAlreadyLogged
+                          ? null
+                          : () => _confirmAndLogScheduledMeal(
+                                context: context,
+                                ref: ref,
+                                recipeName: recipeName,
+                                calories: calories,
+                                protein: protein,
+                                carbs: carbs,
+                                fat: fat,
+                                dayLabel: dayLabel,
+                              ),
+                      icon: Icon(
+                        isAlreadyLogged
+                            ? Icons.task_alt_rounded
+                            : Icons.playlist_add_check_rounded,
+                        size: 20,
+                        color: isAlreadyLogged
+                            ? AppColors.textHint
+                            : AppColors.warmDarker,
                       ),
-                      icon: const Icon(Icons.playlist_add_check_rounded),
-                      tooltip: 'Log meal',
+                      tooltip: isAlreadyLogged ? 'Already logged' : 'Log meal',
                       visualDensity: VisualDensity.compact,
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(
-                        minWidth: 32,
-                        minHeight: 32,
+                        minWidth: 28,
+                        minHeight: 28,
                       ),
                     ),
                   ],
@@ -3097,14 +3390,18 @@ class _ScheduledMealCard extends ConsumerWidget {
       return;
     }
 
+    // If there are no grams, use macros to estimate mass with a default gram with a default of 1
+    final macroMassGrams = protein + carbs + fat;
+    final massGrams = macroMassGrams > 0 ? macroMassGrams : 1.0;
+
     final item = FoodItem(
       id: 'scheduled-${DateTime.now().microsecondsSinceEpoch}',
       name: recipeName,
-      mass_g: 1.0,
-      calories_g: calories,
-      protein_g: protein,
-      carbs_g: carbs,
-      fat: fat,
+      mass_g: massGrams,
+      calories_g: calories / massGrams,
+      protein_g: protein / massGrams,
+      carbs_g: carbs / massGrams,
+      fat: fat / massGrams,
       mealType: meal.mealType.toLowerCase(),
       consumedAt: DateTime(meal.date.year, meal.date.month, meal.date.day, 12),
     );
@@ -3155,13 +3452,36 @@ class _ScheduledMealCard extends ConsumerWidget {
           const SizedBox(height: 2),
           Align(
             alignment: Alignment.centerRight,
-            child: Text(
-              '$value $unit',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-                color: color.withValues(alpha: 0.95),
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 44,
+                  child: Text(
+                    value,
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: color.withValues(alpha: 0.95),
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                SizedBox(
+                  width: 24,
+                  child: Text(
+                    unit,
+                    textAlign: TextAlign.left,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: color.withValues(alpha: 0.95),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -3179,6 +3499,13 @@ class _ScheduledMealDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final recipeName = (recipe['label'] ?? 'Recipe').toString();
+    final recipeImageUrl = ((recipe['imageUrl'] ??
+                recipe['image'] ??
+                recipe['image_url'] ??
+                recipe['imageUri'] ??
+                '')
+            .toString())
+        .trim();
     final ingredientSource = meal.ingredientLines.isNotEmpty
         ? meal.ingredientLines
         : (recipe['ingredientLines'] ?? recipe['ingredients']);
@@ -3227,6 +3554,27 @@ class _ScheduledMealDetailScreen extends StatelessWidget {
                       color: AppColors.black,
                     ),
                   ),
+                  if (recipeImageUrl.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: AspectRatio(
+                        aspectRatio: 16 / 9,
+                        child: Image.network(
+                          recipeImageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            color: AppColors.surface,
+                            alignment: Alignment.center,
+                            child: const Icon(
+                              Icons.broken_image_outlined,
+                              color: AppColors.textHint,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -3541,117 +3889,161 @@ class _AddSearchResultDialogState
 
   @override
   Widget build(BuildContext context) {
+    final imageUrl = (widget.result.imageUrl ?? '').trim();
+    final dialogWidth =
+        (MediaQuery.sizeOf(context).width - 48).clamp(280.0, 420.0).toDouble();
+
     return AlertDialog(
       title: Text('Add ${widget.result.name}'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            DropdownButtonFormField<String>(
-              value: _mealType,
-              decoration: const InputDecoration(labelText: 'Meal type'),
-              items: const [
-                DropdownMenuItem(value: 'breakfast', child: Text('Breakfast')),
-                DropdownMenuItem(value: 'lunch', child: Text('Lunch')),
-                DropdownMenuItem(value: 'dinner', child: Text('Dinner')),
-                DropdownMenuItem(value: 'snack', child: Text('Snack')),
+      content: SizedBox(
+        width: dialogWidth,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (imageUrl.isNotEmpty) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(
+                    imageUrl,
+                    width: dialogWidth,
+                    height: 140,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      width: dialogWidth,
+                      height: 140,
+                      color: AppColors.surface,
+                      alignment: Alignment.center,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.broken_image, color: AppColors.textHint),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Image unavailable',
+                            style: TextStyle(
+                              color: AppColors.textHint,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
               ],
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() => _mealType = value);
-                }
-              },
-            ),
-            const SizedBox(height: 8),
-            if (_hasExplicitServingOptions) ...[
-              if (_availableServings.length > 1) ...[
-                DropdownButtonFormField<FoodServingOption>(
-                  value: _selectedServing,
-                  isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Serving size'),
-                  selectedItemBuilder: (context) => _availableServings
-                      .map(
-                        (option) => Align(
-                          alignment: AlignmentDirectional.centerStart,
-                          child: Text(
-                            _servingLabel(option),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
+              DropdownButtonFormField<String>(
+                value: _mealType,
+                decoration: const InputDecoration(labelText: 'Meal type'),
+                items: const [
+                  DropdownMenuItem(
+                    value: 'breakfast',
+                    child: Text('Breakfast'),
+                  ),
+                  DropdownMenuItem(value: 'lunch', child: Text('Lunch')),
+                  DropdownMenuItem(value: 'dinner', child: Text('Dinner')),
+                  DropdownMenuItem(value: 'snack', child: Text('Snack')),
+                ],
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() => _mealType = value);
+                  }
+                },
+              ),
+              const SizedBox(height: 8),
+              if (_hasExplicitServingOptions) ...[
+                if (_availableServings.length > 1) ...[
+                  DropdownButtonFormField<FoodServingOption>(
+                    value: _selectedServing,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Serving size',
+                    ),
+                    selectedItemBuilder: (context) => _availableServings
+                        .map(
+                          (option) => Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Text(
+                              _servingLabel(option),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
                           ),
-                        ),
-                      )
-                      .toList(),
-                  items: _availableServings
-                      .map(
-                        (option) => DropdownMenuItem<FoodServingOption>(
-                          value: option,
-                          child: Text(
-                            _servingLabel(option),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
+                        )
+                        .toList(),
+                    items: _availableServings
+                        .map(
+                          (option) => DropdownMenuItem<FoodServingOption>(
+                            value: option,
+                            child: Text(
+                              _servingLabel(option),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
                           ),
-                        ),
-                      )
-                      .toList(),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() {
+                        _selectedServing = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                DropdownButtonFormField<int>(
+                  value: _quantity,
+                  decoration: const InputDecoration(labelText: 'Servings'),
+                  items: List.generate(
+                    10,
+                    (index) => DropdownMenuItem<int>(
+                      value: index + 1,
+                      child: Text('${index + 1}'),
+                    ),
+                  ),
                   onChanged: (value) {
                     if (value == null) return;
                     setState(() {
-                      _selectedServing = value;
+                      _quantity = value;
                     });
                   },
                 ),
                 const SizedBox(height: 8),
-              ],
-              DropdownButtonFormField<int>(
-                value: _quantity,
-                decoration: const InputDecoration(labelText: 'Servings'),
-                items: List.generate(
-                  10,
-                  (index) => DropdownMenuItem<int>(
-                    value: index + 1,
-                    child: Text('${index + 1}'),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Total: ${(_selectedServing.grams * _quantity).toStringAsFixed(0)} g',
+                    style: TextStyle(color: AppColors.textHint, fontSize: 12),
                   ),
                 ),
-                onChanged: (value) {
-                  if (value == null) return;
-                  setState(() {
-                    _quantity = value;
-                  });
-                },
-              ),
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Total: ${(_selectedServing.grams * _quantity).toStringAsFixed(0)} g',
-                  style: TextStyle(color: AppColors.textHint, fontSize: 12),
-                ),
-              ),
-            ] else
-              TextField(
-                controller: _gramsController,
-                decoration: InputDecoration(
-                  labelText: 'Weight (g)',
-                  suffixIcon: IconButton(
-                    tooltip: 'Done',
-                    icon: const Icon(Icons.check),
-                    onPressed: () =>
-                        FocusManager.instance.primaryFocus?.unfocus(),
+              ] else
+                TextField(
+                  controller: _gramsController,
+                  decoration: InputDecoration(
+                    labelText: 'Weight (g)',
+                    suffixIcon: IconButton(
+                      tooltip: 'Done',
+                      icon: const Icon(Icons.check),
+                      onPressed: () =>
+                          FocusManager.instance.primaryFocus?.unfocus(),
+                    ),
                   ),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) =>
+                      FocusManager.instance.primaryFocus?.unfocus(),
+                  onTapOutside: (_) =>
+                      FocusManager.instance.primaryFocus?.unfocus(),
+                  onChanged: (_) {
+                    setState(() {});
+                  },
                 ),
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                textInputAction: TextInputAction.done,
-                onSubmitted: (_) =>
-                    FocusManager.instance.primaryFocus?.unfocus(),
-                onTapOutside: (_) =>
-                    FocusManager.instance.primaryFocus?.unfocus(),
-                onChanged: (_) {
-                  setState(() {});
-                },
-              ),
-          ],
+            ],
+          ),
         ),
       ),
       actions: [
@@ -3683,6 +4075,12 @@ class _AddSearchResultDialogState
       widget.day.day,
       12,
     );
+    final trimmedImageUrl = (widget.result.imageUrl ?? '').trim();
+    final imageUrlForLog =
+        trimmedImageUrl.isNotEmpty &&
+            FoodImageService.shouldShowImageForEntry(consumedAt)
+        ? trimmedImageUrl
+        : null;
 
     final item = FoodItem(
       id: 'search-${DateTime.now().microsecondsSinceEpoch}',
@@ -3693,6 +4091,7 @@ class _AddSearchResultDialogState
       carbs_g: _selectedServing.carbsPerGram,
       fat: _selectedServing.fatPerGram,
       mealType: _mealType,
+      imageUrl: imageUrlForLog,
       consumedAt: consumedAt,
     );
 

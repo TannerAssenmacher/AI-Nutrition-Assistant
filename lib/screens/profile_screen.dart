@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -26,6 +27,8 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _isSaving = false;
   bool _canEditDob = true;
   bool _isDeleting = false;
+  bool _isEdited = false;
+  bool _isShowingSaveDialog = false;
 
   final Color bgColor = AppColors.background;
   final Color brandColor = AppColors.brand;
@@ -46,22 +49,29 @@ class _ProfilePageState extends State<ProfilePage> {
   String? _email;
   String? _dob;
   String? _sex;
-  String? _activityLevel;
-  String? _dietaryGoal;
+  double _activityLevel = 1;
+  double _dietaryGoal = 0;
   List<String> _dietaryHabits = [];
   List<String> _health = [];
 
   double _protein = 0;
   double _carbs = 0;
   double _fats = 0;
+  Map<String, dynamic> _savedProfileSnapshot = {};
 
-  final _activityLevels = [
+  /*final _activityLevels = [
     'Sedentary',
     'Lightly Active',
     'Moderately Active',
     'Very Active',
+  ];*/
+  final _dietGoals = [
+    'Large Weight Loss',
+    'Weight Loss',
+    'Weight Maintenance',
+    'Muscle Growth',
+    'Large Muscle Growth',
   ];
-  final _dietGoals = ['Lose Weight', 'Maintain Weight', 'Gain Muscle'];
   final _dietaryHabitOptions = [
     'balanced',
     'high-protein',
@@ -91,7 +101,21 @@ class _ProfilePageState extends State<ProfilePage> {
     _loadProfile();
   }
 
+  @override
+  void dispose() {
+    _weightController.dispose();
+    _dailyCaloriesController.dispose();
+    _likesController.dispose();
+    _dislikesController.dispose();
+    super.dispose();
+  }
+
   Future<void> _logout() async {
+    if (_hasUnsavedChanges()) {
+      final shouldLeave = await _showSaveDialog();
+      if (!shouldLeave || !mounted) return;
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -124,20 +148,38 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  double _dietGoalPercentOffset(String goal) {
+    // Percent adjustment applied to estimated TDEE (BMR * activity).
+    // Negative values are deficits; positive values are surpluses.
+    switch (goal) {
+      case 'Large Weight Loss':
+        return -0.25;
+      case 'Weight Loss':
+        return -0.15;
+      case 'Weight Maintenance':
+        return 0.0;
+      case 'Muscle Growth':
+        return 0.10;
+      case 'Large Muscle Growth':
+        return 0.20;
+      default:
+        return 0.0;
+    }
+  }
+
   int _calculateDailyCalories() {
     final weight = double.tryParse(_weightController.text);
     if (_heightCm == null ||
         weight == null ||
         _sex == null ||
-        _activityLevel == null ||
         _dob == null ||
         _dob!.isEmpty)
       return 0;
 
     try {
       final height = _heightCm!;
-      final weightKg = weight / 2.205;
-      final dobDate = DateTime.parse(_dob!);
+      final weightKg = weight / 2.2046226218;
+      final dobDate = DateTime.parse(_normalizedDob(_dob) ?? _dob!);
       final now = DateTime.now();
       int age = now.year - dobDate.year;
       if (now.month < dobDate.month ||
@@ -148,21 +190,11 @@ class _ProfilePageState extends State<ProfilePage> {
           ? (10 * weightKg) + (6.25 * height) - (5 * age) + 5
           : (10 * weightKg) + (6.25 * height) - (5 * age) - 161;
 
-      final multipliers = {
-        'Sedentary': 1.2,
-        'Lightly Active': 1.375,
-        'Moderately Active': 1.55,
-        'Very Active': 1.725,
-      };
-
-      final weightfactor = {
-        'Lose Weight': -500,
-        'Maintain Weight': 0,
-        'Gain Muscle': 500,
-      };
-      return (bmr * (multipliers[_activityLevel] ?? 1.375) +
-              weightfactor[_dietaryGoal]!)
-          .round();
+      final tdee = bmr * _activityLevel;
+      final goalIndex = _dietaryGoal.toInt().clamp(0, _dietGoals.length - 1);
+      final goal = _dietGoals[goalIndex];
+      final target = tdee * (1.0 + _dietGoalPercentOffset(goal));
+      return target.round();
     } catch (e) {
       return 0;
     }
@@ -173,7 +205,7 @@ class _ProfilePageState extends State<ProfilePage> {
     double carbs = 40;
     double fats = 30;
 
-    switch (_activityLevel) {
+    /*switch (_activityLevel) {
       case 'Sedentary':
         protein += 2;
         carbs -= 5;
@@ -191,9 +223,9 @@ class _ProfilePageState extends State<ProfilePage> {
         carbs += 10;
         fats -= 15;
         break;
-    }
+    }*/
 
-    switch (_dietaryGoal) {
+    /*switch (_dietaryGoal) {
       case 'Lose Weight':
         protein += 10;
         carbs -= 7;
@@ -206,7 +238,7 @@ class _ProfilePageState extends State<ProfilePage> {
         carbs += 8;
         fats -= 16;
         break;
-    }
+    }*/
 
     for (final habit in _dietaryHabits) {
       switch (habit) {
@@ -262,9 +294,10 @@ class _ProfilePageState extends State<ProfilePage> {
       _protein = suggested['protein']!;
       _carbs = suggested['carbs']!;
       _fats = suggested['fat']!;
+      _refreshEditedState();
     });
 
-    if (!silent && (_activityLevel == null || _dietaryGoal == null)) {
+    if (!silent) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -284,56 +317,212 @@ class _ProfilePageState extends State<ProfilePage> {
     return initials.isEmpty ? "?" : initials;
   }
 
+  String? _normalizedDob(String? value) {
+    if (value == null) return null;
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return null;
+    return trimmed.split('T')[0].split(' ')[0];
+  }
+
+  double? _toDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    if (value is String) {
+      final trimmed = value.trim();
+      if (trimmed.isEmpty) return null;
+      return double.tryParse(trimmed);
+    }
+    return null;
+  }
+
+  int? _toInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) {
+      final trimmed = value.trim();
+      if (trimmed.isEmpty) return null;
+      return int.tryParse(trimmed);
+    }
+    return null;
+  }
+
+  Map<String, dynamic> _toMap(dynamic value) {
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) return Map<String, dynamic>.from(value);
+    return <String, dynamic>{};
+  }
+
+  List<String> _toStringList(dynamic value) {
+    if (value is! List) return <String>[];
+    return value
+        .map((item) => item.toString().trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
+  }
+
+  double? _parsedWeight() {
+    final text = _weightController.text.trim();
+    if (text.isEmpty) return null;
+    return double.tryParse(text);
+  }
+
+  int? _parsedDailyCalories() {
+    final text = _dailyCaloriesController.text.trim();
+    if (text.isEmpty) return null;
+    return int.tryParse(text);
+  }
+
+  Map<String, dynamic> _buildProfileSnapshot() {
+    return {
+      'sex': _sex,
+      'activityLevel': _activityLevel,
+      'dob': _normalizedDob(_dob),
+      'height': _heightCm,
+      'weight': _parsedWeight(),
+      'mealProfile.dietaryGoal': _dietaryGoal,
+      'mealProfile.macroGoals': {
+        'protein': _protein,
+        'carbs': _carbs,
+        'fat': _fats,
+      },
+      'mealProfile.dietaryHabits': List<String>.from(_dietaryHabits),
+      'mealProfile.healthRestrictions': List<String>.from(_health),
+      'mealProfile.preferences.likes': List<String>.from(_likesList),
+      'mealProfile.preferences.dislikes': List<String>.from(_dislikesList),
+      'mealProfile.dailyCalorieGoal': _parsedDailyCalories(),
+    };
+  }
+
+  Map<String, dynamic> _buildChangedProfileData() {
+    final current = _buildProfileSnapshot();
+    final changed = <String, dynamic>{};
+
+    for (final entry in current.entries) {
+      if (!_snapshotValueEquals(
+        _savedProfileSnapshot[entry.key],
+        entry.value,
+      )) {
+        changed[entry.key] = entry.value;
+      }
+    }
+
+    return changed;
+  }
+
+  bool _hasUnsavedChanges() {
+    return _buildChangedProfileData().isNotEmpty;
+  }
+
+  void _discardUnsavedChanges() {
+    final snapshot = _savedProfileSnapshot;
+    if (snapshot.isEmpty) {
+      _isEdited = false;
+      return;
+    }
+
+    _sex = snapshot['sex']?.toString();
+    _activityLevel = _toDouble(snapshot['activityLevel']) ?? 1.0;
+    _dob = snapshot['dob']?.toString() ?? '';
+    _canEditDob = _dob != null && _dob!.isNotEmpty ? false : true;
+    _heightCm = _toDouble(snapshot['height']);
+
+    final savedWeight = _toDouble(snapshot['weight']);
+    if (savedWeight != null) {
+      _weightController.text = savedWeight % 1 == 0
+          ? savedWeight.toInt().toString()
+          : savedWeight.toString();
+    } else {
+      _weightController.clear();
+    }
+
+    _dietaryGoal = _toDouble(snapshot['mealProfile.dietaryGoal']) ?? 0.0;
+    _dailyCaloriesController.text =
+        _toInt(snapshot['mealProfile.dailyCalorieGoal'])?.toString() ?? '';
+
+    final savedMacroGoals = _toMap(snapshot['mealProfile.macroGoals']);
+    _protein = _toDouble(savedMacroGoals['protein']) ?? 0;
+    _carbs = _toDouble(savedMacroGoals['carbs']) ?? 0;
+    _fats = _toDouble(savedMacroGoals['fat']) ?? 0;
+
+    _dietaryHabits = _toStringList(snapshot['mealProfile.dietaryHabits']);
+    _health = _toStringList(snapshot['mealProfile.healthRestrictions']);
+    _likesList = _toStringList(snapshot['mealProfile.preferences.likes']);
+    _dislikesList = _toStringList(snapshot['mealProfile.preferences.dislikes']);
+    _isEdited = false;
+  }
+
+  bool _snapshotValueEquals(dynamic oldValue, dynamic newValue) {
+    if (oldValue is List && newValue is List) {
+      return listEquals(oldValue, newValue);
+    }
+    if (oldValue is Map && newValue is Map) {
+      return mapEquals(oldValue, newValue);
+    }
+    return oldValue == newValue;
+  }
+
+  void _refreshEditedState() {
+    _isEdited = _hasUnsavedChanges();
+  }
+
   Future<void> _loadProfile() async {
     if (user == null) return;
     try {
       final doc = await _firestore.collection('Users').doc(user!.uid).get();
-      if (!doc.exists) return;
+      if (!doc.exists) {
+        if (!mounted) return;
+        setState(() {
+          _savedProfileSnapshot = _buildProfileSnapshot();
+          _isEdited = false;
+        });
+        return;
+      }
       final data = doc.data()!;
       if (!mounted) return;
       setState(() {
-        _firstname = data['firstname'];
-        _lastname = data['lastname'];
+        _firstname = data['firstname']?.toString();
+        _lastname = data['lastname']?.toString();
         _email = user!.email;
-        if (data['dob'] != null && data['dob'].toString().trim().isNotEmpty) {
-          _dob = data['dob'].toString().split('T')[0].split(' ')[0];
+        final rawDob = data['dob']?.toString().trim();
+        if (rawDob != null && rawDob.isNotEmpty) {
+          _dob = rawDob.split('T')[0].split(' ')[0];
           _canEditDob = false;
         } else {
           _dob = '';
           _canEditDob = true;
         }
-        _sex = data['sex'];
-        _heightCm = (data['height'] as num?)?.toDouble();
+        _sex = data['sex']?.toString();
+        _heightCm = _toDouble(data['height']);
 
-        final w = data['weight'];
-        if (w != null) {
-          final num weight = w;
+        final weight = _toDouble(data['weight']);
+        if (weight != null) {
           _weightController.text = weight % 1 == 0
               ? weight.toInt().toString()
               : weight.toString();
+        } else {
+          _weightController.clear();
         }
 
-        _activityLevel = data['activityLevel'];
-        final mealProfile = data['mealProfile'] ?? {};
-        _dietaryGoal = mealProfile['dietaryGoal'];
+        _activityLevel = _toDouble(data['activityLevel']) ?? 1.0;
+        final mealProfile = _toMap(data['mealProfile']);
+        _dietaryGoal = _toDouble(mealProfile['dietaryGoal']) ?? 0.0;
         _dailyCaloriesController.text =
-            mealProfile['dailyCalorieGoal']?.toString() ?? '';
+            _toInt(mealProfile['dailyCalorieGoal'])?.toString() ?? '';
 
-        final macroGoals = Map<String, dynamic>.from(
-          mealProfile['macroGoals'] ?? {},
-        );
-        _protein = macroGoals['protein']?.toDouble() ?? 0;
-        _carbs = macroGoals['carbs']?.toDouble() ?? 0;
-        _fats = (macroGoals['fat'] ?? macroGoals['fats'] ?? 0).toDouble();
+        final macroGoals = _toMap(mealProfile['macroGoals']);
+        _protein = _toDouble(macroGoals['protein']) ?? 0;
+        _carbs = _toDouble(macroGoals['carbs']) ?? 0;
+        _fats = _toDouble(macroGoals['fat'] ?? macroGoals['fats']) ?? 0;
 
-        _dietaryHabits = List<String>.from(mealProfile['dietaryHabits'] ?? []);
-        _health = List<String>.from(mealProfile['healthRestrictions'] ?? []);
+        _dietaryHabits = _toStringList(mealProfile['dietaryHabits']);
+        _health = _toStringList(mealProfile['healthRestrictions']);
 
-        final prefs = Map<String, dynamic>.from(
-          mealProfile['preferences'] ?? {},
-        );
-        _likesList = List<String>.from(prefs['likes'] ?? []);
-        _dislikesList = List<String>.from(prefs['dislikes'] ?? []);
+        final prefs = _toMap(mealProfile['preferences']);
+        _likesList = _toStringList(prefs['likes']);
+        _dislikesList = _toStringList(prefs['dislikes']);
+        _savedProfileSnapshot = _buildProfileSnapshot();
+        _isEdited = false;
       });
     } catch (e) {
       debugPrint("Error loading profile: $e");
@@ -343,41 +532,33 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _saveProfile() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (user == null || !_formKey.currentState!.validate()) return;
+    final updateData = _buildChangedProfileData();
+    if (updateData.isEmpty) {
+      if (mounted) {
+        setState(() => _isEdited = false);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('No changes to save.')));
+      }
+      return;
+    }
+
     setState(() => _isSaving = true);
     try {
-      final Map<String, dynamic> updateData = {
-        'sex': _sex,
-        'activityLevel': _activityLevel,
-        'dob': (_dob != null && _dob!.isNotEmpty) ? _dob : null,
-        'mealProfile.dietaryGoal': _dietaryGoal,
-        'mealProfile.macroGoals': {
-          'protein': _protein,
-          'carbs': _carbs,
-          'fat': _fats,
-        },
-        'mealProfile.dietaryHabits': _dietaryHabits,
-        'mealProfile.healthRestrictions': _health,
-        'mealProfile.preferences.likes': _likesList,
-        'mealProfile.preferences.dislikes': _dislikesList,
-        'updatedAt': FieldValue.serverTimestamp(),
-      };
-
-      if (_heightCm != null) updateData['height'] = _heightCm;
-      if (_weightController.text.isNotEmpty)
-        updateData['weight'] = double.tryParse(_weightController.text);
-      if (_dailyCaloriesController.text.isNotEmpty) {
-        updateData['mealProfile.dailyCalorieGoal'] = int.tryParse(
-          _dailyCaloriesController.text,
-        );
-      }
+      updateData['updatedAt'] = FieldValue.serverTimestamp();
 
       await _firestore.collection('Users').doc(user!.uid).update(updateData);
-      if (_dob != null && _dob!.isNotEmpty) setState(() => _canEditDob = false);
-      if (mounted)
+      if (mounted) {
+        setState(() {
+          if (_normalizedDob(_dob) != null) _canEditDob = false;
+          _savedProfileSnapshot = _buildProfileSnapshot();
+          _isEdited = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Profile updated successfully!')),
         );
+      }
     } catch (e) {
       if (mounted)
         ScaffoldMessenger.of(
@@ -385,6 +566,72 @@ class _ProfilePageState extends State<ProfilePage> {
         ).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
       if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Future<bool> _showSaveDialog() async {
+    final hasUnsavedChanges = _hasUnsavedChanges();
+    if (!hasUnsavedChanges || _isShowingSaveDialog) return !hasUnsavedChanges;
+    _isShowingSaveDialog = true;
+
+    try {
+      final shouldLeave = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        barrierColor: Colors.black.withValues(alpha: 0.2),
+        builder: (dialogContext) => BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: AlertDialog(
+            title: const Text('Save Changes', textAlign: TextAlign.center),
+            content: const Text(
+              'Would you like to save your changes?',
+              textAlign: TextAlign.center,
+            ),
+            actionsAlignment: MainAxisAlignment.center,
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(color: AppColors.textPrimary),
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  if (mounted) {
+                    setState(_discardUnsavedChanges);
+                  }
+                  Navigator.of(dialogContext).pop(true);
+                },
+                child: const Text(
+                  'Discard',
+                  style: TextStyle(color: AppColors.textPrimary),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: _isSaving
+                    ? null
+                    : () async {
+                        await _saveProfile();
+                        if (!dialogContext.mounted) return;
+                        if (!_isEdited) {
+                          Navigator.of(dialogContext).pop(true);
+                        }
+                      },
+                style: ElevatedButton.styleFrom(backgroundColor: brandColor),
+                child: const Text(
+                  'Confirm',
+                  style: TextStyle(color: AppColors.surface),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      return shouldLeave ?? false;
+    } finally {
+      _isShowingSaveDialog = false;
     }
   }
 
@@ -582,6 +829,7 @@ class _ProfilePageState extends State<ProfilePage> {
   void _updateHeight(int ft, int inches) {
     setState(() {
       _heightCm = (ft * 12 + inches) * 2.54;
+      _refreshEditedState();
     });
   }
 
@@ -603,108 +851,135 @@ class _ProfilePageState extends State<ProfilePage> {
       inText = (totalInches.round() % 12).toString();
     }
 
-    return Scaffold(
-      backgroundColor: bgColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: widget.isInPageView
-            ? null
-            : IconButton(
-                icon: const Icon(
-                  Icons.arrow_back,
-                  color: AppColors.textPrimary,
-                  size: 28,
+    return PopScope(
+      canPop: !_hasUnsavedChanges(),
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldLeave = await _showSaveDialog();
+        if (shouldLeave && context.mounted) {
+          Navigator.of(context).pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: bgColor,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: widget.isInPageView
+              ? null
+              : IconButton(
+                  icon: const Icon(
+                    Icons.arrow_back,
+                    color: AppColors.textPrimary,
+                    size: 28,
+                  ),
+                  onPressed: () async {
+                    if (_hasUnsavedChanges()) {
+                      final shouldLeave = await _showSaveDialog();
+                      if (shouldLeave && context.mounted) {
+                        Navigator.pop(context);
+                      }
+                    } else {
+                      Navigator.pop(context);
+                    }
+                  },
                 ),
-                onPressed: () => Navigator.pop(context),
-              ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout, color: AppColors.textSecondary),
-            onPressed: _logout,
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                children: [
-                  CircleAvatar(
-                    radius: 50,
-                    backgroundColor: brandColor,
-                    child: Text(
-                      _getInitials(),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.logout, color: AppColors.textSecondary),
+              onPressed: _logout,
+            ),
+            const SizedBox(width: 8),
+          ],
+        ),
+        body: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+          child: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    CircleAvatar(
+                      radius: 50,
+                      backgroundColor: brandColor,
+                      child: Text(
+                        _getInitials(),
+                        style: const TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.surface,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      '$_firstname $_lastname',
                       style: const TextStyle(
-                        fontSize: 32,
+                        fontSize: 22,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.surface,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    '$_firstname $_lastname',
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 25),
+                    const SizedBox(height: 25),
 
-                  _buildStatBoxes(estimatedCals),
+                    _buildStatBoxes(estimatedCals),
 
-                  const SizedBox(height: 30),
-                  _sectionHeader("User"),
-                  _buildCard([
-                    _buildListTile(Icons.email_outlined, "Email", _email ?? ""),
-                    _buildListTile(
-                      Icons.calendar_today,
-                      "DOB",
-                      (_dob == null || _dob!.isEmpty) ? "Not set" : _dob!,
-                      onTap: _canEditDob
-                          ? () async {
-                              DateTime? pickedDate = await showDatePicker(
-                                context: context,
-                                initialDate: DateTime(2000),
-                                firstDate: DateTime(1920),
-                                lastDate: DateTime.now(),
-                                builder: (context, child) => Theme(
-                                  data: Theme.of(context).copyWith(
-                                    colorScheme: ColorScheme.light(
-                                      primary: brandColor,
+                    const SizedBox(height: 30),
+                    _sectionHeader("User"),
+                    _buildCard([
+                      _buildListTile(
+                        Icons.email_outlined,
+                        "Email",
+                        _email ?? "",
+                      ),
+                      _buildListTile(
+                        Icons.calendar_today,
+                        "DOB",
+                        (_dob == null || _dob!.isEmpty) ? "Not set" : _dob!,
+                        onTap: _canEditDob
+                            ? () async {
+                                DateTime? pickedDate = await showDatePicker(
+                                  context: context,
+                                  initialDate: DateTime(2000),
+                                  firstDate: DateTime(1920),
+                                  lastDate: DateTime.now(),
+                                  builder: (context, child) => Theme(
+                                    data: Theme.of(context).copyWith(
+                                      colorScheme: ColorScheme.light(
+                                        primary: brandColor,
+                                      ),
                                     ),
+                                    child: child!,
                                   ),
-                                  child: child!,
-                                ),
-                              );
-                              if (pickedDate != null)
-                                setState(
-                                  () => _dob = pickedDate.toString().split(
-                                    ' ',
-                                  )[0],
                                 );
-                            }
-                          : null,
-                    ),
-                    _buildListTile(
-                      Icons.wc,
-                      "Sex",
-                      _sex ?? "Not Set",
-                      onTap: () => _showPicker(
-                        "Sex",
-                        ['Male', 'Female'],
-                        _sex,
-                        (v) => setState(() => _sex = v),
+                                if (pickedDate != null)
+                                  setState(() {
+                                    _dob = pickedDate.toString().split(' ')[0];
+                                    _refreshEditedState();
+                                  });
+                              }
+                            : null,
                       ),
-                    ),
-                    _buildListTile(
+                      _buildListTile(
+                        Icons.wc,
+                        "Sex",
+                        _sex ?? "Not Set",
+                        onTap: () => _showPicker(
+                          "Sex",
+                          ['Male', 'Female'],
+                          _sex,
+                          (v) => setState(() {
+                            _sex = v;
+                            _refreshEditedState();
+                          }),
+                        ),
+                      ),
+                      _buildActivitySlider(),
+                      _buildDietaryGoalSlider(),
+
+                      /*_buildListTile(
                       Icons.bolt,
                       "Activity Level",
                       _activityLevel ?? "Select",
@@ -717,8 +992,8 @@ class _ProfilePageState extends State<ProfilePage> {
                           _applyRecommendedMacroGoals(silent: true);
                         },
                       ),
-                    ),
-                    _buildListTile(
+                    ),*/
+                      /*_buildListTile(
                       Icons.track_changes,
                       "Dietary Goal",
                       _dietaryGoal ?? "Select",
@@ -731,46 +1006,47 @@ class _ProfilePageState extends State<ProfilePage> {
                           _applyRecommendedMacroGoals(silent: true);
                         },
                       ),
-                    ),
-                  ]),
-                  const SizedBox(height: 25),
-                  _sectionHeader("Meal Profile"),
-                  _buildCard([
-                    Padding(
-                      padding: const EdgeInsets.only(
-                        top: 20.0,
-                        left: 16.0,
-                        right: 16.0,
-                        bottom: 8.0,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Macronutrient Goals",
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.textPrimary,
-                              letterSpacing: 0.7,
+                    ),*/
+                    ]),
+                    const SizedBox(height: 25),
+                    _sectionHeader("Meal Profile"),
+                    _buildCard([
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          top: 20.0,
+                          left: 16.0,
+                          right: 16.0,
+                          bottom: 8.0,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Macronutrient Goals",
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.textPrimary,
+                                letterSpacing: 0.7,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 16),
-                          MacroSlider(
-                            key: ValueKey(
-                              'macro-${_protein.toStringAsFixed(2)}-${_carbs.toStringAsFixed(2)}-${_fats.toStringAsFixed(2)}',
+                            const SizedBox(height: 16),
+                            MacroSlider(
+                              key: ValueKey(
+                                'macro-${_protein.toStringAsFixed(2)}-${_carbs.toStringAsFixed(2)}-${_fats.toStringAsFixed(2)}',
+                              ),
+                              protein: _protein,
+                              carbs: _carbs,
+                              fats: _fats,
+                              onChanged: (p, c, f) => setState(() {
+                                _protein = p;
+                                _carbs = c;
+                                _fats = f;
+                                _refreshEditedState();
+                              }),
                             ),
-                            protein: _protein,
-                            carbs: _carbs,
-                            fats: _fats,
-                            onChanged: (p, c, f) => setState(() {
-                              _protein = p;
-                              _carbs = c;
-                              _fats = f;
-                            }),
-                          ),
-                          const SizedBox(height: 8),
-                          /*Text(
+                            const SizedBox(height: 8),
+                            /*Text(
                             'Suggested values:\nP ${suggestedMacros['protein']!.round()}% • C ${suggestedMacros['carbs']!.round()}% • F ${suggestedMacros['fat']!.round()}%',
                             style: const TextStyle(
                               fontSize: 12,
@@ -785,98 +1061,110 @@ class _ProfilePageState extends State<ProfilePage> {
                               child: const Text('Use Suggested'),
                             ),
                           ),*/
-                        ],
-                      ),
-                    ),
-                    const Divider(height: 1),
-                    _buildMultiSelectTile(
-                      "Macronutrient Goal Presets",
-                      _dietaryHabitOptions,
-                      _dietaryHabits,
-                      onChanged: () =>
-                          _applyRecommendedMacroGoals(silent: true),
-                    ),
-                    const Divider(height: 1),
-                    _buildMultiSelectTile(
-                      "Health & Dietary Restrictions",
-                      _healthOptions,
-                      _health,
-                    ),
-                    const Divider(height: 1),
-                    _buildBubbleInput("Likes", _likesController, _likesList),
-                    const Divider(height: 1),
-                    _buildBubbleInput(
-                      "Dislikes",
-                      _dislikesController,
-                      _dislikesList,
-                    ),
-                  ]),
-                  const SizedBox(height: 30),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 55,
-                    child: ElevatedButton(
-                      onPressed: _saveProfile,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: brandColor,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
+                          ],
                         ),
                       ),
-                      child: _isSaving
-                          ? const CircularProgressIndicator(
-                              color: AppColors.surface,
-                            )
-                          : const Text(
-                              "Save Changes",
-                              style: TextStyle(
-                                color: AppColors.surface,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 55,
-                    child: ElevatedButton(
-                      onPressed: _confirmDeleteAccount,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: deleteColor,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        elevation: 0,
+                      const Divider(height: 1),
+                      _buildMultiSelectTile(
+                        "Macronutrient Goal Presets",
+                        _dietaryHabitOptions,
+                        _dietaryHabits,
+                        onChanged: () =>
+                            _applyRecommendedMacroGoals(silent: true),
                       ),
-                      child: _isDeleting
-                          ? const CircularProgressIndicator(
-                              color: AppColors.surface,
-                            )
-                          : const Text(
-                              "Delete Account",
-                              style: TextStyle(
+                      const Divider(height: 1),
+                      _buildMultiSelectTile(
+                        "Health & Dietary Restrictions",
+                        _healthOptions,
+                        _health,
+                      ),
+                      const Divider(height: 1),
+                      _buildBubbleInput("Likes", _likesController, _likesList),
+                      const Divider(height: 1),
+                      _buildBubbleInput(
+                        "Dislikes",
+                        _dislikesController,
+                        _dislikesList,
+                      ),
+                    ]),
+                    const SizedBox(height: 30),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 55,
+                      child: ElevatedButton(
+                        onPressed: _isEdited && !_isSaving
+                            ? _saveProfile
+                            : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: brandColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                        ),
+                        child: _isSaving
+                            ? const CircularProgressIndicator(
                                 color: AppColors.surface,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
+                              )
+                            : const Text(
+                                "Save Changes",
+                                style: TextStyle(
+                                  color: AppColors.surface,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
                               ),
-                            ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 60),
-                ],
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 55,
+                      child: ElevatedButton(
+                        onPressed: _confirmDeleteAccount,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: deleteColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: _isDeleting
+                            ? const CircularProgressIndicator(
+                                color: AppColors.surface,
+                              )
+                            : const Text(
+                                "Delete Account",
+                                style: TextStyle(
+                                  color: AppColors.surface,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 60),
+                  ],
+                ),
               ),
             ),
           ),
         ),
+        bottomNavigationBar: widget.isInPageView
+            ? NavBar(
+                currentIndex: navIndexProfile,
+                onTap: (index) async {
+                  if (index == navIndexProfile) return;
+                  final navContext = context;
+                  if (_hasUnsavedChanges()) {
+                    final shouldLeave = await _showSaveDialog();
+                    if (!shouldLeave || !navContext.mounted) return;
+                  }
+                  if (!navContext.mounted) return;
+                  handleNavTap(navContext, index);
+                },
+              )
+            : null,
       ),
-      bottomNavigationBar: widget.isInPageView
-          ? NavBar(
-              currentIndex: navIndexProfile,
-              onTap: (index) => handleNavTap(context, index),
-            )
-          : null,
     );
   }
 
@@ -917,11 +1205,14 @@ class _ProfilePageState extends State<ProfilePage> {
               IconButton(
                 icon: Icon(Icons.add_circle, color: brandColor),
                 onPressed: () {
-                  if (controller.text.trim().isNotEmpty)
+                  final item = controller.text.trim();
+                  if (item.isNotEmpty && !list.contains(item)) {
                     setState(() {
-                      list.add(controller.text.trim());
+                      list.add(item);
                       controller.clear();
+                      _refreshEditedState();
                     });
+                  }
                 },
               ),
             ],
@@ -934,7 +1225,10 @@ class _ProfilePageState extends State<ProfilePage> {
                     label: Text(item, style: const TextStyle(fontSize: 12)),
                     backgroundColor: brandColor.withOpacity(0.1),
                     deleteIcon: const Icon(Icons.close, size: 14),
-                    onDeleted: () => setState(() => list.remove(item)),
+                    onDeleted: () => setState(() {
+                      list.remove(item);
+                      _refreshEditedState();
+                    }),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -1038,7 +1332,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               ),
                             ]
                           : [FilteringTextInputFormatter.digitsOnly],
-                      onChanged: (v) => setState(() {}),
+                      onChanged: (_) => setState(_refreshEditedState),
                       decoration: InputDecoration(
                         border: InputBorder.none,
                         isDense: true,
@@ -1242,6 +1536,104 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  Widget _buildDietaryGoalSlider() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.track_changes, color: brandColor, size: 22),
+              const Text(
+                "  Dietary Goal",
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(
+                  Icons.info_outline,
+                  color: AppColors.textSecondary,
+                ),
+                onPressed: _showDietaryGoalInfo,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                tooltip: 'Dietary Goal Definitions',
+              ),
+            ],
+          ),
+          Slider(
+            value: _dietaryGoal,
+            min: 0,
+            max: 4,
+            divisions: 4,
+            label: _dietGoals[_dietaryGoal.toInt()],
+            onChanged: (value) {
+              setState(() {
+                _dietaryGoal = value;
+                _refreshEditedState();
+              });
+              _applyRecommendedMacroGoals(silent: true);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActivitySlider() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.bolt, color: brandColor, size: 22),
+              const Text(
+                "  Activity Level",
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(
+                  Icons.info_outline,
+                  color: AppColors.textSecondary,
+                ),
+                onPressed: _showActivityLevelInfo,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                tooltip: 'Activity Level Definitions',
+              ),
+            ],
+          ),
+          Slider(
+            value: _activityLevel,
+            min: 1.0,
+            max: 1.9,
+            divisions: 5,
+            label: activityLevelLabels(_activityLevel),
+            onChanged: (value) {
+              setState(() {
+                _activityLevel = value;
+                _refreshEditedState();
+              });
+              _applyRecommendedMacroGoals(silent: true);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildMultiSelectTile(
     String title,
     List<String> options,
@@ -1272,7 +1664,14 @@ class _ProfilePageState extends State<ProfilePage> {
               selectedColor: brandColor,
               backgroundColor: bgColor.withOpacity(0.5),
               onSelected: (v) {
-                setState(() => v ? selected.add(opt) : selected.remove(opt));
+                setState(() {
+                  if (v) {
+                    if (!selected.contains(opt)) selected.add(opt);
+                  } else {
+                    selected.remove(opt);
+                  }
+                  _refreshEditedState();
+                });
                 onChanged?.call();
               },
             );
@@ -1280,6 +1679,23 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
       ),
     );
+  }
+
+  //STRING FUNC FOR SHOWING THE ACTIVITY LEVEL IN THE SLIDER
+  String activityLevelLabels(double value) {
+    if (value == 1.0)
+      return 'Completely Sedentary';
+    else if (value > 1.0 && value <= 1.25)
+      return 'Basic Daily Activity';
+    else if (value > 1.25 && value <= 1.45)
+      return 'Lightly Active';
+    else if (value > 1.45 && value <= 1.65)
+      return 'Moderately Active';
+    else if (value > 1.65 && value <= 1.8)
+      return 'Very Active';
+    else if (value > 1.8)
+      return 'Daily Athlete';
+    return 'NA';
   }
 
   void _showPicker(
@@ -1324,6 +1740,134 @@ class _ProfilePageState extends State<ProfilePage> {
             const SizedBox(height: 20),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showDietaryGoalInfo() {
+    final dietGoalsInfo = [
+      {
+        'goal': 'Large Weight Loss',
+        'definition':
+            'Targets an aggressive deficit (about 25% below estimated maintenance). Actual weekly change varies by person.',
+      },
+      {
+        'goal': 'Weight Loss',
+        'definition':
+            'Targets a moderate deficit (about 15% below estimated maintenance). Actual weekly change varies by person.',
+      },
+      {
+        'goal': 'Weight Maintenance',
+        'definition':
+            'Targets estimated maintenance calories (no deficit or surplus applied).',
+      },
+      {
+        'goal': 'Muscle Growth',
+        'definition':
+            'Targets a small surplus (about 10% above estimated maintenance) to support training and recovery.',
+      },
+      {
+        'goal': 'Large Muscle Growth',
+        'definition':
+            'Targets a larger surplus (about 20% above estimated maintenance). This can increase fat gain for some people.',
+      },
+    ];
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Dietary Goal Definitions'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.separated(
+            shrinkWrap: true,
+            itemCount: dietGoalsInfo.length,
+            separatorBuilder: (context, index) => const Divider(),
+            itemBuilder: (context, index) {
+              final info = dietGoalsInfo[index];
+              return ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                  info['goal']!,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Text(info['definition']!),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showActivityLevelInfo() {
+    final activityLevelsInfo = [
+      {
+        'level': 'Completely Sedentary',
+        'definition': 'Little to no walking or cycling. 0-1 hours per week.',
+      },
+      {
+        'level': 'Basic Daily Activity',
+        'definition':
+            'Minimal physical activity (e.g., walking to car, light housework).',
+      },
+      {
+        'level': 'Lightly Active',
+        'definition': 'Light exercise or sports 1-3 days per week.',
+      },
+      {
+        'level': 'Moderately Active',
+        'definition': 'Moderate exercise or sports 3-5 days per week.',
+      },
+      {
+        'level': 'Very Active',
+        'definition':
+            'Hard exercise (elevated heart rate for 30+ minutes) or sports 5-6 days a week.',
+      },
+      {
+        'level': 'Daily Athlete',
+        'definition':
+            'Hard exercise/sports every day, often with a physical job.',
+      },
+    ];
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Activity Level Definitions'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.separated(
+            shrinkWrap: true,
+            itemCount: activityLevelsInfo.length,
+            separatorBuilder: (context, index) => const Divider(),
+            itemBuilder: (context, index) {
+              final info = activityLevelsInfo[index];
+              return ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                  info['level']!,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Text(info['definition']!),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
       ),
     );
   }

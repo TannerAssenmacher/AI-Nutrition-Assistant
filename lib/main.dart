@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
+import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'firebase_options.dart';
 //import 'db/user.dart';
 //import 'db/food.dart';
@@ -14,6 +17,7 @@ import 'screens/main_navigation_screen.dart';
 import 'screens/profile_screen.dart';
 import 'navigation/nav_helper.dart';
 import 'services/notification_service.dart';
+import 'services/food_image_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,12 +26,11 @@ void main() async {
   String initialRoute = '/login';
 
   try {
-    await SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-    ]);
+    await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
     // Initialize Firebase with better error handling
     await _initializeFirebase();
+    await _activateFirebaseAppCheck();
 
     // Initialize notification service
     await NotificationService.initialize();
@@ -35,6 +38,7 @@ void main() async {
     // Schedule daily reminders
     await NotificationService.scheduleStreakReminder();
     await NotificationService.scheduleMacroCheckReminder();
+    _scheduleFoodImageCleanup();
 
     // On web, Firebase restores auth state from IndexedDB asynchronously.
     // Reading currentUser synchronously can return null even when the user IS
@@ -78,10 +82,14 @@ void main() async {
     // Continue with app launch even if there's an error
   }
 
-  runApp(
-    ProviderScope(
-      child: MyApp(initialRoute: initialRoute),
-    ),
+  runApp(ProviderScope(child: MyApp(initialRoute: initialRoute)));
+}
+
+void _scheduleFoodImageCleanup() {
+  unawaited(
+    FoodImageService.purgeExpiredCapturedImages().catchError((Object error) {
+      debugPrint('Food image cleanup failed: $error');
+    }),
   );
 }
 
@@ -118,6 +126,44 @@ Future<void> _initializeFirebase() async {
   } catch (e) {
     print("Unexpected error during Firebase initialization: $e");
     rethrow;
+  }
+}
+
+Future<void> _activateFirebaseAppCheck() async {
+  const enableAppCheck = bool.fromEnvironment(
+    'ENABLE_APP_CHECK',
+    defaultValue: kReleaseMode,
+  );
+  if (!enableAppCheck) {
+    debugPrint('Firebase App Check disabled (ENABLE_APP_CHECK=false).');
+    return;
+  }
+
+  const webRecaptchaSiteKey = String.fromEnvironment(
+    'RECAPTCHA_V3_SITE_KEY',
+    defaultValue: '',
+  );
+
+  try {
+    if (kIsWeb && webRecaptchaSiteKey.isEmpty) {
+      debugPrint(
+        'Firebase App Check skipped on web: set --dart-define=RECAPTCHA_V3_SITE_KEY=...',
+      );
+      return;
+    }
+
+    await FirebaseAppCheck.instance.activate(
+      providerAndroid: kReleaseMode
+          ? const AndroidPlayIntegrityProvider()
+          : const AndroidDebugProvider(),
+      providerApple: kReleaseMode
+          ? const AppleDeviceCheckProvider()
+          : const AppleDebugProvider(),
+      providerWeb: kIsWeb ? ReCaptchaV3Provider(webRecaptchaSiteKey) : null,
+    );
+    debugPrint('Firebase App Check activated');
+  } catch (e) {
+    debugPrint('Firebase App Check activation failed: $e');
   }
 }
 

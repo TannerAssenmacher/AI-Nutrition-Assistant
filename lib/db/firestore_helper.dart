@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'user.dart';
-import 'food.dart';
 import 'planned_food.dart';
 import 'meal.dart';
 import 'daily_log.dart';

@@ -10,6 +10,7 @@ import 'package:nutrition_assistant/widgets/nav_bar.dart';
 import 'package:nutrition_assistant/widgets/fatsecret_attribution.dart';
 
 import '../services/food_search_service.dart';
+import '../services/food_image_service.dart';
 import '../services/meal_analysis_service.dart';
 import '../db/food.dart';
 import '../providers/food_providers.dart';
@@ -39,6 +40,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   MealAnalysis? _analysisResult;
   String? _errorMessage;
   AnalysisStage? _analysisStage;
+  String? _cachedCapturedImageUrl;
   final FoodSearchService _foodSearchService = FoodSearchService();
 
   @override
@@ -105,12 +107,14 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       _analysisResult = null;
       _errorMessage = null;
       _analysisStage = AnalysisStage.uploading;
+      _cachedCapturedImageUrl = null;
     });
 
     final file = File(photo.path);
     final service = MealAnalysisService();
 
     try {
+      _cachedCapturedImageUrl = await FoodImageService.cacheCapturedImage(file);
       final analysis = await service.analyzeMealImage(
         file,
         userContext: captureResult.userContext,
@@ -272,6 +276,12 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
             }
 
             final consumedAt = DateTime.now();
+            final trimmedImageUrl = (result.imageUrl ?? '').trim();
+            final imageUrlForLog =
+                trimmedImageUrl.isNotEmpty &&
+                    FoodImageService.shouldShowImageForEntry(consumedAt)
+                ? trimmedImageUrl
+                : null;
             final item = FoodItem(
               id: 'barcode-${DateTime.now().microsecondsSinceEpoch}',
               name: result.name,
@@ -281,6 +291,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
               carbs_g: servingOption.carbsPerGram,
               fat: servingOption.fatPerGram,
               mealType: mealType,
+              imageUrl: imageUrlForLog,
               consumedAt: consumedAt,
             );
 
@@ -385,6 +396,12 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       final firestoreLog = container.read(
         firestoreFoodLogProvider(userId).notifier,
       );
+      final cachedImageUrl = (_cachedCapturedImageUrl ?? '').trim();
+      final imageUrlForLog =
+          cachedImageUrl.isNotEmpty &&
+              FoodImageService.shouldShowImageForEntry(now)
+          ? cachedImageUrl
+          : null;
       int added = 0;
 
       for (final food in analysis.foods) {
@@ -407,6 +424,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
           carbs_g: carbsPerGram,
           fat: fatPerGram,
           mealType: 'meal',
+          imageUrl: imageUrlForLog,
           consumedAt: now,
         );
         notifier.addFoodItem(item);
@@ -848,6 +866,26 @@ class _BarcodeFoodDialogState extends State<_BarcodeFoodDialog> {
       return const SizedBox.shrink();
     }
 
+    Widget errorPlaceholder() {
+      return Container(
+        height: 140,
+        width: double.infinity,
+        color: Colors.grey.shade100,
+        alignment: Alignment.center,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.broken_image, color: AppColors.textHint),
+            const SizedBox(height: 4),
+            Text(
+              'Image unavailable',
+              style: TextStyle(color: AppColors.textHint, fontSize: 12),
+            ),
+          ],
+        ),
+      );
+    }
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
       child: Image.network(
@@ -868,7 +906,7 @@ class _BarcodeFoodDialogState extends State<_BarcodeFoodDialog> {
             ),
           );
         },
-        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+        errorBuilder: (_, __, ___) => errorPlaceholder(),
       ),
     );
   }
