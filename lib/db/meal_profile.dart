@@ -9,7 +9,9 @@ part 'meal_profile.g.dart';
 
 @JsonSerializable(explicitToJson: true)
 class MealProfile {
+  @JsonKey(fromJson: _stringListFromJson)
   final List<String> dietaryHabits;
+  @JsonKey(fromJson: _stringListFromJson)
   final List<String> healthRestrictions;
   final Preferences preferences;
   final Map<String, double> macroGoals; // {protein: g, carbs: g, fat: g}
@@ -21,6 +23,17 @@ class MealProfile {
     if (value is String) return value;
     if (value is num) return value.toString();
     return '';
+  }
+
+  static List<String> _stringListFromJson(dynamic value) {
+    if (value is List) {
+      return value.map((e) {
+        if (e is String) return e;
+        if (e is num) return e.toString();
+        return e.toString();
+      }).toList();
+    }
+    return [];
   }
 
   MealProfile({
