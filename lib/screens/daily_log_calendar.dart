@@ -895,6 +895,13 @@ class _DailyLogCalendarScreenState
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () => Navigator.of(context).pop(),
+                          style: OutlinedButton.styleFrom(
+                            backgroundColor: AppColors.warmLight,
+                            foregroundColor: AppColors.warmDarker,
+                            side: BorderSide(
+                              color: AppColors.warmDark.withValues(alpha: 0.6),
+                            ),
+                          ),
                           child: const Text('Cancel'),
                         ),
                       ),
@@ -909,6 +916,10 @@ class _DailyLogCalendarScreenState
                               ),
                             );
                           },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.success,
+                            foregroundColor: AppColors.surface,
+                          ),
                           child: const Text('Save'),
                         ),
                       ),
@@ -2230,6 +2241,11 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
     }
   }
 
+  void _cancelEdits() {
+    _resetControllersFromRow();
+    setState(() => _isEditing = false);
+  }
+
   Future<void> _deleteRow() async {
     final shouldDelete = await showDialog<bool>(
       context: context,
@@ -2458,17 +2474,16 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
                     icon: Icon(Icons.delete_outline, color: AppColors.error),
                     tooltip: 'Remove food',
                   ),
-                  IconButton(
-                    onPressed: _isEditing
-                        ? _saveEdits
-                        : () => setState(() => _isEditing = true),
-                    icon: Icon(
-                      _isEditing ? Icons.save : Icons.edit,
-                      size: 20,
-                      color: AppColors.warmDarker,
+                  if (!_isEditing)
+                    IconButton(
+                      onPressed: () => setState(() => _isEditing = true),
+                      icon: const Icon(
+                        Icons.edit,
+                        size: 20,
+                        color: AppColors.warmDarker,
+                      ),
+                      tooltip: 'Edit meal',
                     ),
-                    tooltip: _isEditing ? 'Save meal' : 'Edit meal',
-                  ),
                 ],
               ),
             ],
@@ -2540,6 +2555,37 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
               ),
             ],
           ),
+          if (_isEditing) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _cancelEdits,
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: AppColors.warmLight,
+                      foregroundColor: AppColors.warmDarker,
+                      side: BorderSide(
+                        color: AppColors.warmDark.withValues(alpha: 0.6),
+                      ),
+                    ),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _saveEdits,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.success,
+                      foregroundColor: AppColors.surface,
+                    ),
+                    child: const Text('Save'),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
