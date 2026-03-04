@@ -60,5 +60,36 @@
       "preferenceAdherence": 0.08888888888888882,
       "specificity": 0
     }
+  },
+  {
+    "date": "2026-03-04",
+    "runId": "2026-03-04T04:43:19.925Z",
+    "model": "gemini-2.5-flash",
+    "scenarioCount": 10,
+    "validCount": 10,
+    "ragAvg": {
+      "hallucination": 1,
+      "calorieAccuracy": 0.7002568845411108,
+      "macroAlignment": 0.6522753293630019,
+      "restrictionCompliance": 1,
+      "preferenceAdherence": 0.38888888888888884,
+      "specificity": 1
+    },
+    "noRagAvg": {
+      "hallucination": 0,
+      "calorieAccuracy": 0.6927197526811499,
+      "macroAlignment": 0.7681752354921652,
+      "restrictionCompliance": 1,
+      "preferenceAdherence": 0.4027777777777778,
+      "specificity": 1
+    },
+    "delta": {
+      "hallucination": 1,
+      "calorieAccuracy": 0.007537131859960855,
+      "macroAlignment": -0.11589990612916323,
+      "restrictionCompliance": 0,
+      "preferenceAdherence": -0.01388888888888895,
+      "specificity": 0
+    }
   }
 ]
