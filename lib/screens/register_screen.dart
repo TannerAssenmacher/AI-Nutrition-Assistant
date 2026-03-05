@@ -42,6 +42,8 @@ class _RegisterPageState extends State<RegisterPage> {
   final _likesController = TextEditingController();
   final _dislikesController = TextEditingController();
 
+  bool _isAdjustingMacros = false; //for swiping purposes
+
   // Focus + touched tracking
   final Map<TextEditingController, FocusNode> _focusMap = {};
   final Map<TextEditingController, bool> _fieldTouched = {};
@@ -445,20 +447,41 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   // ---- BUILD
+  // if in page 1, scroll left to login and pop, scroll right only works when required information is filled out
+  // if in page 2, scroll left to page 1 and scroll right nothing
+  // if the user is in the macroslider, all the physics of swiping is stopped
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Form(
-          key: _formKey,
-          autovalidateMode: _submitted
-              ? AutovalidateMode.always
-              : AutovalidateMode.disabled,
-          child: PageView(
-            controller: _pageController,
-            physics: const NeverScrollableScrollPhysics(),
-            children: [_buildPage1(), _buildPage2()],
+    return PopScope(
+      canPop: _currentPage == 0,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (_currentPage > 0) {
+          _pageController.previousPage(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
+          setState(() => _currentPage = 0);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(
+          child: Form(
+            key: _formKey,
+            autovalidateMode: _submitted
+                ? AutovalidateMode.always
+                : AutovalidateMode.disabled,
+            child: PageView(
+              controller: _pageController,
+              physics: (_isAdjustingMacros || _currentPage == 0)
+                  ? const NeverScrollableScrollPhysics()
+                  : const BouncingScrollPhysics(),
+              onPageChanged: (index) {
+                setState(() => _currentPage = index);
+              },
+              children: [_buildPage1(), _buildPage2()],
+            ),
           ),
         ),
       ),
@@ -646,7 +669,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _dobFieldOptional(), // DOB is NOT required
+                    _dobFieldOptional(),
                     _dropdownField('Sex', _sexOptions, (v) => _sex = v),
                     _heightPicker(),
                     _textFieldOptional(
@@ -706,16 +729,23 @@ class _RegisterPageState extends State<RegisterPage> {
                             ],
                           );
                         } else {
-                          //standard slider
-                          return MacroSlider(
-                            protein: _protein,
-                            carbs: _carbs,
-                            fats: _fats,
-                            onChanged: (p, c, f) => setState(() {
-                              _protein = p;
-                              _carbs = c;
-                              _fats = f;
-                            }),
+                          return Listener(
+                            onPointerDown: (_) =>
+                                setState(() => _isAdjustingMacros = true),
+                            onPointerUp: (_) =>
+                                setState(() => _isAdjustingMacros = false),
+                            onPointerCancel: (_) =>
+                                setState(() => _isAdjustingMacros = false),
+                            child: MacroSlider(
+                              protein: _protein,
+                              carbs: _carbs,
+                              fats: _fats,
+                              onChanged: (p, c, f) => setState(() {
+                                _protein = p;
+                                _carbs = c;
+                                _fats = f;
+                              }),
+                            ),
                           );
                         }
                       },

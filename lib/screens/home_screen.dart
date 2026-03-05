@@ -319,7 +319,17 @@ class HomeScreen extends ConsumerWidget {
                               ),
                             ),
                             const SizedBox(height: 12),
-                            SizedBox(
+                            GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onHorizontalDragStart: (_) {
+                                FocusManager.instance.primaryFocus?.unfocus();
+                              },
+                      
+                              onHorizontalDragUpdate: (_) {},
+                              onHorizontalDragEnd: (_) {},
+                              onHorizontalDragCancel: () {}, 
+                              onHorizontalDragDown: (_) {},
+                            child: SizedBox(
                               height: mealsCarouselHeight,
                               child: todaysFoods.isEmpty
                                   ? PageView(
@@ -339,6 +349,7 @@ class HomeScreen extends ConsumerWidget {
                                         );
                                       },
                                     ),
+                            ),
                             ),
                           ],
                         );

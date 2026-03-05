@@ -183,6 +183,7 @@ class _LoginPageState extends State<LoginPage> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      resizeToAvoidBottomInset: false,
       body: Column(
         children: [
           const top_bar(),
@@ -323,6 +324,7 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
           ),
+
           Divider(
             color: AppColors.accentBrown.withOpacity(0.15), 
             thickness: 1, 
