@@ -1,34 +1,4 @@
 {
-  "completedIds": [
-    "alice-breakfast",
-    "alice-lunch",
-    "alice-dinner",
-    "alice-snack",
-    "bob-breakfast",
-    "bob-lunch",
-    "bob-dinner",
-    "bob-snack",
-    "carol-breakfast",
-    "carol-lunch",
-    "carol-dinner",
-    "derek-breakfast",
-    "derek-lunch",
-    "derek-dinner",
-    "eve-breakfast",
-    "eve-lunch",
-    "eve-dinner",
-    "frank-breakfast",
-    "frank-lunch",
-    "frank-dinner",
-    "grace-breakfast",
-    "grace-lunch",
-    "grace-dinner",
-    "grace-snack",
-    "henry-breakfast",
-    "henry-lunch",
-    "henry-dinner",
-    "isabelle-breakfast",
-    "isabelle-lunch",
-    "isabelle-dinner"
-  ]
+  "completedIds": [],
+  "cyclesCompleted": 1
 }

@@ -14,7 +14,7 @@
  * No Cloud SQL Proxy needed. Requires gcloud CLI logged in (for Cloud Run auth).
  */
 
-import { writeFileSync, mkdirSync, readFileSync } from 'fs';
+import { writeFileSync, mkdirSync, readFileSync, existsSync, readdirSync } from 'fs';
 import { createSign } from 'crypto';
 import { scenarios } from './test-scenarios.js';
 import { calculateAllMetrics, calculateCalorieTarget } from './metrics.js';
@@ -381,41 +381,22 @@ function appendRunToHistory(outputDir, today, results) {
 const SCENARIOS_PER_RUN = 10;
 
 /**
- * Load the list of scenario IDs that have already been run.
- * Returns an array of string IDs.
+ * Scan all results-*.json files to find which scenario IDs have already been evaluated.
+ * This is the source of truth — no separate queue file needed.
  */
 function loadCompletedScenarioIds(outputDir) {
-  const queuePath = `${outputDir}/scenario-queue.json`;
   try {
-    const data = JSON.parse(readFileSync(queuePath, 'utf8'));
-    return Array.isArray(data.completedIds) ? data.completedIds : [];
+    const files = readdirSync(outputDir).filter((f) => f.startsWith('results-') && f.endsWith('.json'));
+    const ids = new Set();
+    for (const file of files) {
+      try {
+        const data = JSON.parse(readFileSync(`${outputDir}/${file}`, 'utf8'));
+        if (Array.isArray(data)) data.forEach((r) => r?.scenario?.id && ids.add(r.scenario.id));
+      } catch { /* skip malformed files */ }
+    }
+    return [...ids];
   } catch {
     return [];
-  }
-}
-
-/**
- * Persist the updated list of completed scenario IDs.
- * If all scenarios have been run, resets the queue and logs a notice.
- */
-function saveCompletedScenarioIds(outputDir, completedIds, allScenarioIds) {
-  const queuePath = `${outputDir}/scenario-queue.json`;
-  const allDone = allScenarioIds.every((id) => completedIds.includes(id));
-
-  if (allDone) {
-    console.log('\n  All scenarios have been run at least once. Resetting queue for next cycle.');
-    writeFileSync(queuePath, JSON.stringify({ completedIds: [], cyclesCompleted: (loadCycleCount(outputDir) + 1) }, null, 2));
-  } else {
-    writeFileSync(queuePath, JSON.stringify({ completedIds }, null, 2));
-  }
-}
-
-function loadCycleCount(outputDir) {
-  try {
-    const data = JSON.parse(readFileSync(`${outputDir}/scenario-queue.json`, 'utf8'));
-    return data.cyclesCompleted ?? 0;
-  } catch {
-    return 0;
   }
 }
 
@@ -537,16 +518,19 @@ async function main() {
     });
   }
 
-  // ── Save completed scenario IDs so they aren't run again ─────────────────
-  const nowCompleted = [...completedIds, ...batch.map((s) => s.id)];
-  saveCompletedScenarioIds(outputDir, nowCompleted, allScenarioIds);
-
   // ── Write output ─────────────────────────────────────────────────────────────
   const today = new Date().toISOString().split('T')[0];
   const jsonPath = `${outputDir}/results-${today}.json`;
   const reportPath = `${outputDir}/report-${today}.md`;
 
-  writeFileSync(jsonPath, JSON.stringify(results, null, 2));
+  const existingResults = existsSync(jsonPath)
+    ? JSON.parse(readFileSync(jsonPath, 'utf8'))
+    : [];
+  const mergedResults = [
+    ...existingResults.filter((e) => !results.some((r) => r.scenario.id === e.scenario.id)),
+    ...results,
+  ];
+  writeFileSync(jsonPath, JSON.stringify(mergedResults, null, 2));
   console.log(`\nRaw results written to: ${jsonPath}`);
 
   const historyPath = appendRunToHistory(outputDir, today, results);
