@@ -62,8 +62,15 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
+  fonts:
+    - family: Kiwi Maru
+      fonts:
+        - asset: lib/assets/fonts/KiwiMaru-Light.ttf
+        - asset: lib/assets/fonts/KiwiMaru-Medium.ttf
+        - asset: lib/assets/fonts/KiwiMaru-Regular.ttf
+
   assets:
-    - lib/icons/
+    - lib/assets/icons/
     
 dependency_overrides:
   # Keep iOS stable: 2.6.0 introduces FFI native-asset objective_c.framework,
