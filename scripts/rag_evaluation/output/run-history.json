@@ -1,0 +1,126 @@
+[
+  {
+    "date": "2026-03-02",
+    "runId": "2026-03-02T18:26:45.244Z",
+    "model": "gemini-2.5-flash",
+    "scenarioCount": 10,
+    "validCount": 10,
+    "ragAvg": {
+      "hallucination": 1,
+      "calorieAccuracy": 0.738991212589637,
+      "macroAlignment": 0.5200950344034788,
+      "restrictionCompliance": 0.8999999999999998,
+      "preferenceAdherence": 0.3,
+      "specificity": 1
+    },
+    "noRagAvg": {
+      "hallucination": 0,
+      "calorieAccuracy": 0.7014331379923796,
+      "macroAlignment": 0.6672841358692916,
+      "restrictionCompliance": 1,
+      "preferenceAdherence": 0.37777777777777777,
+      "specificity": 1
+    },
+    "delta": {
+      "hallucination": 1,
+      "calorieAccuracy": 0.03755807459725735,
+      "macroAlignment": -0.14718910146581277,
+      "restrictionCompliance": -0.1000000000000002,
+      "preferenceAdherence": -0.07777777777777778,
+      "specificity": 0
+    }
+  },
+  {
+    "date": "2026-03-03",
+    "runId": "2026-03-03T20:41:31.093Z",
+    "model": "gemini-2.5-flash",
+    "scenarioCount": 10,
+    "validCount": 10,
+    "ragAvg": {
+      "hallucination": 1,
+      "calorieAccuracy": 0.7578447258343001,
+      "macroAlignment": 0.6410021271075474,
+      "restrictionCompliance": 0.9,
+      "preferenceAdherence": 0.31111111111111106,
+      "specificity": 1
+    },
+    "noRagAvg": {
+      "hallucination": 0,
+      "calorieAccuracy": 0.7337036300558201,
+      "macroAlignment": 0.6571663916482718,
+      "restrictionCompliance": 1,
+      "preferenceAdherence": 0.22222222222222224,
+      "specificity": 1
+    },
+    "delta": {
+      "hallucination": 1,
+      "calorieAccuracy": 0.024141095778480004,
+      "macroAlignment": -0.016164264540724393,
+      "restrictionCompliance": -0.09999999999999998,
+      "preferenceAdherence": 0.08888888888888882,
+      "specificity": 0
+    }
+  },
+  {
+    "date": "2026-03-04",
+    "runId": "2026-03-04T04:43:19.925Z",
+    "model": "gemini-2.5-flash",
+    "scenarioCount": 10,
+    "validCount": 10,
+    "ragAvg": {
+      "hallucination": 1,
+      "calorieAccuracy": 0.7002568845411108,
+      "macroAlignment": 0.6522753293630019,
+      "restrictionCompliance": 1,
+      "preferenceAdherence": 0.38888888888888884,
+      "specificity": 1
+    },
+    "noRagAvg": {
+      "hallucination": 0,
+      "calorieAccuracy": 0.6927197526811499,
+      "macroAlignment": 0.7681752354921652,
+      "restrictionCompliance": 1,
+      "preferenceAdherence": 0.4027777777777778,
+      "specificity": 1
+    },
+    "delta": {
+      "hallucination": 1,
+      "calorieAccuracy": 0.007537131859960855,
+      "macroAlignment": -0.11589990612916323,
+      "restrictionCompliance": 0,
+      "preferenceAdherence": -0.01388888888888895,
+      "specificity": 0
+    }
+  },
+  {
+    "date": "2026-03-04",
+    "runId": "2026-03-04T18:25:02.982Z",
+    "model": "gemini-2.5-flash",
+    "scenarioCount": 1,
+    "validCount": 1,
+    "ragAvg": {
+      "hallucination": 1,
+      "calorieAccuracy": 0.7128205128205128,
+      "macroAlignment": 0.7997412854030501,
+      "restrictionCompliance": 1,
+      "preferenceAdherence": 0.3333333333333333,
+      "specificity": 1
+    },
+    "noRagAvg": {
+      "hallucination": 0,
+      "calorieAccuracy": 0.1538461538461538,
+      "macroAlignment": 0.9090602356645139,
+      "restrictionCompliance": 1,
+      "preferenceAdherence": 0.6666666666666666,
+      "specificity": 1
+    },
+    "delta": {
+      "hallucination": 1,
+      "calorieAccuracy": 0.558974358974359,
+      "macroAlignment": -0.10931895026146377,
+      "restrictionCompliance": 0,
+      "preferenceAdherence": -0.3333333333333333,
+      "specificity": 0
+    }
+  }
+]

@@ -1,0 +1,2188 @@
+[
+  {
+    "scenario": {
+      "id": "alice-breakfast",
+      "description": "Alice's first meal of the day — vegetarian breakfast",
+      "profile": {
+        "id": "alice",
+        "label": "Alice — 35F, Vegetarian, Lose Weight",
+        "sex": "female",
+        "age": 35,
+        "height": 65,
+        "weight": 175,
+        "activityLevel": "Moderately Active",
+        "dietaryGoal": "Lose Weight",
+        "dailyCalorieGoal": 1600,
+        "macroGoals": {
+          "protein": 30,
+          "carbs": 40,
+          "fat": 30
+        },
+        "healthRestrictions": [
+          "vegetarian"
+        ],
+        "dietaryHabits": [
+          "vegetarian"
+        ],
+        "likes": [
+          "salad",
+          "beans",
+          "tofu"
+        ],
+        "dislikes": [
+          "mushrooms",
+          "eggplant"
+        ]
+      },
+      "ragParams": {
+        "mealType": "breakfast",
+        "cuisineType": "american",
+        "limit": 3,
+        "healthRestrictions": [
+          "vegetarian"
+        ],
+        "dietaryGoal": "Lose Weight",
+        "dailyCalorieGoal": 1600,
+        "consumedCalories": 0,
+        "consumedMealTypes": [],
+        "macroGoals": {
+          "protein": 30,
+          "carbs": 40,
+          "fat": 30
+        },
+        "dislikes": [
+          "mushrooms",
+          "eggplant"
+        ],
+        "likes": [
+          "salad",
+          "beans",
+          "tofu"
+        ],
+        "activityLevel": "Moderately Active",
+        "sex": "female",
+        "age": 35,
+        "height": 65,
+        "weight": 175
+      }
+    },
+    "calorieTarget": 400,
+    "rag": {
+      "recipes": [
+        {
+          "id": "spoonacular_640067",
+          "label": "Corn Bread",
+          "cuisine": "american",
+          "ingredients": [
+            "1 1/2 cups yellow cornmeal",
+            "2 eggs, beaten lightly",
+            "1/4 cup melted butter, cooled",
+            "1 cup whole wheat flour",
+            "1 cup unbleached white flour",
+            "1 tablespoon baking powder",
+            "1 teaspoon baking soda",
+            "1 teaspoon salt",
+            "2 cups buttermilk or plain yogurt",
+            "1/2 cup milk",
+            "1/4 cup maple syrup"
+          ],
+          "instructions": "Step 1: Preheat oven to 350 degrees.\n\nStep 2: Generously grease a 9 x 13 inch baking pan or a 12 inch cast iron skillet.\n\nStep 3: Sift the dry ingredients into a large bowl.\n\nStep 4: In another bowl, combine the wet ingredients and stir until mixed.\n\nStep 5: Fold the wet ingredients into the dry ingredients.\n\nStep 6: Smooth the batter into the baking pan or skillet and bake for 25 to 30 minutes, or until a knife inserted into the center comes out clean.\n\nStep 7: Allow the corn bread to cool for at least 10 minutes before serving.",
+          "calories": 363,
+          "protein": 11,
+          "carbs": 55,
+          "fat": 12,
+          "fiber": 5,
+          "sugar": 10,
+          "sodium": 684,
+          "imageUrl": "https://img.spoonacular.com/recipes/640067-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 8,
+          "similarity": 0.58452788444808,
+          "matchScore": 0.652661781787324
+        },
+        {
+          "id": "spoonacular_1096024",
+          "label": "White Cheddar Grits with Veggies",
+          "cuisine": "american",
+          "ingredients": [
+            "4 cups chicken broth",
+            "3 cloves garlic, minced",
+            "1 cup quick-cooking hominy grits",
+            "2½ cups white cheddar cheese, shredded, divided",
+            "2 large eggs, room temperature",
+            "½ cup milk",
+            "2 cups cremini mushrooms, cut in half",
+            "1 zucchini, cut into 1-inch rounds",
+            "4 baby zucchini, ends trimmed and cut in half",
+            "1 red bell pepper, cut into 1-inch squares",
+            "1 orange bell pepper, cut into 1-inch squares",
+            "8 asparagus spears, trimmed",
+            "1 red onion, sliced in half and quartered",
+            "1 small head radicchio, sliced",
+            "2 tablespoons olive oil",
+            "3 sprigs fresh rosemary, minced",
+            "½ teaspoon garlic powder",
+            "½ teaspoon salt",
+            "¼ teaspoon pepper",
+            "⅛ cup feta cheese",
+            "1 fresh cayenne pepper"
+          ],
+          "instructions": "Step 1: Preheat oven to 350F.In a 3-quart pan, bring broth and minced garlic to a boil over high heat. Stirring, slowly add the grits. Reduce heat to simmer and stir frequently for 5 minutes.\n\nStep 2: Remove from heat and stir in 1 cup cheddar cheese until melted.In a small bowl, combine the eggs and milk. Using a whisk, slowly add the egg mixture to the grits. Beat until thoroughly blended.\n\nStep 3: Pour into a buttered 2-quart baking dish and sprinkle evenly with remaining cheese.\n\nStep 4: Bake uncovered in the oven until the top is golden brown, about 45-50 minutes. In the meantime, prepare the vegetables to roast by cutting the mushrooms and baby zucchini in half, slicing the zucchini into 1 inch rounds, cutting the bell pepper into 1 inch squares, trimming the asparagus, quartering the red onions, and slicing the radicchio.Lightly oil a baking sheet or coat with nonstick spray.\n\nStep 5: Place the cremini mushrooms, zucchini, bell peppers, asparagus, red onion and radicchio in a large bowl.\n\nStep 6: Drizzle with the olive oil, then season with the rosemary, garlic powder, salt, and pepper; gently toss to combine.\n\nStep 7: Lay the vegetables out on the prepared pan in an even layer.After the grits are done, remove them from the oven and cover with foil to keep warm while you roast the vegetables.Turn the oven up to 425F. When it reaches temperature, roast the vegetables in the oven until they are tender, about 15 minutes, tossing them once during that time.To assemble, place the roasted vegetables down the center of the grits and sprinkle with sliced red cayenne pepper (if desired) and feta cheese.\n\nStep 8: Serve immediately.",
+          "calories": 332,
+          "protein": 18,
+          "carbs": 27,
+          "fat": 19,
+          "fiber": 4,
+          "sugar": 5,
+          "sodium": 875,
+          "imageUrl": "https://img.spoonacular.com/recipes/1096024-312x231.jpg",
+          "readyInMinutes": 85,
+          "servings": 8,
+          "similarity": 0.5969796543367303,
+          "matchScore": 0.5739524835059623
+        },
+        {
+          "id": "spoonacular_632575",
+          "label": "Apple Pie Smoothie",
+          "cuisine": "american",
+          "ingredients": [
+            "1 tablespoon unsalted almond butter",
+            "1 tablespoon apple sauce",
+            "1/2 cup vanilla fat free yogurt",
+            "1 tablespoon 7 grain granola",
+            "1/4 teaspoon Ground cinnamon",
+            "1 teaspoon honey",
+            "ice cubes",
+            "1 teaspoon Maple syrup",
+            "1/2 cup milk",
+            "1 red delicious apple, cut into pieces"
+          ],
+          "instructions": "Step 1: Combine all ingredients in a blender and pulse until smooth.\n\nStep 2: Serve immediately.",
+          "calories": 238,
+          "protein": 7,
+          "carbs": 38,
+          "fat": 8,
+          "fiber": 3,
+          "sugar": 31,
+          "sodium": 65,
+          "imageUrl": "https://img.spoonacular.com/recipes/632575-312x231.jpg",
+          "readyInMinutes": 5,
+          "servings": 2,
+          "similarity": 0.5941155692023494,
+          "matchScore": 0.5509863118221958
+        }
+      ],
+      "isExactMatch": true,
+      "geminiResponseText": "1. Corn Bread\n   363 calories per serving\n   11g protein\n   55g carbs\n   12g fat\n\n2. White Cheddar Grits with Veggies\n   332 calories per serving\n   18g protein\n   27g carbs\n   19g fat\n\n3. Apple Pie Smoothie\n   238 calories per serving\n   7g protein\n   38g carbs\n   8g fat",
+      "metrics": {
+        "hallucination": 1,
+        "calorieAccuracy": 0.7774999999999999,
+        "macroAlignment": 0.5394225674603873,
+        "restrictionCompliance": 0.6666666666666666,
+        "preferenceAdherence": 0,
+        "specificity": 1
+      },
+      "error": null
+    },
+    "noRag": {
+      "recipes": [
+        {
+          "id": null,
+          "label": "Southwestern Tofu Scramble",
+          "calories": 440,
+          "protein": 34,
+          "carbs": 47,
+          "fat": 15,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        },
+        {
+          "id": null,
+          "label": "Loaded Bean & Veggie Omelet",
+          "calories": 460,
+          "protein": 36,
+          "carbs": 45,
+          "fat": 16,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        },
+        {
+          "id": null,
+          "label": "Breakfast Burrito Bowl",
+          "calories": 480,
+          "protein": 38,
+          "carbs": null,
+          "fat": null,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        }
+      ],
+      "geminiResponseText": "Southwestern Tofu Scramble | 440 calories | 34g protein | 47g carbs | 15g fat\nLoaded Bean & Veggie Omelet | 460 calories | 36g protein | 45g carbs | 16g fat\nBreakfast Burrito Bowl | 480 calories | 38g",
+      "metrics": {
+        "hallucination": 0,
+        "calorieAccuracy": 0.85,
+        "macroAlignment": 0.6373243302591128,
+        "restrictionCompliance": 1,
+        "preferenceAdherence": 0.1111111111111111,
+        "specificity": 1
+      },
+      "error": null
+    }
+  },
+  {
+    "scenario": {
+      "id": "alice-lunch",
+      "description": "Alice's lunch after consuming 380 cal at breakfast",
+      "profile": {
+        "id": "alice",
+        "label": "Alice — 35F, Vegetarian, Lose Weight",
+        "sex": "female",
+        "age": 35,
+        "height": 65,
+        "weight": 175,
+        "activityLevel": "Moderately Active",
+        "dietaryGoal": "Lose Weight",
+        "dailyCalorieGoal": 1600,
+        "macroGoals": {
+          "protein": 30,
+          "carbs": 40,
+          "fat": 30
+        },
+        "healthRestrictions": [
+          "vegetarian"
+        ],
+        "dietaryHabits": [
+          "vegetarian"
+        ],
+        "likes": [
+          "salad",
+          "beans",
+          "tofu"
+        ],
+        "dislikes": [
+          "mushrooms",
+          "eggplant"
+        ]
+      },
+      "ragParams": {
+        "mealType": "lunch",
+        "cuisineType": "mediterranean",
+        "limit": 3,
+        "healthRestrictions": [
+          "vegetarian"
+        ],
+        "dietaryGoal": "Lose Weight",
+        "dailyCalorieGoal": 1600,
+        "consumedCalories": 380,
+        "consumedMealTypes": [
+          "breakfast"
+        ],
+        "macroGoals": {
+          "protein": 30,
+          "carbs": 40,
+          "fat": 30
+        },
+        "dislikes": [
+          "mushrooms",
+          "eggplant"
+        ],
+        "likes": [
+          "salad",
+          "beans",
+          "tofu"
+        ],
+        "activityLevel": "Moderately Active",
+        "sex": "female",
+        "age": 35,
+        "height": 65,
+        "weight": 175
+      }
+    },
+    "calorieTarget": 488,
+    "rag": {
+      "recipes": [
+        {
+          "id": "spoonacular_663771",
+          "label": "Traditional Panzanella",
+          "cuisine": "mediterranean",
+          "ingredients": [
+            "1 pound six or seven day-old Tuscan bread",
+            "1/3 cup Extra Virgin Olive oil",
+            "1 1/2 cups Fresh basil leaves",
+            "1 small red onion, thinly sliced",
+            "3 tablespoons Red wine vinegar",
+            "Salt and pepper to taste",
+            "6 large tomatoes, coarsely chopped"
+          ],
+          "instructions": "Step 1: In a bowl combine the bread with water and let it stand for at least 20 minutes or until it's soft.\n\nStep 2: Drain the bread and squeeze out as much water as you can.Crumble the bread and place it in a serving bowl. Scatter the tomatoes, onions and chopped basil over the top.Dress Panzanella with extra-virgin olive oil and vinegar. Season with salt and pepper and toss well.Taste and adjust the seasoning with more oil, salt and vinegar.Leave Panzanella to stand for 15 minutes and serve at room temperature.",
+          "calories": 356,
+          "protein": 10,
+          "carbs": 45,
+          "fat": 16,
+          "fiber": 6,
+          "sugar": 10,
+          "sodium": 562,
+          "imageUrl": "https://img.spoonacular.com/recipes/663771-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 6,
+          "similarity": 0.6525746890386838,
+          "matchScore": 0.5910821591948509
+        },
+        {
+          "id": "spoonacular_649886",
+          "label": "Lemony Greek Lentil Soup",
+          "cuisine": "mediterranean",
+          "ingredients": [
+            "1 pound brown lentils",
+            "12 ounces scrubbed and chopped carrot",
+            "3 quarts cold water",
+            "1 teaspoon dried thyme",
+            "1/4 cup lemon juice",
+            "2 teaspoons dried basil",
+            "2 teaspoons fresh thyme",
+            "1 teaspoon dried oregano",
+            "1/2 teaspoon freshly ground black pepper",
+            "2 teaspoons salt",
+            "1 medium onion, finely chopped",
+            "3 cloves garlic, finely chopped",
+            "1 tablespoon olive oil",
+            "28 ounces can whole tomatoes",
+            "teaspoon (if none available, add 1 more dried)"
+          ],
+          "instructions": "Step 1: Put the lentils, water, carrot and 1 teaspoon dried thyme into an 8-quart stockpot, cover and set over medium heat.\n\nStep 2: After 15 minutes, lower the heat somewhat and gently bring the water to a simmer, which should take another half an hour or so.\n\nStep 3: Once the lentils have reached the boiling point, turn off the burner and let them sit for 1 hour.\n\nStep 4: After the hour, bring the soup back to a simmer and add the lemon juice, dry basil, fresh thyme, oregano, pepper and salt and simmer for 1 hour.\n\nStep 5: Now, slowly saut the onion and garlic in the olive oil until the onion is tender.\n\nStep 6: Coarsely chop the tomatoes (I do this with kitchen scissors right in the can), and add them and the onion mixture to the soup. Adjust the salt to taste.\n\nStep 7: Bring everything back to the boiling point and simmer for another hour.  After this point, you can turn your burner to its lowest setting, and this soup will happily sit steaming with its lid cocked for several hours until you are ready to enjoy it.\n\nStep 8: Add more water if necessary.\n\nStep 9: Serve with crusty bread and a soft cheese like St. Andre or Cambazola",
+          "calories": 368,
+          "protein": 23,
+          "carbs": 64,
+          "fat": 4,
+          "fiber": 28,
+          "sugar": 11,
+          "sodium": 1019,
+          "imageUrl": "https://img.spoonacular.com/recipes/649886-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 6,
+          "similarity": 0.6499752211935398,
+          "matchScore": 0.5851758944716394
+        },
+        {
+          "id": "spoonacular_1005368",
+          "label": "Panzanella Salad",
+          "cuisine": "mediterranean",
+          "ingredients": [
+            "3 cups french bread cubes (1/2 inch)",
+            "2 cups cherry tomatoes, halved",
+            "½ tsp dijon mustard",
+            "1 cup english cucumber, peeled and diced",
+            "½ cup extra virgin olive oil",
+            "2 tbsp extra virgin olive oil",
+            "2 tbsp fresh basil, thinly slicedF",
+            "1 small garlic clove, minced",
+            "¼ tsp ground black pepper",
+            "1 tsp italian seasoning",
+            "½ tsp kosher salt",
+            "½ cup mozzarella, cubed",
+            "3 Tbsp white wine vinegar"
+          ],
+          "instructions": "Step 1: Preheat the oven to 375 degrees F.\n\nStep 2: Cut the bread into  inch cubes.\n\nStep 3: Place them on a baking sheet.\n\nStep 4: Toss with 2 tablespoons of olive oil and then generously sprinkle with Italian herb seasoning. (I use McCormick spice grinder.)\n\nStep 5: Toss bread cubes for 15 minutes, flipping halfway through.\n\nStep 6: Place toasted bread, tomatoes, cucumber, and mozzarella in a salad bowl.\n\nStep 7: Drizzle with vinaigrette.\n\nStep 8: Sprinkle with fresh basil.\n\nStep 9: In a bowl combine garlic, mustard, and vinegar. Using an emulsion blender slowly add in olive oil. Blend until emulsion is created.\n\nStep 10: Add salt and pepper to season.",
+          "calories": 657,
+          "protein": 23,
+          "carbs": 97,
+          "fat": 20,
+          "fiber": 5,
+          "sugar": 11,
+          "sodium": 1464,
+          "imageUrl": "https://img.spoonacular.com/recipes/1005368-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 4,
+          "similarity": 0.6489001284863739,
+          "matchScore": 0.5664133512555375
+        }
+      ],
+      "isExactMatch": true,
+      "geminiResponseText": "1. Traditional Panzanella\n   356 calories per serving\n   10g protein\n   45g carbs\n   16g fat\n\n2. Lemony Greek Lentil Soup\n   368 calories per serving\n   23g protein\n   64g carbs\n   4g fat\n\n3. Panzanella Salad\n   657 calories per serving\n   23g protein\n   97g carbs\n   20g fat",
+      "metrics": {
+        "hallucination": 1,
+        "calorieAccuracy": 0.712431693989071,
+        "macroAlignment": 0.500711569591019,
+        "restrictionCompliance": 1,
+        "preferenceAdherence": 0.1111111111111111,
+        "specificity": 1
+      },
+      "error": null
+    },
+    "noRag": {
+      "recipes": [
+        {
+          "id": null,
+          "label": "Mediterranean Tofu Quinoa Bowl",
+          "calories": 410,
+          "protein": 30,
+          "carbs": 42,
+          "fat": 14,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        },
+        {
+          "id": null,
+          "label": "Lentil and Vegetable Stew",
+          "calories": 430,
+          "protein": 28,
+          "carbs": 58,
+          "fat": 10,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        },
+        {
+          "id": null,
+          "label": "White Bean and Roasted Veggie Salad",
+          "calories": 420,
+          "protein": 26,
+          "carbs": null,
+          "fat": null,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        }
+      ],
+      "geminiResponseText": "Mediterranean Tofu Quinoa Bowl | 410 calories | 30g protein | 42g carbs | 14g fat\nLentil and Vegetable Stew | 430 calories | 28g protein | 58g carbs | 10g fat\nWhite Bean and Roasted Veggie Salad | 420 calories | 26g protein",
+      "metrics": {
+        "hallucination": 0,
+        "calorieAccuracy": 0.860655737704918,
+        "macroAlignment": 0.560559652108149,
+        "restrictionCompliance": 1,
+        "preferenceAdherence": 0.2222222222222222,
+        "specificity": 1
+      },
+      "error": null
+    }
+  },
+  {
+    "scenario": {
+      "id": "alice-dinner",
+      "description": "Alice's dinner — only ~490 cal remaining for the day",
+      "profile": {
+        "id": "alice",
+        "label": "Alice — 35F, Vegetarian, Lose Weight",
+        "sex": "female",
+        "age": 35,
+        "height": 65,
+        "weight": 175,
+        "activityLevel": "Moderately Active",
+        "dietaryGoal": "Lose Weight",
+        "dailyCalorieGoal": 1600,
+        "macroGoals": {
+          "protein": 30,
+          "carbs": 40,
+          "fat": 30
+        },
+        "healthRestrictions": [
+          "vegetarian"
+        ],
+        "dietaryHabits": [
+          "vegetarian"
+        ],
+        "likes": [
+          "salad",
+          "beans",
+          "tofu"
+        ],
+        "dislikes": [
+          "mushrooms",
+          "eggplant"
+        ]
+      },
+      "ragParams": {
+        "mealType": "dinner",
+        "cuisineType": "none",
+        "limit": 3,
+        "healthRestrictions": [
+          "vegetarian"
+        ],
+        "dietaryGoal": "Lose Weight",
+        "dailyCalorieGoal": 1600,
+        "consumedCalories": 900,
+        "consumedMealTypes": [
+          "breakfast",
+          "lunch"
+        ],
+        "macroGoals": {
+          "protein": 30,
+          "carbs": 40,
+          "fat": 30
+        },
+        "dislikes": [
+          "mushrooms",
+          "eggplant"
+        ],
+        "likes": [
+          "salad",
+          "beans",
+          "tofu"
+        ],
+        "activityLevel": "Moderately Active",
+        "sex": "female",
+        "age": 35,
+        "height": 65,
+        "weight": 175
+      }
+    },
+    "calorieTarget": 544,
+    "rag": {
+      "recipes": [
+        {
+          "id": "spoonacular_637067",
+          "label": "Caramelized Tofu & Gala Apple Salad",
+          "cuisine": "world",
+          "ingredients": [
+            "2 tablespoons brown sugar",
+            "1 tablespoon butter",
+            "14 ounces extra-firm tofu, baked",
+            "1 gala apple, peeled and diced",
+            "2 cloves garlic, minced",
+            "3 cups green leaf lettuce (I am using baby",
+            "12 wholes raw pecans",
+            "1/4 cup water"
+          ],
+          "instructions": "Step 1: First thing of action: bake your tofu. Preheat the oven to 350F.\n\nStep 2: Let tofu sit on a kitchen towel for 15 minutes, turning once, to absorb moisture.\n\nStep 3: Cut tofu into 1 inch cubes.\n\nStep 4: Brush them lightly with vegetable oil (I always use olive oil, but I am certain that this recipe would be best with a peanut oil).\n\nStep 5: Place them on a baking sheet and bake for 35 minutes, turning once.In a small pan, heat butter and garlic on low until the butter has just almost melted.\n\nStep 6: Add the apples, tofu, and salt. Bring heat up to medium, and cook for about 4 minutes. At this point you should add the water and stir every minute for the next 6-7 additional minutes, or until there is little moisture left in the pan. Turn off the heat, and add the brown sugar. Stir to incorporate all of the sugar.\n\nStep 7: Place on top of salad lettuce.",
+          "calories": 380,
+          "protein": 20,
+          "carbs": 33,
+          "fat": 21,
+          "fiber": 5,
+          "sugar": 22,
+          "sodium": 74,
+          "imageUrl": "https://img.spoonacular.com/recipes/637067-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 2,
+          "similarity": 0.6775729605274726,
+          "matchScore": 0.6663114400333886
+        },
+        {
+          "id": "spoonacular_664144",
+          "label": "Tuscan Style Bread Salad",
+          "cuisine": "world",
+          "ingredients": [
+            "A handful of fresh basil leaves, shredded",
+            "150 g 5oz pitted black olives, drained",
+            "100 g 4oz ciabatta bread",
+            "1 tablespoon olive oil",
+            "1 small orange pepper, deseeded",
+            "1 small red onion, finely shredded",
+            "225 g 8oz Sweet Romaine lettuce, trimmed",
+            "Salt and freshly ground black pepper",
+            "450 g 1lb ripe tomatoes",
+            "45 tablespoons ml/3 white balsamic vinegar",
+            "1 small yellow pepper, deseeded"
+          ],
+          "instructions": "Step 1: Preheat the oven to 200C/Fan 180C/400F/Gs Mark\n\nStep 2: Tear the bread into bite\n\nStep 3: Seized pieces and place in a roasting tin.\n\nStep 4: Drizzle over half the oil and toss to coat the bread.\n\nStep 5: Bake for 15-20mins or until the bread is golden and crunchy.\n\nStep 6: Cut the tomatoes and peppers into bite seized chinks and place in a large bowl.\n\nStep 7: Add the onion, olives, remaining oil, vinegar and basil. Season well with salt and freshly ground black pepper then toss together with the bread. Leave to stand for 5 minutes to allow the flavours to infuse.Finally tear the lettuce into bite sized pieces, add to the bowl and toss until well mixed.",
+          "calories": 352,
+          "protein": 6,
+          "carbs": 55,
+          "fat": 10,
+          "fiber": 5,
+          "sugar": 33,
+          "sodium": 761,
+          "imageUrl": "https://img.spoonacular.com/recipes/664144-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 4,
+          "similarity": 0.6420760935981438,
+          "matchScore": 0.5965142969251228
+        },
+        {
+          "id": "spoonacular_157344",
+          "label": "Spicy Salad with Kidney Beans, Cheddar, and Nuts",
+          "cuisine": "world",
+          "ingredients": [
+            "15 grams almonds",
+            "1/2 avocado",
+            "5 ml balsamic vinegar",
+            "1/4 cup (30 grams) cheddar cheese",
+            "1/2 cup (113 grams) cooked kidney beans",
+            "150 grams mixed greens",
+            "10 ml olive oil",
+            "15 grams roasted salted cashews",
+            "2-3 sundried tomatoes",
+            "2 dashes (or more if you like it hot!) Tabasco"
+          ],
+          "instructions": "Step 1: Rinse and drain the kidney beans, cut the sundried tomatoes, and tear the slice of cheese into small pieces.\n\nStep 2: Put the mixed greens in a bowl and top with kidney beans, sundried tomatoes, cheddar cheese, and nuts.\n\nStep 3: Mix together the olive oil, balsamic vinegar, and hot sauce in a small bowl.\n\nStep 4: Pour the dressing over the salad.\n\nStep 5: Fast, easy, and healthy-- one of my favorite lunches!",
+          "calories": 719,
+          "protein": 27,
+          "carbs": 51,
+          "fat": 49,
+          "fiber": 18,
+          "sugar": 5,
+          "sodium": 352,
+          "imageUrl": "https://img.spoonacular.com/recipes/157344-312x231.jpg",
+          "readyInMinutes": 10,
+          "servings": 1,
+          "similarity": 0.6730035466875361,
+          "matchScore": 0.5801934213482095
+        }
+      ],
+      "isExactMatch": true,
+      "geminiResponseText": "1. Caramelized Tofu & Gala Apple Salad\n   380 calories per serving\n   20g protein\n   33g carbs\n   21g fat\n\n2. Tuscan Style Bread Salad\n   352 calories per serving\n   6g protein\n   55g carbs\n   10g fat\n\n3. Spicy Salad with Kidney Beans, Cheddar, and Nuts\n   719 calories per serving\n   27g protein\n   51g carbs\n   49g fat",
+      "metrics": {
+        "hallucination": 1,
+        "calorieAccuracy": 0.6746323529411763,
+        "macroAlignment": 0.48697621020245646,
+        "restrictionCompliance": 1,
+        "preferenceAdherence": 0.5555555555555555,
+        "specificity": 1
+      },
+      "error": null
+    },
+    "noRag": {
+      "recipes": [
+        {
+          "id": null,
+          "label": "Spicy Tofu & Edamame Quinoa Bowl",
+          "calories": 705,
+          "protein": 50,
+          "carbs": 71,
+          "fat": 27,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        },
+        {
+          "id": null,
+          "label": "Hearty Black Bean & Corn Salad with Avocado",
+          "calories": 692,
+          "protein": 34,
+          "carbs": 102,
+          "fat": 22,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        }
+      ],
+      "geminiResponseText": "Spicy Tofu & Edamame Quinoa Bowl | 705 calories | 50g protein | 71g carbs | 27g fat\nHearty Black Bean & Corn Salad with Avocado | 692 calories | 34g protein | 102g carbs | 22g fat\nLentil & Vegetable Power Bowl with Tahini Dressing",
+      "metrics": {
+        "hallucination": 0,
+        "calorieAccuracy": 0.7159926470588236,
+        "macroAlignment": 0.7834969731753645,
+        "restrictionCompliance": 1,
+        "preferenceAdherence": 0.3333333333333333,
+        "specificity": 1
+      },
+      "error": null
+    }
+  },
+  {
+    "scenario": {
+      "id": "alice-snack",
+      "description": "Alice's afternoon snack — ~160 cal vegetarian snack",
+      "profile": {
+        "id": "alice",
+        "label": "Alice — 35F, Vegetarian, Lose Weight",
+        "sex": "female",
+        "age": 35,
+        "height": 65,
+        "weight": 175,
+        "activityLevel": "Moderately Active",
+        "dietaryGoal": "Lose Weight",
+        "dailyCalorieGoal": 1600,
+        "macroGoals": {
+          "protein": 30,
+          "carbs": 40,
+          "fat": 30
+        },
+        "healthRestrictions": [
+          "vegetarian"
+        ],
+        "dietaryHabits": [
+          "vegetarian"
+        ],
+        "likes": [
+          "salad",
+          "beans",
+          "tofu"
+        ],
+        "dislikes": [
+          "mushrooms",
+          "eggplant"
+        ]
+      },
+      "ragParams": {
+        "mealType": "snack",
+        "cuisineType": "none",
+        "limit": 3,
+        "healthRestrictions": [
+          "vegetarian"
+        ],
+        "dietaryGoal": "Lose Weight",
+        "dailyCalorieGoal": 1600,
+        "consumedCalories": 380,
+        "consumedMealTypes": [
+          "breakfast"
+        ],
+        "macroGoals": {
+          "protein": 30,
+          "carbs": 40,
+          "fat": 30
+        },
+        "dislikes": [
+          "mushrooms",
+          "eggplant"
+        ],
+        "likes": [
+          "salad",
+          "beans",
+          "tofu"
+        ],
+        "activityLevel": "Moderately Active",
+        "sex": "female",
+        "age": 35,
+        "height": 65,
+        "weight": 175
+      }
+    },
+    "calorieTarget": 163,
+    "rag": {
+      "recipes": [
+        {
+          "id": "spoonacular_643443",
+          "label": "Fresh Black Bean Dip",
+          "cuisine": "world",
+          "ingredients": [
+            "1 can black beans (rinsed and drained)",
+            "1 teaspoon chili powder",
+            "1 tablespoon cilantro (chopped)",
+            "1 teaspoon cumin",
+            "a couple of shakes of hot sauce (depending on how you like it)",
+            "a couple of pcs of jalapenos (depending on how you like it)",
+            "1 lime",
+            "1 plum tomato (seeded and chopped)",
+            "1/4 cup red onion (chopped)",
+            "salt and pepper to taste"
+          ],
+          "instructions": "Step 1: Mix everything in a food processor until the desired consistency. We liked ours a bit creamy with some chunks of black beans.",
+          "calories": 113,
+          "protein": 7,
+          "carbs": 22,
+          "fat": 1,
+          "fiber": 8,
+          "sugar": 1,
+          "sodium": 615,
+          "imageUrl": "https://img.spoonacular.com/recipes/643443-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 4,
+          "similarity": 0.6626562804662031,
+          "matchScore": 0.6279510149311224
+        },
+        {
+          "id": "spoonacular_635058",
+          "label": "Black Bean and Peppers Taco Filling",
+          "cuisine": "mexican",
+          "ingredients": [
+            "1 large bell pepper, diced",
+            "1 (14 ounce) can black beans, rinsed and drained",
+            "1 28-ounce can crushed or puréed tomatoes",
+            "2 teaspoons chili powder",
+            "1 teaspoon garlic powder",
+            "1/2 teaspoon ground cumin",
+            "1 1/2 tablespoons light or extra-virgin olive oil",
+            "1 cup chopped onion",
+            "1 teaspoon dried oregano",
+            "1 teaspoon paprika"
+          ],
+          "instructions": "Step 1: In a skillet add olive oil, onions and bell pepper. Cook until tender, about 3  5 minutes.\n\nStep 2: Add tomatoes and seasonings, saute for 10 minutes.\n\nStep 3: Add black beans and cook until warm.\n\nStep 4: Serve with tortillas.\n\nStep 5: Additional toppings: Romaine\n\nStep 6: Lettuce, Cheese, jalapenos, salsa, hot sauce, avocado, and greek yogurt",
+          "calories": 118,
+          "protein": 5,
+          "carbs": 19,
+          "fat": 3,
+          "fiber": 6,
+          "sugar": 6,
+          "sodium": 332,
+          "imageUrl": "https://img.spoonacular.com/recipes/635058-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 8,
+          "similarity": 0.6405506806905135,
+          "matchScore": 0.6254968325192903
+        },
+        {
+          "id": "spoonacular_1646941",
+          "label": "Mexican Quinoa Bowl",
+          "cuisine": "mexican",
+          "ingredients": [
+            "½ cup quinoa",
+            "1 tsp olive oil",
+            "1 garlic clove, minced",
+            "¼ cup white onion, diced",
+            "1 cup reduced sodium chicken broth",
+            "½ tsp ground cumin",
+            "¼ tsp kosher salt",
+            "¼ tsp ground black pepper",
+            "2 tbsp tomato sauce",
+            "15 oz can reduced sodium black beans",
+            "1 large avocado, diced",
+            "½ cup tomatoes, diced",
+            "1 small jalapeño, finely diced",
+            "½ cup fresh cilantro, chopped",
+            "½ small lime, juiced"
+          ],
+          "instructions": "Step 1: In a large sauce pan heat 1 teaspoon of olive oil over medium heat.\n\nStep 2: Sauté quinoa, onion, and garlic until garlic is fragrant.\n\nStep 3: Slowly add broth and stir.\n\nStep 4: Add cumin, salt, and pepper. Stir in 2 tablespoons of tomato sauce.\n\nStep 5: Bring to a low boil, cover and reduce heat to low.\n\nStep 6: Simmer for 15 minutes.\n\nStep 7: Add black beans to sauce pan, gently stir to combine.\n\nStep 8: Cover and let stand for 5 minutes.\n\nStep 9: Serve with diced avocado and pico de gallo.",
+          "calories": 222,
+          "protein": 10,
+          "carbs": 31,
+          "fat": 7,
+          "fiber": 10,
+          "sugar": 1,
+          "sodium": 138,
+          "imageUrl": "https://img.spoonacular.com/recipes/1646941-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 6,
+          "similarity": 0.6427770179725532,
+          "matchScore": 0.5822425897621434
+        }
+      ],
+      "isExactMatch": true,
+      "geminiResponseText": "1. Fresh Black Bean Dip\n   113 calories per serving\n   7g protein\n   22g carbs\n   1g fat\n\n2. Black Bean and Peppers Taco Filling\n   118 calories per serving\n   5g protein\n   19g carbs\n   3g fat\n\n3. Mexican Quinoa Bowl\n   222 calories per serving\n   10g protein\n   31g carbs\n   7g fat",
+      "metrics": {
+        "hallucination": 1,
+        "calorieAccuracy": 0.6850715746421269,
+        "macroAlignment": 0.5068059359794773,
+        "restrictionCompliance": 0.6666666666666666,
+        "preferenceAdherence": 0.3333333333333333,
+        "specificity": 1
+      },
+      "error": null
+    },
+    "noRag": {
+      "recipes": [
+        {
+          "id": null,
+          "label": "Tofu & Black Bean Salad",
+          "calories": 380,
+          "protein": 28,
+          "carbs": 40,
+          "fat": 13,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        },
+        {
+          "id": null,
+          "label": "Edamame Hummus with Veggies",
+          "calories": 320,
+          "protein": 20,
+          "carbs": 35,
+          "fat": 12,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        },
+        {
+          "id": null,
+          "label": "Spiced Chickpea Lettuce Wraps",
+          "calories": 350,
+          "protein": null,
+          "carbs": null,
+          "fat": null,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        }
+      ],
+      "geminiResponseText": "Tofu & Black Bean Salad | 380 calories | 28g protein | 40g carbs | 13g fat\nEdamame Hummus with Veggies | 320 calories | 20g protein | 35g carbs | 12g fat\nSpiced Chickpea Lettuce Wraps | 350 calories | ",
+      "metrics": {
+        "hallucination": 0,
+        "calorieAccuracy": 0.012269938650306752,
+        "macroAlignment": 0.6067251461988304,
+        "restrictionCompliance": 1,
+        "preferenceAdherence": 0.2222222222222222,
+        "specificity": 1
+      },
+      "error": null
+    }
+  },
+  {
+    "scenario": {
+      "id": "bob-breakfast",
+      "description": "Bob's high-protein breakfast to start the day",
+      "profile": {
+        "id": "bob",
+        "label": "Bob — 27M, No Restrictions, Gain Muscle",
+        "sex": "male",
+        "age": 27,
+        "height": 72,
+        "weight": 170,
+        "activityLevel": "Very Active",
+        "dietaryGoal": "Gain Muscle",
+        "dailyCalorieGoal": 3200,
+        "macroGoals": {
+          "protein": 35,
+          "carbs": 45,
+          "fat": 20
+        },
+        "healthRestrictions": [],
+        "dietaryHabits": [],
+        "likes": [
+          "chicken",
+          "rice",
+          "eggs"
+        ],
+        "dislikes": [
+          "tofu",
+          "tempeh"
+        ]
+      },
+      "ragParams": {
+        "mealType": "breakfast",
+        "cuisineType": "american",
+        "limit": 3,
+        "healthRestrictions": [],
+        "dietaryGoal": "Gain Muscle",
+        "dailyCalorieGoal": 3200,
+        "consumedCalories": 0,
+        "consumedMealTypes": [],
+        "macroGoals": {
+          "protein": 35,
+          "carbs": 45,
+          "fat": 20
+        },
+        "dislikes": [
+          "tofu",
+          "tempeh"
+        ],
+        "likes": [
+          "chicken",
+          "rice",
+          "eggs"
+        ],
+        "activityLevel": "Very Active",
+        "sex": "male",
+        "age": 27,
+        "height": 72,
+        "weight": 170
+      }
+    },
+    "calorieTarget": 800,
+    "rag": {
+      "recipes": [
+        {
+          "id": "spoonacular_673440",
+          "label": "Blueberry Stuffed Croissant French Toast with Bacon",
+          "cuisine": "american",
+          "ingredients": [
+            "2 slices fully-cooked crispy bacon, chopped",
+            "1 cup of blueberries",
+            "8 ounces cream cheese, softened to room temperature",
+            "4 store-bought croissants, cut in half lengthwise",
+            "2 large eggs",
+            "1 teaspoon ground cinnamon",
+            "⅛ teaspoon freshly-grated ground nutmeg",
+            "½ cup heavy cream",
+            "softened butter and 100% pure maple syrup (for serving)",
+            "2 tablespoons raw honey",
+            "2 tablespoons unsalted butter",
+            "1 teaspoon vanilla extract",
+            "¼ cup whole milk"
+          ],
+          "instructions": "Step 1: In a medium bowl, mix together the cream cheese and honey. Gently fold in the bacon and set aside.In a large shallow bowl, whisk together the heavy cream, milk, eggs, vanilla extract, cinnamon and ground nutmeg. Set aside.Melt the butter in a large nonstick skillet over medium heat. Taking each croissant half, dip it fully into the egg mixture, making sure to coat each side. Carefully add it to the hot pan. Repeat 2-3 times depending on how large your skillet is. Try not to overcrowd the pan. Cook for 2 minutes on each side, or until browned to your liking. Repeat for the rest of your croissant halves.\n\nStep 2: Spread the the bacon-cream cheese mixture onto 4 of the croissant halves and place a handful of blueberries on top.\n\nStep 3: Place the remaining 4 croissant halves on top.\n\nStep 4: Garnish with additional blueberries and serve with butter and/or 100% maple syrup if desired. Enjoy immediately!",
+          "calories": 783,
+          "protein": 14,
+          "carbs": 59,
+          "fat": 55,
+          "fiber": 3,
+          "sugar": 35,
+          "sodium": 523,
+          "imageUrl": "https://img.spoonacular.com/recipes/673440-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 4,
+          "similarity": 0.6008402698582737,
+          "matchScore": 0.5827963181203527
+        },
+        {
+          "id": "spoonacular_764752",
+          "label": "Cinnamon French Toast Sticks",
+          "cuisine": "american",
+          "ingredients": [
+            "3 Slices of Bread",
+            "tbsp of butter",
+            "1.5 tablespoons of cinnamon powder",
+            "2 Large Eggs",
+            "Chopped fruit",
+            "1.5 tablespoons of Honey",
+            "1 teaspoon of icing sugar",
+            "1/4 cup of Milk"
+          ],
+          "instructions": "Step 1: Slice your bread into smaller rectangular sticks\n\nStep 2: In a bowl, whisk your egg, milk, 1 tablespoon of honey, 1 tablespoon of cinnamon powder.Dip your bread in the mix, turn on both sides and set aside\n\nStep 3: In a pan on low heat, heat up your butter and fry your bread sticks.\n\nStep 4: Serve your french toast sticks with the chopped fruits, drizzle the rest of the honey, sprinkle the rest of the cinnamon powder and icing sugar.P:S – If you are having it as a dessert, you can add a scoop of ice-cream to it.",
+          "calories": 695,
+          "protein": 23,
+          "carbs": 98,
+          "fat": 26,
+          "fiber": 12,
+          "sugar": 49,
+          "sodium": 645,
+          "imageUrl": "https://img.spoonacular.com/recipes/764752-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 1,
+          "similarity": 0.600140936569329,
+          "matchScore": 0.5541543439566932
+        },
+        {
+          "id": "spoonacular_655537",
+          "label": "Pecan Waffles",
+          "cuisine": "american",
+          "ingredients": [
+            "sauteed Apples or Pears (see below)",
+            "orange cream (see below)",
+            "1/4 cup fat-free cholesterol-free egg product or 2 egg whites",
+            "fruit-flavored syrups",
+            "spice honey (see below)",
+            "lemon curd",
+            "cups fat-free (skim) milk",
+            "2 tablespoons orange peel grated",
+            "1/4 cup chopped pecans",
+            "2 tablespoons powdered sugar",
+            "2 cups reduced fat Bisquick(r)",
+            "vegetable oil"
+          ],
+          "instructions": "Step 1: Spray UNHEATED heart-shaped or traditional waffle iron with cooking spray; then heat waffle iron. Or heat waffle iron; then grease with vegetable oil or shortening. Stir all ingredients except pecans and Topping until blended. Stir in pecans.\n\nStep 2: Pour onto center of hot waffle iron. Close lid of waffle iron.\n\nStep 3: Bake about 5 minutes or until steaming stops. Carefully remove waffle.\n\nStep 4: Serve with Toppings.Yields: three 9-inch traditional waffles\n\nStep 5: Toppings: Orange Cream: Stir 2 tablespoons frozen (thawed) orange juice concentrate into 3/4 cup frozen (thawed) whipped topping until blended.\n\nStep 6: Sauteed Apples or Pears: melt 2 tablespoons margarine or butter in 10-inch skillet over medium heat; add 2 apples or pears, sliced. Cook, stirring frequently, until tender.",
+          "calories": 859,
+          "protein": 8,
+          "carbs": 69,
+          "fat": 63,
+          "fiber": 5,
+          "sugar": 53,
+          "sodium": 1365,
+          "imageUrl": "https://img.spoonacular.com/recipes/655537-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 3,
+          "similarity": 0.6094267979560337,
+          "matchScore": 0.5321565731308769
+        }
+      ],
+      "isExactMatch": true,
+      "geminiResponseText": "1. Blueberry Stuffed Croissant French Toast with Bacon\n   783 calories per serving\n   14g protein\n   59g carbs\n   55g fat\n\n2. Cinnamon French Toast Sticks\n   695 calories per serving\n   23g protein\n   98g carbs\n   26g fat\n\n3. Pecan Waffles\n   859 calories per serving\n   8g protein\n   69g carbs\n   63g fat",
+      "metrics": {
+        "hallucination": 1,
+        "calorieAccuracy": 0.9245833333333334,
+        "macroAlignment": 0.2893587421330961,
+        "restrictionCompliance": 1,
+        "preferenceAdherence": 0.2222222222222222,
+        "specificity": 1
+      },
+      "error": null
+    },
+    "noRag": {
+      "recipes": [
+        {
+          "id": null,
+          "label": "Hearty Breakfast Burrito",
+          "calories": 750,
+          "protein": 48,
+          "carbs": 75,
+          "fat": 30,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        },
+        {
+          "id": null,
+          "label": "Chicken & Rice Breakfast Bowl",
+          "calories": 780,
+          "protein": 60,
+          "carbs": 85,
+          "fat": 20,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        },
+        {
+          "id": null,
+          "label": "Protein Pancakes with Berries",
+          "calories": 720,
+          "protein": 55,
+          "carbs": 8,
+          "fat": null,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        }
+      ],
+      "geminiResponseText": "Hearty Breakfast Burrito | 750 calories | 48g protein | 75g carbs | 30g fat\nChicken & Rice Breakfast Bowl | 780 calories | 60g protein | 85g carbs | 20g fat\nProtein Pancakes with Berries | 720 calories | 55g protein | 8",
+      "metrics": {
+        "hallucination": 0,
+        "calorieAccuracy": 0.9375,
+        "macroAlignment": 0.5281652421652422,
+        "restrictionCompliance": 1,
+        "preferenceAdherence": 0.2222222222222222,
+        "specificity": 1
+      },
+      "error": null
+    }
+  },
+  {
+    "scenario": {
+      "id": "bob-lunch",
+      "description": "Bob's post-workout lunch, high protein (35% goal)",
+      "profile": {
+        "id": "bob",
+        "label": "Bob — 27M, No Restrictions, Gain Muscle",
+        "sex": "male",
+        "age": 27,
+        "height": 72,
+        "weight": 170,
+        "activityLevel": "Very Active",
+        "dietaryGoal": "Gain Muscle",
+        "dailyCalorieGoal": 3200,
+        "macroGoals": {
+          "protein": 35,
+          "carbs": 45,
+          "fat": 20
+        },
+        "healthRestrictions": [],
+        "dietaryHabits": [],
+        "likes": [
+          "chicken",
+          "rice",
+          "eggs"
+        ],
+        "dislikes": [
+          "tofu",
+          "tempeh"
+        ]
+      },
+      "ragParams": {
+        "mealType": "lunch",
+        "cuisineType": "none",
+        "limit": 3,
+        "healthRestrictions": [],
+        "dietaryGoal": "Gain Muscle",
+        "dailyCalorieGoal": 3200,
+        "consumedCalories": 650,
+        "consumedMealTypes": [
+          "breakfast"
+        ],
+        "macroGoals": {
+          "protein": 35,
+          "carbs": 45,
+          "fat": 20
+        },
+        "dislikes": [
+          "tofu",
+          "tempeh"
+        ],
+        "likes": [
+          "chicken",
+          "rice",
+          "eggs"
+        ],
+        "activityLevel": "Very Active",
+        "sex": "male",
+        "age": 27,
+        "height": 72,
+        "weight": 170
+      }
+    },
+    "calorieTarget": 1020,
+    "rag": {
+      "recipes": [
+        {
+          "id": "spoonacular_648460",
+          "label": "Japanese Chicken Donburi",
+          "cuisine": "japanese",
+          "ingredients": [
+            "6 cups baby spinach leaves (about 6 oz) rinsed, drained",
+            "1/2 pound boned skinned chicken breast rinsed and cut into ¼\" strips",
+            "6 cups cooked rice",
+            "5 large eggs (yolks and whites separated)",
+            "1 cup fat-skimmed chicken broth",
+            "2 tablespoons minced fresh ginger",
+            "1 onion - (6 oz) peeled, and",
+            "1/4 cup diced Roma tomato",
+            "1 cup salad oil",
+            "2 tablespoons Soy sauce",
+            "4 tablespoons sugar"
+          ],
+          "instructions": "Step 1: In a deep 10-inch or 12-inch frying pan over high heat, stir oil, onion, and ginger until onion is lightly browned, about 2 minutes.\n\nStep 2: Add broth, soy sauce, and sugar.\n\nStep 3: Add chicken to pan. Bring to a boil.\n\nStep 4: Add spinach, cover, and cook until wilted, about 1 minute. Meanwhile, in a small bowl, beat eggs to blend.Reduce heat to low, evenly distribute mixture in pan, and pour in eggs. With a spatula, push vegetables aside slightly so egg mixture can flow down through sauce. Cover and cook just until eggs are softly set, 2 to 2 1/2 minutes.Meanwhile, spoon rice into bowls. Top equally with egg-spinach mixture, including juices.\n\nStep 5: Sprinkle with tomato.",
+          "calories": 626,
+          "protein": 25,
+          "carbs": 87,
+          "fat": 19,
+          "fiber": 3,
+          "sugar": 15,
+          "sodium": 850,
+          "imageUrl": "https://img.spoonacular.com/recipes/648460-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 4,
+          "similarity": 0.6567615223885094,
+          "matchScore": 0.6059158471583523
+        },
+        {
+          "id": "spoonacular_634891",
+          "label": "Best Chicken Parmesan",
+          "cuisine": "mediterranean",
+          "ingredients": [
+            "2 cups Italian style bread crumbs",
+            "8 (3-ounces each) chicken cutlets",
+            "3 eggs beaten",
+            "1 cup Flour",
+            "4 cups mozzarella cheese (depending on how much cheese you like)",
+            "1/2 cup Parmesan cheese (Grated fresh, not from a green can)",
+            "vegetable oil for frying (you can bake them too, but they're better fried!)"
+          ],
+          "instructions": "Step 1: Depending on how think your chicken breasts are, place them under plastic wrap and pound until thin. If you don't have a meat pounder, use a heavy pot of skillet. You can also fillet these with a knife.Get 3 pie plates or containers. Put flour in one, beaten eggs in one and bread crumbs in one.Dredge chicken breast in flour, then in the egg wash, and then the bread crumbs.Fry cutlets in vegetable oil over med heat. Fry until golden brown.\n\nStep 2: Spread a little marinara on the bottom of a 13x9 baking dish.Make a layer of chicken.\n\nStep 3: Add more marinara. Use most of the first quart.\n\nStep 4: Add a layer of the cheeses. Repeat layers.\n\nStep 5: Sprinkle parsley over last layer of cheese.\n\nStep 6: Bake in a pre-heated 350 degree oven covered for 35 minutes. uncover and bake until top is bubbly!",
+          "calories": 636,
+          "protein": 53,
+          "carbs": 44,
+          "fat": 26,
+          "fiber": 2,
+          "sugar": 3,
+          "sodium": 1028,
+          "imageUrl": "https://img.spoonacular.com/recipes/634891-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 6,
+          "similarity": 0.6317561723100364,
+          "matchScore": 0.5720117869190047
+        },
+        {
+          "id": "spoonacular_658290",
+          "label": "Rice with Fried Egg and Sausage",
+          "cuisine": "world",
+          "ingredients": [
+            "butter",
+            "1 egg",
+            "sprinkle of Nori Goma Furikake",
+            "½ cup Calrose rice",
+            "1 tablespoon Sesame oil",
+            "1 teaspoon thick soy sauce",
+            "1 turkey breakfast sausage link"
+          ],
+          "instructions": "Step 1: Cook rice fully in rice cooker or pot according to package directions.Cook turkey sausage according to package directions; we generally just use a skillet.For the egg, melt butter in skillet on medium heat.Crack egg into skillet and fry just until egg white is cooked, or sunny-side up, roughly 1 minute.Using a spatula to lightly break up the egg white around the yolk as it cooks will help ensure a fully cooked white, while keeping the yolk runny.Put rice in a bowl, and lightly drizzle on sesame oil, thick soy sauce, and furikake seasoning.\n\nStep 2: Place the fried egg on top of the rice.  Chop up sausage and toss it in the bowl.Just before eating, use a fork and knife to cut the egg up into small pieces and let the yolk run over the rice.",
+          "calories": 649,
+          "protein": 17,
+          "carbs": 75,
+          "fat": 30,
+          "fiber": 1,
+          "sugar": null,
+          "sodium": 613,
+          "imageUrl": "https://img.spoonacular.com/recipes/658290-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 1,
+          "similarity": 0.6724003035672695,
+          "matchScore": 0.5108613822102572
+        }
+      ],
+      "isExactMatch": true,
+      "geminiResponseText": "1. Japanese Chicken Donburi\n   626 calories per serving\n   25g protein\n   87g carbs\n   19g fat\n\n2. Best Chicken Parmesan\n   636 calories per serving\n   53g protein\n   44g carbs\n   26g fat\n\n3. Rice with Fried Egg and Sausage\n   649 calories per serving\n   17g protein\n   75g carbs\n   30g fat",
+      "metrics": {
+        "hallucination": 1,
+        "calorieAccuracy": 0.6245098039215686,
+        "macroAlignment": 0.5587366545152284,
+        "restrictionCompliance": 1,
+        "preferenceAdherence": 0.6666666666666666,
+        "specificity": 1
+      },
+      "error": null
+    },
+    "noRag": {
+      "recipes": [
+        {
+          "id": null,
+          "label": "Chicken & Black Bean Rice Bowl",
+          "calories": 905,
+          "protein": 71,
+          "carbs": 113,
+          "fat": 18,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        },
+        {
+          "id": null,
+          "label": "High-Protein Chicken & Egg Scramble with Rice",
+          "calories": 910,
+          "protein": 76,
+          "carbs": 98,
+          "fat": 27,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        }
+      ],
+      "geminiResponseText": "Chicken & Black Bean Rice Bowl | 905 calories | 71g protein | 113g carbs | 18g fat\nHigh-Protein Chicken & Egg Scramble with Rice | 910 calories | 76g protein | 98g carbs | 27g fat\nHearty Chicken & Veggie Stir-Fry with Brown Rice | ",
+      "metrics": {
+        "hallucination": 0,
+        "calorieAccuracy": 0.8897058823529411,
+        "macroAlignment": 0.8885116264950519,
+        "restrictionCompliance": 1,
+        "preferenceAdherence": 0.6666666666666666,
+        "specificity": 1
+      },
+      "error": null
+    }
+  },
+  {
+    "scenario": {
+      "id": "bob-dinner",
+      "description": "Bob's dinner — still needs ~1600 cal to hit daily goal",
+      "profile": {
+        "id": "bob",
+        "label": "Bob — 27M, No Restrictions, Gain Muscle",
+        "sex": "male",
+        "age": 27,
+        "height": 72,
+        "weight": 170,
+        "activityLevel": "Very Active",
+        "dietaryGoal": "Gain Muscle",
+        "dailyCalorieGoal": 3200,
+        "macroGoals": {
+          "protein": 35,
+          "carbs": 45,
+          "fat": 20
+        },
+        "healthRestrictions": [],
+        "dietaryHabits": [],
+        "likes": [
+          "chicken",
+          "rice",
+          "eggs"
+        ],
+        "dislikes": [
+          "tofu",
+          "tempeh"
+        ]
+      },
+      "ragParams": {
+        "mealType": "dinner",
+        "cuisineType": "none",
+        "limit": 3,
+        "healthRestrictions": [],
+        "dietaryGoal": "Gain Muscle",
+        "dailyCalorieGoal": 3200,
+        "consumedCalories": 1600,
+        "consumedMealTypes": [
+          "breakfast",
+          "lunch"
+        ],
+        "macroGoals": {
+          "protein": 35,
+          "carbs": 45,
+          "fat": 20
+        },
+        "dislikes": [
+          "tofu",
+          "tempeh"
+        ],
+        "likes": [
+          "chicken",
+          "rice",
+          "eggs"
+        ],
+        "activityLevel": "Very Active",
+        "sex": "male",
+        "age": 27,
+        "height": 72,
+        "weight": 170
+      }
+    },
+    "calorieTarget": 1244,
+    "rag": {
+      "recipes": [
+        {
+          "id": "spoonacular_633884",
+          "label": "Baked Ziti Or Rigatoni",
+          "cuisine": "mediterranean",
+          "ingredients": [
+            "1 pound ziti, cooked",
+            "1 egg, slightly beaten",
+            "1/4 cup grated parmesan cheese",
+            "1 (15 oz.) container ricotta",
+            "8 ounces shredded mozzarella",
+            "3 1/2 cups spaghetti sauce"
+          ],
+          "instructions": "Step 1: Mix first 4 ingredients and 1 1/2 cups of spaghetti sauce in a bowl. In a 2 1/2 quart baking dish spread 1/2 cup spaghetti sauce.\n\nStep 2: Add ziti mixture and top with remaining 1 1/2 cups of spaghetti sauce.\n\nStep 3: Sprinkle with 1/2 cup of Parmesan cheese.\n\nStep 4: Bake at 375 degrees for 30 minutes or until top slightly browned.",
+          "calories": 869,
+          "protein": 45,
+          "carbs": 101,
+          "fat": 32,
+          "fiber": 7,
+          "sugar": 12,
+          "sodium": 1593,
+          "imageUrl": "https://img.spoonacular.com/recipes/633884-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 4,
+          "similarity": 0.6143446182038972,
+          "matchScore": 0.5723524050077498
+        },
+        {
+          "id": "spoonacular_982376",
+          "label": "Chicken Noodle Casserole Dish",
+          "cuisine": "world",
+          "ingredients": [
+            "½ c Italian bread crumbs",
+            "2 tbsp butter",
+            "1 c frozen carrots",
+            "3 c chicken broth",
+            "16 oz egg noodles, cooked",
+            "½ c flour",
+            "1 c frozen corn",
+            "½ tsp garlic powder",
+            "1 tsp Italian seasoning",
+            "2 c milk",
+            "1 c shredded parmesan",
+            "⅔ c parmesan cheese, shredded",
+            "1 c frozen peas",
+            "Salt and pepper to taste",
+            "1 lb chicken, cooked and shredded",
+            "½ c shredded mozzarella",
+            "1 c sour cream",
+            "1 sweet onion, diced"
+          ],
+          "instructions": "Step 1: Preheat oven to 350 degrees\n\nStep 2: Sautee onion in 2 tbsp olive oil\n\nStep 3: When onion is soft, add chicken broth\n\nStep 4: Add frozen veggies\n\nStep 5: Bring to a boil then reduce heat and simmer 2 min\n\nStep 6: Slowly whisk in flour\n\nStep 7: Slowly whisk in milk\n\nStep 8: Add sour cream, cheeses and chicken\n\nStep 9: Mix in noodles\n\nStep 10: Pour into a 13x9 casserole dish coated with butter\n\nStep 11: Mix rest of parmesan, bread crumbs and butter in a separate bowl\n\nStep 12: Sprinkle topping on top of casserole\n\nStep 13: Bake for 25 minutes until top is golden\n\nStep 14: Enjoy!",
+          "calories": 659,
+          "protein": 43,
+          "carbs": 52,
+          "fat": 31,
+          "fiber": 5,
+          "sugar": 12,
+          "sodium": 1298,
+          "imageUrl": "https://img.spoonacular.com/recipes/982376-312x231.jpg",
+          "readyInMinutes": 35,
+          "servings": 6,
+          "similarity": 0.6058081025363531,
+          "matchScore": 0.48414849058752524
+        },
+        {
+          "id": "spoonacular_643786",
+          "label": "Fried Rice - Chinese comfort food",
+          "cuisine": "chinese",
+          "ingredients": [
+            "½ kg rice, cooked earlier and cooled. You can cook the rice the day before and leave it in the fridge overnight to make things simple.",
+            "1 large onion, diced",
+            "1/2 bunch spring onions, washed and diced",
+            "3 eggs, beaten, mixed with a dash of milk",
+            "6 rashers bacon, diced",
+            "½ large bag mixed diced vegetables (peas, carrots, corn) from the freezer",
+            "2 teaspoons light soy sauce",
+            "Dark soy sauce",
+            "2 teaspoons sesame oil",
+            "White pepper"
+          ],
+          "instructions": "Step 1: Heat a large fry pan or work and add oil. Slide in the beaten egg mixture and cook for a minute or two until partly set. Turn over carefully and cook the other side. Once its cooked through, remove from pan, slice into small squares and set aside.\n\nStep 2: Add a dash more vegetable oil in wok and fry onion over low heat until soft.\n\nStep 3: Add bacon and cook for a couple of minutes, stirring. Once bacon is browning, turn heat up to high and add frozen vegetables. Cook, stirring occasionally for 3-4 minutes.\n\nStep 4: Add cooked rice, breaking it up with wooden spoon as you go. Continue stirring for a few minutes until the rice starts to form a brown crust in places. Season with light soy sauce and a dash of dark soy sauce.\n\nStep 5: Add a little soy sauce to start with and taste before you add more.\n\nStep 6: Sprinkle with white pepper to taste.\n\nStep 7: Mix thoroughly so rice is evenly coated and coloured.\n\nStep 8: Add reserved omelette pieces and chopped spring onion. Stir through and let warm through for one minute. Turn off heat then add a few shakes of sesame oil. Stir to combine.\n\nStep 9: Serve in deep, generous bowls.",
+          "calories": 422,
+          "protein": 16,
+          "carbs": 47,
+          "fat": 19,
+          "fiber": 3,
+          "sugar": 2,
+          "sodium": 1458,
+          "imageUrl": "https://img.spoonacular.com/recipes/643786-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 4,
+          "similarity": 0.6160513877416685,
+          "matchScore": 0.4619050189015017
+        }
+      ],
+      "isExactMatch": true,
+      "geminiResponseText": "1. Baked Ziti Or Rigatoni\n   869 calories per serving\n   45g protein\n   101g carbs\n   32g fat\n\n2. Chicken Noodle Casserole Dish\n   659 calories per serving\n   43g protein\n   52g carbs\n   31g fat\n\n3. Fried Rice - Chinese comfort food\n   422 calories per serving\n   16g protein\n   47g carbs\n   19g fat",
+      "metrics": {
+        "hallucination": 1,
+        "calorieAccuracy": 0.5225080385852091,
+        "macroAlignment": 0.5934415850057077,
+        "restrictionCompliance": 1,
+        "preferenceAdherence": 0.3333333333333333,
+        "specificity": 1
+      },
+      "error": null
+    },
+    "noRag": {
+      "recipes": [
+        {
+          "id": null,
+          "label": "Giant Chicken & Rice Power Bowl",
+          "calories": 1600,
+          "protein": 140,
+          "carbs": 180,
+          "fat": 36,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        },
+        {
+          "id": null,
+          "label": "Hearty Chicken & Egg Fried Rice",
+          "calories": 1600,
+          "protein": 140,
+          "carbs": 180,
+          "fat": 36,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        }
+      ],
+      "geminiResponseText": "Giant Chicken & Rice Power Bowl | 1600 calories | 140g protein | 180g carbs | 36g fat\nHearty Chicken & Egg Fried Rice | 1600 calories | 140g protein | 180g carbs | 36g fat\nChicken & Sweet Potato Hash with Eggs | 16",
+      "metrics": {
+        "hallucination": 0,
+        "calorieAccuracy": 0.7138263665594855,
+        "macroAlignment": 0.9979166666666667,
+        "restrictionCompliance": 1,
+        "preferenceAdherence": 0.6666666666666666,
+        "specificity": 1
+      },
+      "error": null
+    }
+  },
+  {
+    "scenario": {
+      "id": "bob-snack",
+      "description": "Bob's mid-afternoon snack — high-protein to stay in surplus",
+      "profile": {
+        "id": "bob",
+        "label": "Bob — 27M, No Restrictions, Gain Muscle",
+        "sex": "male",
+        "age": 27,
+        "height": 72,
+        "weight": 170,
+        "activityLevel": "Very Active",
+        "dietaryGoal": "Gain Muscle",
+        "dailyCalorieGoal": 3200,
+        "macroGoals": {
+          "protein": 35,
+          "carbs": 45,
+          "fat": 20
+        },
+        "healthRestrictions": [],
+        "dietaryHabits": [],
+        "likes": [
+          "chicken",
+          "rice",
+          "eggs"
+        ],
+        "dislikes": [
+          "tofu",
+          "tempeh"
+        ]
+      },
+      "ragParams": {
+        "mealType": "snack",
+        "cuisineType": "none",
+        "limit": 3,
+        "healthRestrictions": [],
+        "dietaryGoal": "Gain Muscle",
+        "dailyCalorieGoal": 3200,
+        "consumedCalories": 1300,
+        "consumedMealTypes": [
+          "breakfast",
+          "lunch"
+        ],
+        "macroGoals": {
+          "protein": 35,
+          "carbs": 45,
+          "fat": 20
+        },
+        "dislikes": [
+          "tofu",
+          "tempeh"
+        ],
+        "likes": [
+          "chicken",
+          "rice",
+          "eggs"
+        ],
+        "activityLevel": "Very Active",
+        "sex": "male",
+        "age": 27,
+        "height": 72,
+        "weight": 170
+      }
+    },
+    "calorieTarget": 422,
+    "rag": {
+      "recipes": [
+        {
+          "id": "spoonacular_511738",
+          "label": "Chocolate Java Protein Shake",
+          "cuisine": "american",
+          "ingredients": [
+            "1 Tbsp mini chocolate chips",
+            "1 scoop Chocolate protein powder",
+            "½ cup cold coffee",
+            "1 cup ice",
+            "1 cup skim milk"
+          ],
+          "instructions": "Step 1: Add ingredients in the order listed into a blender.Blend until smooth.Enjoy!",
+          "calories": 257,
+          "protein": 27,
+          "carbs": 29,
+          "fat": 5,
+          "fiber": 5,
+          "sugar": 23,
+          "sodium": 248,
+          "imageUrl": "https://img.spoonacular.com/recipes/511738-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 1,
+          "similarity": 0.6303873068919639,
+          "matchScore": 0.6520154688069103
+        },
+        {
+          "id": "spoonacular_658276",
+          "label": "Rice Pudding",
+          "cuisine": "world",
+          "ingredients": [
+            "3/4 cup medium grain rice or short grain rice",
+            "1 1/2 cups water",
+            "1/4 teaspoon salt (heaping)",
+            "4 cups whole milk (I use 2%%)",
+            "1/2 cup sugar",
+            "1/2 teaspoon vanilla",
+            "1 egg, beaten",
+            "1 teaspoon butter",
+            "1 pinch cinnamon",
+            "pinch nutmeg"
+          ],
+          "instructions": "Step 1: In a medium saucepan, bring 1 1/2 cups water to a boil.\n\nStep 2: Add rice, salt and stir.\n\nStep 3: Simmer covered until water has been absorbed (approximately 15 minutes).\n\nStep 4: In another sauce pan, stir in 1 1/2 milk, sugar, and 1 1/2 cups cooked rice, cook over medium heat\n\nStep 5: Stir constantly until thick and creamy, for 15 to 20 minutes.\n\nStep 6: Combine 1/2 cup milk, and beaten egg, then add to saucepan. Cook 2 minutes more, stirring constantly\n\nStep 7: Remove from heat,\n\nStep 8: Add in butter, and vanilla.\n\nStep 9: Season with a pinch of nutmeg or cinnamon.\n\nStep 10: Serve warm.",
+          "calories": 404,
+          "protein": 12,
+          "carbs": 66,
+          "fat": 10,
+          "fiber": 1,
+          "sugar": 37,
+          "sodium": 267,
+          "imageUrl": "https://img.spoonacular.com/recipes/658276-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 4,
+          "similarity": 0.6315127114613256,
+          "matchScore": 0.6362733052430334
+        },
+        {
+          "id": "spoonacular_716363",
+          "label": "Scotch Egg",
+          "cuisine": "world",
+          "ingredients": [
+            "2 cups of All purpose Flour",
+            "2 cups of Dried Breadcrumbs",
+            "1 egg for coating (not boiled)",
+            "300g ground sausage",
+            "5 Hard-boiled Eggs",
+            "Oil for deep frying",
+            "A pinch of dry Pepper",
+            "½ teaspoon of Salt",
+            "1 stock cube",
+            "3 cups of water"
+          ],
+          "instructions": "",
+          "calories": 651,
+          "protein": 28,
+          "carbs": 70,
+          "fat": 28,
+          "fiber": 3,
+          "sugar": 4,
+          "sodium": 1205,
+          "imageUrl": "https://img.spoonacular.com/recipes/716363-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 5,
+          "similarity": 0.6195438017410945,
+          "matchScore": 0.5445559686876087
+        }
+      ],
+      "isExactMatch": true,
+      "geminiResponseText": "1. Chocolate Java Protein Shake\n   257 calories per serving\n   27g protein\n   29g carbs\n   5g fat\n\n2. Rice Pudding\n   404 calories per serving\n   12g protein\n   66g carbs\n   10g fat\n\n3. Scotch Egg\n   651 calories per serving\n   28g protein\n   70g carbs\n   28g fat",
+      "metrics": {
+        "hallucination": 1,
+        "calorieAccuracy": 0.674565560821485,
+        "macroAlignment": 0.6343374857756893,
+        "restrictionCompliance": 1,
+        "preferenceAdherence": 0.2222222222222222,
+        "specificity": 1
+      },
+      "error": null
+    },
+    "noRag": {
+      "recipes": [
+        {
+          "id": null,
+          "label": "Chicken & Rice Power Bowl",
+          "calories": 655,
+          "protein": 58,
+          "carbs": 86,
+          "fat": 7,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        },
+        {
+          "id": null,
+          "label": "Loaded Scrambled Eggs with Quinoa",
+          "calories": 600,
+          "protein": 40,
+          "carbs": 58,
+          "fat": 26,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        },
+        {
+          "id": null,
+          "label": "Creamy Chicken & Rice Soup",
+          "calories": 645,
+          "protein": 68,
+          "carbs": null,
+          "fat": null,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        }
+      ],
+      "geminiResponseText": "Chicken & Rice Power Bowl | 655 calories | 58g protein | 86g carbs | 7g fat\nLoaded Scrambled Eggs with Quinoa | 600 calories | 40g protein | 58g carbs | 26g fat\nCreamy Chicken & Rice Soup | 645 calories | 68g protein",
+      "metrics": {
+        "hallucination": 0,
+        "calorieAccuracy": 0.49921011058451814,
+        "macroAlignment": 0.4922773536895673,
+        "restrictionCompliance": 1,
+        "preferenceAdherence": 0.5555555555555555,
+        "specificity": 1
+      },
+      "error": null
+    }
+  },
+  {
+    "scenario": {
+      "id": "carol-breakfast",
+      "description": "Carol's breakfast — must be gluten-free AND dairy-free",
+      "profile": {
+        "id": "carol",
+        "label": "Carol — 40F, Gluten-Free + Dairy-Free, Maintain",
+        "sex": "female",
+        "age": 40,
+        "height": 63,
+        "weight": 130,
+        "activityLevel": "Lightly Active",
+        "dietaryGoal": "Maintain Weight",
+        "dailyCalorieGoal": 1900,
+        "macroGoals": {
+          "protein": 20,
+          "carbs": 50,
+          "fat": 30
+        },
+        "healthRestrictions": [
+          "gluten-free",
+          "dairy-free"
+        ],
+        "dietaryHabits": [
+          "gluten-free"
+        ],
+        "likes": [
+          "salmon",
+          "quinoa",
+          "avocado"
+        ],
+        "dislikes": [
+          "shellfish",
+          "peanuts"
+        ]
+      },
+      "ragParams": {
+        "mealType": "breakfast",
+        "cuisineType": "none",
+        "limit": 3,
+        "healthRestrictions": [
+          "gluten-free",
+          "dairy-free"
+        ],
+        "dietaryGoal": "Maintain Weight",
+        "dailyCalorieGoal": 1900,
+        "consumedCalories": 0,
+        "consumedMealTypes": [],
+        "macroGoals": {
+          "protein": 20,
+          "carbs": 50,
+          "fat": 30
+        },
+        "dislikes": [
+          "shellfish",
+          "peanuts"
+        ],
+        "likes": [
+          "salmon",
+          "quinoa",
+          "avocado"
+        ],
+        "activityLevel": "Lightly Active",
+        "sex": "female",
+        "age": 40,
+        "height": 63,
+        "weight": 130
+      }
+    },
+    "calorieTarget": 475,
+    "rag": {
+      "recipes": [
+        {
+          "id": "spoonacular_1095752",
+          "label": "Vegan Cacao Crunch Granola",
+          "cuisine": "world",
+          "ingredients": [
+            "1.5 cups Rolled Oats",
+            "1/2 cup Whole Almonds roughly chopped",
+            "1 tbsp Cacao Powder",
+            "1/2 cup Maple Syrup",
+            "4 tbsp Coconut Oil",
+            "1/2 cup Puffed Quinoa (or puffed rice)"
+          ],
+          "instructions": "Step 1: Preheat the oven to 150C. Line a flat baking tray with parchment paper.In a saucepan on a low heat, add the maple syrup and coconut oil and stir until the coconut oil is completely melted.\n\nStep 2: Add the oats and almonds into a large bowl and pour the maple syrup and coconut oil mixture over. Stir so everything is evenly coated.\n\nStep 3: Add the cacao powder and stir again.\n\nStep 4: Lay the mixture flat on the baking tray and spread out so it's all in one layer.\n\nStep 5: Bake for 45 minutes, stirring every 10-15 minutes to ensure an even cook. Once done, remove from the oven and allow to cool.Once it is completely cool, add to a bowl and mix in the puffed quinoa. Store in a glass jar for up to 2 months.",
+          "calories": 451,
+          "protein": 8,
+          "carbs": 54,
+          "fat": 25,
+          "fiber": 6,
+          "sugar": 25,
+          "sodium": 6,
+          "imageUrl": "https://img.spoonacular.com/recipes/1095752-312x231.jpg",
+          "readyInMinutes": 55,
+          "servings": 4,
+          "similarity": 0.6097557186217847,
+          "matchScore": 0.735115883839461
+        },
+        {
+          "id": "spoonacular_1747693",
+          "label": "Your Basic Low Carb Breakfast",
+          "cuisine": "world",
+          "ingredients": [
+            "2 large eggs",
+            "2 strips Kirkland Signature Fully-Cooked Bacon",
+            "1/2 avocado",
+            "1/2 cup strawberries"
+          ],
+          "instructions": "Step 1: Cook 2 eggs to any style of your liking Microwave 2 strips of Kirkland Signature Fully-Cooked Bacon to your desired level of crispiness\n\nStep 2: Slice the avocado in half and scoop out the insides Slice strawberries into 1/2 measuring cup Enjoy!",
+          "calories": 510,
+          "protein": 21,
+          "carbs": 15,
+          "fat": 42,
+          "fiber": 8,
+          "sugar": 5,
+          "sodium": 441,
+          "imageUrl": "https://img.spoonacular.com/recipes/1747693-312x231.jpg",
+          "readyInMinutes": 7,
+          "servings": 1,
+          "similarity": 0.6608797549057245,
+          "matchScore": 0.6969832283285499
+        },
+        {
+          "id": "spoonacular_655181",
+          "label": "Peaches & Coconut Cream Steel Cut Oatmeal",
+          "cuisine": "world",
+          "ingredients": [
+            "3 cups water",
+            "¼ cup salt",
+            "1 cup Bob's Red Mill steel cut oats",
+            "½ cup coconut milk (full fat from the can)",
+            "3 tablespoons honey",
+            "½ cup chopped walnuts",
+            "1 tablespoon vanilla extract",
+            "1 large ripe peach, peeled and chopped"
+          ],
+          "instructions": "Step 1: Bring 3 cups of water to a boil in a saucepan.\n\nStep 2: Add the salt and the steel cut oats. Return to a boil and immediately reduce the heat to medium low. Cover and allow the oats to simmer for 10 to 25 minutes (10 for more al dente oatmeal, 25 for creamier oatmeal).\n\nStep 3: Remove cover and stir oats about every 3 minutes.\n\nStep 4: Once oats are cooked to desired texture, add the coconut milk, honey and chopped walnuts.\n\nStep 5: Remove the oatmeal from the heat, add the vanilla extract and the chopped peaches.\n\nStep 6: Mix everything together and serve in heaping portions!",
+          "calories": 508,
+          "protein": 13,
+          "carbs": 63,
+          "fat": 25,
+          "fiber": 8,
+          "sugar": 23,
+          "sodium": 9457,
+          "imageUrl": "https://img.spoonacular.com/recipes/655181-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 3,
+          "similarity": 0.6170627909892402,
+          "matchScore": 0.6945889286361531
+        }
+      ],
+      "isExactMatch": true,
+      "geminiResponseText": "1. Vegan Cacao Crunch Granola\n   451 calories per serving\n   8g protein\n   54g carbs\n   25g fat\n\n2. Your Basic Low Carb Breakfast\n   510 calories per serving\n   21g protein\n   15g carbs\n   42g fat\n\n3. Peaches & Coconut Cream Steel Cut Oatmeal\n   508 calories per serving\n   13g protein\n   63g carbs\n   25g fat",
+      "metrics": {
+        "hallucination": 1,
+        "calorieAccuracy": 0.9354385964912281,
+        "macroAlignment": 0.5788966296227449,
+        "restrictionCompliance": 1,
+        "preferenceAdherence": 0.2222222222222222,
+        "specificity": 1
+      },
+      "error": null
+    },
+    "noRag": {
+      "recipes": [
+        {
+          "id": null,
+          "label": "Salmon & Avocado Quinoa Bowl",
+          "calories": 640,
+          "protein": 33,
+          "carbs": 65,
+          "fat": 30,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        },
+        {
+          "id": null,
+          "label": "Berry & Spinach Protein Smoothie",
+          "calories": 620,
+          "protein": 41,
+          "carbs": 69,
+          "fat": 23,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        },
+        {
+          "id": null,
+          "label": "Loaded Breakfast Scramble",
+          "calories": 630,
+          "protein": 33,
+          "carbs": 60,
+          "fat": null,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        }
+      ],
+      "geminiResponseText": "Salmon & Avocado Quinoa Bowl | 640 calories | 33g protein | 65g carbs | 30g fat\nBerry & Spinach Protein Smoothie | 620 calories | 41g protein | 69g carbs | 23g fat\nLoaded Breakfast Scramble | 630 calories | 33g protein | 60",
+      "metrics": {
+        "hallucination": 0,
+        "calorieAccuracy": 0.6736842105263158,
+        "macroAlignment": 0.5341677867383513,
+        "restrictionCompliance": 1,
+        "preferenceAdherence": 0.3333333333333333,
+        "specificity": 1
+      },
+      "error": null
+    }
+  },
+  {
+    "scenario": {
+      "id": "carol-lunch",
+      "description": "Carol's lunch — dual restriction compliance stress test",
+      "profile": {
+        "id": "carol",
+        "label": "Carol — 40F, Gluten-Free + Dairy-Free, Maintain",
+        "sex": "female",
+        "age": 40,
+        "height": 63,
+        "weight": 130,
+        "activityLevel": "Lightly Active",
+        "dietaryGoal": "Maintain Weight",
+        "dailyCalorieGoal": 1900,
+        "macroGoals": {
+          "protein": 20,
+          "carbs": 50,
+          "fat": 30
+        },
+        "healthRestrictions": [
+          "gluten-free",
+          "dairy-free"
+        ],
+        "dietaryHabits": [
+          "gluten-free"
+        ],
+        "likes": [
+          "salmon",
+          "quinoa",
+          "avocado"
+        ],
+        "dislikes": [
+          "shellfish",
+          "peanuts"
+        ]
+      },
+      "ragParams": {
+        "mealType": "lunch",
+        "cuisineType": "none",
+        "limit": 3,
+        "healthRestrictions": [
+          "gluten-free",
+          "dairy-free"
+        ],
+        "dietaryGoal": "Maintain Weight",
+        "dailyCalorieGoal": 1900,
+        "consumedCalories": 420,
+        "consumedMealTypes": [
+          "breakfast"
+        ],
+        "macroGoals": {
+          "protein": 20,
+          "carbs": 50,
+          "fat": 30
+        },
+        "dislikes": [
+          "shellfish",
+          "peanuts"
+        ],
+        "likes": [
+          "salmon",
+          "quinoa",
+          "avocado"
+        ],
+        "activityLevel": "Lightly Active",
+        "sex": "female",
+        "age": 40,
+        "height": 63,
+        "weight": 130
+      }
+    },
+    "calorieTarget": 592,
+    "rag": {
+      "recipes": [
+        {
+          "id": "spoonacular_667701",
+          "label": "salmon fried rice",
+          "cuisine": "chinese",
+          "ingredients": [
+            "1 teaspoon brown sugar",
+            "Cilantro (or parsley) for garnish",
+            "3 eggs, well beaten",
+            "2 cloves garlic, minced",
+            "1-inch piece of ginger, grated",
+            "2 green onions, thinly sliced, including the greens",
+            "1 Tbsp olive oil",
+            "1 cup frozen peas, thawed",
+            "2/3 cup diced red bell pepper",
+            "2/3 cup diced red onion",
+            "4 cups day old cooked white rice (from about 2 cups of raw rice)",
+            "2 cups cooked salmon in large chunks",
+            "3 Tbsp soy sauce"
+          ],
+          "instructions": "Step 1: Dissolve the brown sugar in the soy sauce in a small bowl. Set aside.2\n\nStep 2: Heat the olive oil in a large sauté pan or wok on medium high heat.\n\nStep 3: Add the diced red onion and bell pepper and sauté until lightly browned, about 5 minutes. Lower the heat to medium and stir in the garlic and grated ginger. Cook for a minute more. 3\n\nStep 4: Add the beaten eggs and stir until just cooked.\n\nStep 5: Add the cooked rice, increase the heat to medium high and cook for a couple minutes more, stirring often.\n\nStep 6: Add the peas, salmon, and green onions. (Be gentle with the salmon so you don't break it up too much.) Stir in the soy sauce mixture and remove from heat.\n\nStep 7: Garnish with cilantro to serve, serve immediately.",
+          "calories": 444,
+          "protein": 26,
+          "carbs": 57,
+          "fat": 12,
+          "fiber": 4,
+          "sugar": 6,
+          "sodium": 838,
+          "imageUrl": "https://img.spoonacular.com/recipes/667701-312x231.jpg",
+          "readyInMinutes": 25,
+          "servings": 4,
+          "similarity": 0.6803721654998344,
+          "matchScore": 0.6751282949701759
+        },
+        {
+          "id": "spoonacular_469862",
+          "label": "The \"Even my picky bf will eat it\" Salad",
+          "cuisine": "world",
+          "ingredients": [
+            "1 ripe avocado",
+            "1 bell pepper",
+            "30 grams cashews",
+            "1/4 cup cilantro",
+            "2 garlic cloves",
+            "1 tablespoon lime juice",
+            "3 tablespoons olive oil",
+            "2-3 romaine lettuce hearts",
+            "salt and pepper",
+            "200 grams shrimp",
+            "3 dashes green Tabasco sauce",
+            "tortilla chips",
+            "water"
+          ],
+          "instructions": "Step 1: Wash and cut romaine lettuce and divide between two bowls.\n\nStep 2: Chop bell pepper and spread evenly between the two salads.\n\nStep 3: Make the dressing by blending the ripe avocado with the lime juice, Tabasco, cilantro, 2 tablespoons olive oil, and water (start with 1/4 cup and add more until the desired consistency is reached. We kept it pretty thick.) Season with salt and pepper to taste.\n\nStep 4: Heat a skillet over medium heat.\n\nStep 5: Add the remaining tablespoon oil. Then add the minced garlic. Once the garlic is fragrant, add the shrimp.\n\nStep 6: Once the shrimp is cooked through, add it to the salads. Divide the dressing between the two salads too.\n\nStep 7: Sprinkle cashews on top if desired.\n\nStep 8: Serve with tortilla chips.",
+          "calories": 674,
+          "protein": 28,
+          "carbs": 38,
+          "fat": 49,
+          "fiber": 11,
+          "sugar": 5,
+          "sodium": 436,
+          "imageUrl": "https://img.spoonacular.com/recipes/469862-312x231.jpg",
+          "readyInMinutes": 25,
+          "servings": 2,
+          "similarity": 0.6770716836728609,
+          "matchScore": 0.6463746426063527
+        },
+        {
+          "id": "spoonacular_648506",
+          "label": "Japanese Sushi",
+          "cuisine": "japanese",
+          "ingredients": [
+            "Cooked octopus",
+            "Cooked prawns",
+            "Raw tuna",
+            "Salmon",
+            "Salmon caviar",
+            "Japanese sticky rice",
+            "Lava seaweed",
+            "Wasabi",
+            "Asparagus",
+            "Shiitake mushrooms"
+          ],
+          "instructions": "Step 1: Pour cooked rice into a tray. Finely slice the salmon and the tuna.\n\nStep 2: Put the seaweed onto a sushi mat and press rice down onto it.\n\nStep 3: Slice the mushrooms and asparagus pieces and lay along the rice.\n\nStep 4: Add the wasabi.\n\nStep 5: Roll the sushi and cut into slices.\n\nStep 6: Serve with salmon caviar, wasabi and soy.\n\nStep 7: Recipe two: Squeeze the rice into balls and press the prawns, tuna or salmon into the top.",
+          "calories": 571,
+          "protein": 70,
+          "carbs": 38,
+          "fat": 13,
+          "fiber": 2,
+          "sugar": null,
+          "sodium": 458,
+          "imageUrl": "https://img.spoonacular.com/recipes/648506-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 1,
+          "similarity": 0.6851433978638684,
+          "matchScore": 0.6325609823632562
+        }
+      ],
+      "isExactMatch": true,
+      "geminiResponseText": "1. salmon fried rice\n   444 calories per serving\n   26g protein\n   57g carbs\n   12g fat\n\n2. The \"Even my picky bf will eat it\" Salad\n   674 calories per serving\n   28g protein\n   38g carbs\n   49g fat\n\n3. Japanese Sushi\n   571 calories per serving\n   70g protein\n   38g carbs\n   13g fat",
+      "metrics": {
+        "hallucination": 1,
+        "calorieAccuracy": 0.8586711711711711,
+        "macroAlignment": 0.5122629637489818,
+        "restrictionCompliance": 0.6666666666666666,
+        "preferenceAdherence": 0.3333333333333333,
+        "specificity": 1
+      },
+      "error": null
+    },
+    "noRag": {
+      "recipes": [
+        {
+          "id": null,
+          "label": "Lemon Herb Salmon & Quinoa Bowl",
+          "calories": 510,
+          "protein": 26,
+          "carbs": 65,
+          "fat": 17,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        },
+        {
+          "id": null,
+          "label": "Mediterranean Chickpea & Quinoa Salad",
+          "calories": 520,
+          "protein": 24,
+          "carbs": 68,
+          "fat": 17,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        },
+        {
+          "id": null,
+          "label": "Avocado & Black Bean Sweet Potato Bowl",
+          "calories": 500,
+          "protein": null,
+          "carbs": null,
+          "fat": null,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        }
+      ],
+      "geminiResponseText": "Lemon Herb Salmon & Quinoa Bowl | 510 calories | 26g protein | 65g carbs | 17g fat\nMediterranean Chickpea & Quinoa Salad | 520 calories | 24g protein | 68g carbs | 17g fat\nAvocado & Black Bean Sweet Potato Bowl | 500 calories |",
+      "metrics": {
+        "hallucination": 0,
+        "calorieAccuracy": 0.8614864864864865,
+        "macroAlignment": 0.6436965811965812,
+        "restrictionCompliance": 1,
+        "preferenceAdherence": 0.4444444444444444,
+        "specificity": 1
+      },
+      "error": null
+    }
+  }
+]
