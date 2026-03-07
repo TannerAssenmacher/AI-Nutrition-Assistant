@@ -30,11 +30,16 @@ class NavItem extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Padding(padding: EdgeInsets.all(MediaQuery.of(context).size.height * 0.005)),
+              Padding(
+                padding: EdgeInsets.all(
+                  MediaQuery.of(context).size.height * 0.005,
+                ),
+              ),
               Icon(
                 icon,
-                color: isActive ? AppColors.navIconActive : AppColors.navIconInactive,
+                color: isActive ? AppColors.surface : AppColors.background,
                 size: MediaQuery.of(context).size.height * 0.05,
+                weight: isActive ? 700 : 400,
               ),
               const SizedBox(height: 4),
             ],

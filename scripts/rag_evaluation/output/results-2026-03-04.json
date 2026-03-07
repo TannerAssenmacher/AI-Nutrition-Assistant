@@ -1,0 +1,223 @@
+[
+  {
+    "scenario": {
+      "id": "isabelle-snack",
+      "description": "Isabelle's snack — tiny vegan + gluten-free snack ~190 cal",
+      "profile": {
+        "id": "isabelle",
+        "label": "Isabelle — 26F, Vegan + Gluten-Free, Maintain Weight",
+        "sex": "female",
+        "age": 26,
+        "height": 66,
+        "weight": 135,
+        "activityLevel": "Moderately Active",
+        "dietaryGoal": "Maintain Weight",
+        "dailyCalorieGoal": 1900,
+        "macroGoals": {
+          "protein": 20,
+          "carbs": 55,
+          "fat": 25
+        },
+        "healthRestrictions": [
+          "vegan",
+          "gluten-free"
+        ],
+        "dietaryHabits": [
+          "vegan",
+          "gluten-free"
+        ],
+        "likes": [
+          "chickpeas",
+          "rice",
+          "spinach"
+        ],
+        "dislikes": [
+          "mushrooms",
+          "olives"
+        ]
+      },
+      "ragParams": {
+        "mealType": "snack",
+        "cuisineType": "none",
+        "limit": 3,
+        "healthRestrictions": [
+          "vegan",
+          "gluten-free"
+        ],
+        "dietaryGoal": "Maintain Weight",
+        "dailyCalorieGoal": 1900,
+        "consumedCalories": 440,
+        "consumedMealTypes": [
+          "breakfast"
+        ],
+        "macroGoals": {
+          "protein": 20,
+          "carbs": 55,
+          "fat": 25
+        },
+        "dislikes": [
+          "mushrooms",
+          "olives"
+        ],
+        "likes": [
+          "chickpeas",
+          "rice",
+          "spinach"
+        ],
+        "activityLevel": "Moderately Active",
+        "sex": "female",
+        "age": 26,
+        "height": 66,
+        "weight": 135
+      }
+    },
+    "calorieTarget": 195,
+    "rag": {
+      "recipes": [
+        {
+          "id": "spoonacular_639433",
+          "label": "Cinnamon & Sugar Roasted Chickpeas",
+          "cuisine": "world",
+          "ingredients": [
+            "1 15-ounce can of chickpeas or garbanzo beans",
+            "2 tsp olive oil",
+            "1 1/2 Tbs maple syrup",
+            "1 tsp cinnamon",
+            "1 1/2 Tbs pure cane sugar (or any other sugar), add more if necessary"
+          ],
+          "instructions": "Step 1: Preheat oven to 425 F. Line a baking sheet with parchment paper or a silicone mat.\n\nStep 2: Drain and rinse the chickpeas.\n\nStep 3: Place the chickpeas between two sheets of paper towels and rub them gently to absorb the excess water. Pick out any loosened skin from the chickpeas. Dont worry if you cant get all of them out.\n\nStep 4: Pour the dried chickpeas into a small bowl and mix in the olive oil, maple syrup, and cinnamon until well incorporated.\n\nStep 5: Place the chickpeas on the baking sheet and bake for 15 minutes.\n\nStep 6: After 15 minutes, give the chickpeas a quick stir. Continue baking the chickpeas at 3-4 minute increments. When they are browned and look quite dried, take them out of the oven. The longer you leave them in the oven, the crunchier they will be, but be careful not to burn the chickpeas!\n\nStep 7: Let them cool for a few minutes and sprinkle the sugar on the roasted chickpeas. Enjoy!",
+          "calories": 153,
+          "protein": 5,
+          "carbs": 24,
+          "fat": 4,
+          "fiber": 5,
+          "sugar": 9,
+          "sodium": 296,
+          "imageUrl": "https://img.spoonacular.com/recipes/639433-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 4,
+          "similarity": 0.6359803429244558,
+          "matchScore": 0.652717357235298
+        },
+        {
+          "id": "spoonacular_637426",
+          "label": "Channa-Chickpea, Potato & Cauliflower Curry",
+          "cuisine": "indian",
+          "ingredients": [
+            "2 tablespoons sunflower oil",
+            "1 onion-sliced thinly",
+            "3 cloves garlic-minced",
+            "3 tablespoons fresh ginger-minced",
+            "1 teaspoon tumeric",
+            "1 tablespoon ground cumin",
+            "1 teaspoon fenugreek- toasted and crushed",
+            "1 teaspoon cumin seeds- toasted and crushed",
+            "1 tablespoon curry powder",
+            "2 teaspoons paprika",
+            "2 potatoes-peeled and chopped",
+            "water-to cover",
+            "1 can of chickpeas-drained and rinsed",
+            "head of cauliflower-cut into florets",
+            "sea salt",
+            "2 teaspoons apple cider vinegar",
+            "2 teaspoons sugar"
+          ],
+          "instructions": "Step 1: In a large pot heat oil.\n\nStep 2: Add onions saute until very soft.\n\nStep 3: Add garlic and ginger, saute for 3-4 minutes.\n\nStep 4: Add spices, saute with potatoes until they are covered with the spice mixture.\n\nStep 5: Add water to cover.\n\nStep 6: Simmer until potatoes are soft.\n\nStep 7: Add chickpeas, and cauliflower.\n\nStep 8: Simmer with lid on for 20 minutes,stirring occasionally.\n\nStep 9: Season with salt,sugar and vinegar.\n\nStep 10: Serve with brown rice",
+          "calories": 144,
+          "protein": 5,
+          "carbs": 21,
+          "fat": 5,
+          "fiber": 5,
+          "sugar": 2,
+          "sodium": 370,
+          "imageUrl": "https://img.spoonacular.com/recipes/637426-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 8,
+          "similarity": 0.6719747612473759,
+          "matchScore": 0.6133370772643387
+        },
+        {
+          "id": "spoonacular_638496",
+          "label": "Chickpea and Pumpkin Curry",
+          "cuisine": "indian",
+          "ingredients": [
+            "20 bay leaves",
+            "1 chunky cut carrot",
+            "420g chickpeas drained",
+            "1 chili finely sliced",
+            "140ml coconut milk (powdered coconut milk is really useful and is what I used)",
+            "2 tbsp coriander powder",
+            "1 tsp curry powder",
+            "1 piece fresh ginger finely chopped",
+            "4 cloves garlic thinly sliced",
+            "2 tbsp oil",
+            "1 onion finely sliced",
+            "1 kg pumpkin cut into small chunks",
+            "1 tsp turmeric",
+            "3 cups of water (750ml)"
+          ],
+          "instructions": "Step 1: Heat 1 tbsp oil and cook the onions until browned.\n\nStep 2: Add the curry paste (prepared with 1 tbsp oil, 1 tsp curry powder, 1 4 cm piece fresh ginger, 2 tbsp ground coriander, 4 cloves garlic, 1 chilli, and 1 tsp turmeric) and lightly fry for a minute or two.\n\nStep 3: Add the pumpkin and carrot chunks and coat in the paste.Cover with the water, add bay leaves, and bring to a boil. Reduce the heat and simmer for 10 minutes.Stir in the chickpeas and coconut milk.Cook for a further 10 minutes on a low heat or until the pumpkin in soft.Make sure to pull the bay leaves out.",
+          "calories": 270,
+          "protein": 9,
+          "carbs": 36,
+          "fat": 12,
+          "fiber": 8,
+          "sugar": 10,
+          "sodium": 26,
+          "imageUrl": "https://img.spoonacular.com/recipes/638496-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 6,
+          "similarity": 0.6806496129784915,
+          "matchScore": 0.5750948758277639
+        }
+      ],
+      "isExactMatch": true,
+      "geminiResponseText": "1. Cinnamon & Sugar Roasted Chickpeas\n   153 calories per serving\n   5g protein\n   24g carbs\n   4g fat\n\n2. Channa-Chickpea, Potato & Cauliflower Curry\n   144 calories per serving\n   5g protein\n   21g carbs\n   5g fat\n\n3. Chickpea and Pumpkin Curry\n   270 calories per serving\n   9g protein\n   36g carbs\n   12g fat",
+      "metrics": {
+        "hallucination": 1,
+        "calorieAccuracy": 0.7128205128205128,
+        "macroAlignment": 0.7997412854030501,
+        "restrictionCompliance": 1,
+        "preferenceAdherence": 0.3333333333333333,
+        "specificity": 1
+      },
+      "error": null
+    },
+    "noRag": {
+      "recipes": [
+        {
+          "id": null,
+          "label": "Spiced Chickpea & Spinach Rice Cakes",
+          "calories": 357,
+          "protein": 14,
+          "carbs": 51,
+          "fat": 10,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        },
+        {
+          "id": null,
+          "label": "Mini Spinach & Edamame Rice Bowl",
+          "calories": 363,
+          "protein": 15,
+          "carbs": 49,
+          "fat": 12,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        }
+      ],
+      "geminiResponseText": "Spiced Chickpea & Spinach Rice Cakes | 357 calories | 14g protein | 51g carbs | 10g fat\nMini Spinach & Edamame Rice Bowl | 363 calories | 15g protein | 49g carbs | 12g fat\nApple Slices with Almond Butter & Hemp Seeds | 38",
+      "metrics": {
+        "hallucination": 0,
+        "calorieAccuracy": 0.1538461538461538,
+        "macroAlignment": 0.9090602356645139,
+        "restrictionCompliance": 1,
+        "preferenceAdherence": 0.6666666666666666,
+        "specificity": 1
+      },
+      "error": null
+    }
+  }
+]

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:nutrition_assistant/widgets/top_bar.dart';
 import '../theme/app_colors.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
@@ -65,7 +64,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     final mediaQuery = MediaQuery.of(context);
     final screenHeight = mediaQuery.size.height;
     final screenWidth = mediaQuery.size.width;
-    
+
     //dynamic sizing for text that handles accessibility scaling
     final linkFontSize = (screenHeight * 0.022).clamp(16.0, 22.0).toDouble();
 
@@ -73,9 +72,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          const top_bar(),
-          
-          // Back Arrow: Placed brown and under the bar as requested
+          // Back Arrow
           Align(
             alignment: Alignment.centerLeft,
             child: Padding(
@@ -83,7 +80,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               child: IconButton(
                 icon: const Icon(
                   Icons.arrow_back_ios_new,
-                  color: AppColors.accentBrown,
+                  color: AppColors.textPrimary,
                   size: 24,
                 ),
                 onPressed: () => Navigator.pushNamed(context, '/login'),
@@ -95,7 +92,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             child: Center(
               child: SingleChildScrollView(
                 // Prevents the keyboard from covering the email field
-                padding: EdgeInsets.only(bottom: mediaQuery.viewInsets.bottom + 20),
+                padding: EdgeInsets.only(
+                  bottom: mediaQuery.viewInsets.bottom + 20,
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -103,9 +102,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     Icon(
                       Icons.lock_person_outlined,
                       size: (screenWidth * 0.28).clamp(80, 140),
-                      color: AppColors.accentBrown,
+                      color: AppColors.brand,
                     ),
-                    
+
                     SizedBox(height: screenHeight * 0.04),
 
                     // The White Card
@@ -116,14 +115,14 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                         constraints: const BoxConstraints(maxWidth: 500),
                         padding: const EdgeInsets.all(32),
                         decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(40),
+                          color: AppColors.surface.withOpacity(0.95),
+                          borderRadius: BorderRadius.circular(25),
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.accentBrown.withOpacity(0.12),
+                              color: AppColors.black.withOpacity(0.08),
                               spreadRadius: 2,
-                              blurRadius: 25,
-                              offset: const Offset(0, 10),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
                             ),
                           ],
                         ),
@@ -140,7 +139,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                                 style: TextStyle(
                                   fontSize: (screenWidth * 0.06).clamp(20, 28),
                                   fontWeight: FontWeight.bold,
-                                  color: AppColors.accentBrown,
+                                  color: AppColors.textPrimary,
                                 ),
                               ),
                               const SizedBox(height: 12),
@@ -149,8 +148,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 16,
-                                  height: 1.3, // Tight line height for better scaling
-                                  color: AppColors.accentBrown.withOpacity(0.9),
+                                  height:
+                                      1.3, // Tight line height for better scaling
+                                  color: AppColors.textSecondary,
                                 ),
                               ),
                               const SizedBox(height: 24),
@@ -159,7 +159,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                                 keyboardType: TextInputType.emailAddress,
                                 decoration: InputDecoration(
                                   hintText: 'Email address',
-                                  prefixIcon: const Icon(Icons.email_outlined, color: AppColors.textHint),
+                                  prefixIcon: const Icon(
+                                    Icons.email_outlined,
+                                    color: AppColors.textHint,
+                                  ),
                                   filled: true,
                                   fillColor: AppColors.inputFill,
                                   border: OutlineInputBorder(
@@ -168,7 +171,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                                   ),
                                   contentPadding: const EdgeInsets.all(16),
                                 ),
-                                validator: (value) => (value == null || value.isEmpty) ? 'Required' : null,
+                                validator: (value) =>
+                                    (value == null || value.isEmpty)
+                                    ? 'Required'
+                                    : null,
                                 onTap: _clearErrorOnType,
                               ),
                               if (_error != null)
@@ -177,12 +183,17 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                                   child: Text(
                                     _error!,
                                     textAlign: TextAlign.center,
-                                    style: const TextStyle(color: AppColors.error, fontSize: 13),
+                                    style: const TextStyle(
+                                      color: AppColors.error,
+                                      fontSize: 13,
+                                    ),
                                   ),
                                 ),
                               const SizedBox(height: 24),
                               _isLoading
-                                  ? const CircularProgressIndicator(color: AppColors.brand)
+                                  ? const CircularProgressIndicator(
+                                      color: AppColors.brand,
+                                    )
                                   : ElevatedButton(
                                       onPressed: _resetPassword,
                                       style: ElevatedButton.styleFrom(
@@ -190,15 +201,20 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                                         foregroundColor: Colors.white,
                                         elevation: 0,
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(15),
+                                          borderRadius: BorderRadius.circular(
+                                            15,
+                                          ),
                                         ),
-                                        minimumSize: const Size(double.infinity, 54),
+                                        minimumSize: const Size(
+                                          double.infinity,
+                                          54,
+                                        ),
                                       ),
                                       child: Text(
                                         'Send Reset Link',
                                         style: TextStyle(
-                                          fontWeight: FontWeight.bold, 
-                                          fontSize: linkFontSize
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: linkFontSize,
                                         ),
                                       ),
                                     ),
@@ -207,9 +223,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                         ),
                       ),
                     ),
-                    
+
                     // This flexible spacer pushes the card higher up
-                    const SizedBox(height: 140), 
+                    const SizedBox(height: 140),
                   ],
                 ),
               ),

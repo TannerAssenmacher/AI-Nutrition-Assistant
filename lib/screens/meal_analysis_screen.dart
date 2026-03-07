@@ -19,6 +19,32 @@ import '../providers/firestore_providers.dart';
 import '../theme/app_colors.dart';
 import 'camera_capture_screen.dart';
 
+const double _kAnalysisCardRadius = 25;
+const double _kAnalysisCardOpacity = 0.95;
+
+InputDecoration _analysisInputDecoration(
+  String label, {
+  String? hintText,
+  Widget? suffixIcon,
+}) {
+  final border = OutlineInputBorder(
+    borderRadius: BorderRadius.circular(12),
+    borderSide: const BorderSide(color: AppColors.black),
+  );
+
+  return InputDecoration(
+    labelText: label,
+    hintText: hintText,
+    suffixIcon: suffixIcon,
+    filled: true,
+    fillColor: AppColors.inputFill,
+    enabledBorder: border,
+    focusedBorder: border.copyWith(
+      borderSide: const BorderSide(color: AppColors.black, width: 1.4),
+    ),
+  );
+}
+
 final mealProfileGoalSnapshotProvider =
     StreamProvider.family<Map<String, double>?, String>((ref, userId) {
       return FirebaseFirestore.instance
@@ -562,12 +588,18 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     await showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface.withValues(
+          alpha: _kAnalysisCardOpacity,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(_kAnalysisCardRadius),
+        ),
         title: const Text('Edit item name'),
         content: TextField(
           controller: controller,
           autofocus: true,
           textInputAction: TextInputAction.done,
-          decoration: const InputDecoration(labelText: 'Name'),
+          decoration: _analysisInputDecoration('Name'),
           onSubmitted: (_) {
             _updateItemName(index, controller.text);
             Navigator.of(context).pop();
@@ -579,6 +611,10 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.brand,
+              foregroundColor: AppColors.surface,
+            ),
             onPressed: () {
               _updateItemName(index, controller.text);
               Navigator.of(context).pop();
@@ -600,6 +636,12 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     await showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface.withValues(
+          alpha: _kAnalysisCardOpacity,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(_kAnalysisCardRadius),
+        ),
         title: const Text('Edit weight (grams)'),
         content: TextField(
           controller: controller,
@@ -609,8 +651,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
             signed: false,
           ),
           textInputAction: TextInputAction.done,
-          decoration: const InputDecoration(
-            labelText: 'Weight in grams',
+          decoration: _analysisInputDecoration(
+            'Weight in grams',
             hintText: 'e.g. 150',
           ),
           onSubmitted: (_) {
@@ -627,6 +669,10 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.brand,
+              foregroundColor: AppColors.surface,
+            ),
             onPressed: () {
               final parsed = double.tryParse(controller.text.trim());
               if (parsed != null) {
@@ -673,15 +719,17 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
         }
       }
 
-      return MealAnalysisResultWidget(
-        key: const ValueKey('analysis_result'),
-        analysis: _analysisResult!,
-        goalSnapshot: goalSnapshot,
-        onCapture: _captureAndAnalyze,
-        onEditName: _promptEditName,
-        onEditWeight: _promptEditWeight,
-        onAddToCalendar: _addMealToCalendar,
-        isSavingToCalendar: _isSaving,
+      return SizedBox.expand(
+        child: MealAnalysisResultWidget(
+          key: const ValueKey('analysis_result'),
+          analysis: _analysisResult!,
+          goalSnapshot: goalSnapshot,
+          onCapture: _captureAndAnalyze,
+          onEditName: _promptEditName,
+          onEditWeight: _promptEditWeight,
+          onAddToCalendar: _addMealToCalendar,
+          isSavingToCalendar: _isSaving,
+        ),
       );
     }
 
@@ -721,22 +769,21 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   }
 
   Widget _buildCameraContent(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            if (_errorMessage != null) ...[
-              _ErrorBanner(message: _errorMessage!),
-              const SizedBox(height: 12),
+    return Container(
+      color: AppColors.background,
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.max,
+            children: [
+              if (_errorMessage != null) ...[
+                _ErrorBanner(message: _errorMessage!),
+                const SizedBox(height: 12),
+              ],
+              Expanded(child: _buildBody()),
             ],
-            Expanded(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 200),
-                child: _buildBody(),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -1024,6 +1071,12 @@ class _BarcodeFoodDialogState extends State<_BarcodeFoodDialog> {
       children: [
         Center(
           child: AlertDialog(
+            backgroundColor: AppColors.surface.withValues(
+              alpha: _kAnalysisCardOpacity,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(_kAnalysisCardRadius),
+            ),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -1052,7 +1105,7 @@ class _BarcodeFoodDialogState extends State<_BarcodeFoodDialog> {
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     initialValue: _mealType,
-                    decoration: const InputDecoration(labelText: 'Meal type'),
+                    decoration: _analysisInputDecoration('Meal type'),
                     items: const [
                       DropdownMenuItem(
                         value: 'breakfast',
@@ -1076,9 +1129,7 @@ class _BarcodeFoodDialogState extends State<_BarcodeFoodDialog> {
                     DropdownButtonFormField<FoodServingOption>(
                       initialValue: _selectedServing,
                       isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Serving size',
-                      ),
+                      decoration: _analysisInputDecoration('Serving size'),
                       selectedItemBuilder: (context) => _availableServings
                           .map(
                             (option) => Align(
@@ -1134,6 +1185,19 @@ class _BarcodeFoodDialogState extends State<_BarcodeFoodDialog> {
                         icon: const Icon(Icons.check),
                         onPressed: _dismissKeyboard,
                       ),
+                      filled: true,
+                      fillColor: AppColors.inputFill,
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.black),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: AppColors.black,
+                          width: 1.4,
+                        ),
+                      ),
                     ),
                     onChanged: (_) {
                       setState(() {});
@@ -1176,6 +1240,10 @@ class _BarcodeFoodDialogState extends State<_BarcodeFoodDialog> {
                 child: const Text('Cancel'),
               ),
               FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.brand,
+                  foregroundColor: AppColors.surface,
+                ),
                 onPressed: _isSaving ? null : _handleAdd,
                 child: _isSaving
                     ? const SizedBox(
@@ -1296,6 +1364,10 @@ class _IdleState extends StatelessWidget {
           Text('No photo captured yet', style: textTheme.titleMedium),
           const SizedBox(height: 8),
           OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.brand,
+              side: const BorderSide(color: AppColors.black),
+            ),
             onPressed: onCapture,
             icon: const Icon(Icons.camera_alt),
             label: const Text('Capture meal'),
@@ -1325,39 +1397,44 @@ class _EditableChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: AppColors.surfaceVariant,
+          color: AppColors.brand,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.borderLight),
+          border: Border.all(color: AppColors.brand),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               label,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 12,
-                color: AppColors.textSecondary,
+                color: AppColors.surface,
                 fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(width: 8),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.borderLight),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 4),
-                const Icon(
-                  Icons.edit,
-                  size: 14,
-                  color: AppColors.textSecondary,
-                ),
-              ],
+                  const SizedBox(width: 6),
+                  const Icon(Icons.edit, size: 14, color: AppColors.brand),
+                ],
+              ),
             ),
           ],
         ),
@@ -1426,8 +1503,6 @@ class MealAnalysisResultWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final topInset = MediaQuery.of(context).padding.top;
-
     // Calculate what percentage of the user's daily goals this meal represents
     final dailyGoals = _dailyGoalsInGrams();
 
@@ -1448,197 +1523,208 @@ class MealAnalysisResultWidget extends StatelessWidget {
       }
     }
 
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(height: topInset + 8),
-          Card(
-            color: Theme.of(context).colorScheme.primaryContainer,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Totals',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _TotalCard(
-                          label: 'Total Calories',
-                          value: analysis.totalCalories.toStringAsFixed(0),
-                          unit: 'Cal',
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _TotalCard(
-                          label: 'Total Weight',
-                          value: analysis.totalMass.toStringAsFixed(0),
-                          unit: 'g',
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Macronutrient Breakdown',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 12),
-                  _MacroBar(
-                    label: 'Protein',
-                    grams: analysis.totalProtein,
-                    percentage: proteinPercent,
-                    color: AppColors.protein,
-                  ),
-                  const SizedBox(height: 8),
-                  _MacroBar(
-                    label: 'Carbs',
-                    grams: analysis.totalCarbs,
-                    percentage: carbsPercent,
-                    color: AppColors.carbs,
-                  ),
-                  const SizedBox(height: 8),
-                  _MacroBar(
-                    label: 'Fat',
-                    grams: analysis.totalFat,
-                    percentage: fatPercent,
-                    color: AppColors.fat,
-                  ),
-                ],
-              ),
-            ),
+    return ListView(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      children: [
+        Card(
+          margin: const EdgeInsets.symmetric(horizontal: 0),
+          color: AppColors.surface.withValues(alpha: _kAnalysisCardOpacity),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(_kAnalysisCardRadius),
           ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              FilledButton.icon(
-                onPressed: isSavingToCalendar ? null : onAddToCalendar,
-                icon: isSavingToCalendar
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.calendar_month),
-                label: Text(
-                  isSavingToCalendar ? 'Adding...' : 'Add to today\'s calendar',
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Totals',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ...analysis.foods.asMap().entries.map((entry) {
-                    final idx = entry.key;
-                    final food = entry.value;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  '${idx + 1}. ${food.name}',
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.edit, size: 18),
-                                tooltip: 'Edit name',
-                                onPressed: () => onEditName(idx),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Align(
-                            alignment: Alignment.center,
-                            child: _EditableChip(
-                              label: 'Weight',
-                              value: '${food.mass.toStringAsFixed(0)} g',
-                              onTap: () => onEditWeight(idx),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _NutrientChip(
-                                  label: 'Calories',
-                                  value:
-                                      '${food.calories.toStringAsFixed(0)} Cal',
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: _NutrientChip(
-                                  label: 'Protein',
-                                  value: '${food.protein.toStringAsFixed(1)} g',
-                                  color: AppColors.protein.withValues(
-                                    alpha: 0.1,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: _NutrientChip(
-                                  label: 'Carbs',
-                                  value: '${food.carbs.toStringAsFixed(1)} g',
-                                  color: AppColors.carbs.withValues(alpha: 0.1),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: _NutrientChip(
-                                  label: 'Fat',
-                                  value: '${food.fat.toStringAsFixed(1)} g',
-                                  color: AppColors.fat.withValues(alpha: 0.1),
-                                ),
-                              ),
-                            ],
-                          ),
-                          if (idx < analysis.foods.length - 1)
-                            const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 12),
-                              child: Divider(),
-                            ),
-                        ],
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _TotalCard(
+                        label: 'Total Calories',
+                        value: analysis.totalCalories.toStringAsFixed(0),
+                        unit: 'Cal',
                       ),
-                    );
-                  }),
-                ],
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _TotalCard(
+                        label: 'Total Weight',
+                        value: analysis.totalMass.toStringAsFixed(0),
+                        unit: 'g',
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Macronutrient Breakdown',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 12),
+                _MacroBar(
+                  label: 'Protein',
+                  grams: analysis.totalProtein,
+                  percentage: proteinPercent,
+                  color: AppColors.protein,
+                ),
+                const SizedBox(height: 8),
+                _MacroBar(
+                  label: 'Carbs',
+                  grams: analysis.totalCarbs,
+                  percentage: carbsPercent,
+                  color: AppColors.carbs,
+                ),
+                const SizedBox(height: 8),
+                _MacroBar(
+                  label: 'Fat',
+                  grams: analysis.totalFat,
+                  percentage: fatPercent,
+                  color: AppColors.fat,
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.brand,
+                foregroundColor: AppColors.surface,
+              ),
+              onPressed: isSavingToCalendar ? null : onAddToCalendar,
+              icon: isSavingToCalendar
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.calendar_month),
+              label: Text(
+                isSavingToCalendar ? 'Adding...' : 'Add to today\'s calendar',
               ),
             ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Card(
+          color: AppColors.surface.withValues(alpha: _kAnalysisCardOpacity),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(_kAnalysisCardRadius),
           ),
-          const SizedBox(height: 16),
-          Align(
-            alignment: Alignment.center,
-            child: FilledButton.icon(
-              onPressed: onCapture,
-              icon: const Icon(Icons.camera_alt),
-              label: const Text('Capture another meal'),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ...analysis.foods.asMap().entries.map((entry) {
+                  final idx = entry.key;
+                  final food = entry.value;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                '${idx + 1}. ${food.name}',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.edit, size: 18),
+                              tooltip: 'Edit name',
+                              onPressed: () => onEditName(idx),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Align(
+                          alignment: Alignment.center,
+                          child: _EditableChip(
+                            label: 'Weight',
+                            value: '${food.mass.toStringAsFixed(0)} g',
+                            onTap: () => onEditWeight(idx),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _NutrientChip(
+                                label: 'Calories',
+                                value:
+                                    '${food.calories.toStringAsFixed(0)} Cal',
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _NutrientChip(
+                                label: 'Protein',
+                                value: '${food.protein.toStringAsFixed(1)} g',
+                                color: AppColors.protein.withValues(alpha: 0.1),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _NutrientChip(
+                                label: 'Carbs',
+                                value: '${food.carbs.toStringAsFixed(1)} g',
+                                color: AppColors.carbs.withValues(alpha: 0.1),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _NutrientChip(
+                                label: 'Fat',
+                                value: '${food.fat.toStringAsFixed(1)} g',
+                                color: AppColors.fat.withValues(alpha: 0.1),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (idx < analysis.foods.length - 1)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                            child: Divider(),
+                          ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
             ),
           ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 16),
+        Align(
+          alignment: Alignment.center,
+          child: FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.brand,
+              foregroundColor: AppColors.surface,
+            ),
+            onPressed: onCapture,
+            icon: const Icon(Icons.camera_alt),
+            label: const Text('Capture another meal'),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1652,18 +1738,23 @@ class _NutrientChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isCalories = label.toLowerCase() == 'calories';
+    final chipColor = isCalories
+        ? AppColors.brand
+        : (color ?? AppColors.surfaceVariant);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: color ?? AppColors.surfaceVariant,
-        borderRadius: BorderRadius.circular(8),
+        color: chipColor.withValues(alpha: _kAnalysisCardOpacity),
+        borderRadius: BorderRadius.circular(_kAnalysisCardRadius),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
-            style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+            style: const TextStyle(fontSize: 11, color: AppColors.surface),
           ),
           const SizedBox(height: 2),
           FittedBox(
@@ -1674,7 +1765,11 @@ class _NutrientChip extends StatelessWidget {
               maxLines: 1,
               softWrap: false,
               overflow: TextOverflow.visible,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.surface,
+              ),
             ),
           ),
         ],
@@ -1699,14 +1794,14 @@ class _TotalCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.brand.withValues(alpha: _kAnalysisCardOpacity),
+        borderRadius: BorderRadius.circular(_kAnalysisCardRadius),
       ),
       child: Column(
         children: [
           Text(
             label,
-            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            style: const TextStyle(fontSize: 12, color: AppColors.surface),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
@@ -1719,6 +1814,7 @@ class _TotalCard extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
+                  color: AppColors.surface,
                 ),
               ),
               const SizedBox(width: 4),
@@ -1726,7 +1822,10 @@ class _TotalCard extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 3),
                 child: Text(
                   unit,
-                  style: TextStyle(fontSize: 14, color: AppColors.textHint),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AppColors.surface,
+                  ),
                 ),
               ),
             ],
@@ -1752,33 +1851,48 @@ class _MacroBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-            ),
-            Text(
-              '${grams.toStringAsFixed(1)}g (${percentage.toStringAsFixed(1)}%)',
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: LinearProgressIndicator(
-            value: (percentage / 100).clamp(0.0, 1.0),
-            backgroundColor: AppColors.progressTrack,
-            valueColor: AlwaysStoppedAnimation<Color>(color),
-            minHeight: 8,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.surface,
+                ),
+              ),
+              Text(
+                '${grams.toStringAsFixed(1)}g (${percentage.toStringAsFixed(1)}%)',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.surface,
+                ),
+              ),
+            ],
           ),
-        ),
-      ],
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: (percentage / 100).clamp(0.0, 1.0),
+              backgroundColor: AppColors.surface.withValues(alpha: 0.35),
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.surface),
+              minHeight: 8,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

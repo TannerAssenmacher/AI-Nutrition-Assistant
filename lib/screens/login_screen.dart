@@ -1,7 +1,6 @@
 import 'package:nutrition_assistant/widgets/fatsecret_attribution.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:nutrition_assistant/widgets/top_bar.dart';
 import '../theme/app_colors.dart';
 
 class LoginPage extends StatefulWidget {
@@ -73,7 +72,8 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _login() async {
     setState(() {
-      _showValidationErrors = true; // start showing field errors when login button is pressed
+      _showValidationErrors =
+          true; // start showing field errors when login button is pressed
     });
 
     if (!_formKey.currentState!.validate()) return;
@@ -152,7 +152,9 @@ class _LoginPageState extends State<LoginPage> {
                 onPressed: () async {
                   await user.sendEmailVerification();
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Verification email sent again!')),
+                    const SnackBar(
+                      content: Text('Verification email sent again!'),
+                    ),
                   );
                 },
                 child: const Text('Resend Email'),
@@ -177,7 +179,9 @@ class _LoginPageState extends State<LoginPage> {
     final mediaQuery = MediaQuery.of(context);
     final screenHeight = mediaQuery.size.height;
     final logoHeight = (screenHeight * 0.15).clamp(90.0, 140.0).toDouble();
-    final cardHorizontalPadding = (mediaQuery.size.width * 0.1).clamp(20.0, 36.0).toDouble();
+    final cardHorizontalPadding = (mediaQuery.size.width * 0.1)
+        .clamp(20.0, 36.0)
+        .toDouble();
     final titleFontSize = (screenHeight * 0.03).clamp(24.0, 34.0).toDouble();
     final linkFontSize = (screenHeight * 0.022).clamp(16.0, 22.0).toDouble();
 
@@ -186,11 +190,11 @@ class _LoginPageState extends State<LoginPage> {
       resizeToAvoidBottomInset: false,
       body: Column(
         children: [
-          const top_bar(),
           Expanded(
             child: Center(
               child: SingleChildScrollView(
-                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: const EdgeInsets.symmetric(vertical: 20),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -201,9 +205,15 @@ class _LoginPageState extends State<LoginPage> {
                       child: Image.asset(
                         'lib/icons/WISERBITES.png',
                         fit: BoxFit.contain,
+                        color: AppColors.brand,
+                        colorBlendMode: BlendMode.srcIn,
                       ),
                     ),
-                    SizedBox(height: (screenHeight * 0.025).clamp(14.0, 24.0).toDouble()),
+                    SizedBox(
+                      height: (screenHeight * 0.025)
+                          .clamp(14.0, 24.0)
+                          .toDouble(),
+                    ),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: Container(
@@ -216,14 +226,14 @@ class _LoginPageState extends State<LoginPage> {
                           20,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(48),
+                          color: AppColors.surface.withOpacity(0.95),
+                          borderRadius: BorderRadius.circular(25),
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.statusNone.withValues(alpha: 0.5),
-                              spreadRadius: 4,
-                              blurRadius: 10,
-                              offset: const Offset(0, 3),
+                              color: AppColors.black.withOpacity(0.08),
+                              spreadRadius: 2,
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
                             ),
                           ],
                         ),
@@ -247,17 +257,38 @@ class _LoginPageState extends State<LoginPage> {
                                 keyboardType: TextInputType.emailAddress,
                                 decoration: InputDecoration(
                                   hintText: 'Email',
-                                  prefixIcon: Icon(Icons.email, color: AppColors.textHint),
-                                  hintStyle: TextStyle(color: AppColors.divider),
+                                  prefixIcon: Icon(
+                                    Icons.email,
+                                    color: AppColors.textHint,
+                                  ),
+                                  hintStyle: TextStyle(
+                                    color: AppColors.divider,
+                                  ),
                                   filled: true,
                                   fillColor: AppColors.inputFill,
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(16),
-                                    borderSide: BorderSide.none,
+                                    borderSide: const BorderSide(
+                                      color: AppColors.black,
+                                      width: 1.5,
+                                    ),
                                   ),
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: const BorderSide(
+                                      color: AppColors.black,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 10,
+                                  ),
                                 ),
-                                validator: (value) => (value == null || value.isEmpty) ? 'Please enter your email' : null,
+                                validator: (value) =>
+                                    (value == null || value.isEmpty)
+                                    ? 'Please enter your email'
+                                    : null,
                                 onTap: _clearErrorOnType,
                               ),
                               const SizedBox(height: 16),
@@ -268,50 +299,89 @@ class _LoginPageState extends State<LoginPage> {
                                 onFieldSubmitted: (_) => _login(),
                                 decoration: InputDecoration(
                                   hintText: 'Password',
-                                  prefixIcon: Icon(Icons.lock, color: AppColors.textHint),
-                                  hintStyle: TextStyle(color: AppColors.divider),
+                                  prefixIcon: Icon(
+                                    Icons.lock,
+                                    color: AppColors.textHint,
+                                  ),
+                                  hintStyle: TextStyle(
+                                    color: AppColors.divider,
+                                  ),
                                   filled: true,
                                   fillColor: AppColors.inputFill,
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(16),
-                                    borderSide: BorderSide.none,
+                                    borderSide: const BorderSide(
+                                      color: AppColors.black,
+                                      width: 1.5,
+                                    ),
                                   ),
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: const BorderSide(
+                                      color: AppColors.black,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 10,
+                                  ),
                                 ),
-                                validator: (value) => (value == null || value.isEmpty) ? 'Please enter your password' : null,
+                                validator: (value) =>
+                                    (value == null || value.isEmpty)
+                                    ? 'Please enter your password'
+                                    : null,
                               ),
                               if (_error != null) ...[
                                 const SizedBox(height: 12),
                                 Text(
                                   _error!,
                                   textAlign: TextAlign.center,
-                                  style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.w500),
+                                  style: const TextStyle(
+                                    color: AppColors.error,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ],
                               const SizedBox(height: 16),
                               _isLoading
-                                  ? const Center(child: CircularProgressIndicator())
+                                  ? const Center(
+                                      child: CircularProgressIndicator(),
+                                    )
                                   : ElevatedButton(
                                       onPressed: _login,
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: AppColors.brand,
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                        minimumSize: const Size(double.infinity, 52),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
+                                        minimumSize: const Size(
+                                          double.infinity,
+                                          52,
+                                        ),
                                       ),
                                       child: Text(
                                         'Sign In',
                                         style: TextStyle(
-                                          fontSize: (screenHeight * 0.024).clamp(18.0, 24.0).toDouble(),
+                                          fontSize: (screenHeight * 0.024)
+                                              .clamp(18.0, 24.0)
+                                              .toDouble(),
                                           color: AppColors.surface,
                                         ),
                                       ),
                                     ),
                               const SizedBox(height: 8),
                               TextButton(
-                                onPressed: () => Navigator.pushNamed(context, '/forgot'),
+                                onPressed: () =>
+                                    Navigator.pushNamed(context, '/forgot'),
                                 child: Text(
                                   'Forgot Password?',
-                                  style: TextStyle(fontSize: linkFontSize, color: AppColors.blueLink),
+                                  style: TextStyle(
+                                    fontSize: linkFontSize,
+                                    color: AppColors.blueLink,
+                                  ),
                                 ),
                               ),
                             ],
@@ -325,42 +395,43 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ),
 
-          Divider(
-            color: AppColors.accentBrown.withOpacity(0.15), 
-            thickness: 1, 
-            height: 1
-          ),
+          Divider(color: AppColors.borderLight, thickness: 1, height: 1),
           Container(
-            constraints: const BoxConstraints(minHeight: 100), 
+            constraints: const BoxConstraints(minHeight: 100),
             width: double.infinity,
             color: AppColors.background,
-            padding: const EdgeInsets.symmetric(vertical: 25, horizontal: 20),
+            padding: EdgeInsets.only(
+              top: 25,
+              bottom: 25 + mediaQuery.padding.bottom,
+              left: 20,
+              right: 20,
+            ),
             child: Wrap(
-              alignment: WrapAlignment.center, 
+              alignment: WrapAlignment.center,
               crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: 8, 
-              runSpacing: 8, 
+              spacing: 8,
+              runSpacing: 8,
               children: [
                 Text(
-                  "Don't have an account?", 
+                  "Don't have an account?",
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: linkFontSize, 
+                    fontSize: linkFontSize,
                     fontWeight: FontWeight.w500,
-                    color: AppColors.accentBrown
-                  )
+                    color: AppColors.accentBrown,
+                  ),
                 ),
                 GestureDetector(
                   onTap: () => Navigator.pushNamed(context, '/register'),
                   child: Text(
-                    "Sign Up.", 
+                    "Sign Up.",
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: linkFontSize, 
-                      fontWeight: FontWeight.bold, 
+                      fontSize: linkFontSize,
+                      fontWeight: FontWeight.bold,
                       color: AppColors.blueLink,
                       decorationColor: AppColors.blueLink,
-                    )
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),

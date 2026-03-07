@@ -10,7 +10,6 @@ import '../db/food.dart';
 import 'package:nutrition_assistant/navigation/nav_helper.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
 import 'package:nutrition_assistant/widgets/fatsecret_attribution.dart';
-import '../widgets/top_bar.dart';
 
 class FoodSearchScreen extends ConsumerStatefulWidget {
   final bool isInPageView;
@@ -213,9 +212,9 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
             final fat = (selectedServing.fatPerGram * currentGrams)
                 .toStringAsFixed(1);
 
-            final dialogWidth =
-                (MediaQuery.sizeOf(context).width - 48).clamp(280.0, 420.0)
-                    .toDouble();
+            final dialogWidth = (MediaQuery.sizeOf(context).width - 48)
+                .clamp(280.0, 420.0)
+                .toDouble();
 
             return AlertDialog(
               title: Text('Add ${result.name}'),
@@ -612,8 +611,28 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
       top: false,
       child: Column(
         children: [
-          // Header
-          top_bar(),
+          Container(
+            height: MediaQuery.of(context).padding.top,
+            color: AppColors.brand,
+          ),
+          Container(
+            decoration: const BoxDecoration(
+              color: AppColors.brand,
+              borderRadius: BorderRadius.vertical(bottom: Radius.circular(25)),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Align(
+              alignment: Alignment.center,
+              child: Text(
+                'Food Search',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.surface,
+                ),
+              ),
+            ),
+          ),
           // Search bar
           Padding(
             padding: const EdgeInsets.only(

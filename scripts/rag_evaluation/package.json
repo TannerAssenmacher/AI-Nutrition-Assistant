@@ -1,0 +1,13 @@
+{
+  "name": "rag-evaluation",
+  "version": "1.0.0",
+  "description": "RAG accuracy evaluation: compares searchRecipes pipeline vs. direct Gemini baseline",
+  "type": "module",
+  "scripts": {
+    "evaluate": "node evaluate.js",
+    "report-only": "node report.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

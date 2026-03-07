@@ -11,12 +11,12 @@ class NavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
-    final visualBottomSpacing = mediaQuery.size.height * 0.02;
+    final visualBottomSpacing = mediaQuery.size.height * 0.008;
     final bottomInset = mediaQuery.viewPadding.bottom + visualBottomSpacing;
     final barHeight = mediaQuery.size.height * 0.07;
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.navBar,
+        color: AppColors.brand,
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(32),
           topRight: Radius.circular(32),

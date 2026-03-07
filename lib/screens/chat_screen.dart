@@ -240,37 +240,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         resizeToAvoidBottomInset: true,
         backgroundColor: bgColor,
         appBar: AppBar(
-          backgroundColor: AppColors.surface.withValues(alpha: 0.8),
+          backgroundColor: AppColors.brand,
+          automaticallyImplyLeading: false,
           elevation: 0,
           centerTitle: true,
-          flexibleSpace: ClipRect(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Container(color: Colors.transparent),
-            ),
-          ),
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(bottom: Radius.circular(25)),
           ),
-          title: Column(
-            children: [
-              Text(
-                "NutriCoach",
-                style: TextStyle(
-                  color: brandColor,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
-              ),
-              const Text(
-                "AI NUTRITION ASSISTANT",
-                style: TextStyle(
-                  color: AppColors.statusNone,
-                  fontSize: 9,
-                  letterSpacing: 1.2,
-                ),
-              ),
-            ],
+          title: const Text(
+            "NutriCoach",
+            style: TextStyle(
+              color: AppColors.surface,
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+            ),
           ),
         ),
         body: GestureDetector(

@@ -1,0 +1,2194 @@
+[
+  {
+    "scenario": {
+      "id": "carol-dinner",
+      "description": "Carol's dinner — salmon/quinoa preference + restrictions",
+      "profile": {
+        "id": "carol",
+        "label": "Carol — 40F, Gluten-Free + Dairy-Free, Maintain",
+        "sex": "female",
+        "age": 40,
+        "height": 63,
+        "weight": 130,
+        "activityLevel": "Lightly Active",
+        "dietaryGoal": "Maintain Weight",
+        "dailyCalorieGoal": 1900,
+        "macroGoals": {
+          "protein": 20,
+          "carbs": 50,
+          "fat": 30
+        },
+        "healthRestrictions": [
+          "gluten-free",
+          "dairy-free"
+        ],
+        "dietaryHabits": [
+          "gluten-free"
+        ],
+        "likes": [
+          "salmon",
+          "quinoa",
+          "avocado"
+        ],
+        "dislikes": [
+          "shellfish",
+          "peanuts"
+        ]
+      },
+      "ragParams": {
+        "mealType": "dinner",
+        "cuisineType": "none",
+        "limit": 3,
+        "healthRestrictions": [
+          "gluten-free",
+          "dairy-free"
+        ],
+        "dietaryGoal": "Maintain Weight",
+        "dailyCalorieGoal": 1900,
+        "consumedCalories": 880,
+        "consumedMealTypes": [
+          "breakfast",
+          "lunch"
+        ],
+        "macroGoals": {
+          "protein": 20,
+          "carbs": 50,
+          "fat": 30
+        },
+        "dislikes": [
+          "shellfish",
+          "peanuts"
+        ],
+        "likes": [
+          "salmon",
+          "quinoa",
+          "avocado"
+        ],
+        "activityLevel": "Lightly Active",
+        "sex": "female",
+        "age": 40,
+        "height": 63,
+        "weight": 130
+      }
+    },
+    "calorieTarget": 793,
+    "rag": {
+      "recipes": [
+        {
+          "id": "spoonacular_469862",
+          "label": "The \"Even my picky bf will eat it\" Salad",
+          "cuisine": "world",
+          "ingredients": [
+            "1 ripe avocado",
+            "1 bell pepper",
+            "30 grams cashews",
+            "1/4 cup cilantro",
+            "2 garlic cloves",
+            "1 tablespoon lime juice",
+            "3 tablespoons olive oil",
+            "2-3 romaine lettuce hearts",
+            "salt and pepper",
+            "200 grams shrimp",
+            "3 dashes green Tabasco sauce",
+            "tortilla chips",
+            "water"
+          ],
+          "instructions": "Step 1: Wash and cut romaine lettuce and divide between two bowls.\n\nStep 2: Chop bell pepper and spread evenly between the two salads.\n\nStep 3: Make the dressing by blending the ripe avocado with the lime juice, Tabasco, cilantro, 2 tablespoons olive oil, and water (start with 1/4 cup and add more until the desired consistency is reached. We kept it pretty thick.) Season with salt and pepper to taste.\n\nStep 4: Heat a skillet over medium heat.\n\nStep 5: Add the remaining tablespoon oil. Then add the minced garlic. Once the garlic is fragrant, add the shrimp.\n\nStep 6: Once the shrimp is cooked through, add it to the salads. Divide the dressing between the two salads too.\n\nStep 7: Sprinkle cashews on top if desired.\n\nStep 8: Serve with tortilla chips.",
+          "calories": 674,
+          "protein": 28,
+          "carbs": 38,
+          "fat": 49,
+          "fiber": 11,
+          "sugar": 5,
+          "sodium": 436,
+          "imageUrl": "https://img.spoonacular.com/recipes/469862-312x231.jpg",
+          "readyInMinutes": 25,
+          "servings": 2,
+          "similarity": 0.6750162929609045,
+          "matchScore": 0.6424937584620162
+        },
+        {
+          "id": "spoonacular_667701",
+          "label": "salmon fried rice",
+          "cuisine": "chinese",
+          "ingredients": [
+            "1 teaspoon brown sugar",
+            "Cilantro (or parsley) for garnish",
+            "3 eggs, well beaten",
+            "2 cloves garlic, minced",
+            "1-inch piece of ginger, grated",
+            "2 green onions, thinly sliced, including the greens",
+            "1 Tbsp olive oil",
+            "1 cup frozen peas, thawed",
+            "2/3 cup diced red bell pepper",
+            "2/3 cup diced red onion",
+            "4 cups day old cooked white rice (from about 2 cups of raw rice)",
+            "2 cups cooked salmon in large chunks",
+            "3 Tbsp soy sauce"
+          ],
+          "instructions": "Step 1: Dissolve the brown sugar in the soy sauce in a small bowl. Set aside.2\n\nStep 2: Heat the olive oil in a large sauté pan or wok on medium high heat.\n\nStep 3: Add the diced red onion and bell pepper and sauté until lightly browned, about 5 minutes. Lower the heat to medium and stir in the garlic and grated ginger. Cook for a minute more. 3\n\nStep 4: Add the beaten eggs and stir until just cooked.\n\nStep 5: Add the cooked rice, increase the heat to medium high and cook for a couple minutes more, stirring often.\n\nStep 6: Add the peas, salmon, and green onions. (Be gentle with the salmon so you don't break it up too much.) Stir in the soy sauce mixture and remove from heat.\n\nStep 7: Garnish with cilantro to serve, serve immediately.",
+          "calories": 444,
+          "protein": 26,
+          "carbs": 57,
+          "fat": 12,
+          "fiber": 4,
+          "sugar": 6,
+          "sodium": 838,
+          "imageUrl": "https://img.spoonacular.com/recipes/667701-312x231.jpg",
+          "readyInMinutes": 25,
+          "servings": 4,
+          "similarity": 0.6740792543485181,
+          "matchScore": 0.6149397790550337
+        },
+        {
+          "id": "spoonacular_1098387",
+          "label": "Quinoa Salad with Barberries & Nuts",
+          "cuisine": "world",
+          "ingredients": [
+            "300g quinoa",
+            "1 1/2 liters boiling water",
+            "1 tsp salt",
+            "2 tbsp olive oil (not extra-virgin, it will overpower other flavours)",
+            "50g barberries",
+            "4 tbsp slivered almonds",
+            "2 tbsp slivered pistachios",
+            "30g chopped coriander, chopped",
+            "A few sprigs of mint, chopped"
+          ],
+          "instructions": "Step 1: Put the quinoa in a sieve and rinse under running water.\n\nStep 2: Drain.\n\nStep 3: Pour the boiling water over quinoa in a medium saucepan.\n\nStep 4: Add salt, stir well and cook over medium-low heat until quinoa is cooked through but still has a bite in the center.\n\nStep 5: Drain in a sieve.Pick over the barberries, rinse in a sieve and dry on kitchen paper.While the quinoa is cooking, heat 1 tablespoon of oil in a saucepan over medium heat and lightly toast the almond slivers.\n\nStep 6: Add the slivered pistachios, then the rest of the oil and the rinsed barberries. Cook briefly until the barberries are shiny and a little puffed.Save a tablespoon of the barberry and nut mix and a tablespoon of the chopped herbs for garnishing the finished dish.\n\nStep 7: Mix all of the remaining nut and barberry mix, herbs and quinoa. Return to the pot and place on low heat. Cover with a lid and cook for ten minutes or until completely heated through and steam is rising. Turn into a serving dish and fluff with a fork.\n\nStep 8: Add a little extra olive oil and a twist of black pepper if you wish.\n\nStep 9: Sprinkle the quinoa with the rest of the berry-nut mix and chopped herbs and serve on its own as a main dish or as a side dish.",
+          "calories": 459,
+          "protein": 14,
+          "carbs": 60,
+          "fat": 19,
+          "fiber": 7,
+          "sugar": 1,
+          "sodium": 608,
+          "imageUrl": "https://img.spoonacular.com/recipes/1098387-312x231.jpg",
+          "readyInMinutes": 30,
+          "servings": 4,
+          "similarity": 0.6496178014070105,
+          "matchScore": 0.6017078380684872
+        }
+      ],
+      "isExactMatch": true,
+      "geminiResponseText": "1. The \"Even my picky bf will eat it\" Salad\n   674 calories per serving\n   28g protein\n   38g carbs\n   49g fat\n\n2. salmon fried rice\n   444 calories per serving\n   26g protein\n   57g carbs\n   12g fat\n\n3. Quinoa Salad with Barberries & Nuts\n   459 calories per serving\n   14g protein\n   60g carbs\n   19g fat",
+      "metrics": {
+        "hallucination": 1,
+        "calorieAccuracy": 0.6628835645229088,
+        "macroAlignment": 0.6949399254765715,
+        "restrictionCompliance": 0.6666666666666666,
+        "preferenceAdherence": 0.3333333333333333,
+        "specificity": 1
+      },
+      "error": null
+    },
+    "noRag": {
+      "recipes": [
+        {
+          "id": null,
+          "label": "Lemon Herb Salmon with Quinoa & Roasted Veggies",
+          "calories": 1020,
+          "protein": 51,
+          "carbs": 128,
+          "fat": 34,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        },
+        {
+          "id": null,
+          "label": "Chicken & Sweet Potato Power Bowl",
+          "calories": 1020,
+          "protein": 52,
+          "carbs": 127,
+          "fat": 33,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        }
+      ],
+      "geminiResponseText": "Lemon Herb Salmon with Quinoa & Roasted Veggies | 1020 calories | 51g protein | 128g carbs | 34g fat\nChicken & Sweet Potato Power Bowl | 1020 calories | 52g protein | 127g carbs | 33g fat\nQuinoa & Chickpea Mediterranean Bowl | ",
+      "metrics": {
+        "hallucination": 0,
+        "calorieAccuracy": 0.7137452711223202,
+        "macroAlignment": 0.991421568627451,
+        "restrictionCompliance": 1,
+        "preferenceAdherence": 0.3333333333333333,
+        "specificity": 1
+      },
+      "error": null
+    }
+  },
+  {
+    "scenario": {
+      "id": "derek-breakfast",
+      "description": "Derek's vegan breakfast — low calorie, lose weight goal",
+      "profile": {
+        "id": "derek",
+        "label": "Derek — 51M, Vegan, BMI 36, Lose Weight",
+        "sex": "male",
+        "age": 51,
+        "height": 68,
+        "weight": 240,
+        "activityLevel": "Sedentary",
+        "dietaryGoal": "Lose Weight",
+        "dailyCalorieGoal": 1800,
+        "macroGoals": {
+          "protein": 25,
+          "carbs": 45,
+          "fat": 30
+        },
+        "healthRestrictions": [
+          "vegan"
+        ],
+        "dietaryHabits": [
+          "vegan"
+        ],
+        "likes": [
+          "lentils",
+          "sweet potato"
+        ],
+        "dislikes": [
+          "spicy",
+          "coconut"
+        ]
+      },
+      "ragParams": {
+        "mealType": "breakfast",
+        "cuisineType": "none",
+        "limit": 3,
+        "healthRestrictions": [
+          "vegan"
+        ],
+        "dietaryGoal": "Lose Weight",
+        "dailyCalorieGoal": 1800,
+        "consumedCalories": 0,
+        "consumedMealTypes": [],
+        "macroGoals": {
+          "protein": 25,
+          "carbs": 45,
+          "fat": 30
+        },
+        "dislikes": [
+          "spicy",
+          "coconut"
+        ],
+        "likes": [
+          "lentils",
+          "sweet potato"
+        ],
+        "activityLevel": "Sedentary",
+        "sex": "male",
+        "age": 51,
+        "height": 68,
+        "weight": 240
+      }
+    },
+    "calorieTarget": 450,
+    "rag": {
+      "recipes": [
+        {
+          "id": "spoonacular_640443",
+          "label": "Cranberry-Ginger Oatmeal With Toasted Hazelnuts",
+          "cuisine": "world",
+          "ingredients": [
+            "1 cinnamon stick",
+            "1/2 cup fresh cranberries",
+            "1 inch piece of fresh, peeled ginger root",
+            "1/4 cup hazelnuts, crushed",
+            "1/4 teaspoon nutmeg",
+            "1/2 cup rolled oats",
+            "1 teaspoon Salt",
+            "1 1/4 cups water"
+          ],
+          "instructions": "Step 1: Add water, cranberries, ginger, and spices to a medium saucepan. Bring to a boil over medium-high heat. When the cranberries begin to burst, lower the heat to medium-low and add the oats, stirring occasionally until the desired consistency is reached, about 5-7 minutes. When oatmeal is cooked, remove the ginger and cinnamon stick and add salt.Meanwhile, heat a small skillet over medium-low heat and add hazelnuts. Toast in the pan until you can smell the hazelnuts, as this means they are releasing their oils. Turn off heat and add hazelnuts to the oatmeal.",
+          "calories": 382,
+          "protein": 10,
+          "carbs": 43,
+          "fat": 21,
+          "fiber": 11,
+          "sugar": 4,
+          "sodium": 2345,
+          "imageUrl": "https://img.spoonacular.com/recipes/640443-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 1,
+          "similarity": 0.5908609290901355,
+          "matchScore": 0.651615179587315
+        },
+        {
+          "id": "spoonacular_1095752",
+          "label": "Vegan Cacao Crunch Granola",
+          "cuisine": "world",
+          "ingredients": [
+            "1.5 cups Rolled Oats",
+            "1/2 cup Whole Almonds roughly chopped",
+            "1 tbsp Cacao Powder",
+            "1/2 cup Maple Syrup",
+            "4 tbsp Coconut Oil",
+            "1/2 cup Puffed Quinoa (or puffed rice)"
+          ],
+          "instructions": "Step 1: Preheat the oven to 150C. Line a flat baking tray with parchment paper.In a saucepan on a low heat, add the maple syrup and coconut oil and stir until the coconut oil is completely melted.\n\nStep 2: Add the oats and almonds into a large bowl and pour the maple syrup and coconut oil mixture over. Stir so everything is evenly coated.\n\nStep 3: Add the cacao powder and stir again.\n\nStep 4: Lay the mixture flat on the baking tray and spread out so it's all in one layer.\n\nStep 5: Bake for 45 minutes, stirring every 10-15 minutes to ensure an even cook. Once done, remove from the oven and allow to cool.Once it is completely cool, add to a bowl and mix in the puffed quinoa. Store in a glass jar for up to 2 months.",
+          "calories": 451,
+          "protein": 8,
+          "carbs": 54,
+          "fat": 25,
+          "fiber": 6,
+          "sugar": 25,
+          "sodium": 6,
+          "imageUrl": "https://img.spoonacular.com/recipes/1095752-312x231.jpg",
+          "readyInMinutes": 55,
+          "servings": 4,
+          "similarity": 0.5526510657449065,
+          "matchScore": 0.5987595017457151
+        },
+        {
+          "id": "spoonacular_640194",
+          "label": "Country Breakfast: Tofu and Veggie Scramble With Home Fries",
+          "cuisine": "american",
+          "ingredients": [
+            "Tofu and Veggie Scramble",
+            "12 ounces box Mori-Nu tofu",
+            "1 tablespoon olive oil",
+            "1 cup sliced mushrooms",
+            "1 cup asparagus, chopped",
+            "1/2 cup onions, chopped",
+            "1 garlic clove, minced",
+            "1 1/2 teaspoons Italian seasonings",
+            "1 1/2 teaspoons tumeric",
+            "1/2 teaspoon garlic powder",
+            "1/2 teaspoon cayenne pepper",
+            "1/2 teaspoon crushed black pepper",
+            "2 tablespoons water",
+            "Home Fries",
+            "3 inches red potatoes, diced ½ thick",
+            "2 teaspoons crushed black pepper",
+            "1 1/2 teaspoons salt",
+            "2 tablespoons olive oil"
+          ],
+          "instructions": "Step 1: Tofu and veggie scramble\n\nStep 2: Press the tofu for 30 minutes prior to cooking. Chop all the veggies and leave ready to begin cooking process.\n\nStep 3: Using a non-stick skillet, heat olive oil on medium heat.\n\nStep 4: Add pressed tofu and crumble in large pieces. The tofu will need to cook and dry out a little for 10 to 15 minutes, so meanwhile, add onions and garlic to tofu.\n\nStep 5: After those 15 minutes, add asparagus and mushroom and all the rest of the spices plus the water. Cook for 5 minutes and serve hot!\n\nStep 6: Home Fries\n\nStep 7: Prepare potatoes before starting on tofu scramble.\n\nStep 8: Preheat oven to 450F and move oven rack to the next to last highest row. Line a small cookie sheet with parchment paper.\n\nStep 9: Wash and scrub potatoes. Dice them and add to a medium bowl.\n\nStep 10: Add olive oil, salt and pepper and mix well.\n\nStep 11: Pour potatoes on cookie sheet and spread evenly.\n\nStep 12: Bake for 20 minutes and serve while hot.",
+          "calories": 493,
+          "protein": 30,
+          "carbs": 20,
+          "fat": 34,
+          "fiber": 7,
+          "sugar": 5,
+          "sodium": 1770,
+          "imageUrl": "https://img.spoonacular.com/recipes/640194-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 2,
+          "similarity": 0.5636350804500414,
+          "matchScore": 0.5621988134315266
+        }
+      ],
+      "isExactMatch": true,
+      "geminiResponseText": "1. Cranberry-Ginger Oatmeal With Toasted Hazelnuts\n   382 calories per serving\n   10g protein\n   43g carbs\n   21g fat\n\n2. Vegan Cacao Crunch Granola\n   451 calories per serving\n   8g protein\n   54g carbs\n   25g fat\n\n3. Country Breakfast: Tofu and Veggie Scramble With Home Fries\n   493 calories per serving\n   30g protein\n   20g carbs\n   34g fat",
+      "metrics": {
+        "hallucination": 1,
+        "calorieAccuracy": 0.9170370370370371,
+        "macroAlignment": 0.5369903904217587,
+        "restrictionCompliance": 1,
+        "preferenceAdherence": 0,
+        "specificity": 1
+      },
+      "error": null
+    },
+    "noRag": {
+      "recipes": [
+        {
+          "id": null,
+          "label": "Sweet Potato & Lentil Scramble",
+          "calories": 520,
+          "protein": 32,
+          "carbs": 58,
+          "fat": 19,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        },
+        {
+          "id": null,
+          "label": "Hearty Lentil & Veggie Bowl",
+          "calories": 530,
+          "protein": 34,
+          "carbs": 60,
+          "fat": 18,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        },
+        {
+          "id": null,
+          "label": "Chickpea Flour Pancakes with Berries",
+          "calories": 510,
+          "protein": 3,
+          "carbs": null,
+          "fat": null,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        }
+      ],
+      "geminiResponseText": "Sweet Potato & Lentil Scramble | 520 calories | 32g protein | 58g carbs | 19g fat\nHearty Lentil & Veggie Bowl | 530 calories | 34g protein | 60g carbs | 18g fat\nChickpea Flour Pancakes with Berries | 510 calories | 3",
+      "metrics": {
+        "hallucination": 0,
+        "calorieAccuracy": 0.8444444444444444,
+        "macroAlignment": 0.649840751491695,
+        "restrictionCompliance": 1,
+        "preferenceAdherence": 0.16666666666666666,
+        "specificity": 1
+      },
+      "error": null
+    }
+  },
+  {
+    "scenario": {
+      "id": "derek-lunch",
+      "description": "Derek's vegan lunch — dislikes coconut and spicy food",
+      "profile": {
+        "id": "derek",
+        "label": "Derek — 51M, Vegan, BMI 36, Lose Weight",
+        "sex": "male",
+        "age": 51,
+        "height": 68,
+        "weight": 240,
+        "activityLevel": "Sedentary",
+        "dietaryGoal": "Lose Weight",
+        "dailyCalorieGoal": 1800,
+        "macroGoals": {
+          "protein": 25,
+          "carbs": 45,
+          "fat": 30
+        },
+        "healthRestrictions": [
+          "vegan"
+        ],
+        "dietaryHabits": [
+          "vegan"
+        ],
+        "likes": [
+          "lentils",
+          "sweet potato"
+        ],
+        "dislikes": [
+          "spicy",
+          "coconut"
+        ]
+      },
+      "ragParams": {
+        "mealType": "lunch",
+        "cuisineType": "none",
+        "limit": 3,
+        "healthRestrictions": [
+          "vegan"
+        ],
+        "dietaryGoal": "Lose Weight",
+        "dailyCalorieGoal": 1800,
+        "consumedCalories": 400,
+        "consumedMealTypes": [
+          "breakfast"
+        ],
+        "macroGoals": {
+          "protein": 25,
+          "carbs": 45,
+          "fat": 30
+        },
+        "dislikes": [
+          "spicy",
+          "coconut"
+        ],
+        "likes": [
+          "lentils",
+          "sweet potato"
+        ],
+        "activityLevel": "Sedentary",
+        "sex": "male",
+        "age": 51,
+        "height": 68,
+        "weight": 240
+      }
+    },
+    "calorieTarget": 560,
+    "rag": {
+      "recipes": [
+        {
+          "id": "spoonacular_649942",
+          "label": "Lentils and Apples with Acorn Squash",
+          "cuisine": "world",
+          "ingredients": [
+            "1/3 cup honey or maple syrup",
+            "1/3 cup vegetable oil",
+            "1/8 cup soy sauce or tamari",
+            "1/4 cup red wine vinegar",
+            "3/4 teaspoon allspice",
+            "1/2 teaspoon ground ginger",
+            "A dash of garlic powder",
+            "3/4 teaspoon kosher salt",
+            "2 cups water",
+            "1 1/2 cups brown lentils, rinsed",
+            "1 apple, cored and diced",
+            "2 medium acorn squash, halved and seeds scraped out",
+            "Salt and pepper to taste",
+            "Parsley for serving"
+          ],
+          "instructions": "Step 1: In a medium sized saucepan, stir together the first nine ingredients.\n\nStep 2: Add the lentils and mix well.\n\nStep 3: Bring to a boil, cover, turn the heat down and let simmer for about an hour, stirring a few times and tossing the diced apple into the saucepan after the first 20 minutes. Check to see if the lentils are soft and the liquid has thickened. If too liquidy, let simmer uncovered near the end. The lentils should have the consistency of a thick sauce.\n\nStep 4: While the lentils are cooking, preheat oven to 400 degrees.\n\nStep 5: Place the 4 squash halves in a roasting dish (cut a small slice off the bottom of each if needed so they sit securely) and add about an inch of water to the pan. Cover with foil and place in the oven. Steam the squash until tender, about 30-45 minutes depending upon how large they are.\n\nStep 6: Remove from oven and set aside until lentils are cooked.\n\nStep 7: Place the squash halves on a serving platter and season to taste with salt and pepper. Spoon the lentils into each half and top with a sprig of parsley.\n\nStep 8: If making ahead: Prepare the squash and lentils and keep separate. When close to serving, spoon the lentils into the squash and warm in the oven.",
+          "calories": 608,
+          "protein": 21,
+          "carbs": 91,
+          "fat": 19,
+          "fiber": 27,
+          "sugar": 22,
+          "sodium": 1058,
+          "imageUrl": "https://img.spoonacular.com/recipes/649942-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 4,
+          "similarity": 0.6657850982658037,
+          "matchScore": 0.6889813920320943
+        },
+        {
+          "id": "spoonacular_647830",
+          "label": "Indian Lentil Dahl",
+          "cuisine": "indian",
+          "ingredients": [
+            "2 T. canola oil",
+            "1/3 c. coarsely chopped cilantro",
+            "1 c. coconut milk",
+            "1 T. minced fresh ginger",
+            "1 t. Garam Masala (can be easily found in the supermarket spice isle)",
+            "4 garlic cloves, minced",
+            "1 T. lime juice",
+            "1 onion, finely chopped",
+            "3 . plum tomatoes",
+            "1 1/4 c. split red lentils",
+            "3/4 t. salt",
+            "3 c. water"
+          ],
+          "instructions": "Step 1: In a large saucepan, combine oil, onion and salt at medium-high heat. Cook until onion starts to brown, around 5 minutes or so.\n\nStep 2: Add garlic, ginger and Garam Masala , cook until fragrant, about 1 minute.\n\nStep 3: Add lentils, coconut milk and water. Bring to a boil, then reduce heat to low and simmer, partially covered until lentils are fully tender and broken down to an almost paste-like consistency, about 25-30 minutes.\n\nStep 4: Add lime juice and cilantro. Check for seasoning.\n\nStep 5: Serve (over rice if you like), topped with the diced tomatoes.",
+          "calories": 400,
+          "protein": 17,
+          "carbs": 42,
+          "fat": 20,
+          "fiber": 18,
+          "sugar": 4,
+          "sodium": 461,
+          "imageUrl": "https://img.spoonacular.com/recipes/647830-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 4,
+          "similarity": 0.6468216346946728,
+          "matchScore": 0.6855631158504197
+        },
+        {
+          "id": "spoonacular_663559",
+          "label": "Tomato and lentil soup",
+          "cuisine": "world",
+          "ingredients": [
+            "2 Tbs olive oil",
+            "1 onion, chopped",
+            "2 cloves garlic, minced",
+            "3 carrots cut into cubes",
+            "480g canned chopped tomatoes",
+            "1 bay leaf",
+            "1.3 l water",
+            "250 g lentils",
+            "¼ tsp salt",
+            "1 bunch chopped parsley"
+          ],
+          "instructions": "Step 1: Saut onion and garlic in olive oil for 5 minutes.\n\nStep 2: Add the carrot, saut for another 2 minutes.\n\nStep 3: Add tomatoes, bay leaf and water, stir and bring to the boil.\n\nStep 4: Stir in lentils, season with salt and cook for 5 minutes.\n\nStep 5: Before serving sprinkle with chopped parsley.",
+          "calories": 340,
+          "protein": 18,
+          "carbs": 51,
+          "fat": 8,
+          "fiber": 23,
+          "sugar": 8,
+          "sodium": 378,
+          "imageUrl": "https://img.spoonacular.com/recipes/663559-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 4,
+          "similarity": 0.6593662383724839,
+          "matchScore": 0.6778256294394894
+        }
+      ],
+      "isExactMatch": true,
+      "geminiResponseText": "1. Lentils and Apples with Acorn Squash\n   608 calories per serving\n   21g protein\n   91g carbs\n   19g fat\n\n2. Indian Lentil Dahl\n   400 calories per serving\n   17g protein\n   42g carbs\n   20g fat\n\n3. Tomato and lentil soup\n   340 calories per serving\n   18g protein\n   51g carbs\n   8g fat",
+      "metrics": {
+        "hallucination": 1,
+        "calorieAccuracy": 0.7452380952380953,
+        "macroAlignment": 0.6985369367045063,
+        "restrictionCompliance": 0.6666666666666666,
+        "preferenceAdherence": 0.3333333333333333,
+        "specificity": 1
+      },
+      "error": null
+    },
+    "noRag": {
+      "recipes": [
+        {
+          "id": null,
+          "label": "Sweet Potato & Black Bean Bowl",
+          "calories": 495,
+          "protein": 31,
+          "carbs": 60,
+          "fat": 15,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        },
+        {
+          "id": null,
+          "label": "Lentil Shepherd's Pie (vegan)",
+          "calories": 510,
+          "protein": 30,
+          "carbs": 65,
+          "fat": 16,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        },
+        {
+          "id": null,
+          "label": "Chickpea & Veggie Wraps",
+          "calories": 485,
+          "protein": null,
+          "carbs": null,
+          "fat": null,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        }
+      ],
+      "geminiResponseText": "Sweet Potato & Black Bean Bowl | 495 calories | 31g protein | 60g carbs | 15g fat\nLentil Shepherd's Pie (vegan) | 510 calories | 30g protein | 65g carbs | 16g fat\nChickpea & Veggie Wraps | 485 calories | ",
+      "metrics": {
+        "hallucination": 0,
+        "calorieAccuracy": 0.8869047619047619,
+        "macroAlignment": 0.6106192645408332,
+        "restrictionCompliance": 1,
+        "preferenceAdherence": 0.16666666666666666,
+        "specificity": 1
+      },
+      "error": null
+    }
+  },
+  {
+    "scenario": {
+      "id": "derek-dinner",
+      "description": "Derek's dinner — vegan + dislikes combined (tests fallback relaxation)",
+      "profile": {
+        "id": "derek",
+        "label": "Derek — 51M, Vegan, BMI 36, Lose Weight",
+        "sex": "male",
+        "age": 51,
+        "height": 68,
+        "weight": 240,
+        "activityLevel": "Sedentary",
+        "dietaryGoal": "Lose Weight",
+        "dailyCalorieGoal": 1800,
+        "macroGoals": {
+          "protein": 25,
+          "carbs": 45,
+          "fat": 30
+        },
+        "healthRestrictions": [
+          "vegan"
+        ],
+        "dietaryHabits": [
+          "vegan"
+        ],
+        "likes": [
+          "lentils",
+          "sweet potato"
+        ],
+        "dislikes": [
+          "spicy",
+          "coconut"
+        ]
+      },
+      "ragParams": {
+        "mealType": "dinner",
+        "cuisineType": "none",
+        "limit": 3,
+        "healthRestrictions": [
+          "vegan"
+        ],
+        "dietaryGoal": "Lose Weight",
+        "dailyCalorieGoal": 1800,
+        "consumedCalories": 900,
+        "consumedMealTypes": [
+          "breakfast",
+          "lunch"
+        ],
+        "macroGoals": {
+          "protein": 25,
+          "carbs": 45,
+          "fat": 30
+        },
+        "dislikes": [
+          "spicy",
+          "coconut"
+        ],
+        "likes": [
+          "lentils",
+          "sweet potato"
+        ],
+        "activityLevel": "Sedentary",
+        "sex": "male",
+        "age": 51,
+        "height": 68,
+        "weight": 240
+      }
+    },
+    "calorieTarget": 700,
+    "rag": {
+      "recipes": [
+        {
+          "id": "spoonacular_684981",
+          "label": "Black Bean and Sweet Potato Enchiladas with Avocado Cream Sauce",
+          "cuisine": "mexican",
+          "ingredients": [
+            "1 medium avocado",
+            "1/3 cup black olives, pitted and roughly chopped",
+            "1 teaspoon chili powder",
+            "3 to 4 teaspoons chili powder",
+            "1/2 cup cooked brown rice",
+            "6 6-inch corn or flour tortillas",
+            "1/2 cup fresh cilantro, trimmed",
+            "1 clove garlic, finely chopped",
+            "2 cloves garlic, minced",
+            "1 teaspoon ground cumin",
+            "1 teaspoon ground cumin",
+            "1 jalapeño, seeded and finely chopped",
+            "juice from 1 lime (2 tablespoons)",
+            "juice from 1 lime (2 tablespoons)",
+            "1/3 cup nutritional yeast",
+            "1 tablespoon olive oil",
+            "2 tablespoons olive oil",
+            "1/2 teaspoon paprika",
+            "1/2 red bell pepper, seeded and chopped",
+            "1 red chili, seeded and finely chopped (or a pinch of cayenne)",
+            "1 small red onion, chopped",
+            "1/2 teaspoon sea salt",
+            "1/2 to 1 teaspoon sea salt, or to taste",
+            "1 teaspoon sea salt, or to taste",
+            "1 shallot, finely chopped",
+            "2 large handfuls of spinach, roughly chopped",
+            "1 large sweet potato (about 2 1/2 cups), scrubbed",
+            "2/3 cup tomato paste",
+            "2 medium tomatoes, finely chopped",
+            "2 tablespoons chickpea flour (besan) or unbleached white flour",
+            "1 1/2 cups vegetable stock",
+            "3 tablespoons water, or as needed",
+            "2 cups cooked black beans (2/3 cup dried or 1 19 oz can)"
+          ],
+          "instructions": "Step 1: To make the enchilada sauce, heat the oil in a medium saucepan over medium heat. When hot, toss in the shallot, garlic and chili if using and saut for a few minutes. Stir in the flour until the vegetables are coated. Now stir in the chili powder, cumin, paprika and cayenne if using. Stir for another minute.\n\nStep 2: Add the nutritional yeast and fresh tomato, whisk the mixture, and simmer a few minutes. Stir in the tomato paste, stock and salt. Simmer for another 5 minutes or until thickened.\n\nStep 3: Add a bit more stock if the sauce is too thick. It should be creamy and thick, but not watery. Set aside until it's time to assemble the enchiladas.To boil the sweet potato, peel and cut into small pieces and boil in enough water to cover until fork tender  about 5 to 7 minutes. Or to roast the sweet potato, preheat an oven to 400, pierce the potato a few times with a fork, and bake until fork tender  about 30 minutes.\n\nStep 4: Let cool, remove the skin, and chop into small pieces.To make the enchilada filling, heat the oil in a large skillet over medium heat. When hot, add the onion and saut for 5 minutes.\n\nStep 5: Add the garlic and jalapeo and continue to saute for another few minutes. Stir in the chili powder and cumin.Now add the red pepper, sweet potato, black beans and rice and stir well to combine.\n\nStep 6: Add the spinach, a small handful at a time, and cook over medium-high heat until the spinach is wilted.\n\nStep 7: Remove the mixture from the heat and stir in the olives, 1/2 cup of the enchilada sauce, lime juice and salt.Preheat an oven to 35\n\nStep 8: To assemble the enchiladas, grease a large 9 x 13 baking dish with olive oil.\n\nStep 9: Spread about 1 cup of the enchilada sauce over the bottom of the dish. Scoop about 3/4 cup of the filling onto each tortilla, wrap, and place seam-side down into the dish. Top with any remaining filling and the rest of the sauce.\n\nStep 10: Bake for 20 to 25 minutes until the sauce has thickened and is a deep red colour.While the enchiladas are baking, prepare the avocado cream sauce. In a small food processor or blender, mince the cilantro.\n\nStep 11: Add the avocado, water, lime juice and salt. Process until well combined and creamy, adding more water as necessary.To serve, individually plate the enchiladas and drizzle each with avocado cream sauce.",
+          "calories": 370,
+          "protein": 9,
+          "carbs": 51,
+          "fat": 17,
+          "fiber": 10,
+          "sugar": 11,
+          "sodium": 1648,
+          "imageUrl": "https://img.spoonacular.com/recipes/684981-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 6,
+          "similarity": 0.6185909334217256,
+          "matchScore": 0.5658439710770503
+        },
+        {
+          "id": "spoonacular_662604",
+          "label": "Sweet Potato, Kale & White Bean Soup",
+          "cuisine": "world",
+          "ingredients": [
+            "1 tablespoon grapeseed oil",
+            "1 medium sweet potato, peel on, chopped into ½” cubes",
+            "1 yellow onion, diced",
+            "1 head red kale, stems removed, leaves chopped",
+            "1 quart chicken broth (or vegetable broth)",
+            "½ cup white wine (I used chardonnay)",
+            "1 can cannellini beans (15 ounces)",
+            "1 teaspoon dried Oregano",
+            "¼ teaspoon Thyme",
+            "Salt & ground black pepper"
+          ],
+          "instructions": "Step 1: In a large pot, heat the grapeseed oil over medium high and add the sweet potato. Saut the sweet potato, stirring consistently about 5 minutes before adding the onion. Saut about 8 minutes then add a splash of chicken broth to help steam the sweet potato and onion (the chicken broth should sizzle when it hits the pot). Continue cooking until sweet potato is softened but still al dente, another 5 minutes or so.\n\nStep 2: Add all of the chicken broth, white wine, cannellini beans and the oregano and thyme. Stir well and bring to a boil. Reduce heat to medium low and simmer covered about 10 minutes.\n\nStep 3: Add the chopped kale leaves, stir, cover again and cook another 5 minutes until kale leaves are softened. Taste the soup and add salt and ground black pepper to taste.",
+          "calories": 261,
+          "protein": 10,
+          "carbs": 42,
+          "fat": 4,
+          "fiber": 9,
+          "sugar": 6,
+          "sodium": 1003,
+          "imageUrl": "https://img.spoonacular.com/recipes/662604-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 4,
+          "similarity": 0.6507648801011935,
+          "matchScore": 0.5646467078605116
+        },
+        {
+          "id": "spoonacular_642085",
+          "label": "Easy Roasted Vegetables",
+          "cuisine": "world",
+          "ingredients": [
+            "1/2 butternut squash",
+            "3 beet roots",
+            "6 potatoes",
+            "1 tbsp olive oil",
+            "2 tbsp paprika",
+            "2 tbsp dried basil",
+            "salt & pepper"
+          ],
+          "instructions": "Step 1: Preheat oven to 200 degrees Celsius (fan: 180 degrees Celsius)\n\nStep 2: Peel and cut the vegetables into bite size pieces (the potatoes dont necessarily need to be peeled).\n\nStep 3: Mix the olive oil, paprika, dried basil, salt and pepper in a large bowl before adding the vegetables.\n\nStep 4: Mix everything together well.\n\nStep 5: Place the vegetables on a large baking tray/baking dish. Make sure they are spread out evenly. Aim for single layer.\n\nStep 6: Cook the vegetables in the oven for about 30 minutes. They should be tender but still have a slight bite to them.",
+          "calories": 360,
+          "protein": 9,
+          "carbs": 76,
+          "fat": 5,
+          "fiber": 13,
+          "sugar": 9,
+          "sodium": 269,
+          "imageUrl": "https://img.spoonacular.com/recipes/642085-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 4,
+          "similarity": 0.6026607671141125,
+          "matchScore": 0.515980362425697
+        }
+      ],
+      "isExactMatch": true,
+      "geminiResponseText": "1. Black Bean and Sweet Potato Enchiladas with Avocado Cream Sauce\n   370 calories per serving\n   9g protein\n   51g carbs\n   17g fat\n\n2. Sweet Potato, Kale & White Bean Soup\n   261 calories per serving\n   10g protein\n   42g carbs\n   4g fat\n\n3. Easy Roasted Vegetables\n   360 calories per serving\n   9g protein\n   76g carbs\n   5g fat",
+      "metrics": {
+        "hallucination": 1,
+        "calorieAccuracy": 0.4719047619047619,
+        "macroAlignment": 0.4659062798430614,
+        "restrictionCompliance": 0.6666666666666666,
+        "preferenceAdherence": 0.3333333333333333,
+        "specificity": 1
+      },
+      "error": null
+    },
+    "noRag": {
+      "recipes": [
+        {
+          "id": null,
+          "label": "Lentil & Sweet Potato Shepherd's Pie",
+          "calories": 300,
+          "protein": 18,
+          "carbs": 40,
+          "fat": 7,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        },
+        {
+          "id": null,
+          "label": "Sweet Potato & Black Bean Bowl",
+          "calories": 300,
+          "protein": 16,
+          "carbs": 45,
+          "fat": 7,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        },
+        {
+          "id": null,
+          "label": "Vegan Lentil Loaf with Roasted Broccoli",
+          "calories": 300,
+          "protein": 2,
+          "carbs": null,
+          "fat": null,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        }
+      ],
+      "geminiResponseText": "Lentil & Sweet Potato Shepherd's Pie | 300 calories | 18g protein | 40g carbs | 7g fat\nSweet Potato & Black Bean Bowl | 300 calories | 16g protein | 45g carbs | 7g fat\nVegan Lentil Loaf with Roasted Broccoli | 300 calories | 2",
+      "metrics": {
+        "hallucination": 0,
+        "calorieAccuracy": 0.4285714285714286,
+        "macroAlignment": 0.5051851851851853,
+        "restrictionCompliance": 1,
+        "preferenceAdherence": 0.3333333333333333,
+        "specificity": 1
+      },
+      "error": null
+    }
+  },
+  {
+    "scenario": {
+      "id": "eve-breakfast",
+      "description": "Eve's casual breakfast — no restrictions, maintenance calories",
+      "profile": {
+        "id": "eve",
+        "label": "Eve — 22F, No Restrictions, Maintain Weight",
+        "sex": "female",
+        "age": 22,
+        "height": 64,
+        "weight": 130,
+        "activityLevel": "Moderately Active",
+        "dietaryGoal": "Maintain Weight",
+        "dailyCalorieGoal": 2000,
+        "macroGoals": {
+          "protein": 25,
+          "carbs": 50,
+          "fat": 25
+        },
+        "healthRestrictions": [],
+        "dietaryHabits": [],
+        "likes": [
+          "pasta",
+          "vegetables",
+          "fruit"
+        ],
+        "dislikes": [
+          "liver",
+          "anchovies"
+        ]
+      },
+      "ragParams": {
+        "mealType": "breakfast",
+        "cuisineType": "american",
+        "limit": 3,
+        "healthRestrictions": [],
+        "dietaryGoal": "Maintain Weight",
+        "dailyCalorieGoal": 2000,
+        "consumedCalories": 0,
+        "consumedMealTypes": [],
+        "macroGoals": {
+          "protein": 25,
+          "carbs": 50,
+          "fat": 25
+        },
+        "dislikes": [
+          "liver",
+          "anchovies"
+        ],
+        "likes": [
+          "pasta",
+          "vegetables",
+          "fruit"
+        ],
+        "activityLevel": "Moderately Active",
+        "sex": "female",
+        "age": 22,
+        "height": 64,
+        "weight": 130
+      }
+    },
+    "calorieTarget": 500,
+    "rag": {
+      "recipes": [
+        {
+          "id": "spoonacular_655219",
+          "label": "Peanut Butter And Chocolate Oatmeal",
+          "cuisine": "american",
+          "ingredients": [
+            "cup quick cooking oats",
+            "1 teaspoon unsweetened cocoa",
+            "1 teaspoon agave",
+            "1 tablespoon organic crunchy peanut butter",
+            "1/2 cup non-fat milk"
+          ],
+          "instructions": "Step 1: Microwave all ingredients in a small bowl or mug for 1 minute, stir and enjoy!\n\nStep 2: Serve with crushed peanuts or almonds for some extra crunch!",
+          "calories": 470,
+          "protein": 19,
+          "carbs": 73,
+          "fat": 14,
+          "fiber": 9,
+          "sugar": 16,
+          "sodium": 131,
+          "imageUrl": "https://img.spoonacular.com/recipes/655219-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 1,
+          "similarity": 0.6295658460557675,
+          "matchScore": 0.7277881448892648
+        },
+        {
+          "id": "spoonacular_1444543",
+          "label": "Easy Berry French Toast",
+          "cuisine": "american",
+          "ingredients": [
+            "6 eggs",
+            "1 1/2 cups milk",
+            "1 packet vanilla sugar",
+            "8 slices whole wheat bread",
+            "4 tbsp butter",
+            "2 cups mixed berries",
+            "1/2 cup maple syrup"
+          ],
+          "instructions": "Step 1: Beat eggs.\n\nStep 2: Add milk and vanilla sugar.Dip the bread into the egg mixture one slice at a time, lightly pressing the slices into the egg mixture. Turn to coat both sides evenly. Melt 1 tbsp of butter in a large skillet over medium heat.\n\nStep 3: Add 2-3 slices to the skillet (depending on the size of your bread and your skillet).Fry the bread until browned on both sides.Keep warm in the oven while you finish the other slices, adding butter to the pan as needed.Top with fresh or heated frozen berries (I heat frozen berries gently in a saucepan while I make the French toast).\n\nStep 4: Serve with maple syrup.",
+          "calories": 544,
+          "protein": 19,
+          "carbs": 66,
+          "fat": 23,
+          "fiber": 5,
+          "sugar": 38,
+          "sodium": 476,
+          "imageUrl": "https://img.spoonacular.com/recipes/1444543-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 4,
+          "similarity": 0.6255787461738795,
+          "matchScore": 0.7116019922644469
+        },
+        {
+          "id": "spoonacular_640194",
+          "label": "Country Breakfast: Tofu and Veggie Scramble With Home Fries",
+          "cuisine": "american",
+          "ingredients": [
+            "Tofu and Veggie Scramble",
+            "12 ounces box Mori-Nu tofu",
+            "1 tablespoon olive oil",
+            "1 cup sliced mushrooms",
+            "1 cup asparagus, chopped",
+            "1/2 cup onions, chopped",
+            "1 garlic clove, minced",
+            "1 1/2 teaspoons Italian seasonings",
+            "1 1/2 teaspoons tumeric",
+            "1/2 teaspoon garlic powder",
+            "1/2 teaspoon cayenne pepper",
+            "1/2 teaspoon crushed black pepper",
+            "2 tablespoons water",
+            "Home Fries",
+            "3 inches red potatoes, diced ½ thick",
+            "2 teaspoons crushed black pepper",
+            "1 1/2 teaspoons salt",
+            "2 tablespoons olive oil"
+          ],
+          "instructions": "Step 1: Tofu and veggie scramble\n\nStep 2: Press the tofu for 30 minutes prior to cooking. Chop all the veggies and leave ready to begin cooking process.\n\nStep 3: Using a non-stick skillet, heat olive oil on medium heat.\n\nStep 4: Add pressed tofu and crumble in large pieces. The tofu will need to cook and dry out a little for 10 to 15 minutes, so meanwhile, add onions and garlic to tofu.\n\nStep 5: After those 15 minutes, add asparagus and mushroom and all the rest of the spices plus the water. Cook for 5 minutes and serve hot!\n\nStep 6: Home Fries\n\nStep 7: Prepare potatoes before starting on tofu scramble.\n\nStep 8: Preheat oven to 450F and move oven rack to the next to last highest row. Line a small cookie sheet with parchment paper.\n\nStep 9: Wash and scrub potatoes. Dice them and add to a medium bowl.\n\nStep 10: Add olive oil, salt and pepper and mix well.\n\nStep 11: Pour potatoes on cookie sheet and spread evenly.\n\nStep 12: Bake for 20 minutes and serve while hot.",
+          "calories": 493,
+          "protein": 30,
+          "carbs": 20,
+          "fat": 34,
+          "fiber": 7,
+          "sugar": 5,
+          "sodium": 1770,
+          "imageUrl": "https://img.spoonacular.com/recipes/640194-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 2,
+          "similarity": 0.6219177461009313,
+          "matchScore": 0.64605883005296
+        }
+      ],
+      "isExactMatch": true,
+      "geminiResponseText": "1. Peanut Butter And Chocolate Oatmeal\n   470 calories per serving\n   19g protein\n   73g carbs\n   14g fat\n\n2. Easy Berry French Toast\n   544 calories per serving\n   19g protein\n   66g carbs\n   23g fat\n\n3. Country Breakfast: Tofu and Veggie Scramble With Home Fries\n   493 calories per serving\n   30g protein\n   20g carbs\n   34g fat",
+      "metrics": {
+        "hallucination": 1,
+        "calorieAccuracy": 0.9460000000000001,
+        "macroAlignment": 0.6146471852986731,
+        "restrictionCompliance": 1,
+        "preferenceAdherence": 0,
+        "specificity": 1
+      },
+      "error": null
+    },
+    "noRag": {
+      "recipes": [
+        {
+          "id": null,
+          "label": "Protein-Packed Scramble with Veggies & Toast",
+          "calories": 630,
+          "protein": 48,
+          "carbs": 44,
+          "fat": 30,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        },
+        {
+          "id": null,
+          "label": "Berry Banana Smoothie Bowl",
+          "calories": 580,
+          "protein": 28,
+          "carbs": 90,
+          "fat": 12,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        },
+        {
+          "id": null,
+          "label": "Apple Cinnamon Cottage Cheese Pancakes",
+          "calories": 610,
+          "protein": 38,
+          "carbs": null,
+          "fat": null,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        }
+      ],
+      "geminiResponseText": "Protein-Packed Scramble with Veggies & Toast | 630 calories | 48g protein | 44g carbs | 30g fat\nBerry Banana Smoothie Bowl | 580 calories | 28g protein | 90g carbs | 12g fat\nApple Cinnamon Cottage Cheese Pancakes | 610 calories | 38g",
+      "metrics": {
+        "hallucination": 0,
+        "calorieAccuracy": 0.7866666666666667,
+        "macroAlignment": 0.41697986985343305,
+        "restrictionCompliance": 1,
+        "preferenceAdherence": 0,
+        "specificity": 1
+      },
+      "error": null
+    }
+  },
+  {
+    "scenario": {
+      "id": "eve-lunch",
+      "description": "Eve's lunch — Mediterranean cuisine preference",
+      "profile": {
+        "id": "eve",
+        "label": "Eve — 22F, No Restrictions, Maintain Weight",
+        "sex": "female",
+        "age": 22,
+        "height": 64,
+        "weight": 130,
+        "activityLevel": "Moderately Active",
+        "dietaryGoal": "Maintain Weight",
+        "dailyCalorieGoal": 2000,
+        "macroGoals": {
+          "protein": 25,
+          "carbs": 50,
+          "fat": 25
+        },
+        "healthRestrictions": [],
+        "dietaryHabits": [],
+        "likes": [
+          "pasta",
+          "vegetables",
+          "fruit"
+        ],
+        "dislikes": [
+          "liver",
+          "anchovies"
+        ]
+      },
+      "ragParams": {
+        "mealType": "lunch",
+        "cuisineType": "mediterranean",
+        "limit": 3,
+        "healthRestrictions": [],
+        "dietaryGoal": "Maintain Weight",
+        "dailyCalorieGoal": 2000,
+        "consumedCalories": 480,
+        "consumedMealTypes": [
+          "breakfast"
+        ],
+        "macroGoals": {
+          "protein": 25,
+          "carbs": 50,
+          "fat": 25
+        },
+        "dislikes": [
+          "liver",
+          "anchovies"
+        ],
+        "likes": [
+          "pasta",
+          "vegetables",
+          "fruit"
+        ],
+        "activityLevel": "Moderately Active",
+        "sex": "female",
+        "age": 22,
+        "height": 64,
+        "weight": 130
+      }
+    },
+    "calorieTarget": 608,
+    "rag": {
+      "recipes": [
+        {
+          "id": "spoonacular_638235",
+          "label": "Chicken Parmesan With Pasta",
+          "cuisine": "mediterranean",
+          "ingredients": [
+            "Angel Hair pasta",
+            "Breadcrumbs for coating",
+            "2 breasts of chicken, cut in half, into two fillets",
+            "1 egg, beaten",
+            "1 cup flour, season with salt and pepper",
+            "1 1/2 teaspoons garlic powder",
+            "1 cup shredded low-fat mozzarella cheese",
+            "Red pasta sauce",
+            "Salt and Pepper",
+            "2 tablespoons vegetable oil"
+          ],
+          "instructions": "Step 1: Preheat oven to 350.Start with cutting your chicken breasts into halves. Season both sides of your chicken with salt and pepper, then dredge each breast in flour. Be sure to coat each side and the edges.\n\nStep 2: Heat vegetable oil in a large skillet over medium-high heat.In a small sauce pan, warm your pasta sauce.Lightly beat 1 egg in a bowl. Put about 1 cup of bread crumbs in another bowl and season with a little garlic powder. Take your floured chicken and dip into the egg wash, coating all over, then into the bread crumbs. Bread all four chicken breasts.\n\nStep 3: Put the chicken into the skillet and cook for three minutes on each side, or until golden brown on each side.\n\nStep 4: Remove the chicken to a baking sheet. Finish the chicken in the 350 degree oven for 10-15 minutes. {Depending on how thick your chicken breasts, add more or less time.}In a large pot, boil the water needed for your pasta. We used angel hair which only takes 3-5 minutes to cook. But if youre using a penne or something denser youll need more time for the pasta.Pull the chicken out and top with mozzarella cheese, put back into the oven to melt the cheese.Plate the pasta first, topped with chicken and the cover with sauce. If youre feeling zesty add a little fresh shaved Pecorino-Romano or grated Parmesan cheese!",
+          "calories": 557,
+          "protein": 43,
+          "carbs": 57,
+          "fat": 17,
+          "fiber": 4,
+          "sugar": 7,
+          "sodium": 29467,
+          "imageUrl": "https://img.spoonacular.com/recipes/638235-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 4,
+          "similarity": 0.7027393139615579,
+          "matchScore": 0.7486234448833116
+        },
+        {
+          "id": "spoonacular_657933",
+          "label": "Ratatouille Pasta",
+          "cuisine": "mediterranean",
+          "ingredients": [
+            "1 large Yellow Onion, diced",
+            "Olive oil for sauteing",
+            "Sea salt and fresh pepper",
+            "4 cloves Garlic, minced",
+            "3 cups Zucchini, peeled, thinly sliced(⅛ of an inch), cut into bite size pieces",
+            "3 cups Eggplant, peeled, thinly sliced(⅛ of an inch), cut into bite size pieces",
+            "1 teaspoon Italian Seasoning",
+            "14 ounces can of Artichokes, rinsed, chopped into bite size pieces",
+            "14 ounces can Diced Tomatoes",
+            "8 ounces Spaghetti (like Barila Whole Grain)",
+            "Extra Virgin Olive oil, for serving",
+            "Fresh grated Parmesan or Romano, for serving"
+          ],
+          "instructions": "Step 1: Saute the yellow onion in a large skillet or saute pan with enough Olive oil to coat the bottom of the pan, over medium-low heat until tender and translucent. Season with salt and pepper.\n\nStep 2: Add garlic, saute until fragrant.\n\nStep 3: Add another tablespoon of Olive oil and the zucchini, eggplant and Italian seasoning. Continue sauteing until the zucchini and eggplant start to break down and become limp and tender.\n\nStep 4: Add the artichokes and tomatoes. Season with salt and pepper. Bring to a simmer for ten - fifteen minutes. Taste and re-season if needed.\n\nStep 5: Meanwhile cook the spaghetti to al dente according to package directions.\n\nStep 6: Toss with pasta and serve with a drizzle of extra-virgin Olive oil and Parmesan cheese.",
+          "calories": 691,
+          "protein": 25,
+          "carbs": 69,
+          "fat": 37,
+          "fiber": 12,
+          "sugar": 11,
+          "sodium": 924,
+          "imageUrl": "https://img.spoonacular.com/recipes/657933-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 4,
+          "similarity": 0.7238050866356325,
+          "matchScore": 0.6159452862567217
+        },
+        {
+          "id": "spoonacular_648279",
+          "label": "Italian Tuna Pasta",
+          "cuisine": "mediterranean",
+          "ingredients": [
+            "2 fresh chillies",
+            "1 tablespoon minced garlic",
+            "Ground black pepper",
+            "2 lemons, juiced",
+            "1/2 cup of chopped parsley leaves",
+            "250 grams of pasta shells (cook pasta according to packet's instructions)",
+            "1 red pepper",
+            "400 grams of tuna, drained and flaked"
+          ],
+          "instructions": "Step 1: Once pasta is cooked, drain and leave to cool for a minute.\n\nStep 2: Place small skillet on medium fire, drizzle olive oil, add in red pepper and stir-fry for 1-2 minutes. Put aside.Toss pasta shells, red pepper, tuna, parsley, garlic, chillies and lemon juice. Season with ground black pepper to taste, spoon into serving bowls.",
+          "calories": 464,
+          "protein": 38,
+          "carbs": 70,
+          "fat": 3,
+          "fiber": 4,
+          "sugar": 6,
+          "sodium": 308,
+          "imageUrl": "https://img.spoonacular.com/recipes/648279-312x231.jpg",
+          "readyInMinutes": 20,
+          "servings": 3,
+          "similarity": 0.7048997886243026,
+          "matchScore": 0.6000078588113448
+        }
+      ],
+      "isExactMatch": true,
+      "geminiResponseText": "1. Chicken Parmesan With Pasta\n   557 calories per serving\n   43g protein\n   57g carbs\n   17g fat\n\n2. Ratatouille Pasta\n   691 calories per serving\n   25g protein\n   69g carbs\n   37g fat\n\n3. Italian Tuna Pasta\n   464 calories per serving\n   38g protein\n   70g carbs\n   3g fat",
+      "metrics": {
+        "hallucination": 1,
+        "calorieAccuracy": 0.8475877192982456,
+        "macroAlignment": 0.6534335335767106,
+        "restrictionCompliance": 1,
+        "preferenceAdherence": 0.3333333333333333,
+        "specificity": 1
+      },
+      "error": null
+    },
+    "noRag": {
+      "recipes": [
+        {
+          "id": null,
+          "label": "Mediterranean Chicken & Veggie Pasta",
+          "calories": 555,
+          "protein": 42,
+          "carbs": 58,
+          "fat": 20,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        },
+        {
+          "id": null,
+          "label": "Lemon Herb Salmon with Quinoa & Roasted Veggies",
+          "calories": 545,
+          "protein": 38,
+          "carbs": 60,
+          "fat": 17,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        }
+      ],
+      "geminiResponseText": "Mediterranean Chicken & Veggie Pasta | 555 calories | 42g protein | 58g carbs | 20g fat\nLemon Herb Salmon with Quinoa & Roasted Veggies | 545 calories | 38g protein | 60g carbs | 17g fat\nChickpea & Feta Salad with Whole Wheat Pita | 53",
+      "metrics": {
+        "hallucination": 0,
+        "calorieAccuracy": 0.9046052631578947,
+        "macroAlignment": 0.8192157754084359,
+        "restrictionCompliance": 1,
+        "preferenceAdherence": 0.16666666666666666,
+        "specificity": 1
+      },
+      "error": null
+    }
+  },
+  {
+    "scenario": {
+      "id": "eve-dinner",
+      "description": "Eve's dinner — any cuisine, balanced macros",
+      "profile": {
+        "id": "eve",
+        "label": "Eve — 22F, No Restrictions, Maintain Weight",
+        "sex": "female",
+        "age": 22,
+        "height": 64,
+        "weight": 130,
+        "activityLevel": "Moderately Active",
+        "dietaryGoal": "Maintain Weight",
+        "dailyCalorieGoal": 2000,
+        "macroGoals": {
+          "protein": 25,
+          "carbs": 50,
+          "fat": 25
+        },
+        "healthRestrictions": [],
+        "dietaryHabits": [],
+        "likes": [
+          "pasta",
+          "vegetables",
+          "fruit"
+        ],
+        "dislikes": [
+          "liver",
+          "anchovies"
+        ]
+      },
+      "ragParams": {
+        "mealType": "dinner",
+        "cuisineType": "none",
+        "limit": 3,
+        "healthRestrictions": [],
+        "dietaryGoal": "Maintain Weight",
+        "dailyCalorieGoal": 2000,
+        "consumedCalories": 1000,
+        "consumedMealTypes": [
+          "breakfast",
+          "lunch"
+        ],
+        "macroGoals": {
+          "protein": 25,
+          "carbs": 50,
+          "fat": 25
+        },
+        "dislikes": [
+          "liver",
+          "anchovies"
+        ],
+        "likes": [
+          "pasta",
+          "vegetables",
+          "fruit"
+        ],
+        "activityLevel": "Moderately Active",
+        "sex": "female",
+        "age": 22,
+        "height": 64,
+        "weight": 130
+      }
+    },
+    "calorieTarget": 778,
+    "rag": {
+      "recipes": [
+        {
+          "id": "spoonacular_639957",
+          "label": "Colorful Tomato and Spinach Seafood Pasta",
+          "cuisine": "world",
+          "ingredients": [
+            "1/2 cup chicken broth",
+            "8 ounces cod, cut into bite sized pieces",
+            "2 tablespoons flour",
+            "2 cloves garlic, minced",
+            "2 tablespoons lemon juice, fresh squeezed",
+            "1 tablespoon olive oil",
+            "2 tablespoons parmesan cheese , shredded",
+            "2 large Roma tomatoes, chopped",
+            "salt and pepper to taste",
+            "1 large shallot, finely chopped",
+            "4 cups spinach, chopped",
+            "1/4 cup white wine",
+            "4 ounces whole wheat pasta, spaghetti",
+            "1/4 cup to ½ basil (dependent on your taste), roll leaves together and then slice into thin pieces"
+          ],
+          "instructions": "Step 1: Cook spaghetti according to package directions.\n\nStep 2: Heat oil in large non-stick skillet.\n\nStep 3: Add onion and garlic and cook 3-4 minutes.\n\nStep 4: Add tomatoes and cook another 3-4 minutes until tender.Toss cod with flour and salt and pepper to taste.\n\nStep 5: Add cod to pan and cook another 3 minutes, add another tsp olive oil if necessary.\n\nStep 6: Add chicken broth and wine and cook another 3 minutes, stirring gently to make sauce, but not break up fish.\n\nStep 7: Add spinach and basil and cook another 3-4 minutes until spinach just wilts and sauce has reduced nicely.Top pasta with cod and parmesan cheese.",
+          "calories": 470,
+          "protein": 34,
+          "carbs": 58,
+          "fat": 10,
+          "fiber": 3,
+          "sugar": 4,
+          "sodium": 612,
+          "imageUrl": "https://img.spoonacular.com/recipes/639957-312x231.jpg",
+          "readyInMinutes": 20,
+          "servings": 2,
+          "similarity": 0.6537064538720314,
+          "matchScore": 0.6514345891969225
+        },
+        {
+          "id": "spoonacular_657933",
+          "label": "Ratatouille Pasta",
+          "cuisine": "mediterranean",
+          "ingredients": [
+            "1 large Yellow Onion, diced",
+            "Olive oil for sauteing",
+            "Sea salt and fresh pepper",
+            "4 cloves Garlic, minced",
+            "3 cups Zucchini, peeled, thinly sliced(⅛ of an inch), cut into bite size pieces",
+            "3 cups Eggplant, peeled, thinly sliced(⅛ of an inch), cut into bite size pieces",
+            "1 teaspoon Italian Seasoning",
+            "14 ounces can of Artichokes, rinsed, chopped into bite size pieces",
+            "14 ounces can Diced Tomatoes",
+            "8 ounces Spaghetti (like Barila Whole Grain)",
+            "Extra Virgin Olive oil, for serving",
+            "Fresh grated Parmesan or Romano, for serving"
+          ],
+          "instructions": "Step 1: Saute the yellow onion in a large skillet or saute pan with enough Olive oil to coat the bottom of the pan, over medium-low heat until tender and translucent. Season with salt and pepper.\n\nStep 2: Add garlic, saute until fragrant.\n\nStep 3: Add another tablespoon of Olive oil and the zucchini, eggplant and Italian seasoning. Continue sauteing until the zucchini and eggplant start to break down and become limp and tender.\n\nStep 4: Add the artichokes and tomatoes. Season with salt and pepper. Bring to a simmer for ten - fifteen minutes. Taste and re-season if needed.\n\nStep 5: Meanwhile cook the spaghetti to al dente according to package directions.\n\nStep 6: Toss with pasta and serve with a drizzle of extra-virgin Olive oil and Parmesan cheese.",
+          "calories": 691,
+          "protein": 25,
+          "carbs": 69,
+          "fat": 37,
+          "fiber": 12,
+          "sugar": 11,
+          "sodium": 924,
+          "imageUrl": "https://img.spoonacular.com/recipes/657933-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 4,
+          "similarity": 0.6832664087064182,
+          "matchScore": 0.6196190460556651
+        },
+        {
+          "id": "spoonacular_654928",
+          "label": "Pasta With Italian Sausage",
+          "cuisine": "mediterranean",
+          "ingredients": [
+            "1/2 cup Parmesean Cheese, grated",
+            "1/4 teaspoon Fennel Seed, crushed",
+            "1/4 cup Fresh Basil, chopped, or",
+            "1 clove garlic, crushed",
+            "1 cup Green Pepper, chopped",
+            "1 pound Italian Sausage, casings",
+            "2 tablespoons olive oil",
+            "1 small onion",
+            "1/4 cup Italian Parsley, chopped",
+            "12 ounces Pasta (your favourite)",
+            "1 cup Tomato-Based Pasta Sauce",
+            "1/2 cup Red Zinfandel",
+            "Removed",
+            "Removed"
+          ],
+          "instructions": "Step 1: Crumble sausage into a large skillet. Cook over medium heat, stirring often, until meat is well browned.\n\nStep 2: Drain and set aside. In same skillet, cook onion, pepper, garlic, basil and fennel in 1 tb olive oil over medium heat, stirring often to scrape up browned bits from the bottom of pan. Cook until onion is translucent, about 5 minutes.\n\nStep 3: Add sausage, pasta sauce, and wine. Bring to a boil. Reduce heat and simmer 5 minutes. While sauce is cooking, in a large pot of boiling water cook pasta until al dente.\n\nStep 4: Drain well.On a large warm serving platter, combine parsley and 1 tb olive oil & fresh basil.\n\nStep 5: Add pasta and toss to mix.\n\nStep 6: Pour sauce over pasta.\n\nStep 7: Sprinkle with Parmesean cheese.",
+          "calories": 886,
+          "protein": 32,
+          "carbs": 73,
+          "fat": 49,
+          "fiber": 5,
+          "sugar": 6,
+          "sodium": 1221,
+          "imageUrl": "https://img.spoonacular.com/recipes/654928-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 4,
+          "similarity": 0.6606383586662455,
+          "matchScore": 0.5917130378147567
+        }
+      ],
+      "isExactMatch": true,
+      "geminiResponseText": "1. Colorful Tomato and Spinach Seafood Pasta\n   470 calories per serving\n   34g protein\n   58g carbs\n   10g fat\n\n2. Ratatouille Pasta\n   691 calories per serving\n   25g protein\n   69g carbs\n   37g fat\n\n3. Pasta With Italian Sausage\n   886 calories per serving\n   32g protein\n   73g carbs\n   49g fat",
+      "metrics": {
+        "hallucination": 1,
+        "calorieAccuracy": 0.784490145672665,
+        "macroAlignment": 0.6314473278648881,
+        "restrictionCompliance": 1,
+        "preferenceAdherence": 0.3333333333333333,
+        "specificity": 1
+      },
+      "error": null
+    },
+    "noRag": {
+      "recipes": [
+        {
+          "id": null,
+          "label": "Lemon Herb Chicken Quinoa Bowl",
+          "calories": 340,
+          "protein": 33,
+          "carbs": 30,
+          "fat": 9,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        },
+        {
+          "id": null,
+          "label": "Hearty Chickpea & Veggie Pasta",
+          "calories": 360,
+          "protein": 15,
+          "carbs": 61,
+          "fat": 8,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        },
+        {
+          "id": null,
+          "label": "Baked Salmon with Sweet Potato & Asparagus",
+          "calories": 307,
+          "protein": 2,
+          "carbs": null,
+          "fat": null,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        }
+      ],
+      "geminiResponseText": "Lemon Herb Chicken Quinoa Bowl | 340 calories | 33g protein | 30g carbs | 9g fat\nHearty Chickpea & Veggie Pasta | 360 calories | 15g protein | 61g carbs | 8g fat\nBaked Salmon with Sweet Potato & Asparagus | 307 calories | 2",
+      "metrics": {
+        "hallucination": 0,
+        "calorieAccuracy": 0.43144815766923733,
+        "macroAlignment": 0.42470951343500357,
+        "restrictionCompliance": 1,
+        "preferenceAdherence": 0.1111111111111111,
+        "specificity": 1
+      },
+      "error": null
+    }
+  },
+  {
+    "scenario": {
+      "id": "frank-breakfast",
+      "description": "Frank's breakfast — low calorie start for weight loss",
+      "profile": {
+        "id": "frank",
+        "label": "Frank — 46M, Sedentary, Overweight, Lose Weight",
+        "sex": "male",
+        "age": 46,
+        "height": 70,
+        "weight": 210,
+        "activityLevel": "Sedentary",
+        "dietaryGoal": "Lose Weight",
+        "dailyCalorieGoal": 1700,
+        "macroGoals": {
+          "protein": 30,
+          "carbs": 40,
+          "fat": 30
+        },
+        "healthRestrictions": [],
+        "dietaryHabits": [],
+        "likes": [
+          "beef",
+          "potatoes",
+          "bread"
+        ],
+        "dislikes": [
+          "tofu",
+          "fish"
+        ]
+      },
+      "ragParams": {
+        "mealType": "breakfast",
+        "cuisineType": "american",
+        "limit": 3,
+        "healthRestrictions": [],
+        "dietaryGoal": "Lose Weight",
+        "dailyCalorieGoal": 1700,
+        "consumedCalories": 0,
+        "consumedMealTypes": [],
+        "macroGoals": {
+          "protein": 30,
+          "carbs": 40,
+          "fat": 30
+        },
+        "dislikes": [
+          "tofu",
+          "fish"
+        ],
+        "likes": [
+          "beef",
+          "potatoes",
+          "bread"
+        ],
+        "activityLevel": "Sedentary",
+        "sex": "male",
+        "age": 46,
+        "height": 70,
+        "weight": 210
+      }
+    },
+    "calorieTarget": 425,
+    "rag": {
+      "recipes": [
+        {
+          "id": "spoonacular_640067",
+          "label": "Corn Bread",
+          "cuisine": "american",
+          "ingredients": [
+            "1 1/2 cups yellow cornmeal",
+            "2 eggs, beaten lightly",
+            "1/4 cup melted butter, cooled",
+            "1 cup whole wheat flour",
+            "1 cup unbleached white flour",
+            "1 tablespoon baking powder",
+            "1 teaspoon baking soda",
+            "1 teaspoon salt",
+            "2 cups buttermilk or plain yogurt",
+            "1/2 cup milk",
+            "1/4 cup maple syrup"
+          ],
+          "instructions": "Step 1: Preheat oven to 350 degrees.\n\nStep 2: Generously grease a 9 x 13 inch baking pan or a 12 inch cast iron skillet.\n\nStep 3: Sift the dry ingredients into a large bowl.\n\nStep 4: In another bowl, combine the wet ingredients and stir until mixed.\n\nStep 5: Fold the wet ingredients into the dry ingredients.\n\nStep 6: Smooth the batter into the baking pan or skillet and bake for 25 to 30 minutes, or until a knife inserted into the center comes out clean.\n\nStep 7: Allow the corn bread to cool for at least 10 minutes before serving.",
+          "calories": 363,
+          "protein": 11,
+          "carbs": 55,
+          "fat": 12,
+          "fiber": 5,
+          "sugar": 10,
+          "sodium": 684,
+          "imageUrl": "https://img.spoonacular.com/recipes/640067-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 8,
+          "similarity": 0.5956467814976381,
+          "matchScore": 0.6704250195314956
+        },
+        {
+          "id": "spoonacular_1444543",
+          "label": "Easy Berry French Toast",
+          "cuisine": "american",
+          "ingredients": [
+            "6 eggs",
+            "1 1/2 cups milk",
+            "1 packet vanilla sugar",
+            "8 slices whole wheat bread",
+            "4 tbsp butter",
+            "2 cups mixed berries",
+            "1/2 cup maple syrup"
+          ],
+          "instructions": "Step 1: Beat eggs.\n\nStep 2: Add milk and vanilla sugar.Dip the bread into the egg mixture one slice at a time, lightly pressing the slices into the egg mixture. Turn to coat both sides evenly. Melt 1 tbsp of butter in a large skillet over medium heat.\n\nStep 3: Add 2-3 slices to the skillet (depending on the size of your bread and your skillet).Fry the bread until browned on both sides.Keep warm in the oven while you finish the other slices, adding butter to the pan as needed.Top with fresh or heated frozen berries (I heat frozen berries gently in a saucepan while I make the French toast).\n\nStep 4: Serve with maple syrup.",
+          "calories": 544,
+          "protein": 19,
+          "carbs": 66,
+          "fat": 23,
+          "fiber": 5,
+          "sugar": 38,
+          "sodium": 476,
+          "imageUrl": "https://img.spoonacular.com/recipes/1444543-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 4,
+          "similarity": 0.5954524888508904,
+          "matchScore": 0.5669717194733244
+        },
+        {
+          "id": "spoonacular_655239",
+          "label": "Peanut Butter Banana French Toast",
+          "cuisine": "american",
+          "ingredients": [
+            "2 slices bread",
+            "Peanut Butter, 2 Tablespoons",
+            "Half of Banana, sliced in rounds or length wise",
+            "1 whole egg, whisked",
+            "1/8 cup orange juice",
+            "pinch of ground nutmeg",
+            "pinch of ground cinnamon",
+            "pinch of cayenne"
+          ],
+          "instructions": "Step 1: Prepare a Peanut Butter and Banana Sandwich\n\nStep 2: Mix whisked egg, orange juice, nutmeg and cinnamon and cayenne in a bowl\n\nStep 3: Heat a skillet and place One (\n\nStep 4: Tablespoon in same\n\nStep 5: Dip Sandwich in egg mixture coating both sides\n\nStep 6: Cook in skillet for one minute on each side\n\nStep 7: Ladle with syrup, sprinkle with confectioners sugar and garnish with more bananas",
+          "calories": 540,
+          "protein": 20,
+          "carbs": 67,
+          "fat": 24,
+          "fiber": 7,
+          "sugar": 25,
+          "sodium": 466,
+          "imageUrl": "https://img.spoonacular.com/recipes/655239-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 1,
+          "similarity": 0.5976151061510361,
+          "matchScore": 0.5662829339992721
+        }
+      ],
+      "isExactMatch": true,
+      "geminiResponseText": "1. Corn Bread\n   363 calories per serving\n   11g protein\n   55g carbs\n   12g fat\n\n2. Easy Berry French Toast\n   544 calories per serving\n   19g protein\n   66g carbs\n   23g fat\n\n3. Peanut Butter Banana French Toast\n   540 calories per serving\n   20g protein\n   67g carbs\n   24g fat",
+      "metrics": {
+        "hallucination": 1,
+        "calorieAccuracy": 0.767843137254902,
+        "macroAlignment": 0.5802223250028509,
+        "restrictionCompliance": 1,
+        "preferenceAdherence": 0.3333333333333333,
+        "specificity": 1
+      },
+      "error": null
+    },
+    "noRag": {
+      "recipes": [
+        {
+          "id": null,
+          "label": "Lean Beef & Egg Scramble with Home Fries and Toast",
+          "calories": 580,
+          "protein": 46,
+          "carbs": 56,
+          "fat": 19,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        },
+        {
+          "id": null,
+          "label": "Hearty Breakfast Sandwich with Turkey Bacon & Apple",
+          "calories": 560,
+          "protein": 39,
+          "carbs": 63,
+          "fat": 18,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        }
+      ],
+      "geminiResponseText": "Lean Beef & Egg Scramble with Home Fries and Toast | 580 calories | 46g protein | 56g carbs | 19g fat\nHearty Breakfast Sandwich with Turkey Bacon & Apple | 560 calories | 39g protein | 63g carbs | 18g fat\nPotato, Egg & Cheese Breakfast Burrito | 5",
+      "metrics": {
+        "hallucination": 0,
+        "calorieAccuracy": 0.6588235294117647,
+        "macroAlignment": 0.9303879310344828,
+        "restrictionCompliance": 1,
+        "preferenceAdherence": 0.16666666666666666,
+        "specificity": 1
+      },
+      "error": null
+    }
+  },
+  {
+    "scenario": {
+      "id": "frank-lunch",
+      "description": "Frank's lunch — must stay under budget after breakfast",
+      "profile": {
+        "id": "frank",
+        "label": "Frank — 46M, Sedentary, Overweight, Lose Weight",
+        "sex": "male",
+        "age": 46,
+        "height": 70,
+        "weight": 210,
+        "activityLevel": "Sedentary",
+        "dietaryGoal": "Lose Weight",
+        "dailyCalorieGoal": 1700,
+        "macroGoals": {
+          "protein": 30,
+          "carbs": 40,
+          "fat": 30
+        },
+        "healthRestrictions": [],
+        "dietaryHabits": [],
+        "likes": [
+          "beef",
+          "potatoes",
+          "bread"
+        ],
+        "dislikes": [
+          "tofu",
+          "fish"
+        ]
+      },
+      "ragParams": {
+        "mealType": "lunch",
+        "cuisineType": "none",
+        "limit": 3,
+        "healthRestrictions": [],
+        "dietaryGoal": "Lose Weight",
+        "dailyCalorieGoal": 1700,
+        "consumedCalories": 380,
+        "consumedMealTypes": [
+          "breakfast"
+        ],
+        "macroGoals": {
+          "protein": 30,
+          "carbs": 40,
+          "fat": 30
+        },
+        "dislikes": [
+          "tofu",
+          "fish"
+        ],
+        "likes": [
+          "beef",
+          "potatoes",
+          "bread"
+        ],
+        "activityLevel": "Sedentary",
+        "sex": "male",
+        "age": 46,
+        "height": 70,
+        "weight": 210
+      }
+    },
+    "calorieTarget": 528,
+    "rag": {
+      "recipes": [
+        {
+          "id": "spoonacular_647645",
+          "label": "Hungarian Beef Goulash",
+          "cuisine": "eastern european",
+          "ingredients": [
+            "1 ounce x 9 package frozen artichoke hearts thawed",
+            "1 1/2 pounds beef stew meat cut into 1 inch cubes",
+            "1 (14 1/2 oz.) can beef broth",
+            "1 ounce x 14 can chunky tomatoes with garlic and 1 ounce x 6 can tomato paste",
+            "3 cups hot cooked noodles",
+            "cup dairy sour cream",
+            "1 teaspoon caraway seed or fennel seed",
+            "1 Clove garlic, minced",
+            "2 mediums onions, chopped",
+            "3 mediums potatoes cut into 1 inch cubes",
+            "1 teaspoon Salt",
+            "1In a 3 1/2, 4 or 5 quart crockery cooker, place potatoes, onions and garlic."
+          ],
+          "instructions": "Step 1: In a 3 1/2, 4 or 5 quart crockery cooker, place potatoes, onions and garlic.\n\nStep 2: Add beef. In a bowl combine broth, undrained tomatoes, tomato paste, paprika, caraway or fennel seed and salt.\n\nStep 3: Pour over all. cover; cook on low heat setting for 10-12 hours or on high heat setting for 5-6 hours. Stir thawed artichoke hearts into cooker. Cover and let stand for 10 minutes.\n\nStep 4: Serve over hot cooked noodles. Top each serving with a spoonful of sour cream.Makes 6 servings.",
+          "calories": 516,
+          "protein": 35,
+          "carbs": 62,
+          "fat": 14,
+          "fiber": 7,
+          "sugar": 5,
+          "sodium": 741,
+          "imageUrl": "https://img.spoonacular.com/recipes/647645-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 6,
+          "similarity": 0.6555354961967781,
+          "matchScore": 0.8176758110302123
+        },
+        {
+          "id": "spoonacular_1044252",
+          "label": "Shredded Roast Beef Stuffed Sweet Potatoes (Whole 30 & PALEO)",
+          "cuisine": "world",
+          "ingredients": [
+            "beef broth",
+            "2 lb roast",
+            "salt and pepper to taste",
+            "6 sweet potatoes"
+          ],
+          "instructions": "Step 1: Place the roast in Crock Pot, cover with beef broth,  and cook on low for 8 hours. Fully cook the sweet potatoes when ready. When roast is finished, shred and serve over the sweet potatoes.",
+          "calories": 486,
+          "protein": 44,
+          "carbs": 55,
+          "fat": 9,
+          "fiber": 8,
+          "sugar": 11,
+          "sodium": 481,
+          "imageUrl": "https://img.spoonacular.com/recipes/1044252-312x231.jpg",
+          "readyInMinutes": 490,
+          "servings": 5,
+          "similarity": 0.6592031834826076,
+          "matchScore": 0.7914331776179218
+        },
+        {
+          "id": "spoonacular_651707",
+          "label": "Mexican Stuffed Potatoes",
+          "cuisine": "mexican",
+          "ingredients": [
+            "1/2 pound extra lean beef, ground",
+            "1 cup salsa",
+            "4 mediums yukon gold potatoes",
+            "8 tablespoons low fat cheddar cheese, shredded",
+            "1 cup roma tomato, seeded and chopped",
+            "1/2 cup green onion, sliced",
+            "1/2 medium avocado, finely chopped",
+            "4 tablespoons sour cream"
+          ],
+          "instructions": "Step 1: Pierce potatoes and microwave the potatoes on high from 15  20 minutes until fork tender.\n\nStep 2: In a medium sized non-stick skillet over medium heat, cook hamburger until no longer pink, then add salsa and heat through.\n\nStep 3: Slice potatoes lengthwise and squish apart. Gently smash the insides with a fork.\n\nStep 4: Top each potato with 1/4 meat mixture, 1/4 tomatoes, 1/4 green onions, and 2 tablespoons cheese each. Microwave on high for 1  2 minutes until cheese melts.\n\nStep 5: Top each potato with avocado and 1 tablespoon sour cream.",
+          "calories": 330,
+          "protein": 21,
+          "carbs": 40,
+          "fat": 10,
+          "fiber": 8,
+          "sugar": 6,
+          "sodium": 570,
+          "imageUrl": "https://img.spoonacular.com/recipes/651707-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 4,
+          "similarity": 0.6594536344784804,
+          "matchScore": 0.723267997370008
+        }
+      ],
+      "isExactMatch": true,
+      "geminiResponseText": "1. Hungarian Beef Goulash\n   516 calories per serving\n   35g protein\n   62g carbs\n   14g fat\n\n2. Shredded Roast Beef Stuffed Sweet Potatoes (Whole 30 & PALEO)\n   486 calories per serving\n   44g protein\n   55g carbs\n   9g fat\n\n3. Mexican Stuffed Potatoes\n   330 calories per serving\n   21g protein\n   40g carbs\n   10g fat",
+      "metrics": {
+        "hallucination": 1,
+        "calorieAccuracy": 0.8409090909090908,
+        "macroAlignment": 0.7944823389411387,
+        "restrictionCompliance": 1,
+        "preferenceAdherence": 0.6666666666666666,
+        "specificity": 1
+      },
+      "error": null
+    },
+    "noRag": {
+      "recipes": [
+        {
+          "id": null,
+          "label": "Lean Beef & Roasted Potato Bowl",
+          "calories": 485,
+          "protein": 37,
+          "carbs": 46,
+          "fat": 20,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        },
+        {
+          "id": null,
+          "label": "Roast Beef & Veggie Sandwich",
+          "calories": 490,
+          "protein": 43,
+          "carbs": 51,
+          "fat": 14,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        },
+        {
+          "id": null,
+          "label": "Beef & Black Bean Chili with Whole Wheat Bread",
+          "calories": 510,
+          "protein": 4,
+          "carbs": null,
+          "fat": null,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        }
+      ],
+      "geminiResponseText": "Lean Beef & Roasted Potato Bowl | 485 calories | 37g protein | 46g carbs | 20g fat\nRoast Beef & Veggie Sandwich | 490 calories | 43g protein | 51g carbs | 14g fat\nBeef & Black Bean Chili with Whole Wheat Bread | 510 calories | 4",
+      "metrics": {
+        "hallucination": 0,
+        "calorieAccuracy": 0.9375,
+        "macroAlignment": 0.5956682329289104,
+        "restrictionCompliance": 1,
+        "preferenceAdherence": 0.4444444444444444,
+        "specificity": 1
+      },
+      "error": null
+    }
+  },
+  {
+    "scenario": {
+      "id": "frank-dinner",
+      "description": "Frank's dinner — likes beef/potatoes but needs low calorie options",
+      "profile": {
+        "id": "frank",
+        "label": "Frank — 46M, Sedentary, Overweight, Lose Weight",
+        "sex": "male",
+        "age": 46,
+        "height": 70,
+        "weight": 210,
+        "activityLevel": "Sedentary",
+        "dietaryGoal": "Lose Weight",
+        "dailyCalorieGoal": 1700,
+        "macroGoals": {
+          "protein": 30,
+          "carbs": 40,
+          "fat": 30
+        },
+        "healthRestrictions": [],
+        "dietaryHabits": [],
+        "likes": [
+          "beef",
+          "potatoes",
+          "bread"
+        ],
+        "dislikes": [
+          "tofu",
+          "fish"
+        ]
+      },
+      "ragParams": {
+        "mealType": "dinner",
+        "cuisineType": "none",
+        "limit": 3,
+        "healthRestrictions": [],
+        "dietaryGoal": "Lose Weight",
+        "dailyCalorieGoal": 1700,
+        "consumedCalories": 850,
+        "consumedMealTypes": [
+          "breakfast",
+          "lunch"
+        ],
+        "macroGoals": {
+          "protein": 30,
+          "carbs": 40,
+          "fat": 30
+        },
+        "dislikes": [
+          "tofu",
+          "fish"
+        ],
+        "likes": [
+          "beef",
+          "potatoes",
+          "bread"
+        ],
+        "activityLevel": "Sedentary",
+        "sex": "male",
+        "age": 46,
+        "height": 70,
+        "weight": 210
+      }
+    },
+    "calorieTarget": 661,
+    "rag": {
+      "recipes": [
+        {
+          "id": "spoonacular_651707",
+          "label": "Mexican Stuffed Potatoes",
+          "cuisine": "mexican",
+          "ingredients": [
+            "1/2 pound extra lean beef, ground",
+            "1 cup salsa",
+            "4 mediums yukon gold potatoes",
+            "8 tablespoons low fat cheddar cheese, shredded",
+            "1 cup roma tomato, seeded and chopped",
+            "1/2 cup green onion, sliced",
+            "1/2 medium avocado, finely chopped",
+            "4 tablespoons sour cream"
+          ],
+          "instructions": "Step 1: Pierce potatoes and microwave the potatoes on high from 15  20 minutes until fork tender.\n\nStep 2: In a medium sized non-stick skillet over medium heat, cook hamburger until no longer pink, then add salsa and heat through.\n\nStep 3: Slice potatoes lengthwise and squish apart. Gently smash the insides with a fork.\n\nStep 4: Top each potato with 1/4 meat mixture, 1/4 tomatoes, 1/4 green onions, and 2 tablespoons cheese each. Microwave on high for 1  2 minutes until cheese melts.\n\nStep 5: Top each potato with avocado and 1 tablespoon sour cream.",
+          "calories": 330,
+          "protein": 21,
+          "carbs": 40,
+          "fat": 10,
+          "fiber": 8,
+          "sugar": 6,
+          "sodium": 570,
+          "imageUrl": "https://img.spoonacular.com/recipes/651707-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 4,
+          "similarity": 0.6508330288610817,
+          "matchScore": 0.6829810301588355
+        },
+        {
+          "id": "spoonacular_654939",
+          "label": "Pasta With Roasted Vegetables & Greek Olives",
+          "cuisine": "mediterranean",
+          "ingredients": [
+            "1 pack package Angel hair spaghetti 12",
+            "1 large can tomato sauce",
+            "1 can diced tomatoes",
+            "Fresh basil",
+            "teaspoon ½ minced garlic",
+            "cup ¼ green Greek olives (pitted)",
+            "1 teaspoon Italian seasoning",
+            "1 pound of lean ground beef",
+            "1 tablespoon lemon juice",
+            "1 cup sliced mushrooms (seasoned & roasted)",
+            "2 teaspoons Onion, minced",
+            "teaspoon ½ oregano",
+            "cup ¼ parmesan cheese",
+            "teaspoon ½ black pepper",
+            "1 pound of vegetables (seasoned, roasted with olive oil)",
+            "cup ¼ of sun dried tomatoes, chopped"
+          ],
+          "instructions": "Step 1: For the sauce: combine all ingredients bring to boil then simmer on low heat for about 10 minutes",
+          "calories": 266,
+          "protein": 23,
+          "carbs": 26,
+          "fat": 10,
+          "fiber": 7,
+          "sugar": 11,
+          "sodium": 1014,
+          "imageUrl": "https://img.spoonacular.com/recipes/654939-312x231.jpg",
+          "readyInMinutes": 45,
+          "servings": 8,
+          "similarity": 0.6198770234165416,
+          "matchScore": 0.6240902598718434
+        },
+        {
+          "id": "spoonacular_636523",
+          "label": "Butter-Bread",
+          "cuisine": "world",
+          "ingredients": [
+            "100 grams strong white bread flour",
+            "400 grams strong white bread flour",
+            "100 grams butter, in cubes",
+            "1 gram fresh yeast (available in chilled section of supermarket or from bakery)",
+            "20 grams fresh yeast",
+            "50 grams liquid malt extract",
+            "15 grams salt",
+            "Sunflower oil for greasing",
+            "100 milliliters water",
+            "200 milliliters lukewarm water"
+          ],
+          "instructions": "Step 1: The night before you wish to make the bread, mix the starter dough ingredients together, cover and put in the fridge overnight. Take the butter and starter dough out of the fridge one hour before starting to make the bread, to bring it to room temperature.\n\nStep 2: Mix the yeast, malt extract, and water together until there are no lumps left. Then tip in the flour, salt, and butter and mix well.\n\nStep 3: Mix in the starter dough mixture and knead for 10 minutes. As this is quite a wet dough it is best to this in a food processor (with the dough hook attachment), 5 minutes on a slow speed then 5 on a fast speed.Tip the dough out onto a floured surface, dust with flour, cover, and leave for 30 minutes to rise. You will need quite a lo of flour for dusting as it is quite sticky. At 10 minute intervals, use your hands to punch flat the dough, stretch out and fold over the edges on themselves and turn over.Grease the loaf tin. Shaking off any excess flour, form a loaf shape then put the dough in the tin. Cover and leave to rise for a further 30 minutes. After 10 minutes rising, use a very sharp knife to score a 2 cm line down the centre of the dough. This helps create a nice crust.Preheat the oven to 230C.\n\nStep 4: Put the bread on the middle shelf of the oven. Using the spray bottle, squirt on and around the bread to create steam. This keeps the bread moist and gives a nice crust.\n\nStep 5: Bake for 45 minutes. After 15 minutes, spray again with water and turn the temperature down to 200C.The bread is ready when a skewer inserted into the centre of the bread comes out clean. Difficult as it may be, leave the bread to cool completely on wire rack before slicing.",
+          "calories": 583,
+          "protein": 12,
+          "carbs": 67,
+          "fat": 30,
+          "fiber": 2,
+          "sugar": 4,
+          "sodium": 1115,
+          "imageUrl": "https://img.spoonacular.com/recipes/636523-312x231.jpg",
+          "readyInMinutes": 90,
+          "servings": 6,
+          "similarity": 0.6173420498007416,
+          "matchScore": 0.6180285160149513
+        }
+      ],
+      "isExactMatch": true,
+      "geminiResponseText": "1. Mexican Stuffed Potatoes\n   330 calories per serving\n   21g protein\n   40g carbs\n   10g fat\n\n2. Pasta With Roasted Vegetables & Greek Olives\n   266 calories per serving\n   23g protein\n   26g carbs\n   10g fat\n\n3. Butter-Bread\n   583 calories per serving\n   12g protein\n   67g carbs\n   30g fat",
+      "metrics": {
+        "hallucination": 1,
+        "calorieAccuracy": 0.594553706505295,
+        "macroAlignment": 0.7394150279453159,
+        "restrictionCompliance": 1,
+        "preferenceAdherence": 0.4444444444444444,
+        "specificity": 1
+      },
+      "error": null
+    },
+    "noRag": {
+      "recipes": [
+        {
+          "id": null,
+          "label": "Lean Beef & Roasted Potato Dinner",
+          "calories": 820,
+          "protein": 61,
+          "carbs": 78,
+          "fat": 31,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        },
+        {
+          "id": null,
+          "label": "Lean Beef & Potato Hash with Whole Wheat Toast",
+          "calories": 840,
+          "protein": 62,
+          "carbs": 90,
+          "fat": 26,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        },
+        {
+          "id": null,
+          "label": "Steak with Garlic Herb Potatoes & Side Salad",
+          "calories": 830,
+          "protein": null,
+          "carbs": null,
+          "fat": null,
+          "healthLabels": [],
+          "ingredients": [],
+          "isTraceable": false
+        }
+      ],
+      "geminiResponseText": "Lean Beef & Roasted Potato Dinner | 820 calories | 61g protein | 78g carbs | 31g fat\nLean Beef & Potato Hash with Whole Wheat Toast | 840 calories | 62g protein | 90g carbs | 26g fat\nSteak with Garlic Herb Potatoes & Side Salad | 830 calories | ",
+      "metrics": {
+        "hallucination": 0,
+        "calorieAccuracy": 0.7443267776096821,
+        "macroAlignment": 0.6276358239772875,
+        "restrictionCompliance": 1,
+        "preferenceAdherence": 0.3333333333333333,
+        "specificity": 1
+      },
+      "error": null
+    }
+  }
+]
