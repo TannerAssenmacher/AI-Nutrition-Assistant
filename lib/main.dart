@@ -18,6 +18,7 @@ import 'screens/profile_screen.dart';
 import 'navigation/nav_helper.dart';
 import 'services/notification_service.dart';
 import 'services/food_image_service.dart';
+import 'theme/style_guideline.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -232,6 +233,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'AI Nutrition Assistant',
       theme: ThemeData(
+        fontFamily: StyleGuideline.fontFamily,
         colorScheme: ColorScheme.fromSeed(seedColor: AppColors.brand),
         useMaterial3: true,
       ),
