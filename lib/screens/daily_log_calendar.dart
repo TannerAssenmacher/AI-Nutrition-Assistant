@@ -34,6 +34,7 @@ class _DailyLogCalendarScreenState
   DateTime? _selectedDay;
   bool _notificationsChecked = false;
   bool _hasAutoScrolledToToday = false;
+  final GlobalKey _todayCardKey = GlobalKey();
   final ScrollController _weekListScrollController = ScrollController();
 
   @override
@@ -70,28 +71,17 @@ class _DailyLogCalendarScreenState
 
     if (todayIndex < 0) return; // Today not in current week
 
-    _hasAutoScrolledToToday = true;
-
-    // Calculate the scroll offset for the item.
-    // Now that Daily Goals is inside the ListView, we need to account for it.
-    // Daily Goals height: ~120-140px with margins
-    // Each day item is roughly: margin(6+6) + padding(16+16) + content_height(~140-180) = ~180-220 per item.
-    const dailyGoalsHeight = 140.0;
-    const itemHeight = 180.0;
-    const headerOffset = 20.0; // Small offset so today isn't at the very top
-
-    // Add Daily Goals height to the calculation since it's the first item in the list
-    final offset = (dailyGoalsHeight + todayIndex * itemHeight - headerOffset)
-        .clamp(0.0, double.infinity);
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_weekListScrollController.hasClients) {
-        _weekListScrollController.animateTo(
-          offset,
-          duration: const Duration(milliseconds: 400),
-          curve: Curves.easeOutCubic,
-        );
-      }
+      final todayContext = _todayCardKey.currentContext;
+      if (todayContext == null) return;
+
+      _hasAutoScrolledToToday = true;
+      Scrollable.ensureVisible(
+        todayContext,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeOutCubic,
+        alignment: 0.08,
+      );
     });
   }
 
@@ -1067,10 +1057,21 @@ class _DailyLogCalendarScreenState
 
             return _wrapWithScaffold(
               SafeArea(
+                top: false,
                 child: Column(
                   children: [
-                    // Week navigation controls — FIX 1: Flexible month label
-                    Padding(
+                    Container(
+                      height: MediaQuery.of(context).padding.top,
+                      color: AppColors.brand,
+                    ),
+                    // Week navigation controls styled like chat top bar
+                    Container(
+                      decoration: const BoxDecoration(
+                        color: AppColors.brand,
+                        borderRadius: BorderRadius.vertical(
+                          bottom: Radius.circular(25),
+                        ),
+                      ),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 8,
                         vertical: 8,
@@ -1079,7 +1080,7 @@ class _DailyLogCalendarScreenState
                         children: [
                           IconButton(
                             icon: const Icon(Icons.chevron_left),
-                            color: AppColors.navBar,
+                            color: AppColors.surface,
                             tooltip: 'Previous week',
                             onPressed: () {
                               setState(() {
@@ -1097,7 +1098,7 @@ class _DailyLogCalendarScreenState
                                 style: const TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.w600,
-                                  color: AppColors.navBar,
+                                  color: AppColors.surface,
                                 ),
                                 textAlign: TextAlign.center,
                                 overflow: TextOverflow.ellipsis,
@@ -1106,7 +1107,7 @@ class _DailyLogCalendarScreenState
                           ),
                           IconButton(
                             icon: const Icon(Icons.chevron_right),
-                            color: AppColors.navBar,
+                            color: AppColors.surface,
                             tooltip: 'Next week',
                             onPressed: () {
                               setState(() {
@@ -1137,11 +1138,6 @@ class _DailyLogCalendarScreenState
                             decoration: BoxDecoration(
                               color: AppColors.surface,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: AppColors.selectionColor.withValues(
-                                  alpha: 0.3,
-                                ),
-                              ),
                               boxShadow: [
                                 BoxShadow(
                                   color: AppColors.black.withValues(
@@ -1153,14 +1149,15 @@ class _DailyLogCalendarScreenState
                               ],
                             ),
                             child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
                                 Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     Icon(
                                       Icons.track_changes,
                                       size: 18,
-                                      color: AppColors.selectionColor,
+                                      color: AppColors.black,
                                     ),
                                     const SizedBox(width: 6),
                                     const Text(
@@ -1168,12 +1165,7 @@ class _DailyLogCalendarScreenState
                                       style: TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w700,
-                                        color: Color.fromARGB(
-                                          255,
-                                          238,
-                                          223,
-                                          223,
-                                        ),
+                                        color: AppColors.black,
                                       ),
                                     ),
                                   ],
@@ -1271,6 +1263,7 @@ class _DailyLogCalendarScreenState
                                 _showFoodsSheet(day, foods, dayTotals, userId);
                               },
                               child: Container(
+                                key: isToday ? _todayCardKey : null,
                                 margin: const EdgeInsets.symmetric(
                                   vertical: 6,
                                   horizontal: 8,
@@ -1427,7 +1420,7 @@ class _DailyLogCalendarScreenState
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Text(
-                                  'Last 30 Days Statistics',
+                                  'Goals met in the last 30 logged days',
                                   style: TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w700,
@@ -1436,7 +1429,7 @@ class _DailyLogCalendarScreenState
                                 ),
                                 const SizedBox(height: 10),
                                 Text(
-                                  'Based on ${thirtyDayStats.consideredDays} logged day${thirtyDayStats.consideredDays == 1 ? '' : 's'}',
+                                  'Based on ${thirtyDayStats.consideredDays} day${thirtyDayStats.consideredDays == 1 ? '' : 's'}',
                                   style: const TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w500,
@@ -1444,35 +1437,60 @@ class _DailyLogCalendarScreenState
                                   ),
                                 ),
                                 const SizedBox(height: 8),
-                                Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
+                                Column(
                                   children: [
-                                    _StatChip(
-                                      label: 'Calories',
-                                      pointsEarned:
-                                          thirtyDayStats.caloriePoints,
-                                      potentialPoints: thirtyDayStats
-                                          .potentialPointsPerCategory,
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceEvenly,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
+                                      children: [
+                                        Expanded(
+                                          child: _StatChip(
+                                            label: 'Calories',
+                                            pointsEarned:
+                                                thirtyDayStats.caloriePoints,
+                                            potentialPoints: thirtyDayStats
+                                                .potentialPointsPerCategory,
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: _StatChip(
+                                            label: 'Protein',
+                                            pointsEarned:
+                                                thirtyDayStats.proteinPoints,
+                                            potentialPoints: thirtyDayStats
+                                                .potentialPointsPerCategory,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    _StatChip(
-                                      label: 'Protein',
-                                      pointsEarned:
-                                          thirtyDayStats.proteinPoints,
-                                      potentialPoints: thirtyDayStats
-                                          .potentialPointsPerCategory,
-                                    ),
-                                    _StatChip(
-                                      label: 'Carbs',
-                                      pointsEarned: thirtyDayStats.carbsPoints,
-                                      potentialPoints: thirtyDayStats
-                                          .potentialPointsPerCategory,
-                                    ),
-                                    _StatChip(
-                                      label: 'Fat',
-                                      pointsEarned: thirtyDayStats.fatPoints,
-                                      potentialPoints: thirtyDayStats
-                                          .potentialPointsPerCategory,
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceEvenly,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
+                                      children: [
+                                        Expanded(
+                                          child: _StatChip(
+                                            label: 'Carbs',
+                                            pointsEarned:
+                                                thirtyDayStats.carbsPoints,
+                                            potentialPoints: thirtyDayStats
+                                                .potentialPointsPerCategory,
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: _StatChip(
+                                            label: 'Fat',
+                                            pointsEarned:
+                                                thirtyDayStats.fatPoints,
+                                            potentialPoints: thirtyDayStats
+                                                .potentialPointsPerCategory,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
@@ -2208,7 +2226,10 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
       return;
     }
     if (calories == null || protein == null || carbs == null || fat == null) {
-      _showStatusSnack('Please enter valid values for all macros.', isError: true);
+      _showStatusSnack(
+        'Please enter valid values for all macros.',
+        isError: true,
+      );
       return;
     }
 
@@ -2326,7 +2347,9 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
           if (editing)
             TextField(
               controller: editController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               textAlign: TextAlign.right,
               readOnly: readOnly,
               decoration: InputDecoration(
@@ -3005,47 +3028,30 @@ class _StatChip extends StatelessWidget {
       _ => null,
     };
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: accentColor.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: accentColor.withValues(alpha: 0.45),
-          width: 1.2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: accentColor.withValues(alpha: 0.18),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (qualifier != null)
-            Text(
-              qualifier,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: accentColor.withValues(alpha: 0.9),
-              ),
-            ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        if (qualifier != null)
           Text(
-            '$label: $percentageLabel',
+            qualifier,
             style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-              color: accentColor,
-              letterSpacing: 0.2,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: accentColor.withValues(alpha: 0.9),
             ),
           ),
-        ],
-      ),
+        Text(
+          '$label: $percentageLabel',
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            color: accentColor,
+            letterSpacing: 0.2,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -3318,7 +3324,8 @@ class _ScheduledMealCard extends ConsumerWidget {
                 item.consumedAt.day == meal.date.day;
             final sameMealType =
                 item.mealType.trim().toLowerCase() == normalizedMealType;
-            final sameName = item.name.trim().toLowerCase() == normalizedRecipeName;
+            final sameName =
+                item.name.trim().toLowerCase() == normalizedRecipeName;
             return sameDay && sameMealType && sameName;
           }),
           orElse: () => false,
@@ -3388,15 +3395,15 @@ class _ScheduledMealCard extends ConsumerWidget {
                       onPressed: isAlreadyLogged
                           ? null
                           : () => _confirmAndLogScheduledMeal(
-                                context: context,
-                                ref: ref,
-                                recipeName: recipeName,
-                                calories: calories,
-                                protein: protein,
-                                carbs: carbs,
-                                fat: fat,
-                                dayLabel: dayLabel,
-                              ),
+                              context: context,
+                              ref: ref,
+                              recipeName: recipeName,
+                              calories: calories,
+                              protein: protein,
+                              carbs: carbs,
+                              fat: fat,
+                              dayLabel: dayLabel,
+                            ),
                       icon: Icon(
                         isAlreadyLogged
                             ? Icons.task_alt_rounded
@@ -3685,13 +3692,14 @@ class _ScheduledMealDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final recipeName = (recipe['label'] ?? 'Recipe').toString();
-    final recipeImageUrl = ((recipe['imageUrl'] ??
-                recipe['image'] ??
-                recipe['image_url'] ??
-                recipe['imageUri'] ??
-                '')
-            .toString())
-        .trim();
+    final recipeImageUrl =
+        ((recipe['imageUrl'] ??
+                    recipe['image'] ??
+                    recipe['image_url'] ??
+                    recipe['imageUri'] ??
+                    '')
+                .toString())
+            .trim();
     final ingredientSource = meal.ingredientLines.isNotEmpty
         ? meal.ingredientLines
         : (recipe['ingredientLines'] ?? recipe['ingredients']);
@@ -3857,11 +3865,7 @@ class _IngredientsSection extends StatelessWidget {
                 children: [
                   const Padding(
                     padding: EdgeInsets.only(top: 8),
-                    child: Icon(
-                      Icons.circle,
-                      size: 10,
-                      color: AppColors.black,
-                    ),
+                    child: Icon(Icons.circle, size: 10, color: AppColors.black),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -4321,59 +4325,49 @@ class _DailyGoalChip extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: AppColors.textSecondary,
+            color: color,
           ),
         ),
         const SizedBox(height: 4),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  Text(
-                    value,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(width: 2),
-                  Text(
-                    unit,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-              if (percentage != null) ...[
-                const SizedBox(height: 2),
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
                 Text(
-                  '${percentage!.toStringAsFixed(0)}%',
+                  value,
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
+                const SizedBox(width: 2),
+                Text(
+                  unit,
+                  style: TextStyle(
+                    fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: AppColors.textHint,
+                    color: color,
                   ),
                 ),
               ],
-            ],
-          ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              percentage != null ? '${percentage!.toStringAsFixed(0)}%' : '',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+                color: color.withValues(alpha: 0.7),
+              ),
+            ),
+          ],
         ),
       ],
     );

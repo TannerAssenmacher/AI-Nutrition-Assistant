@@ -10,7 +10,6 @@ import '../db/preferences.dart';
 import '../widgets/macro_slider.dart';
 import 'package:intl/intl.dart';
 import 'package:email_validator/email_validator.dart';
-import '../widgets/top_bar.dart';
 import '../theme/app_colors.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -503,11 +502,15 @@ class _RegisterPageState extends State<RegisterPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const top_bar(),
           SizedBox(height: (screenHeight * 0.03).clamp(16.0, 28.0).toDouble()),
           SizedBox(
             height: logoHeight,
-            child: Image.asset('lib/icons/WISERBITES.png', fit: BoxFit.contain),
+            child: Image.asset(
+              'lib/icons/WISERBITES.png',
+              fit: BoxFit.contain,
+              color: AppColors.brand,
+              colorBlendMode: BlendMode.srcIn,
+            ),
           ),
           SizedBox(height: (screenHeight * 0.025).clamp(14.0, 24.0).toDouble()),
           Padding(
@@ -522,14 +525,14 @@ class _RegisterPageState extends State<RegisterPage> {
                 30,
               ),
               decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(48),
+                color: AppColors.surface.withOpacity(0.95),
+                borderRadius: BorderRadius.circular(25),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.statusNone.withValues(alpha: 0.5),
-                    spreadRadius: 4,
-                    blurRadius: 10,
-                    offset: const Offset(0, 3),
+                    color: AppColors.black.withOpacity(0.08),
+                    spreadRadius: 2,
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
                   ),
                 ],
               ),
@@ -629,7 +632,6 @@ class _RegisterPageState extends State<RegisterPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const top_bar(),
             SizedBox(
               height: (screenHeight * 0.03).clamp(16.0, 28.0).toDouble(),
             ),
@@ -638,6 +640,8 @@ class _RegisterPageState extends State<RegisterPage> {
               child: Image.asset(
                 'lib/icons/WISERBITES.png',
                 fit: BoxFit.contain,
+                color: AppColors.brand,
+                colorBlendMode: BlendMode.srcIn,
               ),
             ),
             SizedBox(
@@ -655,14 +659,14 @@ class _RegisterPageState extends State<RegisterPage> {
                   30,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(48),
+                  color: AppColors.surface.withOpacity(0.95),
+                  borderRadius: BorderRadius.circular(25),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.statusNone.withValues(alpha: 0.5),
-                      spreadRadius: 4,
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
+                      color: AppColors.black.withOpacity(0.08),
+                      spreadRadius: 2,
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
                     ),
                   ],
                 ),

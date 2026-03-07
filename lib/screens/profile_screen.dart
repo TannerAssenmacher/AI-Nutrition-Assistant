@@ -511,8 +511,17 @@ class _ProfilePageState extends State<ProfilePage> {
         _savedProfileSnapshot = _buildProfileSnapshot();
         _isEdited = false;
       });
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint("Error loading profile: $e");
+      debugPrint("Stack trace: $stackTrace");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load profile: ${e.toString()}'),
+            backgroundColor: AppColors.deleteRed,
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -1469,6 +1478,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Icon(icon, color: brandColor, size: 22),
                       const SizedBox(width: 12),
@@ -1510,43 +1520,48 @@ class _ProfilePageState extends State<ProfilePage> {
 
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                Icon(icon, color: brandColor, size: 22),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.textPrimary,
+            child: SizedBox(
+              height: 50,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Icon(icon, color: brandColor, size: 22),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Flexible(
-                  child: Text(
-                    displayValue,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.end,
-                    style: const TextStyle(
-                      color: AppColors.textHint,
-                      fontSize: 14,
+                  const SizedBox(width: 12),
+                  Flexible(
+                    child: Text(
+                      displayValue,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.end,
+                      style: const TextStyle(
+                        color: AppColors.textHint,
+                        fontSize: 14,
+                      ),
                     ),
                   ),
-                ),
-                if (onTap != null)
-                  const Padding(
-                    padding: EdgeInsets.only(left: 6),
-                    child: Icon(
-                      Icons.chevron_right,
-                      size: 18,
-                      color: AppColors.textHint,
+                  if (onTap != null)
+                    const Padding(
+                      padding: EdgeInsets.only(left: 6),
+                      child: Icon(
+                        Icons.chevron_right,
+                        size: 18,
+                        color: AppColors.textHint,
+                      ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           );
         },
@@ -1561,6 +1576,7 @@ class _ProfilePageState extends State<ProfilePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Icon(Icons.track_changes, color: brandColor, size: 22),
               const Text(
@@ -1584,19 +1600,63 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ],
           ),
-          Slider(
-            value: _dietaryGoal,
-            min: 0,
-            max: 4,
-            divisions: 4,
-            label: _dietGoals[_dietaryGoal.toInt()],
-            onChanged: (value) {
-              setState(() {
-                _dietaryGoal = value;
-                _refreshEditedState();
-              });
-              _applyRecommendedMacroGoals(silent: true);
-            },
+          SliderTheme(
+            data: SliderThemeData(
+              activeTrackColor: brandColor,
+              inactiveTrackColor: brandColor,
+              thumbColor: AppColors.surface,
+              overlayColor: brandColor.withOpacity(0.2),
+              thumbShape: const RoundSliderThumbShape(
+                enabledThumbRadius: 12,
+                elevation: 0,
+              ),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 20),
+              activeTickMarkColor: brandColor,
+              inactiveTickMarkColor: brandColor,
+              tickMarkShape: const RoundSliderTickMarkShape(tickMarkRadius: 4),
+              trackHeight: 4,
+              valueIndicatorColor: brandColor,
+              valueIndicatorTextStyle: const TextStyle(
+                color: AppColors.surface,
+                fontSize: 12,
+              ),
+            ),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Slider(
+                    value: _dietaryGoal,
+                    min: 0,
+                    max: 4,
+                    divisions: 4,
+                    label: _dietGoals[_dietaryGoal.toInt()],
+                    onChanged: (value) {
+                      setState(() {
+                        _dietaryGoal = value;
+                        _refreshEditedState();
+                      });
+                      _applyRecommendedMacroGoals(silent: true);
+                    },
+                  ),
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: CustomPaint(
+                        painter: _SliderThumbBorderPainter(
+                          value: _dietaryGoal,
+                          min: 0,
+                          max: 4,
+                          thumbRadius: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),
@@ -1610,6 +1670,7 @@ class _ProfilePageState extends State<ProfilePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Icon(Icons.bolt, color: brandColor, size: 22),
               const Text(
@@ -1633,19 +1694,63 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ],
           ),
-          Slider(
-            value: _activityLevel,
-            min: 1.0,
-            max: 1.9,
-            divisions: 5,
-            label: activityLevelLabels(_activityLevel),
-            onChanged: (value) {
-              setState(() {
-                _activityLevel = value;
-                _refreshEditedState();
-              });
-              _applyRecommendedMacroGoals(silent: true);
-            },
+          SliderTheme(
+            data: SliderThemeData(
+              activeTrackColor: brandColor,
+              inactiveTrackColor: brandColor,
+              thumbColor: AppColors.surface,
+              overlayColor: brandColor.withOpacity(0.2),
+              thumbShape: const RoundSliderThumbShape(
+                enabledThumbRadius: 12,
+                elevation: 0,
+              ),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 20),
+              activeTickMarkColor: brandColor,
+              inactiveTickMarkColor: brandColor,
+              tickMarkShape: const RoundSliderTickMarkShape(tickMarkRadius: 4),
+              trackHeight: 4,
+              valueIndicatorColor: brandColor,
+              valueIndicatorTextStyle: const TextStyle(
+                color: AppColors.surface,
+                fontSize: 12,
+              ),
+            ),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Slider(
+                    value: _activityLevel,
+                    min: 1.0,
+                    max: 1.9,
+                    divisions: 5,
+                    label: activityLevelLabels(_activityLevel),
+                    onChanged: (value) {
+                      setState(() {
+                        _activityLevel = value;
+                        _refreshEditedState();
+                      });
+                      _applyRecommendedMacroGoals(silent: true);
+                    },
+                  ),
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: CustomPaint(
+                        painter: _SliderThumbBorderPainter(
+                          value: _activityLevel,
+                          min: 1.0,
+                          max: 1.9,
+                          thumbRadius: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),
@@ -1681,6 +1786,7 @@ class _ProfilePageState extends State<ProfilePage> {
               selected: isSel,
               selectedColor: brandColor,
               backgroundColor: bgColor.withOpacity(0.5),
+              showCheckmark: false,
               onSelected: (v) {
                 setState(() {
                   if (v) {
@@ -1887,5 +1993,44 @@ class _ProfilePageState extends State<ProfilePage> {
         ],
       ),
     );
+  }
+}
+
+class _SliderThumbBorderPainter extends CustomPainter {
+  final double value;
+  final double min;
+  final double max;
+  final double thumbRadius;
+
+  _SliderThumbBorderPainter({
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.thumbRadius,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final trackWidth = size.width - 48; // Account for padding
+    final trackLeft = 24.0;
+    final trackY = size.height / 2;
+
+    final normalizedValue = (value - min) / (max - min);
+    final thumbX = trackLeft + (trackWidth * normalizedValue);
+
+    final paint = Paint()
+      ..color = AppColors.black
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4;
+
+    canvas.drawCircle(Offset(thumbX, trackY), thumbRadius, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SliderThumbBorderPainter oldDelegate) {
+    return oldDelegate.value != value ||
+        oldDelegate.min != min ||
+        oldDelegate.max != max ||
+        oldDelegate.thumbRadius != thumbRadius;
   }
 }

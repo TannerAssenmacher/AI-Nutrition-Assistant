@@ -24,23 +24,25 @@ class FirestoreFoodLog extends _$FirestoreFoodLog {
         .orderBy('consumedAt', descending: true)
         .snapshots()
         .map((snapshot) {
-      debugPrint(
-          'FirestoreFoodLog stream: user=$userId docs=${snapshot.docs.length}');
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        // Always prefer the Firestore document id for deletes/updates to succeed
-        data['id'] = doc.id;
-        // Normalize consumedAt to DateTime for JSON parser
-        final consumedAt = data['consumedAt'];
-        if (consumedAt is Timestamp) {
-          data['consumedAt'] = consumedAt.toDate();
-        } else if (consumedAt is String) {
-          data['consumedAt'] = DateTime.tryParse(consumedAt) ?? DateTime.now();
-        }
+          debugPrint(
+            'FirestoreFoodLog stream: user=$userId docs=${snapshot.docs.length}',
+          );
+          return snapshot.docs.map((doc) {
+            final data = doc.data();
+            // Always prefer the Firestore document id for deletes/updates to succeed
+            data['id'] = doc.id;
+            // Normalize consumedAt to DateTime for JSON parser
+            final consumedAt = data['consumedAt'];
+            if (consumedAt is Timestamp) {
+              data['consumedAt'] = consumedAt.toDate();
+            } else if (consumedAt is String) {
+              data['consumedAt'] =
+                  DateTime.tryParse(consumedAt) ?? DateTime.now();
+            }
 
-        return FoodItem.fromJson(data);
-      }).toList();
-    });
+            return FoodItem.fromJson(data);
+          }).toList();
+        });
   }
 
   Future<void> addFood(String userId, FoodItem food) async {
@@ -49,7 +51,8 @@ class FirestoreFoodLog extends _$FirestoreFoodLog {
     data['consumedAt'] = Timestamp.fromDate(food.consumedAt);
 
     debugPrint(
-        'addFood: user=$userId name=${food.name} at=${food.consumedAt.toIso8601String()}');
+      'addFood: user=$userId name=${food.name} at=${food.consumedAt.toIso8601String()}',
+    );
 
     final docRef = await FirebaseFirestore.instance
         .collection('Users')
@@ -101,29 +104,30 @@ class FirestoreScheduledMeals extends _$FirestoreScheduledMeals {
         .orderBy('date', descending: false)
         .snapshots()
         .map((snapshot) {
-      debugPrint(
-          'FirestoreScheduledMeals stream: user=$userId docs=${snapshot.docs.length}');
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        // Normalize date to DateTime for JSON parser
-        final date = data['date'];
-        if (date is Timestamp) {
-          data['date'] = date.toDate();
-        } else if (date is String) {
-          data['date'] = DateTime.tryParse(date) ?? DateTime.now();
-        }
+          debugPrint(
+            'FirestoreScheduledMeals stream: user=$userId docs=${snapshot.docs.length}',
+          );
+          return snapshot.docs.map((doc) {
+            final data = doc.data();
+            // Normalize date to DateTime for JSON parser
+            final date = data['date'];
+            if (date is Timestamp) {
+              data['date'] = date.toDate();
+            } else if (date is String) {
+              data['date'] = DateTime.tryParse(date) ?? DateTime.now();
+            }
 
-        // PlannedFood.fromJson does not populate id, so attach doc.id manually.
-        final parsed = PlannedFood.fromJson(data);
-        return PlannedFood(
-          id: doc.id,
-          recipeId: parsed.recipeId,
-          date: parsed.date,
-          mealType: parsed.mealType,
-          ingredientLines: parsed.ingredientLines,
-        );
-      }).toList();
-    });
+            // PlannedFood.fromJson does not populate id, so attach doc.id manually.
+            final parsed = PlannedFood.fromJson(data);
+            return PlannedFood(
+              id: doc.id,
+              recipeId: parsed.recipeId,
+              date: parsed.date,
+              mealType: parsed.mealType,
+              ingredientLines: parsed.ingredientLines,
+            );
+          }).toList();
+        });
   }
 
   Future<void> addScheduledMeal(String userId, PlannedFood meal) async {
@@ -132,7 +136,8 @@ class FirestoreScheduledMeals extends _$FirestoreScheduledMeals {
     data['date'] = Timestamp.fromDate(meal.date);
 
     debugPrint(
-        'addScheduledMeal: user=$userId recipeId=${meal.recipeId} at=${meal.date.toIso8601String()} mealType=${meal.mealType}');
+      'addScheduledMeal: user=$userId recipeId=${meal.recipeId} at=${meal.date.toIso8601String()} mealType=${meal.mealType}',
+    );
 
     final docRef = await FirebaseFirestore.instance
         .collection('Users')
@@ -155,14 +160,18 @@ class FirestoreScheduledMeals extends _$FirestoreScheduledMeals {
       debugPrint('removeScheduledMeal success: user=$userId mealId=$mealId');
     } catch (e, st) {
       debugPrint(
-          'removeScheduledMeal error: user=$userId mealId=$mealId error=$e');
+        'removeScheduledMeal error: user=$userId mealId=$mealId error=$e',
+      );
       debugPrint('$st');
       rethrow;
     }
   }
 
   Future<void> updateScheduledMeal(
-      String userId, String mealId, PlannedFood meal) async {
+    String userId,
+    String mealId,
+    PlannedFood meal,
+  ) async {
     final data = meal.toJson();
     data['date'] = Timestamp.fromDate(meal.date);
 
@@ -176,23 +185,47 @@ class FirestoreScheduledMeals extends _$FirestoreScheduledMeals {
 }
 
 // Manual provider (no codegen needed) to stream user profile from Firestore
-final firestoreUserProfileProvider =
-    StreamProvider.family<AppUser?, String>((ref, userId) {
-  return FirebaseFirestore.instance
-      .collection('Users')
-      .doc(userId)
-      .snapshots()
-      .map((doc) {
-    if (!doc.exists) return null;
-    final data = doc.data()!;
-    return AppUser.fromJson(data, doc.id);
-  });
+final firestoreUserProfileProvider = StreamProvider.family<AppUser?, String>((
+  ref,
+  userId,
+) {
+  return (() async* {
+    // Emit a safe fallback immediately so UI can render defaults while loading.
+    yield null;
+
+    try {
+      await for (final doc
+          in FirebaseFirestore.instance
+              .collection('Users')
+              .doc(userId)
+              .snapshots()) {
+        if (!doc.exists) {
+          yield null;
+          continue;
+        }
+
+        final data = doc.data()!;
+        yield AppUser.fromJson(data, doc.id);
+      }
+    } on FirebaseException catch (error) {
+      if (error.code == 'permission-denied') {
+        debugPrint(
+          'firestoreUserProfileProvider permission-denied for user=$userId; '
+          'falling back to null profile.',
+        );
+        yield null;
+        return;
+      }
+      rethrow;
+    }
+  })();
 });
 
-
 // Recipe fetcher by ID through database
-final recipeByIdProvider =
-    FutureProvider.family<Map<String, dynamic>, String>((ref, recipeId) async {
+final recipeByIdProvider = FutureProvider.family<Map<String, dynamic>, String>((
+  ref,
+  recipeId,
+) async {
   final doc = await FirebaseFirestore.instance
       .collection('recipes')
       .doc(recipeId)
