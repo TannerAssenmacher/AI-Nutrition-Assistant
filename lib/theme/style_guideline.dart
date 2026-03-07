@@ -1,4 +1,5 @@
 import "package:flutter/material.dart"; 
+import "package:flutter/services.dart";
 
 
 class StyleGuideline {
@@ -12,6 +13,10 @@ class StyleGuideline {
   static const double spacingMedium = 16.0;
   static const double spacingLarge = 24.0;
 
-  // ── Card border radius ──
+  // ── Card borders and radii ── 
   static const double cardBorderRadius = 18.0;
+  static const double inputFieldBorderRadius = 8.0; 
+  static const double cardPadding = 10;
+
+
 }

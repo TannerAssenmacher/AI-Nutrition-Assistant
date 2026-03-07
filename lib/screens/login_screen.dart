@@ -2,6 +2,7 @@ import 'package:nutrition_assistant/widgets/fatsecret_attribution.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../theme/app_colors.dart';
+import '../theme/style_guideline.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -182,7 +183,7 @@ class _LoginPageState extends State<LoginPage> {
     final cardHorizontalPadding = (mediaQuery.size.width * 0.1)
         .clamp(20.0, 36.0)
         .toDouble();
-    final titleFontSize = (screenHeight * 0.03).clamp(24.0, 34.0).toDouble();
+    final titleFontSize = (screenHeight * 0.03).clamp(24.0, 30.0).toDouble();
     final linkFontSize = (screenHeight * 0.022).clamp(16.0, 22.0).toDouble();
 
     return Scaffold(
@@ -195,7 +196,7 @@ class _LoginPageState extends State<LoginPage> {
               child: SingleChildScrollView(
                 keyboardDismissBehavior:
                     ScrollViewKeyboardDismissBehavior.onDrag,
-                padding: const EdgeInsets.symmetric(vertical: 20),
+                padding: const EdgeInsets.symmetric(vertical: StyleGuideline.cardPadding),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -218,16 +219,14 @@ class _LoginPageState extends State<LoginPage> {
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: Container(
                         width: double.infinity,
+                        height: MediaQuery.of(context).size.height * 0.46,
                         constraints: const BoxConstraints(maxWidth: 520),
                         padding: EdgeInsets.fromLTRB(
-                          cardHorizontalPadding,
-                          24,
-                          cardHorizontalPadding,
-                          20,
+                          24, 24, 24, 24
                         ),
                         decoration: BoxDecoration(
                           color: AppColors.surface.withOpacity(0.95),
-                          borderRadius: BorderRadius.circular(25),
+                          borderRadius: BorderRadius.circular(StyleGuideline.cardBorderRadius),
                           boxShadow: [
                             BoxShadow(
                               color: AppColors.black.withOpacity(0.08),
@@ -243,12 +242,13 @@ class _LoginPageState extends State<LoginPage> {
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               Text(
-                                'Welcome!',
+                                'Welcome to\nWiserBites.',
+
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: titleFontSize,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.accentBrown,
+                                  fontWeight: FontWeight.w400,
+                                  color: AppColors.textPrimary,
                                 ),
                               ),
                               const SizedBox(height: 20),
@@ -267,14 +267,14 @@ class _LoginPageState extends State<LoginPage> {
                                   filled: true,
                                   fillColor: AppColors.inputFill,
                                   border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(16),
+                                    borderRadius: BorderRadius.circular(StyleGuideline.inputFieldBorderRadius),
                                     borderSide: const BorderSide(
                                       color: AppColors.black,
                                       width: 1.5,
                                     ),
                                   ),
                                   enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(16),
+                                    borderRadius: BorderRadius.circular(StyleGuideline.inputFieldBorderRadius),
                                     borderSide: const BorderSide(
                                       color: AppColors.black,
                                       width: 1.5,
@@ -309,14 +309,14 @@ class _LoginPageState extends State<LoginPage> {
                                   filled: true,
                                   fillColor: AppColors.inputFill,
                                   border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(16),
+                                    borderRadius: BorderRadius.circular(StyleGuideline.inputFieldBorderRadius),
                                     borderSide: const BorderSide(
                                       color: AppColors.black,
                                       width: 1.5,
                                     ),
                                   ),
                                   enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(16),
+                                    borderRadius: BorderRadius.circular(StyleGuideline.inputFieldBorderRadius),
                                     borderSide: const BorderSide(
                                       color: AppColors.black,
                                       width: 1.5,
@@ -343,9 +343,9 @@ class _LoginPageState extends State<LoginPage> {
                                   ),
                                 ),
                               ],
-                              const SizedBox(height: 16),
+                               SizedBox(height: 24),
                               _isLoading
-                                  ? const Center(
+                                  ? Center(
                                       child: CircularProgressIndicator(),
                                     )
                                   : ElevatedButton(
@@ -353,13 +353,11 @@ class _LoginPageState extends State<LoginPage> {
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: AppColors.brand,
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
+                                          borderRadius: BorderRadius.circular(StyleGuideline.inputFieldBorderRadius, ),
                                         ),
-                                        minimumSize: const Size(
+                                        minimumSize: Size(
                                           double.infinity,
-                                          52,
+                                          70,
                                         ),
                                       ),
                                       child: Text(
@@ -372,7 +370,7 @@ class _LoginPageState extends State<LoginPage> {
                                         ),
                                       ),
                                     ),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 24),
                               TextButton(
                                 onPressed: () =>
                                     Navigator.pushNamed(context, '/forgot'),
