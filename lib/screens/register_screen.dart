@@ -506,7 +506,7 @@ class _RegisterPageState extends State<RegisterPage> {
           SizedBox(
             height: logoHeight,
             child: Image.asset(
-              'lib/icons/WISERBITES.png',
+              'lib/assets/icons/WISERBITES.png',
               fit: BoxFit.contain,
               color: AppColors.brand,
               colorBlendMode: BlendMode.srcIn,
@@ -638,7 +638,7 @@ class _RegisterPageState extends State<RegisterPage> {
             SizedBox(
               height: logoHeight,
               child: Image.asset(
-                'lib/icons/WISERBITES.png',
+                'lib/assets/icons/WISERBITES.png',
                 fit: BoxFit.contain,
                 color: AppColors.brand,
                 colorBlendMode: BlendMode.srcIn,

@@ -10,19 +10,19 @@ class top_bar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: MediaQuery.of(context).size.height * 0.1,
+      height: MediaQuery.of(context).size.height * 0.11,
       width: double.infinity,
       decoration: BoxDecoration(
-        color: AppColors.topBar,
+        color: Colors.white,
         borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(32),
           bottomRight: Radius.circular(32),
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.black.withValues(alpha: 0.5),
-            blurRadius: 20,
-            offset: Offset(0, 6),
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -34,9 +34,9 @@ class top_bar extends StatelessWidget {
               child: SizedBox(
                 width: MediaQuery.of(context).size.width * 0.4,
                 child: Image.asset(
-                  'lib/icons/WISERBITES_txt_only.png',
+                  'lib/assets/icons/WISERBITES_txt_only.png',
                   fit: BoxFit.contain,
-                  color: AppColors.background,
+                  color: AppColors.black,
                   semanticLabel: 'WiserBites',
                 ),
               ),
@@ -50,7 +50,7 @@ class top_bar extends StatelessWidget {
                   child: IconButton(
                     icon: const Icon(
                       Icons.account_circle,
-                      color: AppColors.background,
+                      color: Colors.black,
                       size: 32,
                     ),
                     onPressed: () {

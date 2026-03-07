@@ -37,7 +37,7 @@ class NavItem extends StatelessWidget {
               ),
               Icon(
                 icon,
-                color: isActive ? AppColors.surface : AppColors.background,
+                color: isActive ? Colors.black : Colors.grey,
                 size: MediaQuery.of(context).size.height * 0.05,
                 weight: isActive ? 700 : 400,
               ),

@@ -45,318 +45,334 @@ class HomeScreen extends ConsumerWidget {
         children: [
           const top_bar(showProfileButton: true),
           Expanded(
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: EdgeInsets.all(
-                  MediaQuery.of(context).size.height * 0.02,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Semantics(
-                      button: true,
-                      label: 'Go to profile. $greeting, $name!',
-                      excludeSemantics: true,
-                      child: GestureDetector(
-                        onTap: () {
-                          Navigator.pushNamed(context, '/profile');
-                        },
-                        child: Container(
-                          width: double.infinity,
-                          constraints: BoxConstraints(
-                            minHeight:
-                                MediaQuery.of(context).size.height * 0.16,
-                          ),
-                          padding: const EdgeInsets.all(24),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(30),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.black.withValues(alpha: 0.05),
-                                blurRadius: 20,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: LayoutBuilder(
-                            builder: (context, constraints) {
-                              final compactLayout = constraints.maxWidth < 340;
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final contentPadding = (constraints.maxHeight * 0.014)
+                    .clamp(10.0, 16.0)
+                    .toDouble();
+                final sectionSpacing = (constraints.maxHeight * 0.015)
+                    .clamp(8.0, 14.0)
+                    .toDouble();
 
-                              final greetingText = Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    '$greeting,',
-                                    style: TextStyle(
-                                      fontSize:
-                                          MediaQuery.of(context).size.height *
-                                          0.02,
-                                      color: AppColors.accentBrown,
-                                      fontWeight: FontWeight.w500,
-                                    ),
+                return Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    contentPadding,
+                    contentPadding,
+                    contentPadding,
+                    contentPadding * 0.8,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Semantics(
+                        button: true,
+                        label: 'Go to profile. $greeting, $name!',
+                        excludeSemantics: true,
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.pushNamed(context, '/profile');
+                          },
+                          child: Container(
+                            width: double.infinity,
+                            constraints: BoxConstraints(
+                              minHeight:
+                                  MediaQuery.of(context).size.height * 0.13,
+                            ),
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(30),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.black.withValues(
+                                    alpha: 0.05,
                                   ),
-                                  Text(
-                                    '$name!',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: constraints.maxWidth < 280
-                                          ? 20
-                                          : 26,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.brand,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    DateFormat('EEEE, MMM d').format(now),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize:
-                                          MediaQuery.of(context).size.height *
-                                          0.015,
-                                      color: AppColors.accentBrown,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              );
-
-                              final logo = SizedBox(
-                                height: compactLayout ? 64 : 90,
-                                width: compactLayout ? 64 : 90,
-                                child: Image.asset(
-                                  'lib/icons/WISERBITES_img_only.png',
-                                  fit: BoxFit.contain,
-                                  color: AppColors.brand,
-                                  colorBlendMode: BlendMode.srcIn,
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 4),
                                 ),
-                              );
+                              ],
+                            ),
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                final compactLayout =
+                                    constraints.maxWidth < 340;
 
-                              return Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(child: greetingText),
-                                  const SizedBox(width: 12),
-                                  logo,
-                                ],
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                    ), // closes Semantics
-                    const SizedBox(height: 20),
-                    userProfileAsync.when(
-                      loading: () =>
-                          const Center(child: CircularProgressIndicator()),
-                      error: (e, _) => const SizedBox.shrink(),
-                      data: (userProfile) {
-                        return foodLogAsync.when(
-                          loading: () =>
-                              const Center(child: CircularProgressIndicator()),
-                          error: (e, _) => const SizedBox.shrink(),
-                          data: (foodLog) {
-                            final today = DateTime.now();
-                            double currentCalories = 0;
-                            double currentProtein = 0;
-                            double currentCarbs = 0;
-                            double currentFat = 0;
-                            final todaysFoods = <FoodItem>[];
-
-                            for (final item in foodLog) {
-                              if (item.consumedAt.year == today.year &&
-                                  item.consumedAt.month == today.month &&
-                                  item.consumedAt.day == today.day) {
-                                currentCalories +=
-                                    item.calories_g * item.mass_g;
-                                currentProtein += item.protein_g * item.mass_g;
-                                currentCarbs += item.carbs_g * item.mass_g;
-                                currentFat += item.fat * item.mass_g;
-                                todaysFoods.add(item);
-                              }
-                            }
-
-                            final calorieGoal = userProfile
-                                .mealProfile
-                                .dailyCalorieGoal
-                                .toDouble();
-                            final macroGoals =
-                                userProfile.mealProfile.macroGoals;
-                            final proteinRaw = (macroGoals['protein'] ?? 0.0)
-                                .toDouble();
-                            final carbsRaw = (macroGoals['carbs'] ?? 0.0)
-                                .toDouble();
-                            final fatRaw =
-                                (macroGoals['fat'] ?? macroGoals['fats'] ?? 0.0)
-                                    .toDouble();
-                            double proteinGoal = proteinRaw;
-                            double carbsGoal = carbsRaw;
-                            double fatGoal = fatRaw;
-
-                            // Heuristic for percentages vs grams
-                            final values = [
-                              proteinRaw,
-                              carbsRaw,
-                              fatRaw,
-                            ].where((v) => v > 0).toList();
-                            final looksLikePercentages =
-                                values.isNotEmpty &&
-                                values.every((v) => v <= 100.0);
-
-                            if (looksLikePercentages) {
-                              proteinGoal =
-                                  (calorieGoal * (proteinRaw / 100)) / 4;
-                              carbsGoal = (calorieGoal * (carbsRaw / 100)) / 4;
-                              fatGoal = (calorieGoal * (fatRaw / 100)) / 9;
-                            }
-
-                            if (proteinGoal <= 0) proteinGoal = 150;
-                            if (carbsGoal <= 0) carbsGoal = 200;
-                            if (fatGoal <= 0) fatGoal = 65;
-                            final textScale = MediaQuery.textScalerOf(
-                              context,
-                            ).scale(1.0).clamp(1.0, 1.35).toDouble();
-                            final mealsCarouselHeight =
-                                ((MediaQuery.of(context).size.height * 0.21) *
-                                        textScale)
-                                    .clamp(150.0, 220.0)
-                                    .toDouble();
-
-                            return Column(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 20,
-                                    horizontal: 24,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.surface,
-                                    borderRadius: BorderRadius.circular(30),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: AppColors.black.withValues(
-                                          alpha: 0.05,
-                                        ),
-                                        blurRadius: 20,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      _CalorieProgressBar(
-                                        current: currentCalories,
-                                        goal: calorieGoal,
-                                      ),
-                                      const SizedBox(height: 20),
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: Center(
-                                              child: _MacroIndicator(
-                                                label: 'Protein',
-                                                current: currentProtein,
-                                                goal: proteinGoal,
-                                                color: AppColors.protein,
-                                                unit: 'g',
-                                              ),
-                                            ),
-                                          ),
-                                          Expanded(
-                                            child: Center(
-                                              child: _MacroIndicator(
-                                                label: 'Carbs',
-                                                current: currentCarbs,
-                                                goal: carbsGoal,
-                                                color: AppColors.carbs,
-                                                unit: 'g',
-                                              ),
-                                            ),
-                                          ),
-                                          Expanded(
-                                            child: Center(
-                                              child: _MacroIndicator(
-                                                label: 'Fat',
-                                                current: currentFat,
-                                                goal: fatGoal,
-                                                color: AppColors.fat,
-                                                unit: 'g',
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 24),
-                                Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 24,
-                                    ),
-                                    child: Text(
-                                      "Today's Meals:",
+                                final greetingText = Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      '$greeting,',
                                       style: TextStyle(
                                         fontSize:
                                             MediaQuery.of(context).size.height *
                                             0.02,
-                                        fontWeight: FontWeight.bold,
                                         color: AppColors.accentBrown,
+                                        fontWeight: FontWeight.w500,
                                       ),
                                     ),
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                GestureDetector(
-                                  behavior: HitTestBehavior.opaque,
-                                  onHorizontalDragStart: (_) {
-                                    FocusManager.instance.primaryFocus
-                                        ?.unfocus();
-                                  },
+                                    Text(
+                                      '$name!',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: constraints.maxWidth < 280
+                                            ? 20
+                                            : 26,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.brand,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      DateFormat('EEEE, MMM d').format(now),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize:
+                                            MediaQuery.of(context).size.height *
+                                            0.015,
+                                        color: AppColors.accentBrown,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                );
 
-                                  onHorizontalDragUpdate: (_) {},
-                                  onHorizontalDragEnd: (_) {},
-                                  onHorizontalDragCancel: () {},
-                                  onHorizontalDragDown: (_) {},
-                                  child: SizedBox(
-                                    height: mealsCarouselHeight,
-                                    child: todaysFoods.isEmpty
-                                        ? PageView(
-                                            controller: PageController(
-                                              viewportFraction: 0.85,
-                                            ),
-                                            children: const [
-                                              _NoMealsPlaceholder(),
-                                            ],
-                                          )
-                                        : PageView.builder(
-                                            controller: PageController(
-                                              viewportFraction: 0.85,
-                                            ),
-                                            itemCount: todaysFoods.length,
-                                            itemBuilder: (context, index) {
-                                              return _FoodCarouselCard(
-                                                food: todaysFoods[index],
-                                              );
-                                            },
-                                          ),
+                                final logo = SizedBox(
+                                  height: compactLayout ? 60 : 80,
+                                  width: compactLayout ? 60 : 80,
+                                  child: Image.asset(
+                                    'lib/assets/icons/WISERBITES_img_only.png',
+                                    fit: BoxFit.contain,
+                                    color: AppColors.brand,
+                                    colorBlendMode: BlendMode.srcIn,
                                   ),
-                                ),
-                              ],
+                                );
+
+                                return Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(child: greetingText),
+                                    const SizedBox(width: 10),
+                                    logo,
+                                  ],
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: sectionSpacing),
+                      Expanded(
+                        child: userProfileAsync.when(
+                          loading: () =>
+                              const Center(child: CircularProgressIndicator()),
+                          error: (e, _) => const SizedBox.shrink(),
+                          data: (userProfile) {
+                            return foodLogAsync.when(
+                              loading: () => const Center(
+                                child: CircularProgressIndicator(),
+                              ),
+                              error: (e, _) => const SizedBox.shrink(),
+                              data: (foodLog) {
+                                final today = DateTime.now();
+                                double currentCalories = 0;
+                                double currentProtein = 0;
+                                double currentCarbs = 0;
+                                double currentFat = 0;
+                                final todaysFoods = <FoodItem>[];
+
+                                for (final item in foodLog) {
+                                  if (item.consumedAt.year == today.year &&
+                                      item.consumedAt.month == today.month &&
+                                      item.consumedAt.day == today.day) {
+                                    currentCalories +=
+                                        item.calories_g * item.mass_g;
+                                    currentProtein +=
+                                        item.protein_g * item.mass_g;
+                                    currentCarbs += item.carbs_g * item.mass_g;
+                                    currentFat += item.fat * item.mass_g;
+                                    todaysFoods.add(item);
+                                  }
+                                }
+
+                                final calorieGoal = userProfile
+                                    .mealProfile
+                                    .dailyCalorieGoal
+                                    .toDouble();
+                                final macroGoals =
+                                    userProfile.mealProfile.macroGoals;
+                                final proteinRaw =
+                                    (macroGoals['protein'] ?? 0.0).toDouble();
+                                final carbsRaw = (macroGoals['carbs'] ?? 0.0)
+                                    .toDouble();
+                                final fatRaw =
+                                    (macroGoals['fat'] ??
+                                            macroGoals['fats'] ??
+                                            0.0)
+                                        .toDouble();
+                                double proteinGoal = proteinRaw;
+                                double carbsGoal = carbsRaw;
+                                double fatGoal = fatRaw;
+
+                                final values = [
+                                  proteinRaw,
+                                  carbsRaw,
+                                  fatRaw,
+                                ].where((v) => v > 0).toList();
+                                final looksLikePercentages =
+                                    values.isNotEmpty &&
+                                    values.every((v) => v <= 100.0);
+
+                                if (looksLikePercentages) {
+                                  proteinGoal =
+                                      (calorieGoal * (proteinRaw / 100)) / 4;
+                                  carbsGoal =
+                                      (calorieGoal * (carbsRaw / 100)) / 4;
+                                  fatGoal = (calorieGoal * (fatRaw / 100)) / 9;
+                                }
+
+                                if (proteinGoal <= 0) proteinGoal = 150;
+                                if (carbsGoal <= 0) carbsGoal = 200;
+                                if (fatGoal <= 0) fatGoal = 65;
+
+                                return Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 16,
+                                        horizontal: 18,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.surface,
+                                        borderRadius: BorderRadius.circular(30),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: AppColors.black.withValues(
+                                              alpha: 0.05,
+                                            ),
+                                            blurRadius: 20,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          _CalorieProgressBar(
+                                            current: currentCalories,
+                                            goal: calorieGoal,
+                                          ),
+                                          const SizedBox(height: 14),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: Center(
+                                                  child: _MacroIndicator(
+                                                    label: 'Protein',
+                                                    current: currentProtein,
+                                                    goal: proteinGoal,
+                                                    color: AppColors.protein,
+                                                    unit: 'g',
+                                                  ),
+                                                ),
+                                              ),
+                                              Expanded(
+                                                child: Center(
+                                                  child: _MacroIndicator(
+                                                    label: 'Carbs',
+                                                    current: currentCarbs,
+                                                    goal: carbsGoal,
+                                                    color: AppColors.carbs,
+                                                    unit: 'g',
+                                                  ),
+                                                ),
+                                              ),
+                                              Expanded(
+                                                child: Center(
+                                                  child: _MacroIndicator(
+                                                    label: 'Fat',
+                                                    current: currentFat,
+                                                    goal: fatGoal,
+                                                    color: AppColors.fat,
+                                                    unit: 'g',
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    SizedBox(height: sectionSpacing),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                      ),
+                                      child: Text(
+                                        "Today's Meals:",
+                                        style: TextStyle(
+                                          fontSize:
+                                              MediaQuery.of(
+                                                context,
+                                              ).size.height *
+                                              0.02,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.accentBrown,
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(
+                                      height: (sectionSpacing * 0.6)
+                                          .clamp(6.0, 10.0)
+                                          .toDouble(),
+                                    ),
+                                    Expanded(
+                                      child: GestureDetector(
+                                        behavior: HitTestBehavior.opaque,
+                                        onHorizontalDragStart: (_) {
+                                          FocusManager.instance.primaryFocus
+                                              ?.unfocus();
+                                        },
+                                        onHorizontalDragUpdate: (_) {},
+                                        onHorizontalDragEnd: (_) {},
+                                        onHorizontalDragCancel: () {},
+                                        onHorizontalDragDown: (_) {},
+                                        child: todaysFoods.isEmpty
+                                            ? PageView(
+                                                controller: PageController(
+                                                  viewportFraction: 0.85,
+                                                ),
+                                                children: const [
+                                                  _NoMealsPlaceholder(),
+                                                ],
+                                              )
+                                            : PageView.builder(
+                                                controller: PageController(
+                                                  viewportFraction: 0.85,
+                                                ),
+                                                itemCount: todaysFoods.length,
+                                                itemBuilder: (context, index) {
+                                                  return _FoodCarouselCard(
+                                                    food: todaysFoods[index],
+                                                  );
+                                                },
+                                              ),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
                             );
                           },
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
           ),
         ],

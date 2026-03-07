@@ -213,6 +213,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget build(BuildContext context) {
     final chatMessages = ref.watch(geminiChatServiceProvider);
     final isLoading = ref.watch(chatLoadingProvider);
+    final mediaQuery = MediaQuery.of(context);
+    final navVisualBottomSpacing = mediaQuery.size.height * 0.008;
+    final navBottomInset =
+        mediaQuery.viewPadding.bottom + navVisualBottomSpacing;
+    final navBarHeight = mediaQuery.size.height * 0.07;
+    final navTotalHeight = widget.isInPageView
+        ? 0.0
+        : navBottomInset + navBarHeight;
 
     ref.listen<List<ChatMessage>>(geminiChatServiceProvider, (prev, next) {
       final prevLength = prev?.length ?? 0;
@@ -239,58 +247,77 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       child: Scaffold(
         resizeToAvoidBottomInset: true,
         backgroundColor: bgColor,
+        extendBody: !widget.isInPageView,
         appBar: AppBar(
-          backgroundColor: AppColors.brand,
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          scrolledUnderElevation: 0,
+          systemOverlayStyle: const SystemUiOverlayStyle(
+            statusBarColor: Colors.white,
+            statusBarIconBrightness: Brightness.dark,
+            statusBarBrightness: Brightness.light,
+          ),
+          shadowColor: AppColors.black.withValues(alpha: 0.15),
           automaticallyImplyLeading: false,
-          elevation: 0,
+          elevation: 8,
           centerTitle: true,
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(bottom: Radius.circular(25)),
           ),
           title: const Text(
-            "NutriCoach",
+            'NutriCoach',
             style: TextStyle(
-              color: AppColors.surface,
+              color: AppColors.black,
               fontWeight: FontWeight.bold,
               fontSize: 18,
             ),
           ),
         ),
-        body: GestureDetector(
-          onTap: () => FocusScope.of(context).unfocus(),
-          child: SafeArea(
-            child: Column(
-              children: [
-                Expanded(
-                  child: chatMessages.isEmpty
-                      ? _buildEmptyState()
-                      : ListView.builder(
-                          controller: _scrollController,
-                          //hides keyboard when swipe
-                          keyboardDismissBehavior:
-                              ScrollViewKeyboardDismissBehavior.onDrag,
-                          padding: const EdgeInsets.all(16),
-                          itemCount: chatMessages.length + (isLoading ? 1 : 0),
-                          itemBuilder: (context, index) {
-                            if (index == chatMessages.length)
-                              return const _TypingIndicator();
-                            final message = chatMessages[index];
-                            return _buildMessageNode(message);
-                          },
-                        ),
+        body: Stack(
+          children: [
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: () => FocusScope.of(context).unfocus(),
+                child: SafeArea(
+                  bottom: widget.isInPageView,
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: chatMessages.isEmpty
+                            ? _buildEmptyState()
+                            : ListView.builder(
+                                controller: _scrollController,
+                                //hides keyboard when swipe
+                                keyboardDismissBehavior:
+                                    ScrollViewKeyboardDismissBehavior.onDrag,
+                                padding: const EdgeInsets.all(16),
+                                itemCount:
+                                    chatMessages.length + (isLoading ? 1 : 0),
+                                itemBuilder: (context, index) {
+                                  if (index == chatMessages.length)
+                                    return const _TypingIndicator();
+                                  final message = chatMessages[index];
+                                  return _buildMessageNode(message);
+                                },
+                              ),
+                      ),
+                      _choiceBar(),
+                      _buildInputBar(extraBottomPadding: navTotalHeight),
+                    ],
+                  ),
                 ),
-                _choiceBar(),
-                _buildInputBar(),
-              ],
-            ),
-          ),
-        ),
-        bottomNavigationBar: widget.isInPageView
-            ? null
-            : NavBar(
-                currentIndex: navIndexChat,
-                onTap: (index) => handleNavTap(context, index),
               ),
+            ),
+            if (!widget.isInPageView)
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: NavBar(
+                  currentIndex: navIndexChat,
+                  onTap: (index) => handleNavTap(context, index),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -419,12 +446,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     return _ChatBubble(message: message, brandColor: brandColor);
   }
 
-  Widget _buildInputBar() {
+  Widget _buildInputBar({double extraBottomPadding = 0}) {
     return ClipRRect(
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
         child: Container(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 30),
+          padding: EdgeInsets.fromLTRB(20, 12, 20, 30 + extraBottomPadding),
           decoration: BoxDecoration(
             color: AppColors.surface.withValues(alpha: 0.7),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(35)),
@@ -447,8 +474,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     child: TextField(
                       controller: _messageController,
                       decoration: InputDecoration(
-                        hintText:
-                            'Ask about nutrition, calories, meal planning...',
+                        hintText: 'Ask about nutrition',
                         filled: true,
                         fillColor: bgColor.withValues(alpha: 0.4),
                         border: OutlineInputBorder(

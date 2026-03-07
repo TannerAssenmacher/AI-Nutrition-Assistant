@@ -612,23 +612,35 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
       child: Column(
         children: [
           Container(
-            height: MediaQuery.of(context).padding.top,
-            color: AppColors.brand,
-          ),
-          Container(
-            decoration: const BoxDecoration(
-              color: AppColors.brand,
-              borderRadius: BorderRadius.vertical(bottom: Radius.circular(25)),
+            height: MediaQuery.of(context).size.height * 0.11,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: const BorderRadius.vertical(
+                bottom: Radius.circular(25),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.black.withValues(alpha: 0.12),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Align(
-              alignment: Alignment.center,
-              child: Text(
-                'Food Search',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.surface,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Padding(
+              padding: EdgeInsets.only(
+                top: MediaQuery.of(context).padding.top,
+                bottom: 12,
+              ),
+              child: Align(
+                alignment: Alignment.center,
+                child: Text(
+                  'Food Search',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.black,
+                  ),
                 ),
               ),
             ),

@@ -16,16 +16,16 @@ class NavBar extends StatelessWidget {
     final barHeight = mediaQuery.size.height * 0.07;
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.brand,
+        color: Colors.white,
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(32),
           topRight: Radius.circular(32),
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.black.withValues(alpha: 0.25),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, -4),
           ),
         ],
       ),
