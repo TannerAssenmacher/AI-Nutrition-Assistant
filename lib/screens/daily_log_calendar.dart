@@ -141,6 +141,7 @@ class _DailyLogCalendarScreenState
             massG: item.mass_g,
             imageUrl: imageUrl,
             consumedAt: item.consumedAt,
+            servings: item.servings,
           ),
         );
       }
@@ -726,33 +727,24 @@ class _DailyLogCalendarScreenState
                                         )
                                         .removeFood(userId, foodId);
                                   },
-                                  onSave: (updatedRow) async {
-                                    final mass = updatedRow.massG > 0
-                                        ? updatedRow.massG
-                                        : 1.0;
+                                  onEdit: (row, {double? newServings}) async {
+                                    final mass = row.massG > 0 ? row.massG : 1.0;
                                     final updatedItem = FoodItem(
-                                      id: updatedRow.id,
-                                      name: updatedRow.name,
+                                      id: row.id,
+                                      name: row.name,
                                       mass_g: mass,
-                                      calories_g: updatedRow.calories / mass,
-                                      protein_g: updatedRow.protein / mass,
-                                      carbs_g: updatedRow.carbs / mass,
-                                      fat: updatedRow.fat / mass,
-                                      mealType: updatedRow.mealType,
-                                      imageUrl: updatedRow.imageUrl,
-                                      consumedAt: updatedRow.consumedAt,
+                                      calories_g: row.calories / mass,
+                                      protein_g: row.protein / mass,
+                                      carbs_g: row.carbs / mass,
+                                      fat: row.fat / mass,
+                                      mealType: row.mealType,
+                                      imageUrl: row.imageUrl,
+                                      consumedAt: row.consumedAt,
+                                      servings: newServings ?? row.servings,
                                     );
                                     await ref
-                                        .read(
-                                          firestoreFoodLogProvider(
-                                            userId,
-                                          ).notifier,
-                                        )
-                                        .updateFood(
-                                          userId,
-                                          updatedRow.id,
-                                          updatedItem,
-                                        );
+                                        .read(firestoreFoodLogProvider(userId).notifier)
+                                        .updateFood(userId, row.id, updatedItem);
                                   },
                                 ),
                               const SizedBox(height: 12),
@@ -2009,12 +2001,12 @@ class _FoodsListWidget extends StatelessWidget {
     Key? key,
     required this.rows,
     required this.onDelete,
-    required this.onSave,
+    required this.onEdit,
   }) : super(key: key);
 
   final List<_FoodRow> rows;
   final Future<void> Function(String foodId) onDelete;
-  final Future<void> Function(_FoodRow updatedRow) onSave;
+  final Future<void> Function(_FoodRow row, {double? newServings}) onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -2031,7 +2023,7 @@ class _FoodsListWidget extends StatelessWidget {
               key: ValueKey(row.id),
               row: row,
               onDelete: onDelete,
-              onSave: onSave,
+              onEdit: onEdit,
             );
           },
         ),
@@ -2045,12 +2037,12 @@ class _EditableFoodCard extends StatefulWidget {
     super.key,
     required this.row,
     required this.onDelete,
-    required this.onSave,
+    required this.onEdit,
   });
 
   final _FoodRow row;
   final Future<void> Function(String foodId) onDelete;
-  final Future<void> Function(_FoodRow updatedRow) onSave;
+  final Future<void> Function(_FoodRow row, {double? newServings}) onEdit;
 
   @override
   State<_EditableFoodCard> createState() => _EditableFoodCardState();
@@ -2060,25 +2052,33 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
   bool _isEditing = false;
   OverlayEntry? _statusOverlay;
   Timer? _statusTimer;
-  bool _isSyncingCalories = false;
+
+  late final TextEditingController _servingsController;
   late final TextEditingController _gramsController;
   late final TextEditingController _caloriesController;
   late final TextEditingController _proteinController;
   late final TextEditingController _carbsController;
   late final TextEditingController _fatController;
 
+  // Per-unit values for scaling when servings/grams change
+  double _baseCalories = 0;
+  double _baseProtein = 0;
+  double _baseCarbs = 0;
+  double _baseFat = 0;
+  double _baseAmount = 1;
+
   @override
   void initState() {
     super.initState();
+    _servingsController = TextEditingController();
     _gramsController = TextEditingController();
     _caloriesController = TextEditingController();
     _proteinController = TextEditingController();
     _carbsController = TextEditingController();
     _fatController = TextEditingController();
-    _proteinController.addListener(_syncCaloriesFromMacros);
-    _carbsController.addListener(_syncCaloriesFromMacros);
-    _fatController.addListener(_syncCaloriesFromMacros);
-    _resetControllersFromRow();
+    _servingsController.addListener(_onAmountChanged);
+    _gramsController.addListener(_onAmountChanged);
+    _resetControllers();
   }
 
   @override
@@ -2086,17 +2086,17 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.row.id != widget.row.id ||
         (!_isEditing && oldWidget.row != widget.row)) {
-      _resetControllersFromRow();
+      _resetControllers();
     }
   }
 
   @override
   void dispose() {
+    _servingsController.removeListener(_onAmountChanged);
+    _gramsController.removeListener(_onAmountChanged);
     _statusTimer?.cancel();
     _statusOverlay?.remove();
-    _proteinController.removeListener(_syncCaloriesFromMacros);
-    _carbsController.removeListener(_syncCaloriesFromMacros);
-    _fatController.removeListener(_syncCaloriesFromMacros);
+    _servingsController.dispose();
     _gramsController.dispose();
     _caloriesController.dispose();
     _proteinController.dispose();
@@ -2105,52 +2105,100 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
     super.dispose();
   }
 
-  void _resetControllersFromRow() {
-    _gramsController.text = widget.row.massG.toStringAsFixed(0);
-    _caloriesController.text = widget.row.calories.toStringAsFixed(0);
-    _proteinController.text = widget.row.protein.toStringAsFixed(1);
-    _carbsController.text = widget.row.carbs.toStringAsFixed(1);
-    _fatController.text = widget.row.fat.toStringAsFixed(1);
+  void _resetControllers() {
+    final row = widget.row;
+    if (row.servings != null) {
+      _baseAmount = row.servings!;
+      _servingsController.text = row.servings == row.servings!.roundToDouble()
+          ? row.servings!.toInt().toString()
+          : row.servings!.toStringAsFixed(1);
+    } else {
+      _baseAmount = row.massG > 0 ? row.massG : 1.0;
+      _gramsController.text = row.massG.toStringAsFixed(0);
+    }
+    _baseCalories = row.calories;
+    _baseProtein = row.protein;
+    _baseCarbs = row.carbs;
+    _baseFat = row.fat;
+    _caloriesController.text = row.calories.toStringAsFixed(0);
+    _proteinController.text = row.protein.toStringAsFixed(1);
+    _carbsController.text = row.carbs.toStringAsFixed(1);
+    _fatController.text = row.fat.toStringAsFixed(1);
   }
 
-  void _syncCaloriesFromMacros() {
-    if (_isSyncingCalories) return;
+  void _onAmountChanged() {
+    if (!_isEditing) return;
+    final isServingsBased = widget.row.servings != null;
+    final newAmount = double.tryParse(
+      isServingsBased
+          ? _servingsController.text.trim()
+          : _gramsController.text.trim(),
+    );
+    if (newAmount == null || newAmount <= 0 || _baseAmount <= 0) return;
 
-    final protein = double.tryParse(_proteinController.text.trim());
-    final carbs = double.tryParse(_carbsController.text.trim());
-    final fat = double.tryParse(_fatController.text.trim());
-    if (protein == null || carbs == null || fat == null) return;
-
-    final calories = (protein * 4) + (carbs * 4) + (fat * 9);
-    final nextCaloriesText = calories.toStringAsFixed(0);
-    final macroMass = protein + carbs + fat;
-    final nextGramsText = macroMass.toStringAsFixed(1);
-    final shouldUpdateCalories = _caloriesController.text != nextCaloriesText;
-    final shouldUpdateGrams = _gramsController.text != nextGramsText;
-    if (!shouldUpdateCalories && !shouldUpdateGrams) return;
-
-    _isSyncingCalories = true;
-    if (shouldUpdateCalories) {
-      _caloriesController.value = _caloriesController.value.copyWith(
-        text: nextCaloriesText,
-        selection: TextSelection.collapsed(offset: nextCaloriesText.length),
-        composing: TextRange.empty,
-      );
-    }
-    if (shouldUpdateGrams) {
-      _gramsController.value = _gramsController.value.copyWith(
-        text: nextGramsText,
-        selection: TextSelection.collapsed(offset: nextGramsText.length),
-        composing: TextRange.empty,
-      );
-    }
-    _isSyncingCalories = false;
+    final ratio = newAmount / _baseAmount;
+    _caloriesController.text = (_baseCalories * ratio).toStringAsFixed(0);
+    _proteinController.text = (_baseProtein * ratio).toStringAsFixed(1);
+    _carbsController.text = (_baseCarbs * ratio).toStringAsFixed(1);
+    _fatController.text = (_baseFat * ratio).toStringAsFixed(1);
   }
 
-  double? _parseMacro(String raw) {
-    final value = double.tryParse(raw.trim());
-    if (value == null || value < 0) return null;
-    return value;
+  void _cancelEdits() {
+    _resetControllers();
+    setState(() => _isEditing = false);
+  }
+
+  Future<void> _saveEdits() async {
+    final newCalories = double.tryParse(_caloriesController.text.trim());
+    final newProtein = double.tryParse(_proteinController.text.trim());
+    final newCarbs = double.tryParse(_carbsController.text.trim());
+    final newFat = double.tryParse(_fatController.text.trim());
+
+    if (newCalories == null || newProtein == null ||
+        newCarbs == null || newFat == null) {
+      _showStatusSnack('Please enter valid values for all macros.', isError: true);
+      return;
+    }
+
+    final isServingsBased = widget.row.servings != null;
+    double newMass;
+    double? newServings;
+
+    if (isServingsBased) {
+      final s = double.tryParse(_servingsController.text.trim());
+      if (s == null || s <= 0) {
+        _showStatusSnack('Please enter a valid number of servings.', isError: true);
+        return;
+      }
+      newServings = s;
+      newMass = 1.0;
+    } else {
+      final g = double.tryParse(_gramsController.text.trim());
+      if (g == null || g <= 0) {
+        _showStatusSnack('Please enter valid grams.', isError: true);
+        return;
+      }
+      newMass = g;
+    }
+
+    final updatedRow = widget.row.copyWith(
+      massG: newMass,
+      amount: '${newMass.toStringAsFixed(0)} g',
+      calories: newCalories,
+      protein: newProtein,
+      carbs: newCarbs,
+      fat: newFat,
+    );
+
+    try {
+      await widget.onEdit(updatedRow, newServings: newServings);
+      if (!mounted) return;
+      setState(() => _isEditing = false);
+      _showStatusSnack('Saved "${updatedRow.name}"');
+    } catch (e) {
+      if (!mounted) return;
+      _showStatusSnack('Failed to save: $e', isError: true);
+    }
   }
 
   void _showStatusSnack(String message, {bool isError = false}) {
@@ -2196,56 +2244,6 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
     });
   }
 
-  Future<void> _saveEdits() async {
-    final grams = _parseMacro(_gramsController.text);
-    final calories = _parseMacro(_caloriesController.text);
-    final protein = _parseMacro(_proteinController.text);
-    final carbs = _parseMacro(_carbsController.text);
-    final fat = _parseMacro(_fatController.text);
-
-    if (grams == null || grams <= 0) {
-      _showStatusSnack('Please enter valid grams.', isError: true);
-      return;
-    }
-    if (calories == null || protein == null || carbs == null || fat == null) {
-      _showStatusSnack('Please enter valid values for all macros.', isError: true);
-      return;
-    }
-
-    final expectedCalories = (fat * 9) + (protein * 4) + (carbs * 4);
-    if ((calories - expectedCalories).abs() > 2) {
-      _showStatusSnack(
-        'Calories must equal (fat×9)+(protein×4)+(carbs×4) = ${expectedCalories.toStringAsFixed(0)} Cal',
-        isError: true,
-      );
-      return;
-    }
-
-    final updatedRow = widget.row.copyWith(
-      massG: grams,
-      amount: '${grams.toStringAsFixed(0)} g',
-      calories: calories,
-      protein: protein,
-      carbs: carbs,
-      fat: fat,
-    );
-
-    try {
-      await widget.onSave(updatedRow);
-      if (!mounted) return;
-      setState(() => _isEditing = false);
-      _showStatusSnack('Saved "${updatedRow.name}"');
-    } catch (e) {
-      if (!mounted) return;
-      _showStatusSnack('Failed to save: $e', isError: true);
-    }
-  }
-
-  void _cancelEdits() {
-    _resetControllersFromRow();
-    setState(() => _isEditing = false);
-  }
-
   Future<void> _deleteRow() async {
     final shouldDelete = await showDialog<bool>(
       context: context,
@@ -2288,7 +2286,6 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
     required String value,
     required String unit,
     TextEditingController? editController,
-    bool readOnly = false,
   }) {
     final editing = _isEditing && editController != null;
     return Container(
@@ -2324,26 +2321,31 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
           ),
           const SizedBox(height: 2),
           if (editing)
-            TextField(
-              controller: editController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              textAlign: TextAlign.right,
-              readOnly: readOnly,
-              decoration: InputDecoration(
-                isDense: true,
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.zero,
-                suffixText: unit,
-                suffixStyle: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  color: color.withValues(alpha: 0.95),
+            Align(
+              alignment: Alignment.centerRight,
+              child: SizedBox(
+                width: 72,
+                child: TextField(
+                  controller: editController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  textAlign: TextAlign.right,
+                  decoration: InputDecoration(
+                    isDense: true,
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.zero,
+                    suffixText: unit,
+                    suffixStyle: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: color.withValues(alpha: 0.95),
+                    ),
+                  ),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: color.withValues(alpha: 0.95),
+                  ),
                 ),
-              ),
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-                color: color.withValues(alpha: 0.95),
               ),
             )
           else
@@ -2414,99 +2416,149 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               if ((widget.row.imageUrl ?? '').isNotEmpty) ...[
                 _FoodLogImageThumbnail(imageUrl: widget.row.imageUrl!),
                 const SizedBox(width: 10),
               ],
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      height: 44,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          widget.row.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          strutStyle: const StrutStyle(
-                            fontSize: 16,
-                            height: 1.0,
-                            forceStrutHeight: true,
-                          ),
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.mealText,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      child: Text(
-                        '${widget.row.mealType.toUpperCase()} • ${widget.row.amount}',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.3,
-                          color: AppColors.warmDark,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    onPressed: _deleteRow,
-                    icon: Icon(Icons.delete_outline, color: AppColors.error),
-                    tooltip: 'Remove food',
+                child: Container(
+                  height: 44,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
                   ),
-                  if (!_isEditing)
-                    IconButton(
-                      onPressed: () => setState(() => _isEditing = true),
-                      icon: const Icon(
-                        Icons.edit,
-                        size: 20,
-                        color: AppColors.warmDarker,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      widget.row.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.mealText,
                       ),
-                      tooltip: 'Edit meal',
                     ),
-                ],
+                  ),
+                ),
               ),
             ],
           ),
-          if (_isEditing) ...[
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: TextField(
-                controller: _gramsController,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
+          const SizedBox(height: 4),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (_isEditing)
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    child: Row(
+                      children: [
+                        Text(
+                          '${widget.row.mealType.toUpperCase()} • ',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.3,
+                            color: AppColors.warmDark,
+                          ),
+                        ),
+                        IntrinsicWidth(
+                          child: widget.row.servings != null
+                              ? TextField(
+                                  controller: _servingsController,
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  decoration: const InputDecoration(
+                                    isDense: true,
+                                    border: InputBorder.none,
+                                    contentPadding: EdgeInsets.zero,
+                                  ),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.warmDark,
+                                  ),
+                                )
+                              : TextField(
+                                  controller: _gramsController,
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  decoration: const InputDecoration(
+                                    isDense: true,
+                                    border: InputBorder.none,
+                                    contentPadding: EdgeInsets.zero,
+                                  ),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.warmDark,
+                                  ),
+                                ),
+                        ),
+                        Text(
+                          widget.row.servings != null
+                              ? ' serving${(double.tryParse(_servingsController.text) ?? 1) == 1 ? '' : 's'}'
+                              : ' g',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.warmDark,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Text(
+                    widget.row.servings != null
+                        ? '${widget.row.mealType.toUpperCase()} • ${widget.row.servings == widget.row.servings!.roundToDouble() ? widget.row.servings!.toInt().toString() : widget.row.servings!.toStringAsFixed(1)} serving${widget.row.servings == 1 ? '' : 's'}'
+                        : '${widget.row.mealType.toUpperCase()} • ${widget.row.amount}',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.3,
+                      color: AppColors.warmDark,
+                    ),
+                  ),
                 ),
-                textAlign: TextAlign.right,
-                decoration: const InputDecoration(
-                  isDense: true,
-                  labelText: 'Grams',
-                  suffixText: 'g',
+              const Spacer(),
+              if (!_isEditing)
+                IconButton(
+                  onPressed: () => setState(() => _isEditing = true),
+                  icon: const Icon(
+                    Icons.edit,
+                    size: 20,
+                  ),
+                  tooltip: 'Edit food',
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 28,
+                    minHeight: 28,
+                  ),
+                ),
+              IconButton(
+                onPressed: _deleteRow,
+                icon: const Icon(
+                  Icons.delete_outline,
+                  size: 20,
+                  color: AppColors.error,
+                ),
+                tooltip: 'Remove food',
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(
+                  minWidth: 28,
+                  minHeight: 28,
                 ),
               ),
-            ),
-          ],
-          const SizedBox(height: 10),
+            ],
+          ),
+          const SizedBox(height: 8),
           Row(
             children: [
               Expanded(
@@ -2516,7 +2568,6 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
                   value: widget.row.calories.toStringAsFixed(0),
                   unit: 'Cal',
                   editController: _caloriesController,
-                  readOnly: true,
                 ),
               ),
               const SizedBox(width: 8),
@@ -2906,6 +2957,7 @@ class _FoodRow {
   final double massG;
   final String? imageUrl;
   final DateTime consumedAt;
+  final double? servings;
 
   const _FoodRow({
     required this.id,
@@ -2920,6 +2972,7 @@ class _FoodRow {
     required this.massG,
     this.imageUrl,
     required this.consumedAt,
+    this.servings,
   });
 
   _FoodRow copyWith({
@@ -2945,6 +2998,7 @@ class _FoodRow {
       massG: massG ?? this.massG,
       imageUrl: imageUrl ?? this.imageUrl,
       consumedAt: consumedAt,
+      servings: servings,
     );
   }
 }
@@ -3307,6 +3361,7 @@ class _ScheduledMealCard extends ConsumerWidget {
         final protein = (recipe['protein'] ?? 0).toDouble();
         final carbs = (recipe['carbs'] ?? 0).toDouble();
         final fat = (recipe['fat'] ?? 0).toDouble();
+        final massGrams = (recipe['mass_g'] ?? 0).toDouble();
         final dayLabel = DateFormat('MMMM d, yyyy').format(meal.date);
         final normalizedRecipeName = recipeName.trim().toLowerCase();
         final normalizedMealType = meal.mealType.trim().toLowerCase();
@@ -3384,36 +3439,6 @@ class _ScheduledMealCard extends ConsumerWidget {
                         ),
                       ),
                     ),
-                    IconButton(
-                      onPressed: isAlreadyLogged
-                          ? null
-                          : () => _confirmAndLogScheduledMeal(
-                                context: context,
-                                ref: ref,
-                                recipeName: recipeName,
-                                calories: calories,
-                                protein: protein,
-                                carbs: carbs,
-                                fat: fat,
-                                dayLabel: dayLabel,
-                              ),
-                      icon: Icon(
-                        isAlreadyLogged
-                            ? Icons.task_alt_rounded
-                            : Icons.playlist_add_check_rounded,
-                        size: 20,
-                        color: isAlreadyLogged
-                            ? AppColors.textHint
-                            : AppColors.warmDarker,
-                      ),
-                      tooltip: isAlreadyLogged ? 'Already logged' : 'Log meal',
-                      visualDensity: VisualDensity.compact,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(
-                        minWidth: 28,
-                        minHeight: 28,
-                      ),
-                    ),
                   ],
                 ),
                 const SizedBox(height: 4),
@@ -3433,6 +3458,57 @@ class _ScheduledMealCard extends ConsumerWidget {
                       ),
                     ),
                     const Spacer(),
+                    IconButton(
+                      onPressed: isAlreadyLogged
+                          ? null
+                          : () => _confirmAndLogScheduledMeal(
+                                context: context,
+                                ref: ref,
+                                recipeName: recipeName,
+                                calories: calories,
+                                protein: protein,
+                                carbs: carbs,
+                                fat: fat,
+                                massGrams: massGrams,
+                                dayLabel: dayLabel,
+                              ),
+                      icon: Icon(
+                        isAlreadyLogged
+                            ? Icons.task_alt_rounded
+                            : Icons.playlist_add_check_rounded,
+                        size: 20,
+                        color: isAlreadyLogged
+                            ? AppColors.textHint
+                            : AppColors.warmDarker,
+                      ),
+                      tooltip: isAlreadyLogged ? 'Already logged' : 'Log meal',
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 28,
+                        minHeight: 28,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.info_outline, size: 20),
+                      tooltip: 'View recipe',
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 28,
+                        minHeight: 28,
+                      ),
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => _ScheduledMealDetailScreen(
+                              meal: meal,
+                              recipe: recipe,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                     IconButton(
                       icon: const Icon(Icons.edit, size: 20),
                       tooltip: 'Edit scheduled meal',
@@ -3505,25 +3581,6 @@ class _ScheduledMealCard extends ConsumerWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.chevron_right,
-                      size: 18,
-                      color: AppColors.selectionColor,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Tap to view ingredients and instructions',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppColors.selectionColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
               ],
             ),
           ),
@@ -3540,31 +3597,52 @@ class _ScheduledMealCard extends ConsumerWidget {
     required double protein,
     required double carbs,
     required double fat,
+    required double massGrams,
     required String dayLabel,
   }) async {
-    final shouldLog = await showDialog<bool>(
+    final servingsController = TextEditingController(text: '1');
+    final servingsResult = await showDialog<double?>(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: const Text('Log scheduled meal?'),
-          content: Text(
-            'Are you sure you want to add meal "$recipeName" scheduled for day $dayLabel?',
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Log "$recipeName" for $dayLabel.'),
+              const SizedBox(height: 16),
+              TextField(
+                controller: servingsController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'Number of servings',
+                  border: OutlineInputBorder(),
+                ),
+                autofocus: true,
+              ),
+            ],
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
+              onPressed: () => Navigator.of(context).pop(null),
               child: const Text('Cancel'),
             ),
             FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Yes, log meal'),
+              onPressed: () {
+                final value = double.tryParse(servingsController.text.trim());
+                if (value != null && value > 0) {
+                  Navigator.of(context).pop(value);
+                }
+              },
+              child: const Text('Log meal'),
             ),
           ],
         );
       },
     );
 
-    if (shouldLog != true) return;
+    if (servingsResult == null) return;
 
     final userId = ref.read(authServiceProvider)?.uid;
     if (userId == null) {
@@ -3576,20 +3654,23 @@ class _ScheduledMealCard extends ConsumerWidget {
       return;
     }
 
-    // If there are no grams, use macros to estimate mass with a default gram with a default of 1
-    final macroMassGrams = protein + carbs + fat;
-    final massGrams = macroMassGrams > 0 ? macroMassGrams : 1.0;
+    final effectiveMass = massGrams > 0 ? massGrams : 1.0;
+    final totalCalories = calories * servingsResult;
+    final totalProtein = protein * servingsResult;
+    final totalCarbs = carbs * servingsResult;
+    final totalFat = fat * servingsResult;
 
     final item = FoodItem(
       id: 'scheduled-${DateTime.now().microsecondsSinceEpoch}',
       name: recipeName,
-      mass_g: massGrams,
-      calories_g: calories / massGrams,
-      protein_g: protein / massGrams,
-      carbs_g: carbs / massGrams,
-      fat: fat / massGrams,
+      mass_g: effectiveMass * servingsResult,
+      calories_g: totalCalories / (effectiveMass * servingsResult),
+      protein_g: totalProtein / (effectiveMass * servingsResult),
+      carbs_g: totalCarbs / (effectiveMass * servingsResult),
+      fat: totalFat / (effectiveMass * servingsResult),
       mealType: meal.mealType.toLowerCase(),
       consumedAt: DateTime(meal.date.year, meal.date.month, meal.date.day, 12),
+      servings: servingsResult,
     );
 
     await ref

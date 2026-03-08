@@ -29,6 +29,8 @@ class FoodItem {
   @JsonKey(fromJson: AppUser.dateFromJson, toJson: AppUser.dateToJson)
   final DateTime consumedAt;
 
+  final double? servings;
+
   FoodItem({
     required this.id,
     required this.name,
@@ -40,6 +42,7 @@ class FoodItem {
     required this.mealType,
     this.imageUrl,
     required this.consumedAt,
+    this.servings,
   });
 
   factory FoodItem.fromJson(Map<String, dynamic> json) =>
