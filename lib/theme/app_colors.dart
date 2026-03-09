@@ -17,26 +17,25 @@ class AppColors {
   // static const Color caloriesCircle = Color(0xFF5F9735);
   // static const Color selectionColor = Color(0xFF6DCFF6);
 
-  // ── Shared app palette (WCAG AA compliant) ──
-  // These tokens are used across legacy/shared screens and must stay accessible
-  // for text, labels, and button foreground/background pairs.
-  static const Color brand = Color(0xFF256B2A);
-  static const Color background = Color(0xFFE9E7E4);
-  static const Color navBar = Color(0xFF1F5A24);
-  static const Color topBar = Color(0xFF1F5A24);
+  // ── Shared app palette (aligned to home design system) ──
+  // Most global tokens now inherit the newer home visual language.
+  static const Color brand = Color(0xFF34C759);
+  static const Color background = Color(0xFFF2F2F7);
+  static const Color navBar = Color(0xFF34C759);
+  static const Color topBar = Color(0xFF34C759);
   static const Color secondary = brand;
-  static const Color accent = Color(0xFF8F4A1A);
-  static const Color protein = Color(0xFFC2482B);
-  static const Color carbs = Color(0xFF875C00);
-  static const Color fat = Color(0xFF3A6FB8);
-  static const Color accentBrown = Color(0xFF212121);
-  static const Color inputFill = Color(0xFFECEBEA);
+  static const Color accent = Color(0xFFFF9500);
+  static const Color protein = Color(0xFFFF3B30);
+  static const Color carbs = Color(0xFFFF9500);
+  static const Color fat = Color(0xFF007AFF);
+  static const Color accentBrown = Color(0xFF000000);
+  static const Color inputFill = Color(0xFFF8F9FA);
   static const Color streakBackground = Color(0xFFFFF3E0);
   static const Color caloriesCircle = brand;
-  static const Color selectionColor = Color(0xFF006E8C);
+  static const Color selectionColor = Color(0xFF007AFF);
   // Nav icon colors — on navBar background
   static const Color navIconActive = Color(0xFFFFFFFF); // white
-  static const Color navIconInactive = Color(0xFFEAF4EA); // soft mint
+  static const Color navIconInactive = Color(0xFFEFF8F1); // soft mint
 
   // ── Home dashboard palette ──
   // These mirror the redesigned home screen so the rest of the team can reuse
@@ -64,18 +63,16 @@ class AppColors {
   ); // grey-100 chip / tile bg
 
   // ── Borders / dividers ──
-  static const Color borderLight = Color(0xFFE0E0E0); // grey-300
-  static const Color divider = Color(0xFFBDBDBD); // grey-400
-  static const Color progressTrack = Color(
-    0xFFEEEEEE,
-  ); // grey-200 progress bar track
+  static const Color borderLight = Color(0xFFE5E5EA); // iOS separator
+  static const Color divider = Color(0xFFE5E5EA); // iOS separator
+  static const Color progressTrack = Color(0xFFE5E5EA); // iOS separator
 
   // ── Status & feedback (WCAG AA compliant for text on white) ──
   static const Color error = Color(
     0xFFB00020,
   ); // 7.3:1 — errors, delete, danger
   static const Color success = Color(0xFF2E7D32); // 5.1:1 — confirmed, success
-  static const Color warning = Color(0xFFC84B00); // 4.7:1 — warning, caution
+  static const Color warning = Color(0xFFFF9500); // warning / caution
 
   // ── Grade scale (S → F); C & D are fill-only indicators ──
   static const Color gradeS = Color(0xFF2E7D32);
@@ -87,32 +84,28 @@ class AppColors {
 
   // ── Nutrient progress status colors (bar / chip fills; not for body text) ──
   static const Color statusOver = Color(0xFFE53935); // over limit
-  static const Color statusNear = Color(0xFFF57F17); // approaching limit
+  static const Color statusNear = Color(0xFFFF9500); // approaching limit
   static const Color statusGood = Color(0xFF4CAF50); // on target
   static const Color statusUnder = Color(0xFFFF9800); // under target
   static const Color statusNone = Color(0xFF9E9E9E); // no data (grey-500)
 
   // ── Text hierarchy (WCAG AA on white & app background) ──
-  static const Color textPrimary = Color(0xFF212121); // near-black
-  static const Color textSecondary = Color(
-    0xFF616161,
-  ); // grey-700, 5.9:1 on white
-  static const Color textHint = Color(0xFF757575); // grey-600, 4.6:1 on white
+  static const Color textPrimary = Color(0xFF000000); // home primary
+  static const Color textSecondary = Color(0xFF6E6E73); // home secondary
+  static const Color textHint = Color(0xFF8E8E93); // iOS tertiary-like
 
   // ── Warm neutrals (meal log card theming) ──
-  static const Color warmLight = Color(0xFFEFEBE9); // brown-50  badge fill
-  static const Color warmBorder = Color(0xFFD7CCC8); // brown-100 card border/bg
-  static const Color warmMid = Color(0xFFA1887F); // brown-300 badge border
-  static const Color warmDark = Color(0xFF6D4C41); // brown-600 badge text
-  static const Color warmDarker = Color(0xFF5D4037); // brown-700 secondary text
+  static const Color warmLight = Color(0xFFF8F9FA); // subtle neutral fill
+  static const Color warmBorder = Color(0xFFE5E5EA); // subtle neutral border
+  static const Color warmMid = Color(0xFFAEAEB2); // neutral mid tone
+  static const Color warmDark = Color(0xFF3A3A3C); // neutral dark tone
+  static const Color warmDarker = Color(0xFF1C1C1E); // neutral deepest tone
 
   // ── Miscellaneous ──
   static const Color black = Color(
     0xFF000000,
   ); // pure black — shadow / overlay base
-  static const Color mealText = Color(
-    0xFF2E221A,
-  ); // dark brown text in meal name fields
+  static const Color mealText = Color(0xFF000000); // primary meal text
   static const Color deleteRed = Color(0xFFD32F2F); // destructive action button
   static const Color neumorphicShadow = Color(
     0xFFD9D0C3,

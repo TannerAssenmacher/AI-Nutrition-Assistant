@@ -12,8 +12,12 @@ class NavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewPadding.bottom;
+
     return Container(
-      height: 84,
+      // Keep consistent visible content height across devices with different
+      // system navigation insets.
+      height: 86 + bottomInset,
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.95),
         border: Border(
@@ -30,7 +34,7 @@ class NavBar extends StatelessWidget {
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
@@ -90,8 +94,8 @@ class _HomeButton extends StatelessWidget {
         onTap: onTap,
         behavior: HitTestBehavior.opaque,
         child: Container(
-          width: 56,
-          height: 56,
+          width: 58,
+          height: 58,
           decoration: BoxDecoration(
             color: fillColor,
             shape: BoxShape.circle,
@@ -103,7 +107,7 @@ class _HomeButton extends StatelessWidget {
               ),
             ],
           ),
-          child: const Icon(Icons.home_filled, color: Colors.white, size: 24),
+          child: const Icon(Icons.home_filled, color: Colors.white, size: 25),
         ),
       ),
     );
