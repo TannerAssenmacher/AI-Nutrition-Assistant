@@ -21,6 +21,7 @@ class MainNavigationScreen extends StatefulWidget {
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   late PageController _pageController;
   late int _currentIndex;
+  int? _pendingNavTarget;
 
   @override
   void initState() {
@@ -50,16 +51,33 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   void _onNavBarTap(int navIndex) {
     final pageIndex = _navIndexToPageIndex(navIndex);
+    if (_currentIndex == navIndex) return;
+
+    // Keep active-tab state on the intended destination while animating,
+    // so intermediate pages do not become active.
+    _pendingNavTarget = navIndex;
+    setState(() {
+      _currentIndex = navIndex;
+    });
+
     _pageController.animateToPage(
       pageIndex,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
     );
   }
 
   void _onPageChanged(int pageIndex) {
+    final navIndex = _pageIndexToNavIndex(pageIndex);
+
+    // Ignore intermediate pages during an animated tab transition.
+    if (_pendingNavTarget != null && navIndex != _pendingNavTarget) {
+      return;
+    }
+
+    _pendingNavTarget = null;
     setState(() {
-      _currentIndex = _pageIndexToNavIndex(pageIndex);
+      _currentIndex = navIndex;
     });
   }
 
@@ -73,7 +91,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         onPageChanged: _onPageChanged,
         children: [
           ChatScreen(isInPageView: true),
-          DailyLogCalendarScreen(isInPageView: true),
+          DailyLogCalendarScreen(
+            isInPageView: true,
+            isActive: _currentIndex == navIndexHistory,
+          ),
           HomeScreen(isInPageView: true),
           FoodSearchScreen(isInPageView: true),
           CameraScreen(

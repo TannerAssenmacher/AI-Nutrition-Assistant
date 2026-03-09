@@ -170,6 +170,12 @@ class HomeScreen extends ConsumerWidget {
                               const Center(child: CircularProgressIndicator()),
                           error: (e, _) => const SizedBox.shrink(),
                           data: (userProfile) {
+                            if (userProfile == null) {
+                              return const Center(
+                                child: Text('Loading your profile...'),
+                              );
+                            }
+
                             return foodLogAsync.when(
                               loading: () => const Center(
                                 child: CircularProgressIndicator(),
