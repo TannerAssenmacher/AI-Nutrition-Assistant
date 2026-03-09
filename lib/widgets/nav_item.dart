@@ -1,12 +1,6 @@
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
 
 class NavItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool isActive;
-  final VoidCallback onTap;
-
   const NavItem({
     super.key,
     required this.icon,
@@ -15,8 +9,17 @@ class NavItem extends StatelessWidget {
     required this.onTap,
   });
 
+  final IconData icon;
+  final String label;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  static const Color _activeColor = Color(0xFF34C759);
+
   @override
   Widget build(BuildContext context) {
+    final inactiveColor = Colors.grey.shade400;
+
     return Semantics(
       label: label,
       button: true,
@@ -25,23 +28,26 @@ class NavItem extends StatelessWidget {
       excludeSemantics: true,
       child: GestureDetector(
         onTap: onTap,
+        behavior: HitTestBehavior.opaque,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+          constraints: const BoxConstraints(minWidth: 64, minHeight: 56),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Padding(
-                padding: EdgeInsets.all(
-                  MediaQuery.of(context).size.height * 0.005,
-                ),
-              ),
               Icon(
                 icon,
-                color: isActive ? Colors.black : Colors.grey,
-                size: MediaQuery.of(context).size.height * 0.05,
-                weight: isActive ? 700 : 400,
+                color: isActive ? _activeColor : inactiveColor,
+                size: 24,
               ),
               const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                  color: isActive ? _activeColor : inactiveColor,
+                ),
+              ),
             ],
           ),
         ),
