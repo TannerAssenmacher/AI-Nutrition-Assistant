@@ -27,12 +27,17 @@ void main() {
     // NavBar height is 7% of screen height — simulate a real phone so the bar
     // is tall enough to meet 44/48dp tap target requirements (7% of 844 = 59px).
     void setPhoneSize(WidgetTester tester) {
-      tester.view.physicalSize = const Size(1170, 2532); // iPhone 14 Pro points×3
+      tester.view.physicalSize = const Size(
+        1170,
+        2532,
+      ); // iPhone 14 Pro points×3
       tester.view.devicePixelRatio = 3.0;
       addTearDown(tester.view.reset);
     }
 
-    testWidgets('meets Android tap target guideline (48dp min)', (tester) async {
+    testWidgets('meets Android tap target guideline (48dp min)', (
+      tester,
+    ) async {
       setPhoneSize(tester);
       await tester.pumpWidget(buildNavBar());
       await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
@@ -52,11 +57,11 @@ void main() {
     testWidgets('all five nav items have semantic labels', (tester) async {
       await tester.pumpWidget(buildNavBar());
 
-      expect(find.bySemanticsLabel('Recipes'), findsOneWidget);
-      expect(find.bySemanticsLabel('History'), findsOneWidget);
+      expect(find.bySemanticsLabel('Coach'), findsOneWidget);
+      expect(find.bySemanticsLabel('Log'), findsOneWidget);
       expect(find.bySemanticsLabel('Home'), findsOneWidget);
       expect(find.bySemanticsLabel('Search'), findsOneWidget);
-      expect(find.bySemanticsLabel('Camera'), findsOneWidget);
+      expect(find.bySemanticsLabel('Photo'), findsOneWidget);
     });
   });
 
@@ -90,7 +95,9 @@ void main() {
       await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
     });
 
-    testWidgets('has semantic label describing macro percentages', (tester) async {
+    testWidgets('has semantic label describing macro percentages', (
+      tester,
+    ) async {
       await tester.pumpWidget(buildSlider(protein: 30, carbs: 40, fats: 30));
 
       expect(
@@ -123,15 +130,27 @@ void main() {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Protein 33%',
-                    style: TextStyle(
-                        color: AppColors.protein, fontWeight: FontWeight.bold)),
-                Text('Carbs 34%',
-                    style: TextStyle(
-                        color: AppColors.carbs, fontWeight: FontWeight.bold)),
-                Text('Fats 33%',
-                    style: TextStyle(
-                        color: AppColors.fat, fontWeight: FontWeight.bold)),
+                Text(
+                  'Protein 33%',
+                  style: TextStyle(
+                    color: AppColors.protein,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'Carbs 34%',
+                  style: TextStyle(
+                    color: AppColors.carbs,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'Fats 33%',
+                  style: TextStyle(
+                    color: AppColors.fat,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ],
             ),
           ),
@@ -163,14 +182,16 @@ void main() {
   // ============================================================================
   group('App text colors on app background', () {
     Widget textOnAppBg(Color fg) => MaterialApp(
-          home: Scaffold(
-            backgroundColor: AppColors.background,
-            body: Center(
-              child: Text('Sample label',
-                  style: TextStyle(color: fg, fontSize: 14)),
-            ),
+      home: Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(
+          child: Text(
+            'Sample label',
+            style: TextStyle(color: fg, fontSize: 14),
           ),
-        );
+        ),
+      ),
+    );
 
     testWidgets('accentBrown meets text contrast guideline', (tester) async {
       await tester.pumpWidget(textOnAppBg(AppColors.accentBrown));
@@ -193,15 +214,18 @@ void main() {
     });
 
     testWidgets('selectionColor meets text contrast guideline', (tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: Text('Today',
-                style: TextStyle(
-                    color: AppColors.selectionColor, fontSize: 14)),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: Text(
+                'Today',
+                style: TextStyle(color: AppColors.selectionColor, fontSize: 14),
+              ),
+            ),
           ),
         ),
-      ));
+      );
       await expectLater(tester, meetsGuideline(textContrastGuideline));
     });
   });
@@ -213,35 +237,38 @@ void main() {
   // ============================================================================
   group('White text on colored button backgrounds', () {
     Widget whiteOnButton(Color bgColor) => MaterialApp(
-          home: Scaffold(
-            body: Center(
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: bgColor,
-                  foregroundColor: AppColors.surface,
-                ),
-                onPressed: () {},
-                child: const Text('Submit'),
-              ),
+      home: Scaffold(
+        body: Center(
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: bgColor,
+              foregroundColor: AppColors.surface,
             ),
+            onPressed: () {},
+            child: const Text('Submit'),
           ),
-        );
+        ),
+      ),
+    );
 
-    testWidgets('white text on brand button meets text contrast guideline',
-        (tester) async {
+    testWidgets('white text on brand button meets text contrast guideline', (
+      tester,
+    ) async {
       await tester.pumpWidget(whiteOnButton(AppColors.brand));
       await expectLater(tester, meetsGuideline(textContrastGuideline));
     });
 
     testWidgets(
-        'white text on accentBrown button meets text contrast guideline',
-        (tester) async {
-      await tester.pumpWidget(whiteOnButton(AppColors.accentBrown));
-      await expectLater(tester, meetsGuideline(textContrastGuideline));
-    });
+      'white text on accentBrown button meets text contrast guideline',
+      (tester) async {
+        await tester.pumpWidget(whiteOnButton(AppColors.accentBrown));
+        await expectLater(tester, meetsGuideline(textContrastGuideline));
+      },
+    );
 
-    testWidgets('white text on navBar button meets text contrast guideline',
-        (tester) async {
+    testWidgets('white text on navBar button meets text contrast guideline', (
+      tester,
+    ) async {
       await tester.pumpWidget(whiteOnButton(AppColors.navBar));
       await expectLater(tester, meetsGuideline(textContrastGuideline));
     });
@@ -257,14 +284,13 @@ void main() {
   // ============================================================================
   group('NavBar icon colors on navBar background', () {
     Widget iconColorOnNavBar(Color color) => MaterialApp(
-          home: Scaffold(
-            backgroundColor: AppColors.navBar,
-            body: Center(
-              child: Text('Nav item',
-                  style: TextStyle(color: color, fontSize: 14)),
-            ),
-          ),
-        );
+      home: Scaffold(
+        backgroundColor: AppColors.navBar,
+        body: Center(
+          child: Text('Nav item', style: TextStyle(color: color, fontSize: 14)),
+        ),
+      ),
+    );
 
     testWidgets('active icon color meets contrast guideline', (tester) async {
       await tester.pumpWidget(iconColorOnNavBar(AppColors.navIconActive));
@@ -283,19 +309,24 @@ void main() {
   // ============================================================================
   group('TopBar color pair', () {
     testWidgets(
-        'background color on topBar background meets contrast guideline',
-        (tester) async {
-      await tester.pumpWidget(const MaterialApp(
-        home: Scaffold(
-          backgroundColor: AppColors.topBar,
-          body: Center(
-            child: Text('WiserBites',
-                style: TextStyle(color: AppColors.background, fontSize: 18)),
+      'background color on topBar background meets contrast guideline',
+      (tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              backgroundColor: AppColors.topBar,
+              body: Center(
+                child: Text(
+                  'WiserBites',
+                  style: TextStyle(color: AppColors.background, fontSize: 18),
+                ),
+              ),
+            ),
           ),
-        ),
-      ));
-      await expectLater(tester, meetsGuideline(textContrastGuideline));
-    });
+        );
+        await expectLater(tester, meetsGuideline(textContrastGuideline));
+      },
+    );
   });
 
   // ============================================================================
@@ -303,29 +334,38 @@ void main() {
   // accent (#A35720): 5.3:1 on white, 4.6:1 on app background
   // ============================================================================
   group('Accent color', () {
-    testWidgets('accent meets contrast guideline on app background',
-        (tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          backgroundColor: AppColors.background,
-          body: const Center(
-            child: Text('Accent label',
-                style: TextStyle(color: AppColors.accent, fontSize: 14)),
+    testWidgets('accent meets contrast guideline on app background', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            backgroundColor: AppColors.background,
+            body: const Center(
+              child: Text(
+                'Accent label',
+                style: TextStyle(color: AppColors.accent, fontSize: 14),
+              ),
+            ),
           ),
         ),
-      ));
+      );
       await expectLater(tester, meetsGuideline(textContrastGuideline));
     });
 
     testWidgets('accent meets contrast guideline on white', (tester) async {
-      await tester.pumpWidget(const MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: Text('Accent label',
-                style: TextStyle(color: AppColors.accent, fontSize: 14)),
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: Text(
+                'Accent label',
+                style: TextStyle(color: AppColors.accent, fontSize: 14),
+              ),
+            ),
           ),
         ),
-      ));
+      );
       await expectLater(tester, meetsGuideline(textContrastGuideline));
     });
   });
@@ -339,13 +379,13 @@ void main() {
   // ============================================================================
   group('Status and feedback text on white surface', () {
     Widget textOnSurface(Color fg, String label) => MaterialApp(
-          home: Scaffold(
-            backgroundColor: AppColors.surface,
-            body: Center(
-              child: Text(label, style: TextStyle(color: fg, fontSize: 14)),
-            ),
-          ),
-        );
+      home: Scaffold(
+        backgroundColor: AppColors.surface,
+        body: Center(
+          child: Text(label, style: TextStyle(color: fg, fontSize: 14)),
+        ),
+      ),
+    );
 
     testWidgets('error color meets text contrast guideline', (tester) async {
       await tester.pumpWidget(textOnSurface(AppColors.error, 'Error message'));
@@ -377,13 +417,13 @@ void main() {
   // ============================================================================
   group('Text hierarchy on white surface', () {
     Widget textOnSurface(Color fg) => MaterialApp(
-          home: Scaffold(
-            backgroundColor: AppColors.surface,
-            body: Center(
-              child: Text('Body text', style: TextStyle(color: fg, fontSize: 14)),
-            ),
-          ),
-        );
+      home: Scaffold(
+        backgroundColor: AppColors.surface,
+        body: Center(
+          child: Text('Body text', style: TextStyle(color: fg, fontSize: 14)),
+        ),
+      ),
+    );
 
     testWidgets('textPrimary meets contrast guideline', (tester) async {
       await tester.pumpWidget(textOnSurface(AppColors.textPrimary));
@@ -403,22 +443,24 @@ void main() {
 
   group('Text hierarchy on app background', () {
     Widget textOnBackground(Color fg) => MaterialApp(
-          home: Scaffold(
-            backgroundColor: AppColors.background,
-            body: Center(
-              child: Text('Body text', style: TextStyle(color: fg, fontSize: 14)),
-            ),
-          ),
-        );
+      home: Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(
+          child: Text('Body text', style: TextStyle(color: fg, fontSize: 14)),
+        ),
+      ),
+    );
 
-    testWidgets('textPrimary on background meets contrast guideline',
-        (tester) async {
+    testWidgets('textPrimary on background meets contrast guideline', (
+      tester,
+    ) async {
       await tester.pumpWidget(textOnBackground(AppColors.textPrimary));
       await expectLater(tester, meetsGuideline(textContrastGuideline));
     });
 
-    testWidgets('textSecondary on background meets contrast guideline',
-        (tester) async {
+    testWidgets('textSecondary on background meets contrast guideline', (
+      tester,
+    ) async {
       await tester.pumpWidget(textOnBackground(AppColors.textSecondary));
       await expectLater(tester, meetsGuideline(textContrastGuideline));
     });
@@ -429,32 +471,41 @@ void main() {
   // inputFill (#F5F1E8) is near-white; any on-surface text will pass easily.
   // ============================================================================
   group('Text on inputFill background', () {
-    testWidgets('accentBrown label on inputFill meets contrast guideline',
-        (tester) async {
-      await tester.pumpWidget(const MaterialApp(
-        home: Scaffold(
-          backgroundColor: AppColors.inputFill,
-          body: Center(
-            child: Text('Email address',
-                style:
-                    TextStyle(color: AppColors.accentBrown, fontSize: 14)),
+    testWidgets('accentBrown label on inputFill meets contrast guideline', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            backgroundColor: AppColors.inputFill,
+            body: Center(
+              child: Text(
+                'Email address',
+                style: TextStyle(color: AppColors.accentBrown, fontSize: 14),
+              ),
+            ),
           ),
         ),
-      ));
+      );
       await expectLater(tester, meetsGuideline(textContrastGuideline));
     });
 
-    testWidgets('navBar color label on inputFill meets contrast guideline',
-        (tester) async {
-      await tester.pumpWidget(const MaterialApp(
-        home: Scaffold(
-          backgroundColor: AppColors.inputFill,
-          body: Center(
-            child: Text('Password',
-                style: TextStyle(color: AppColors.navBar, fontSize: 14)),
+    testWidgets('navBar color label on inputFill meets contrast guideline', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            backgroundColor: AppColors.inputFill,
+            body: Center(
+              child: Text(
+                'Password',
+                style: TextStyle(color: AppColors.navBar, fontSize: 14),
+              ),
+            ),
           ),
         ),
-      ));
+      );
       await expectLater(tester, meetsGuideline(textContrastGuideline));
     });
   });
