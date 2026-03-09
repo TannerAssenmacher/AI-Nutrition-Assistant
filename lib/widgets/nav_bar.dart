@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:nutrition_assistant/navigation/nav_helper.dart';
+import 'package:nutrition_assistant/theme/app_colors.dart';
 import 'package:nutrition_assistant/widgets/nav_item.dart';
 
 class NavBar extends StatelessWidget {
@@ -77,7 +78,7 @@ class _HomeButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fillColor = isSelected ? const Color(0xFF34C759) : Colors.black;
+    final fillColor = isSelected ? AppColors.homeBrand : Colors.black;
 
     return Semantics(
       label: 'Home',

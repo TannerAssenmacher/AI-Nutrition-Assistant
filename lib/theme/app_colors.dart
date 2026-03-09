@@ -17,30 +17,40 @@ class AppColors {
   // static const Color caloriesCircle = Color(0xFF5F9735);
   // static const Color selectionColor = Color(0xFF6DCFF6);
 
-  // ── Active palette (WCAG AA compliant) ──
-  // brand/secondary/caloriesCircle: #5F9735 → #4A7629 (5.4:1 on white, 4.6:1 on background)
-  // carbs: #E0A100 → #875C00 (5.9:1 on white, 5.1:1 on background)
-  // accentBrown: #967460 → #7A5A47 (6.2:1 on white, 5.4:1 on background)
-  // selectionColor: #6DCFF6 → #006E8C (5.8:1 on white, 5.0:1 on background)
-  // accent: #C96E35 → #A35720 (5.3:1 on white, 4.6:1 on background)
-  // navIconInactive: #6D5E58 → #C0A598 (4.7:1 on navBar background)
-  static const Color brand = Color(0xFF58A021);
+  // ── Shared app palette (WCAG AA compliant) ──
+  // These tokens are used across legacy/shared screens and must stay accessible
+  // for text, labels, and button foreground/background pairs.
+  static const Color brand = Color(0xFF256B2A);
   static const Color background = Color(0xFFE9E7E4);
-  static const Color navBar = Color(0xFF58A021);
-  static const Color topBar = Color(0xFF58A021);
-  static const Color secondary = Color(0xFF58A021);
-  static const Color accent = Color(0xFF58A021);
+  static const Color navBar = Color(0xFF1F5A24);
+  static const Color topBar = Color(0xFF1F5A24);
+  static const Color secondary = brand;
+  static const Color accent = Color(0xFF8F4A1A);
   static const Color protein = Color(0xFFC2482B);
   static const Color carbs = Color(0xFF875C00);
   static const Color fat = Color(0xFF3A6FB8);
   static const Color accentBrown = Color(0xFF212121);
   static const Color inputFill = Color(0xFFECEBEA);
   static const Color streakBackground = Color(0xFFFFF3E0);
-  static const Color caloriesCircle = Color(0xFF4A7629);
+  static const Color caloriesCircle = brand;
   static const Color selectionColor = Color(0xFF006E8C);
-  // Nav icon colors — on navBar (#58A021) background
+  // Nav icon colors — on navBar background
   static const Color navIconActive = Color(0xFFFFFFFF); // white
-  static const Color navIconInactive = Color(0xFFE8F5E9); // light green
+  static const Color navIconInactive = Color(0xFFEAF4EA); // soft mint
+
+  // ── Home dashboard palette ──
+  // These mirror the redesigned home screen so the rest of the team can reuse
+  // the same visual language without relying on scattered hardcoded colors.
+  static const Color homeBackground = Color(0xFFF2F2F7);
+  static const Color homeBrand = Color(0xFF34C759);
+  static const Color homeProtein = Color(0xFFFF3B30);
+  static const Color homeCarbs = Color(0xFFFF9500);
+  static const Color homeFat = Color(0xFF007AFF);
+  static const Color homeCard = Color(0xFFFFFFFF);
+  static const Color homeSubtleSurface = Color(0xFFF8F9FA);
+  static const Color homeDivider = Color(0xFFE5E5EA);
+  static const Color homeTextPrimary = Color(0xFF000000);
+  static const Color homeTextSecondary = Color(0xFF6E6E73);
 
   // ── Shared surfaces ──
   static const Color surface = Color(

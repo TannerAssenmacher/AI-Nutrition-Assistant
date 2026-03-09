@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_colors.dart';
+
 class NavItem extends StatelessWidget {
   const NavItem({
     super.key,
@@ -14,7 +16,7 @@ class NavItem extends StatelessWidget {
   final bool isActive;
   final VoidCallback onTap;
 
-  static const Color _activeColor = Color(0xFF34C759);
+  static const Color _activeColor = AppColors.homeBrand;
 
   @override
   Widget build(BuildContext context) {

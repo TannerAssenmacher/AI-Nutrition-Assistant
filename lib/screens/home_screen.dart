@@ -11,6 +11,7 @@ import '../providers/auth_providers.dart';
 import '../providers/firestore_providers.dart';
 import '../providers/food_providers.dart';
 import '../services/food_image_service.dart';
+import '../theme/app_colors.dart';
 import '../widgets/nav_bar.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -18,11 +19,11 @@ class HomeScreen extends ConsumerWidget {
 
   final bool isInPageView;
 
-  static const Color _screenBackground = Color(0xFFF2F2F7);
-  static const Color _brandGreen = Color(0xFF34C759);
-  static const Color _proteinColor = Color(0xFFFF3B30);
-  static const Color _carbColor = Color(0xFFFF9500);
-  static const Color _fatColor = Color(0xFF007AFF);
+  static const Color _screenBackground = AppColors.homeBackground;
+  static const Color _brandGreen = AppColors.homeBrand;
+  static const Color _proteinColor = AppColors.homeProtein;
+  static const Color _carbColor = AppColors.homeCarbs;
+  static const Color _fatColor = AppColors.homeFat;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -180,7 +181,7 @@ class _TopHeader extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.homeCard,
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
@@ -200,7 +201,7 @@ class _TopHeader extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
-                  color: Colors.black,
+                  color: AppColors.homeTextPrimary,
                 ),
               ),
             ],
@@ -225,7 +226,7 @@ class _TopHeader extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.homeCard,
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
@@ -235,7 +236,11 @@ class _TopHeader extends StatelessWidget {
                   ),
                 ],
               ),
-              child: Icon(Icons.person, color: Colors.grey.shade800, size: 22),
+              child: Icon(
+                Icons.person,
+                color: AppColors.homeTextSecondary,
+                size: 22,
+              ),
             ),
           ),
         ),
@@ -262,7 +267,7 @@ class _CalorieSummaryCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.homeCard,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
@@ -291,7 +296,7 @@ class _CalorieSummaryCard extends StatelessWidget {
                               fontSize: 42,
                               fontWeight: FontWeight.w700,
                               letterSpacing: -1,
-                              color: Colors.grey.shade900,
+                              color: AppColors.homeTextPrimary,
                               height: 1,
                             ),
                           ),
@@ -301,7 +306,7 @@ class _CalorieSummaryCard extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w500,
-                              color: Colors.grey.shade500,
+                              color: AppColors.homeTextSecondary,
                             ),
                           ),
                         ],
@@ -335,7 +340,7 @@ class _CalorieSummaryCard extends StatelessWidget {
                   child: Container(
                     height: 12,
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade200,
+                      color: AppColors.homeDivider,
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: ClipRRect(
@@ -415,7 +420,7 @@ class _InsightCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.homeCard,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
@@ -449,7 +454,7 @@ class _InsightCard extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
-                    color: Colors.black,
+                    color: AppColors.homeTextPrimary,
                   ),
                 ),
               ),
@@ -459,9 +464,9 @@ class _InsightCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8F9FA),
+              color: AppColors.homeSubtleSurface,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey.shade200),
+              border: Border.all(color: AppColors.homeDivider),
             ),
             child: Row(
               children: [
@@ -484,7 +489,7 @@ class _InsightCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
-                      color: Colors.grey.shade800,
+                      color: AppColors.homeTextSecondary,
                       height: 1.4,
                     ),
                   ),
@@ -553,7 +558,7 @@ class _MacroCircle extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: Colors.grey.shade600,
+              color: AppColors.homeTextSecondary,
             ),
           ),
           const SizedBox(height: 4),
@@ -562,7 +567,7 @@ class _MacroCircle extends StatelessWidget {
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: AppColors.homeTextPrimary,
             ),
           ),
         ],
@@ -654,7 +659,7 @@ class _RecentMealCard extends StatelessWidget {
         child: Container(
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.homeCard,
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
@@ -670,12 +675,12 @@ class _RecentMealCard extends StatelessWidget {
                 width: 112,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: AppColors.homeCard,
                     borderRadius: const BorderRadius.horizontal(
                       left: Radius.circular(20),
                     ),
                     border: Border(
-                      right: BorderSide(color: Colors.grey.shade200, width: 1),
+                      right: BorderSide(color: AppColors.homeDivider, width: 1),
                     ),
                   ),
                   child: imageUrl == null
@@ -739,7 +744,7 @@ class _RecentMealCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: Colors.grey.shade600,
+                          color: AppColors.homeTextSecondary,
                         ),
                         textScaler: detailScaler,
                       ),
@@ -818,7 +823,10 @@ class _RecentMealCard extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Close', style: TextStyle(color: Colors.black87)),
+            child: const Text(
+              'Close',
+              style: TextStyle(color: AppColors.homeTextPrimary),
+            ),
           ),
         ],
       ),
@@ -877,7 +885,7 @@ class _RecentMealCard extends StatelessWidget {
       return const TextStyle(
         fontSize: 13,
         fontWeight: FontWeight.w600,
-        color: Colors.black,
+        color: AppColors.homeTextPrimary,
         height: 1.15,
       );
     }
@@ -885,14 +893,14 @@ class _RecentMealCard extends StatelessWidget {
       return const TextStyle(
         fontSize: 14,
         fontWeight: FontWeight.w600,
-        color: Colors.black,
+        color: AppColors.homeTextPrimary,
         height: 1.15,
       );
     }
     return const TextStyle(
       fontSize: 15,
       fontWeight: FontWeight.w600,
-      color: Colors.black,
+      color: AppColors.homeTextPrimary,
       height: 1.15,
     );
   }
@@ -1044,7 +1052,7 @@ class _NoMealsPlaceholder extends StatelessWidget {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.homeCard,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
@@ -1076,7 +1084,7 @@ class _NoMealsPlaceholder extends StatelessWidget {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
-              color: Colors.grey.shade800,
+              color: AppColors.homeTextPrimary,
             ),
           ),
           const SizedBox(height: 6),
@@ -1085,7 +1093,7 @@ class _NoMealsPlaceholder extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w500,
-              color: Colors.grey.shade600,
+              color: AppColors.homeTextSecondary,
             ),
           ),
         ],
