@@ -27,12 +27,248 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    return _HomeScreenAnimated(isInPageView: isInPageView);
+  }
+
+  static String _displayName(AppUser? profile) {
+    final name = profile?.firstname.trim();
+    if (name == null || name.isEmpty) {
+      return 'there';
+    }
+    return name;
+  }
+
+  static String _tipFor(_HomeMetrics metrics) {
+    if (metrics.todayMeals.isEmpty) {
+      return 'A quick photo log is the fastest way to keep your streak moving.';
+    }
+
+    final proteinGap = metrics.proteinGoal - metrics.currentProtein;
+    if (proteinGap > 12) {
+      return 'Be sure to eat more protein. You are ${proteinGap.round()}g under your daily goal.';
+    }
+
+    if (metrics.calorieDelta > 0 && metrics.calorieDelta <= 300) {
+      return 'You are close to your calorie target. Finish with something balanced and filling.';
+    }
+
+    if (metrics.calorieDelta < 0) {
+      return 'Aim for lighter meals for the rest of the day and keep your protein high.';
+    }
+
+    return 'Protein and calories both look steady. Keep the same pace through dinner.';
+  }
+}
+
+enum HomeCalorieStatus { onTrack, nearGoal, over }
+
+class HomeMacroSnapshot {
+  const HomeMacroSnapshot({
+    required this.currentCalories,
+    required this.calorieGoal,
+    required this.currentProtein,
+    required this.proteinGoal,
+    required this.currentCarbs,
+    required this.carbsGoal,
+    required this.currentFat,
+    required this.fatGoal,
+    required this.todayMealsCount,
+  });
+
+  factory HomeMacroSnapshot.fromData({
+    required AppUser? profile,
+    required List<FoodItem> foodLog,
+  }) {
+    final now = DateTime.now();
+    final todayMeals = foodLog.where((item) {
+      final consumedAt = item.consumedAt;
+      return consumedAt.year == now.year &&
+          consumedAt.month == now.month &&
+          consumedAt.day == now.day;
+    }).toList();
+
+    double currentCalories = 0;
+    double currentProtein = 0;
+    double currentCarbs = 0;
+    double currentFat = 0;
+
+    for (final item in todayMeals) {
+      currentCalories += item.calories_g * item.mass_g;
+      currentProtein += item.protein_g * item.mass_g;
+      currentCarbs += item.carbs_g * item.mass_g;
+      currentFat += item.fat * item.mass_g;
+    }
+
+    final calorieGoal = (profile?.mealProfile.dailyCalorieGoal ?? 2500)
+        .toDouble();
+    final macroGoals =
+        profile?.mealProfile.macroGoals ?? const <String, double>{};
+    final proteinRaw = (macroGoals['protein'] ?? 0).toDouble();
+    final carbsRaw = (macroGoals['carbs'] ?? 0).toDouble();
+    final fatRaw = (macroGoals['fat'] ?? macroGoals['fats'] ?? 0).toDouble();
+
+    double proteinGoal = proteinRaw;
+    double carbsGoal = carbsRaw;
+    double fatGoal = fatRaw;
+
+    final providedGoals = [
+      proteinRaw,
+      carbsRaw,
+      fatRaw,
+    ].where((v) => v > 0).toList();
+    final looksLikePercentages =
+        providedGoals.isNotEmpty && providedGoals.every((v) => v <= 100);
+
+    if (looksLikePercentages) {
+      proteinGoal = (calorieGoal * (proteinRaw / 100)) / 4;
+      carbsGoal = (calorieGoal * (carbsRaw / 100)) / 4;
+      fatGoal = (calorieGoal * (fatRaw / 100)) / 9;
+    }
+
+    if (proteinGoal <= 0) proteinGoal = 150;
+    if (carbsGoal <= 0) carbsGoal = 200;
+    if (fatGoal <= 0) fatGoal = 65;
+
+    return HomeMacroSnapshot(
+      currentCalories: currentCalories,
+      calorieGoal: calorieGoal,
+      currentProtein: currentProtein,
+      proteinGoal: proteinGoal,
+      currentCarbs: currentCarbs,
+      carbsGoal: carbsGoal,
+      currentFat: currentFat,
+      fatGoal: fatGoal,
+      todayMealsCount: todayMeals.length,
+    );
+  }
+
+  final double currentCalories;
+  final double calorieGoal;
+  final double currentProtein;
+  final double proteinGoal;
+  final double currentCarbs;
+  final double carbsGoal;
+  final double currentFat;
+  final double fatGoal;
+  final int todayMealsCount;
+
+  double get calorieProgress =>
+      calorieGoal <= 0 ? 0 : (currentCalories / calorieGoal).clamp(0.0, 1.0);
+
+  double get proteinProgress =>
+      proteinGoal <= 0 ? 0 : (currentProtein / proteinGoal).clamp(0.0, 1.0);
+
+  double get carbProgress =>
+      carbsGoal <= 0 ? 0 : (currentCarbs / carbsGoal).clamp(0.0, 1.0);
+
+  double get fatProgress =>
+      fatGoal <= 0 ? 0 : (currentFat / fatGoal).clamp(0.0, 1.0);
+
+  double get calorieDelta => calorieGoal - currentCalories;
+
+  HomeCalorieStatus get calorieStatus {
+    if (calorieDelta < 0) return HomeCalorieStatus.over;
+    if (calorieProgress >= 0.85) return HomeCalorieStatus.nearGoal;
+    return HomeCalorieStatus.onTrack;
+  }
+}
+
+class _HomeScreenAnimated extends ConsumerStatefulWidget {
+  const _HomeScreenAnimated({required this.isInPageView});
+
+  final bool isInPageView;
+
+  @override
+  ConsumerState<_HomeScreenAnimated> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<_HomeScreenAnimated>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _macroPreviewController;
+  _HomeMetrics? _previewFrom;
+  _HomeMetrics? _previewTo;
+  _HomeMetrics? _lastMetricsSnapshot;
+  int _lastTodayCount = -1;
+  bool _showMacroPreview = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _macroPreviewController =
+        AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 4200),
+        )..addStatusListener((status) {
+          if (status == AnimationStatus.completed && mounted) {
+            setState(() {
+              _showMacroPreview = false;
+            });
+          }
+        });
+  }
+
+  @override
+  void dispose() {
+    _macroPreviewController.dispose();
+    super.dispose();
+  }
+
+  _HomeMetrics _snapshot(_HomeMetrics metrics) {
+    return _HomeMetrics.fromSnapshot(metrics.toSnapshot());
+  }
+
+  _HomeMetrics _lerpMetrics(_HomeMetrics from, _HomeMetrics to, double t) {
+    double lerp(double a, double b) => a + (b - a) * t;
+    return _HomeMetrics(
+      currentCalories: lerp(from.currentCalories, to.currentCalories),
+      calorieGoal: to.calorieGoal,
+      currentProtein: lerp(from.currentProtein, to.currentProtein),
+      proteinGoal: to.proteinGoal,
+      currentCarbs: lerp(from.currentCarbs, to.currentCarbs),
+      carbsGoal: to.carbsGoal,
+      currentFat: lerp(from.currentFat, to.currentFat),
+      fatGoal: to.fatGoal,
+      todayMeals: const <FoodItem>[],
+    );
+  }
+
+  void _maybeAnimateMacroPreview(_HomeMetrics metrics) {
+    final todayCount = metrics.todayMeals.length;
+    if (_lastTodayCount < 0) {
+      _lastTodayCount = todayCount;
+      _lastMetricsSnapshot = _snapshot(metrics);
+      return;
+    }
+
+    if (todayCount > _lastTodayCount) {
+      final from = _lastMetricsSnapshot ?? _snapshot(metrics);
+      final to = _snapshot(metrics);
+      setState(() {
+        _previewFrom = from;
+        _previewTo = to;
+        _showMacroPreview = true;
+      });
+      _macroPreviewController.forward(from: 0);
+    }
+
+    _lastTodayCount = todayCount;
+    _lastMetricsSnapshot = _snapshot(metrics);
+  }
+
+  double _previewOpacity(double t) {
+    if (t < 0.2) return t / 0.2;
+    if (t < 0.8) return 1.0;
+    return ((1.0 - t) / 0.2).clamp(0.0, 1.0);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final authUser = ref.watch(authServiceProvider);
     final userId = authUser?.uid;
 
     if (userId == null) {
       return Scaffold(
-        backgroundColor: _screenBackground,
+        backgroundColor: HomeScreen._screenBackground,
         body: const Center(child: CircularProgressIndicator()),
       );
     }
@@ -45,6 +281,13 @@ class HomeScreen extends ConsumerWidget {
     final foodLog = foodLogAsync.valueOrNull ?? const <FoodItem>[];
     final streak = streakAsync.valueOrNull ?? 0;
     final metrics = _HomeMetrics.fromData(profile: profile, foodLog: foodLog);
+
+    if (!widget.isInPageView) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _maybeAnimateMacroPreview(metrics);
+      });
+    }
 
     final bodyContent = SafeArea(
       child: CustomScrollView(
@@ -62,15 +305,15 @@ class HomeScreen extends ConsumerWidget {
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-              child: _CalorieSummaryCard(metrics: metrics),
+              child: HomeMacroSummaryCard(metrics: metrics.toSnapshot()),
             ),
           ),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
               child: _InsightCard(
-                name: _displayName(profile),
-                message: _tipFor(metrics),
+                name: HomeScreen._displayName(profile),
+                message: HomeScreen._tipFor(metrics),
               ),
             ),
           ),
@@ -126,44 +369,56 @@ class HomeScreen extends ConsumerWidget {
     );
 
     return Scaffold(
-      backgroundColor: _screenBackground,
-      body: bodyContent,
-      bottomNavigationBar: isInPageView
+      backgroundColor: HomeScreen._screenBackground,
+      body: Stack(
+        children: [
+          Positioned.fill(child: bodyContent),
+          if (!widget.isInPageView &&
+              _showMacroPreview &&
+              _previewFrom != null &&
+              _previewTo != null)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Align(
+                  alignment: Alignment.center,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: AnimatedBuilder(
+                      animation: _macroPreviewController,
+                      builder: (context, _) {
+                        final t = _macroPreviewController.value;
+                        final progressT = ((t - 0.2) / 0.6).clamp(0.0, 1.0);
+                        final easedT = Curves.easeOutCubic.transform(progressT);
+                        final animatedMetrics = _lerpMetrics(
+                          _previewFrom!,
+                          _previewTo!,
+                          easedT,
+                        );
+
+                        return Opacity(
+                          opacity: _previewOpacity(t),
+                          child: Transform.scale(
+                            scale: 0.98 + (0.02 * _previewOpacity(t)),
+                            child: HomeMacroSummaryCard(
+                              metrics: animatedMetrics.toSnapshot(),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+      bottomNavigationBar: widget.isInPageView
           ? null
           : NavBar(
               currentIndex: navIndexHome,
               onTap: (index) => handleNavTap(context, index),
             ),
     );
-  }
-
-  static String _displayName(AppUser? profile) {
-    final name = profile?.firstname.trim();
-    if (name == null || name.isEmpty) {
-      return 'there';
-    }
-    return name;
-  }
-
-  static String _tipFor(_HomeMetrics metrics) {
-    if (metrics.todayMeals.isEmpty) {
-      return 'A quick photo log is the fastest way to keep your streak moving.';
-    }
-
-    final proteinGap = metrics.proteinGoal - metrics.currentProtein;
-    if (proteinGap > 12) {
-      return 'Be sure to eat more protein. You are ${proteinGap.round()}g under your daily goal.';
-    }
-
-    if (metrics.calorieDelta > 0 && metrics.calorieDelta <= 300) {
-      return 'You are close to your calorie target. Finish with something balanced and filling.';
-    }
-
-    if (metrics.calorieDelta < 0) {
-      return 'Aim for lighter meals for the rest of the day and keep your protein high.';
-    }
-
-    return 'Protein and calories both look steady. Keep the same pace through dinner.';
   }
 }
 
@@ -249,17 +504,17 @@ class _TopHeader extends StatelessWidget {
   }
 }
 
-class _CalorieSummaryCard extends StatelessWidget {
-  const _CalorieSummaryCard({required this.metrics});
+class HomeMacroSummaryCard extends StatelessWidget {
+  const HomeMacroSummaryCard({super.key, required this.metrics});
 
-  final _HomeMetrics metrics;
+  final HomeMacroSnapshot metrics;
 
   @override
   Widget build(BuildContext context) {
     final chipColor = switch (metrics.calorieStatus) {
-      _CalorieStatus.over => const Color(0xFFFF3B30),
-      _CalorieStatus.nearGoal => const Color(0xFFFF9500),
-      _CalorieStatus.onTrack => HomeScreen._brandGreen,
+      HomeCalorieStatus.over => const Color(0xFFFF3B30),
+      HomeCalorieStatus.nearGoal => const Color(0xFFFF9500),
+      HomeCalorieStatus.onTrack => HomeScreen._brandGreen,
     };
     final chipLabel = metrics.calorieDelta >= 0
         ? '${metrics.calorieDelta.round()} left'
@@ -278,10 +533,12 @@ class _CalorieSummaryCard extends StatelessWidget {
         ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
@@ -1149,6 +1406,10 @@ class _HomeMetrics {
     required AppUser? profile,
     required List<FoodItem> foodLog,
   }) {
+    final snapshot = HomeMacroSnapshot.fromData(
+      profile: profile,
+      foodLog: foodLog,
+    );
     final now = DateTime.now();
     final todayMeals = foodLog.where((item) {
       final consumedAt = item.consumedAt;
@@ -1157,64 +1418,30 @@ class _HomeMetrics {
           consumedAt.day == now.day;
     }).toList();
 
-    double currentCalories = 0;
-    double currentProtein = 0;
-    double currentCarbs = 0;
-    double currentFat = 0;
-
-    for (final item in todayMeals) {
-      currentCalories += item.calories_g * item.mass_g;
-      currentProtein += item.protein_g * item.mass_g;
-      currentCarbs += item.carbs_g * item.mass_g;
-      currentFat += item.fat * item.mass_g;
-    }
-
-    final calorieGoal = (profile?.mealProfile.dailyCalorieGoal ?? 2500)
-        .toDouble();
-    final macroGoals =
-        profile?.mealProfile.macroGoals ?? const <String, double>{};
-    final proteinRaw = (macroGoals['protein'] ?? 0).toDouble();
-    final carbsRaw = (macroGoals['carbs'] ?? 0).toDouble();
-    final fatRaw = (macroGoals['fat'] ?? macroGoals['fats'] ?? 0).toDouble();
-
-    double proteinGoal = proteinRaw;
-    double carbsGoal = carbsRaw;
-    double fatGoal = fatRaw;
-
-    final providedGoals = [
-      proteinRaw,
-      carbsRaw,
-      fatRaw,
-    ].where((v) => v > 0).toList();
-    final looksLikePercentages =
-        providedGoals.isNotEmpty && providedGoals.every((v) => v <= 100);
-
-    if (looksLikePercentages) {
-      proteinGoal = (calorieGoal * (proteinRaw / 100)) / 4;
-      carbsGoal = (calorieGoal * (carbsRaw / 100)) / 4;
-      fatGoal = (calorieGoal * (fatRaw / 100)) / 9;
-    }
-
-    if (proteinGoal <= 0) {
-      proteinGoal = 150;
-    }
-    if (carbsGoal <= 0) {
-      carbsGoal = 200;
-    }
-    if (fatGoal <= 0) {
-      fatGoal = 65;
-    }
-
     return _HomeMetrics(
-      currentCalories: currentCalories,
-      calorieGoal: calorieGoal,
-      currentProtein: currentProtein,
-      proteinGoal: proteinGoal,
-      currentCarbs: currentCarbs,
-      carbsGoal: carbsGoal,
-      currentFat: currentFat,
-      fatGoal: fatGoal,
+      currentCalories: snapshot.currentCalories,
+      calorieGoal: snapshot.calorieGoal,
+      currentProtein: snapshot.currentProtein,
+      proteinGoal: snapshot.proteinGoal,
+      currentCarbs: snapshot.currentCarbs,
+      carbsGoal: snapshot.carbsGoal,
+      currentFat: snapshot.currentFat,
+      fatGoal: snapshot.fatGoal,
       todayMeals: todayMeals,
+    );
+  }
+
+  factory _HomeMetrics.fromSnapshot(HomeMacroSnapshot snapshot) {
+    return _HomeMetrics(
+      currentCalories: snapshot.currentCalories,
+      calorieGoal: snapshot.calorieGoal,
+      currentProtein: snapshot.currentProtein,
+      proteinGoal: snapshot.proteinGoal,
+      currentCarbs: snapshot.currentCarbs,
+      carbsGoal: snapshot.carbsGoal,
+      currentFat: snapshot.currentFat,
+      fatGoal: snapshot.fatGoal,
+      todayMeals: const <FoodItem>[],
     );
   }
 
@@ -1246,15 +1473,27 @@ class _HomeMetrics {
 
   double get calorieDelta => calorieGoal - currentCalories;
 
-  _CalorieStatus get calorieStatus {
+  HomeCalorieStatus get calorieStatus {
     if (calorieDelta < 0) {
-      return _CalorieStatus.over;
+      return HomeCalorieStatus.over;
     }
     if (calorieProgress >= 0.85) {
-      return _CalorieStatus.nearGoal;
+      return HomeCalorieStatus.nearGoal;
     }
-    return _CalorieStatus.onTrack;
+    return HomeCalorieStatus.onTrack;
+  }
+
+  HomeMacroSnapshot toSnapshot() {
+    return HomeMacroSnapshot(
+      currentCalories: currentCalories,
+      calorieGoal: calorieGoal,
+      currentProtein: currentProtein,
+      proteinGoal: proteinGoal,
+      currentCarbs: currentCarbs,
+      carbsGoal: carbsGoal,
+      currentFat: currentFat,
+      fatGoal: fatGoal,
+      todayMealsCount: todayMeals.length,
+    );
   }
 }
-
-enum _CalorieStatus { onTrack, nearGoal, over }

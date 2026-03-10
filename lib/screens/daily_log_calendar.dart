@@ -612,9 +612,9 @@ class _DailyLogCalendarScreenState
       builder: (context) {
         final dateLabel = DateFormat('MMMM d, yyyy').format(day);
         return DraggableScrollableSheet(
-          initialChildSize: 0.6,
-          minChildSize: 0.3,
-          maxChildSize: 0.9,
+          initialChildSize: 0.85,
+          minChildSize: 0.5,
+          maxChildSize: 0.96,
           expand: false,
           builder: (context, scrollController) {
             return Consumer(
@@ -665,10 +665,23 @@ class _DailyLogCalendarScreenState
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              dateLabel,
-                              style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.w600),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    dateLabel,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(fontWeight: FontWeight.w600),
+                                  ),
+                                ),
+                                IconButton(
+                                  tooltip: 'Close',
+                                  onPressed: () => Navigator.of(context).pop(),
+                                  icon: const Icon(Icons.close),
+                                ),
+                              ],
                             ),
                             const SizedBox(height: 12),
 
@@ -857,6 +870,16 @@ class _DailyLogCalendarScreenState
                                     ?.copyWith(fontWeight: FontWeight.w600),
                               ),
                               const SizedBox(height: 8),
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  onPressed: () =>
+                                      _showAddFoodDialog(day, userId),
+                                  icon: const Icon(Icons.add),
+                                  label: const Text('Add food'),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
 
                               if (rows.isEmpty)
                                 const Padding(
@@ -908,16 +931,6 @@ class _DailyLogCalendarScreenState
                                         );
                                   },
                                 ),
-                              const SizedBox(height: 12),
-                              SizedBox(
-                                width: double.infinity,
-                                child: OutlinedButton.icon(
-                                  onPressed: () =>
-                                      _showAddFoodDialog(day, userId),
-                                  icon: const Icon(Icons.add),
-                                  label: const Text('Add food'),
-                                ),
-                              ),
                             ],
 
                             const SizedBox(height: 12),
