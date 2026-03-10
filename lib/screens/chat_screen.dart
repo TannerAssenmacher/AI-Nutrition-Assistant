@@ -262,7 +262,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           elevation: 8,
           centerTitle: true,
           shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(bottom: Radius.circular(25)),
+            borderRadius: BorderRadius.zero,
           ),
           title: const Text(
             'NutriCoach',
@@ -454,7 +454,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           padding: EdgeInsets.fromLTRB(20, 12, 20, 30 + extraBottomPadding),
           decoration: BoxDecoration(
             color: AppColors.surface.withValues(alpha: 0.7),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(35)),
+            borderRadius: BorderRadius.zero,
             border: Border.all(color: AppColors.surface.withValues(alpha: 0.2)),
           ),
           child: Column(
@@ -465,6 +465,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   onPressed: _promptRecipeType,
                   icon: const Icon(Icons.restaurant_menu),
                   label: const Text('Generate Recipes'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: brandColor,
+                    side: BorderSide(color: brandColor),
+                  ),
                 ),
               ),
               const SizedBox(height: 8),
