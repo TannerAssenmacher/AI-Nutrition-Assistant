@@ -14,7 +14,9 @@ class MealProfile {
   @JsonKey(fromJson: _stringListFromJson)
   final List<String> healthRestrictions;
   final Preferences preferences;
+  @JsonKey(fromJson: _macroGoalsFromJson)
   final Map<String, double> macroGoals; // {protein: g, carbs: g, fat: g}
+  @JsonKey(fromJson: _dailyCalorieGoalFromJson)
   final int dailyCalorieGoal;
   @JsonKey(fromJson: _dietaryGoalFromJson)
   final String dietaryGoal;
@@ -23,6 +25,20 @@ class MealProfile {
     if (value is String) return value;
     if (value is num) return value.toString();
     return '';
+  }
+
+  static Map<String, double> _macroGoalsFromJson(dynamic value) {
+    if (value is Map) {
+      return value.map(
+        (k, e) => MapEntry(k.toString(), (e is num) ? e.toDouble() : 0.0),
+      );
+    }
+    return {'protein': 150.0, 'carbs': 200.0, 'fat': 65.0};
+  }
+
+  static int _dailyCalorieGoalFromJson(dynamic value) {
+    if (value is num) return value.toInt();
+    return 2000;
   }
 
   static List<String> _stringListFromJson(dynamic value) {

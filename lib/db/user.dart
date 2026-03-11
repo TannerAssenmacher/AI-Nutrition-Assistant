@@ -1,8 +1,8 @@
 import 'package:json_annotation/json_annotation.dart';
 import 'package:uuid/uuid.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'food.dart';
 import 'meal_profile.dart';
+import 'preferences.dart';
 
 part 'user.g.dart';
 
@@ -22,23 +22,49 @@ class AppUser {
   final DateTime? dob; // nullable - some users may not have DOB set
   @JsonKey(fromJson: _stringFromJson)
   final String sex;
+  @JsonKey(fromJson: _doubleFromJson)
   final double height; // inches
+  @JsonKey(fromJson: _doubleFromJson)
   final double weight; // pounds
   @JsonKey(fromJson: _stringFromJson)
   final String activityLevel;
 
+  @JsonKey(fromJson: _mealProfileFromJson)
   final MealProfile mealProfile;
 
-  @JsonKey(fromJson: dateFromJson, toJson: dateToJson)
+  @JsonKey(fromJson: _dateFromJson, toJson: dateToJson)
   final DateTime createdAt;
 
-  @JsonKey(fromJson: dateFromJson, toJson: dateToJson)
+  @JsonKey(fromJson: _dateFromJson, toJson: dateToJson)
   final DateTime updatedAt;
 
   static String _stringFromJson(dynamic value) {
     if (value is String) return value;
     if (value is num) return value.toString();
     return '';
+  }
+
+  static double _doubleFromJson(dynamic value) {
+    if (value is num) return value.toDouble();
+    return 0.0;
+  }
+
+  static MealProfile _mealProfileFromJson(dynamic value) {
+    if (value is Map<String, dynamic>) return MealProfile.fromJson(value);
+    return MealProfile(
+      dietaryHabits: [],
+      healthRestrictions: [],
+      preferences: Preferences(likes: [], dislikes: []),
+      macroGoals: {'protein': 150.0, 'carbs': 200.0, 'fat': 65.0},
+      dailyCalorieGoal: 2000,
+      dietaryGoal: '',
+    );
+  }
+
+  static DateTime _dateFromJson(dynamic date) {
+    if (date is Timestamp) return date.toDate();
+    if (date is DateTime) return date;
+    return DateTime.now();
   }
 
   AppUser({
@@ -97,8 +123,11 @@ class AppUser {
   }
 
   // Firestore DateTime helpers
-  static DateTime dateFromJson(dynamic date) =>
-      date is Timestamp ? date.toDate() : date as DateTime;
+  static DateTime dateFromJson(dynamic date) {
+    if (date is Timestamp) return date.toDate();
+    if (date is DateTime) return date;
+    return DateTime.now();
+  }
 
   static dynamic dateToJson(DateTime date) => Timestamp.fromDate(date);
 
