@@ -2,6 +2,7 @@ import 'package:nutrition_assistant/widgets/fatsecret_attribution.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../theme/app_colors.dart';
+import '../widgets/app_snackbar.dart';
 import '../theme/style_guideline.dart';
 
 class LoginPage extends StatefulWidget {
@@ -43,18 +44,9 @@ class _LoginPageState extends State<LoginPage> {
         _accountDeletedMessageShown = true;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Row(
-                  children: [
-                    Icon(Icons.check_circle, color: AppColors.surface),
-                    SizedBox(width: 10),
-                    Text('Your account has been successfully deleted.'),
-                  ],
-                ),
-                backgroundColor: AppColors.success,
-                duration: Duration(seconds: 4),
-              ),
+            AppSnackBar.success(
+              context,
+              'Your account has been successfully deleted.',
             );
           }
         });
@@ -126,9 +118,7 @@ class _LoginPageState extends State<LoginPage> {
           if (mounted) {
             Navigator.pop(context);
             Navigator.pushReplacementNamed(context, '/home');
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Email verified! Welcome back!')),
-            );
+            AppSnackBar.success(context, 'Email verified! Welcome back!');
           }
           break;
         }
@@ -152,11 +142,7 @@ class _LoginPageState extends State<LoginPage> {
               TextButton(
                 onPressed: () async {
                   await user.sendEmailVerification();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Verification email sent again!'),
-                    ),
-                  );
+                  AppSnackBar.success(context, 'Verification email sent again!');
                 },
                 child: const Text('Resend Email'),
               ),

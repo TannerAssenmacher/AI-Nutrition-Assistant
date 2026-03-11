@@ -5,6 +5,7 @@ import '../db/food.dart';
 import '../providers/food_providers.dart';
 import '../providers/user_providers.dart';
 import '../theme/app_colors.dart';
+import '../widgets/app_snackbar.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -30,9 +31,7 @@ class HomeScreen extends ConsumerWidget {
               await FirebaseAuth.instance.signOut();
               if (context.mounted) {
                 Navigator.pushReplacementNamed(context, '/login');
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Logged out successfully')),
-                );
+                AppSnackBar.success(context, 'Logged out successfully');
               }
             },
           ),

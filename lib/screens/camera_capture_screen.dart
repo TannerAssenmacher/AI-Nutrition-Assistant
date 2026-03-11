@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:nutrition_assistant/services/food_search_service.dart';
 import 'package:nutrition_assistant/theme/app_colors.dart';
+import 'package:nutrition_assistant/widgets/app_snackbar.dart';
 
 enum CaptureMode { photo, barcode }
 
@@ -188,9 +189,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Failed to take photo')));
+        AppSnackBar.error(context, 'Failed to take photo');
         setState(() => _isCapturing = false);
       }
     }
@@ -222,9 +221,7 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
       );
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to pick image from gallery')),
-        );
+        AppSnackBar.error(context, 'Failed to pick image from gallery');
       }
     } finally {
       if (mounted) {

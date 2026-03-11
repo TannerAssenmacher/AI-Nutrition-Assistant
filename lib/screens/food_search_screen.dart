@@ -10,6 +10,7 @@ import '../db/food.dart';
 import 'package:nutrition_assistant/navigation/nav_helper.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
 import 'package:nutrition_assistant/widgets/fatsecret_attribution.dart';
+import '../widgets/app_snackbar.dart';
 
 class FoodSearchScreen extends ConsumerStatefulWidget {
   final bool isInPageView;
@@ -119,9 +120,7 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
     final userId = authUser?.uid;
     if (userId == null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please sign in to add foods.')),
-        );
+        AppSnackBar.error(context, 'Please sign in to add foods.');
       }
       return;
     }
@@ -520,11 +519,7 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                         ? selectedServing.grams * quantity
                         : double.tryParse(gramsController.text.trim());
                     if (grams == null || grams <= 0) {
-                      ScaffoldMessenger.of(dialogContext).showSnackBar(
-                        const SnackBar(
-                          content: Text('Please enter a valid grams value.'),
-                        ),
-                      );
+                      AppSnackBar.error(dialogContext, 'Please enter a valid grams value.');
                       return;
                     }
 
@@ -573,16 +568,10 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                               selectedDate.year == DateTime.now().year
                           ? 'today\'s log'
                           : '${selectedDate.month}/${selectedDate.day}/${selectedDate.year}';
-                      messenger.showSnackBar(
-                        SnackBar(
-                          content: Text('Added "${result.name}" to $dateText'),
-                        ),
-                      );
+                      AppSnackBar.successFrom(messenger, 'Added "${result.name}" to $dateText');
                     } catch (e) {
                       if (dialogContext.mounted) {
-                        ScaffoldMessenger.of(dialogContext).showSnackBar(
-                          SnackBar(content: Text('Failed to add: $e')),
-                        );
+                        AppSnackBar.error(dialogContext, 'Failed to add: $e');
                       }
                     }
                   },

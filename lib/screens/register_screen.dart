@@ -11,6 +11,7 @@ import '../widgets/macro_slider.dart';
 import 'package:intl/intl.dart';
 import 'package:email_validator/email_validator.dart';
 import '../theme/app_colors.dart';
+import '../widgets/app_snackbar.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -373,13 +374,9 @@ class _RegisterPageState extends State<RegisterPage> {
 
       // Done
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Account created! Check your email for verification.',
-            ),
-            duration: Duration(seconds: 5),
-          ),
+        AppSnackBar.success(
+          context,
+          'Account created! Check your email for verification.',
         );
         Navigator.pushReplacementNamed(context, '/login');
       }
@@ -391,9 +388,7 @@ class _RegisterPageState extends State<RegisterPage> {
       } else if (e.code == 'weak-password') {
         setState(() => _passwordError = 'Password is too weak.');
       } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Auth error: ${e.message}')));
+        AppSnackBar.error(context, 'Auth error: ${e.message}');
       }
 
       // Rollback Firestore if Auth user created but Firestore write fails later
@@ -403,9 +398,7 @@ class _RegisterPageState extends State<RegisterPage> {
       }
     } catch (e) {
       debugPrint('Registration general error: $e');
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      AppSnackBar.error(context, 'Error: $e');
 
       // Rollback Auth user if Firestore write failed
       final currentUser = FirebaseAuth.instance.currentUser;

@@ -18,6 +18,7 @@ import '../providers/food_providers.dart';
 import '../providers/firestore_providers.dart';
 import '../theme/app_colors.dart';
 import 'camera_capture_screen.dart';
+import '../widgets/app_snackbar.dart';
 
 const double _kAnalysisCardRadius = 25;
 const double _kAnalysisCardOpacity = 0.95;
@@ -158,9 +159,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     final photo = captureResult.photo;
     if (photo == null) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No photo captured. Please try again.')),
-      );
+      AppSnackBar.error(context, 'No photo captured. Please try again.');
       return;
     }
 
@@ -194,9 +193,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
         _analysisResult = analysis;
       });
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Meal analysis complete!')));
+      AppSnackBar.success(context, 'Meal analysis complete!');
     } on FirebaseFunctionsException catch (e) {
       if (!mounted) return;
       final message = _buildAnalyzeMealErrorMessage(e);
@@ -204,9 +201,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
         _errorMessage = message;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: AppColors.error),
-      );
+      AppSnackBar.error(context, message);
     } catch (e) {
       if (!mounted) return;
 
@@ -214,12 +209,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
         _errorMessage = 'Analysis failed: $e';
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Analysis failed: $e'),
-          backgroundColor: AppColors.error,
-        ),
-      );
+      AppSnackBar.error(context, 'Analysis failed: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -242,9 +232,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     if (scannedBarcode.isEmpty) {
       if (!mounted) return;
       if (widget.isInPageView && !widget.isActive) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Scanned barcode was empty.')),
-      );
+      AppSnackBar.error(context, 'Scanned barcode was empty.');
       return;
     }
     final displayBarcode = FoodSearchService.canonicalBarcode(scannedBarcode);
@@ -265,11 +253,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       if (widget.isInPageView && !widget.isActive) return;
 
       if (result == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('No product found for barcode $barcodeForMessages.'),
-          ),
-        );
+        AppSnackBar.error(context, 'No product found for barcode $barcodeForMessages.');
         return;
       }
 
@@ -278,9 +262,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Added "${result.name}" to your daily log.')),
-      );
+      AppSnackBar.success(context, 'Added "${result.name}" to your daily log.');
     } on FirebaseFunctionsException catch (e) {
       if (!mounted) return;
       if (widget.isInPageView && !widget.isActive) return;
@@ -291,9 +273,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       setState(() {
         _errorMessage = message;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: AppColors.error),
-      );
+      AppSnackBar.error(context, message);
     } on TimeoutException {
       if (!mounted) return;
       if (widget.isInPageView && !widget.isActive) return;
@@ -302,9 +282,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       setState(() {
         _errorMessage = message;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: AppColors.error),
-      );
+      AppSnackBar.error(context, message);
     } catch (e) {
       if (!mounted) return;
       if (widget.isInPageView && !widget.isActive) return;
@@ -312,9 +290,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       setState(() {
         _errorMessage = message;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: AppColors.error),
-      );
+      AppSnackBar.error(context, message);
     } finally {
       if (mounted) {
         setState(() {
@@ -427,11 +403,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   Future<void> _addMealToCalendar() async {
     final analysis = _analysisResult;
     if (analysis == null || analysis.foods.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No analysis to add. Capture a meal first.'),
-        ),
-      );
+      AppSnackBar.error(context, 'No analysis to add. Capture a meal first.');
       return;
     }
 
@@ -447,11 +419,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       final notifier = container.read(foodLogProvider.notifier);
       final userId = FirebaseAuth.instance.currentUser?.uid;
       if (userId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please sign in to save meals to your calendar.'),
-          ),
-        );
+        AppSnackBar.error(context, 'Please sign in to save meals to your calendar.');
         return;
       }
 
@@ -501,9 +469,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
           ? 'Added $added item${added == 1 ? '' : 's'} to today.'
           : 'No items added (missing weights).';
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
+      AppSnackBar.success(context, message);
     } finally {
       if (mounted) {
         setState(() {
@@ -539,20 +505,14 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     final current = _analysisResult;
     if (current == null || index < 0 || index >= current.foods.length) return;
     if (newMass <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Weight must be greater than 0.')),
-      );
+      AppSnackBar.error(context, 'Weight must be greater than 0.');
       return;
     }
 
     final updatedFoods = List<AnalyzedFoodItem>.from(current.foods);
     final item = updatedFoods[index];
     if (item.mass <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Original weight missing; cannot adjust macros.'),
-        ),
-      );
+      AppSnackBar.error(context, 'Original weight missing; cannot adjust macros.');
       return;
     }
 
@@ -1027,9 +987,7 @@ class _BarcodeFoodDialogState extends State<_BarcodeFoodDialog> {
   Future<void> _handleAdd() async {
     final grams = double.tryParse(_gramsController.text.trim());
     if (grams == null || grams <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid grams amount.')),
-      );
+      AppSnackBar.error(context, 'Please enter a valid grams amount.');
       return;
     }
 
@@ -1043,9 +1001,7 @@ class _BarcodeFoodDialogState extends State<_BarcodeFoodDialog> {
       Navigator.of(context).pop(true);
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(_errorMessage(error))));
+      AppSnackBar.error(context, _errorMessage(error));
     } finally {
       if (mounted) {
         setState(() {

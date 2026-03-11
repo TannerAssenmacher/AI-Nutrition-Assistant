@@ -18,6 +18,7 @@ import 'package:nutrition_assistant/services/food_search_service.dart';
 import 'package:nutrition_assistant/services/food_image_service.dart';
 import 'package:nutrition_assistant/services/notification_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/app_snackbar.dart';
 
 enum _GoalCompletionRange { lastWeek, lastMonth, lastYear, lifetime }
 
@@ -962,9 +963,7 @@ class _DailyLogCalendarScreenState
     PlannedFood meal,
   ) async {
     if (meal.id == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Unable to edit this scheduled meal.')),
-      );
+      AppSnackBar.error(context, 'Unable to edit this scheduled meal.');
       return;
     }
 
@@ -1158,9 +1157,7 @@ class _DailyLogCalendarScreenState
         .updateScheduledMeal(userId, meal.id!, updatedMeal);
 
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Scheduled meal updated.')));
+    AppSnackBar.success(context, 'Scheduled meal updated.');
   }
 
   static String _capitalizeMealType(String value) {
@@ -1973,9 +1970,7 @@ class _AddFoodModalState extends ConsumerState<_AddFoodModal> {
     final fat = double.tryParse(_fatController.text.trim());
 
     if (name.isEmpty || grams == null || grams <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a name and valid grams.')),
-      );
+      AppSnackBar.error(context, 'Please enter a name and valid grams.');
       return;
     }
 
@@ -2009,12 +2004,10 @@ class _AddFoodModalState extends ConsumerState<_AddFoodModal> {
       if (!mounted) return;
       final messenger = ScaffoldMessenger.of(context);
       Navigator.pop(context);
-      messenger.showSnackBar(SnackBar(content: Text('Added "$name"')));
+      AppSnackBar.successFrom(messenger, 'Added "$name"');
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to add food: $e')));
+        AppSnackBar.error(context, 'Failed to add food: $e');
       }
     }
   }
@@ -2045,7 +2038,7 @@ class _AddFoodModalState extends ConsumerState<_AddFoodModal> {
 
     final messenger = ScaffoldMessenger.of(rootContext);
     Navigator.pop(rootContext);
-    messenger.showSnackBar(SnackBar(content: Text('Added "${result.name}"')));
+    AppSnackBar.successFrom(messenger, 'Added "${result.name}"');
   }
 
   @override
@@ -4033,9 +4026,7 @@ class _ScheduledMealCard extends ConsumerWidget {
     final userId = ref.read(authServiceProvider)?.uid;
     if (userId == null) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please sign in to log meals.')),
-        );
+        AppSnackBar.error(context, 'Please sign in to log meals.');
       }
       return;
     }
@@ -4064,9 +4055,7 @@ class _ScheduledMealCard extends ConsumerWidget {
         .addFood(userId, item);
 
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('"$recipeName" logged to your food history.')),
-    );
+    AppSnackBar.success(context, '"$recipeName" logged to your food history.');
   }
 
   Widget _scheduledMacroStatTile({
@@ -4714,9 +4703,7 @@ class _AddSearchResultDialogState
         ? _selectedServing.grams * _quantity
         : double.tryParse(_gramsController.text.trim());
     if (grams == null || grams <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid grams value.')),
-      );
+      AppSnackBar.error(context, 'Please enter a valid grams value.');
       return;
     }
 
@@ -4754,9 +4741,7 @@ class _AddSearchResultDialogState
       await _closeDialog(true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to add: $e')));
+        AppSnackBar.error(context, 'Failed to add: $e');
       }
     }
   }

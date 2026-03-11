@@ -9,6 +9,7 @@ import '../widgets/macro_slider.dart';
 import '../theme/app_colors.dart';
 import 'package:nutrition_assistant/navigation/nav_helper.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
+import '../widgets/app_snackbar.dart';
 
 class ProfilePage extends StatefulWidget {
   final bool isInPageView;
@@ -285,12 +286,9 @@ class _ProfilePageState extends State<ProfilePage> {
     });
 
     if (!silent) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Suggestions are more accurate after selecting Activity Level and Dietary Goal.',
-          ),
-        ),
+      AppSnackBar.success(
+        context,
+        'Suggestions are more accurate after selecting Activity Level and Dietary Goal.',
       );
     }
   }
@@ -515,12 +513,7 @@ class _ProfilePageState extends State<ProfilePage> {
       debugPrint("Error loading profile: $e");
       debugPrint("Stack trace: $stackTrace");
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to load profile: ${e.toString()}'),
-            backgroundColor: AppColors.deleteRed,
-          ),
-        );
+        AppSnackBar.error(context, 'Failed to load profile: ${e.toString()}');
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -533,9 +526,7 @@ class _ProfilePageState extends State<ProfilePage> {
     if (updateData.isEmpty) {
       if (mounted) {
         setState(() => _isEdited = false);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('No changes to save.')));
+        AppSnackBar.success(context, 'No changes to save.');
       }
       return;
     }
@@ -551,15 +542,10 @@ class _ProfilePageState extends State<ProfilePage> {
           _savedProfileSnapshot = _buildProfileSnapshot();
           _isEdited = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile updated successfully!')),
-        );
+        AppSnackBar.success(context, 'Profile updated successfully!');
       }
     } catch (e) {
-      if (mounted)
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted) AppSnackBar.error(context, 'Error: $e');
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }

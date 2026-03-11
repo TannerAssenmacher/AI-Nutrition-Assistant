@@ -13,6 +13,7 @@ import '../theme/app_colors.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:nutrition_assistant/navigation/nav_helper.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
+import '../widgets/app_snackbar.dart';
 
 String _formatMonthShort(DateTime date, dynamic locale) {
   return DateFormat('MMM yyyy').format(date);
@@ -835,12 +836,9 @@ class _RecipeCardState extends State<_RecipeCard> {
     widget.onSchedule(recipe['id'].toString(), inputs, ingredients);
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '${recipe['label']} scheduled for ${inputs.length} date(s)',
-          ),
-        ),
+      AppSnackBar.success(
+        context,
+        '${recipe['label']} scheduled for ${inputs.length} date(s)',
       );
     }
   }
