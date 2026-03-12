@@ -11,6 +11,7 @@ import 'package:nutrition_assistant/navigation/nav_helper.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
 import 'package:nutrition_assistant/widgets/fatsecret_attribution.dart';
 import '../widgets/app_snackbar.dart';
+import '../widgets/add_to_favorites_sheet.dart';
 
 class FoodSearchScreen extends ConsumerStatefulWidget {
   final bool isInPageView;
@@ -587,6 +588,32 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
     gramsController.dispose();
   }
 
+  Future<void> _addToFavorites(FoodSearchResult result) async {
+    final authUser = ref.read(authServiceProvider);
+    final userId = authUser?.uid;
+    if (userId == null) {
+      if (mounted) {
+        AppSnackBar.error(context, 'Please sign in to add favorites.');
+      }
+      return;
+    }
+
+    final addedMealName = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) {
+        return AddToFavoritesSheet(result: result, userId: userId);
+      },
+    );
+
+    if (!mounted || addedMealName == null) return;
+    AppSnackBar.success(
+      context,
+      'Saved to favorites: $addedMealName.',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final authUser = ref.watch(authServiceProvider);
@@ -795,6 +822,7 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                       return _FoodSearchResultTile(
                         result: result,
                         onAdd: () => _addSearchResult(result),
+                        onFavorite: () => _addToFavorites(result),
                       );
                     },
                   ),
@@ -831,10 +859,15 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
 }
 
 class _FoodSearchResultTile extends StatelessWidget {
-  const _FoodSearchResultTile({required this.result, required this.onAdd});
+  const _FoodSearchResultTile({
+    required this.result,
+    required this.onAdd,
+    required this.onFavorite,
+  });
 
   final FoodSearchResult result;
   final VoidCallback onAdd;
+  final VoidCallback onFavorite;
 
   @override
   Widget build(BuildContext context) {
@@ -943,17 +976,31 @@ class _FoodSearchResultTile extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          ElevatedButton(
-            onPressed: onAdd,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.brand,
-              foregroundColor: AppColors.surface,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                onPressed: onFavorite,
+                tooltip: 'Add to favorites',
+                icon: const Icon(Icons.favorite_border),
+                color: AppColors.brand,
               ),
-            ),
-            child: Text('Add', semanticsLabel: 'Add ${result.name}'),
+              ElevatedButton(
+                onPressed: onAdd,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.brand,
+                  foregroundColor: AppColors.surface,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: Text('Add', semanticsLabel: 'Add ${result.name}'),
+              ),
+            ],
           ),
         ],
       ),

@@ -12,6 +12,7 @@ import '../providers/firestore_providers.dart';
 import '../db/food.dart';
 import '../db/user.dart';
 import '../db/planned_food.dart';
+import '../db/favorite_meal.dart';
 import 'package:nutrition_assistant/navigation/nav_helper.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
 import 'package:nutrition_assistant/services/food_search_service.dart';
@@ -19,6 +20,7 @@ import 'package:nutrition_assistant/services/food_image_service.dart';
 import 'package:nutrition_assistant/services/notification_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_snackbar.dart';
+import '../widgets/add_to_favorites_sheet.dart';
 
 enum _GoalCompletionRange { lastWeek, lastMonth, lastYear, lifetime }
 
@@ -2041,6 +2043,36 @@ class _AddFoodModalState extends ConsumerState<_AddFoodModal> {
     AppSnackBar.successFrom(messenger, 'Added "${result.name}"');
   }
 
+  Future<void> _addToFavorites(FoodSearchResult result) async {
+    final addedMealName = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) {
+        return AddToFavoritesSheet(result: result, userId: widget.userId);
+      },
+    );
+
+    if (!mounted || addedMealName == null) return;
+    AppSnackBar.success(context, 'Saved to favorites: $addedMealName.');
+  }
+
+  Future<void> _showFavoriteMealsSheet() async {
+    final loggedMealName = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) {
+        return _FavoriteMealsSheet(day: widget.day, userId: widget.userId);
+      },
+    );
+
+    if (!mounted || loggedMealName == null) return;
+    final messenger = ScaffoldMessenger.of(context);
+    Navigator.pop(context);
+    AppSnackBar.successFrom(messenger, 'Logged "$loggedMealName".');
+  }
+
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
@@ -2057,6 +2089,20 @@ class _AddFoodModalState extends ConsumerState<_AddFoodModal> {
           ),
           child: Column(
             children: [
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _showFavoriteMealsSheet,
+                  icon: const Icon(Icons.favorite),
+                  label: const Text('Add from favorites'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.accentBrown,
+                    side: BorderSide(color: AppColors.accentBrown),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
               Container(
                 decoration: BoxDecoration(
                   color: AppColors.inputFill,
@@ -2246,6 +2292,7 @@ class _AddFoodModalState extends ConsumerState<_AddFoodModal> {
                 return _FoodSearchResultTile(
                   result: result,
                   onAdd: () => _addSearchResult(result),
+                  onFavorite: () => _addToFavorites(result),
                 );
               },
             ),
@@ -3074,10 +3121,15 @@ class _FoodLogImageThumbnail extends StatelessWidget {
 
 // FIX 4: Search result tile with wrapping macro text
 class _FoodSearchResultTile extends StatelessWidget {
-  const _FoodSearchResultTile({required this.result, required this.onAdd});
+  const _FoodSearchResultTile({
+    required this.result,
+    required this.onAdd,
+    required this.onFavorite,
+  });
 
   final FoodSearchResult result;
   final VoidCallback onAdd;
+  final VoidCallback onFavorite;
 
   @override
   Widget build(BuildContext context) {
@@ -3144,35 +3196,261 @@ class _FoodSearchResultTile extends StatelessWidget {
                     fontSize: 12,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 2,
-                  children: [
-                    Text(
-                      'P ${(serving.proteinPerGram * serving.grams).toStringAsFixed(1)}g',
-                      style: TextStyle(color: AppColors.textHint, fontSize: 11),
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 2,
+                          children: [
+                            Text(
+                              'P ${(serving.proteinPerGram * serving.grams).toStringAsFixed(1)}g',
+                              style: TextStyle(
+                                color: AppColors.textHint,
+                                fontSize: 11,
+                              ),
+                            ),
+                            Text(
+                              'C ${(serving.carbsPerGram * serving.grams).toStringAsFixed(1)}g',
+                              style: TextStyle(
+                                color: AppColors.textHint,
+                                fontSize: 11,
+                              ),
+                            ),
+                            Text(
+                              'F ${(serving.fatPerGram * serving.grams).toStringAsFixed(1)}g',
+                              style: TextStyle(
+                                color: AppColors.textHint,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                    Text(
-                      'C ${(serving.carbsPerGram * serving.grams).toStringAsFixed(1)}g',
-                      style: TextStyle(color: AppColors.textHint, fontSize: 11),
-                    ),
-                    Text(
-                      'F ${(serving.fatPerGram * serving.grams).toStringAsFixed(1)}g',
-                      style: TextStyle(color: AppColors.textHint, fontSize: 11),
-                    ),
-                  ],
+                  ),
+                  const SizedBox(width: 8),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        onPressed: onFavorite,
+                        tooltip: 'Add to favorites',
+                        icon: const Icon(Icons.favorite_border),
+                        color: AppColors.brand,
+                      ),
+                      ElevatedButton(
+                        onPressed: onAdd,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.brand,
+                          foregroundColor: AppColors.surface,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: Text('Add', semanticsLabel: 'Add ${result.name}'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          }
+        }
+
+        class _FavoriteMealsSheet extends ConsumerWidget {
+          final DateTime day;
+          final String userId;
+
+          const _FavoriteMealsSheet({required this.day, required this.userId});
+
+          String _itemSummary(FavoriteMeal meal) {
+            if (meal.items.isEmpty) return 'No items yet';
+            final names = meal.items.map((item) => item.name).toList();
+            if (names.length <= 3) return names.join(', ');
+            return '${names.take(3).join(', ')} +${names.length - 3} more';
+          }
+
+          Future<void> _logFavoriteMeal(
+            BuildContext context,
+            WidgetRef ref,
+            FavoriteMeal meal,
+          ) async {
+            if (meal.items.isEmpty) {
+              AppSnackBar.error(context, 'This favorite meal has no items yet.');
+              return;
+            }
+
+            final notifier = ref.read(firestoreFoodLogProvider(userId).notifier);
+            final now = DateTime.now();
+            final consumedAt = DateTime(
+              day.year,
+              day.month,
+              day.day,
+              now.hour,
+              now.minute,
+            );
+            int added = 0;
+
+            try {
+              for (final entry in meal.items) {
+                if (entry.grams <= 0) continue;
+                final imageUrl = entry.imageUrl?.trim() ?? '';
+                final imageUrlForLog = imageUrl.isNotEmpty &&
+                        FoodImageService.shouldShowImageForEntry(consumedAt)
+                    ? imageUrl
+                    : null;
+
+                final item = FoodItem(
+                  id: 'favorite-${DateTime.now().microsecondsSinceEpoch}-$added',
+                  name: entry.name,
+                  mass_g: entry.grams,
+                  calories_g: entry.caloriesPerGram,
+                  protein_g: entry.proteinPerGram,
+                  carbs_g: entry.carbsPerGram,
+                  fat: entry.fatPerGram,
+                  mealType: meal.mealType,
+                  imageUrl: imageUrlForLog,
+                  consumedAt: consumedAt,
+                );
+
+                await notifier.addFood(userId, item);
+                added++;
+              }
+            } catch (e) {
+              AppSnackBar.error(context, 'Failed to log favorite meal: $e');
+              return;
+            }
+
+            if (added == 0) {
+              AppSnackBar.error(context, 'No items were logged.');
+              return;
+            }
+
+            Navigator.of(context).pop(meal.name);
+          }
+
+          @override
+          Widget build(BuildContext context, WidgetRef ref) {
+            final favoritesAsync = ref.watch(firestoreFavoriteMealsProvider(userId));
+
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+                top: 12,
+              ),
+              child: favoritesAsync.when(
+                data: (meals) {
+                  if (meals.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 24),
+                      child: Center(child: Text('No favorite meals yet.')),
+                    );
+                  }
+
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Favorite Meals',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                      const SizedBox(height: 12),
+                      ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: meals.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 10),
+                        itemBuilder: (context, index) {
+                          final meal = meals[index];
+                          return Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: AppColors.borderLight,
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            meal.name,
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            '${meal.mealType} · ${meal.items.length} items',
+                                            style: TextStyle(
+                                              color: AppColors.textSecondary,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    ElevatedButton(
+                                      onPressed: () => _logFavoriteMeal(
+                                        context,
+                                        ref,
+                                        meal,
+                                      ),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.brand,
+                                        foregroundColor: AppColors.surface,
+                                      ),
+                                      child: const Text('Log meal'),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  _itemSummary(meal),
+                                  style: TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  );
+                },
+                loading: () => const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Center(child: CircularProgressIndicator()),
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          OutlinedButton(onPressed: onAdd, child: const Text('Add')),
-        ],
-      ),
-    );
-  }
-}
+                error: (error, _) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: Text(
+                    'Unable to load favorites: $error',
+                    style: TextStyle(color: AppColors.error),
+                  ),
+                ),
+              ),
+            );
+          }
+        }
 
 class _MacroSummaryItem extends StatelessWidget {
   const _MacroSummaryItem({required this.label, required this.value});

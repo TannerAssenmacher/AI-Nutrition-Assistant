@@ -33,6 +33,10 @@ service cloud.firestore {
       match /scheduled_meals/{mealId} {
         allow read, write: if isSignedIn() && request.auth.uid == userId;
       }
+
+      match /favorite_meals/{mealId} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
+      }
     }
 
     // Recipe catalog is read-only for clients.
