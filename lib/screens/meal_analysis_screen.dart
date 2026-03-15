@@ -86,11 +86,13 @@ final mealProfileGoalSnapshotProvider =
 class CameraScreen extends ConsumerStatefulWidget {
   final bool isInPageView;
   final bool isActive;
+  final VoidCallback? onNavigateHome;
 
   const CameraScreen({
     super.key,
     this.isInPageView = false,
     this.isActive = true,
+    this.onNavigateHome,
   });
 
   @override
@@ -150,6 +152,11 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     );
 
     if (captureResult == null || !mounted) {
+      // If there is no result and going off camera screen
+      // navigate back to the home screen instead of showing the idle state.
+      if (_analysisResult == null && widget.onNavigateHome != null) {
+        widget.onNavigateHome!();
+      }
       return;
     }
 
@@ -268,6 +275,11 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       }
 
       AppSnackBar.success(context, 'Added "${result.name}" to your daily log.');
+
+      // Navigate back to home after successfully logging barcode food.
+      if (widget.onNavigateHome != null) {
+        widget.onNavigateHome!();
+      }
     } on FirebaseFunctionsException catch (e) {
       if (!mounted) return;
       if (widget.isInPageView && !widget.isActive) return;
@@ -478,6 +490,11 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
           : 'No items added (missing weights).';
 
       AppSnackBar.success(context, message);
+
+      // Navigate back to home after successfully adding to calendar.
+      if (added > 0 && widget.onNavigateHome != null) {
+        widget.onNavigateHome!();
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -525,7 +542,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
           fatPerGram: food.fat / food.mass,
           imageUrl: imageUrlForFavorites,
           sourceId:
-              'analysis_${DateTime.now().millisecondsSinceEpoch}_$index\_$normalizedName',
+              'analysis_${DateTime.now().millisecondsSinceEpoch}_${index}_$normalizedName',
           servingLabel: '${food.mass.toStringAsFixed(0)} g',
         ),
       );
@@ -784,10 +801,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       );
     }
 
-    return _IdleState(
-      key: const ValueKey('idle_state'),
-      onCapture: _captureAndAnalyze,
-    );
+    return const SizedBox.shrink();
   }
 
   @override
@@ -1393,37 +1407,6 @@ class _AnalyzingState extends StatelessWidget {
   }
 }
 
-class _IdleState extends StatelessWidget {
-  final VoidCallback onCapture;
-
-  const _IdleState({super.key, required this.onCapture});
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.camera_alt, size: 60, color: AppColors.statusNone),
-          const SizedBox(height: 10),
-          Text('No photo captured yet', style: textTheme.titleMedium),
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.brand,
-              side: const BorderSide(color: AppColors.black),
-            ),
-            onPressed: onCapture,
-            icon: const Icon(Icons.camera_alt),
-            label: const Text('Capture meal'),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _EditableChip extends StatelessWidget {
   final String label;

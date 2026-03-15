@@ -73,8 +73,8 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
 
   void _bindMacroPreviewControllerListeners() {
     // Clear stale listeners first so hot-reload state cannot reference removed fields.
-    _macroPreviewController.clearListeners();
-    _macroPreviewController.clearStatusListeners();
+    _macroPreviewController.removeListener(_refreshMacroPreviewOverlay);
+    _macroPreviewController.removeStatusListener(_onMacroPreviewStatusChanged);
     _macroPreviewController.addListener(_refreshMacroPreviewOverlay);
     _macroPreviewController.addStatusListener(_onMacroPreviewStatusChanged);
   }
@@ -97,7 +97,7 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
 
   void _showMacroPreviewOverlay() {
     final overlayState = Overlay.of(context, rootOverlay: true);
-    if (overlayState == null || _previewFrom == null || _previewTo == null) {
+    if (_previewFrom == null || _previewTo == null) {
       return;
     }
 
@@ -234,6 +234,10 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
   }
 
   void _onNavBarTap(int navIndex) {
+    _navigateToTab(navIndex, animate: true);
+  }
+
+  void _navigateToTab(int navIndex, {bool animate = true}) {
     final pageIndex = _navIndexToPageIndex(navIndex);
     if (_currentIndex == navIndex) return;
 
@@ -244,11 +248,16 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
       _currentIndex = navIndex;
     });
 
-    _pageController.animateToPage(
-      pageIndex,
-      duration: const Duration(milliseconds: 320),
-      curve: Curves.easeOutCubic,
-    );
+    if (animate) {
+      _pageController.animateToPage(
+        pageIndex,
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
+      );
+    } else {
+      _pageController.jumpToPage(pageIndex);
+      _pendingNavTarget = null;
+    }
   }
 
   void _onPageChanged(int pageIndex) {
@@ -315,6 +324,7 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
           CameraScreen(
             isInPageView: true,
             isActive: _currentIndex == navIndexCamera,
+            onNavigateHome: () => _navigateToTab(navIndexHome, animate: false),
           ),
         ],
       ),
