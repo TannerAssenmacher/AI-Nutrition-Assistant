@@ -14,11 +14,13 @@ import '../services/food_search_service.dart';
 import '../services/food_image_service.dart';
 import '../services/meal_analysis_service.dart';
 import '../db/food.dart';
+import '../db/favorite_meal.dart';
 import '../providers/food_providers.dart';
 import '../providers/firestore_providers.dart';
 import '../theme/app_colors.dart';
 import 'camera_capture_screen.dart';
 import '../widgets/app_snackbar.dart';
+import '../widgets/add_to_favorites_sheet.dart';
 
 const double _kAnalysisCardRadius = 25;
 const double _kAnalysisCardOpacity = 0.95;
@@ -253,7 +255,10 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       if (widget.isInPageView && !widget.isActive) return;
 
       if (result == null) {
-        AppSnackBar.error(context, 'No product found for barcode $barcodeForMessages.');
+        AppSnackBar.error(
+          context,
+          'No product found for barcode $barcodeForMessages.',
+        );
         return;
       }
 
@@ -419,7 +424,10 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       final notifier = container.read(foodLogProvider.notifier);
       final userId = FirebaseAuth.instance.currentUser?.uid;
       if (userId == null) {
-        AppSnackBar.error(context, 'Please sign in to save meals to your calendar.');
+        AppSnackBar.error(
+          context,
+          'Please sign in to save meals to your calendar.',
+        );
         return;
       }
 
@@ -479,6 +487,85 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     }
   }
 
+  Future<void> _addMealToFavorites() async {
+    final analysis = _analysisResult;
+    if (analysis == null || analysis.foods.isEmpty) {
+      AppSnackBar.error(context, 'No analysis to add. Capture a meal first.');
+      return;
+    }
+
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) {
+      AppSnackBar.error(context, 'Please sign in to save favorites.');
+      return;
+    }
+
+    final trimmedImageUrl = (_cachedCapturedImageUrl ?? '').trim();
+    final imageUrlForFavorites = trimmedImageUrl.isNotEmpty
+        ? trimmedImageUrl
+        : null;
+
+    final items = <FavoriteMealItem>[];
+    for (int index = 0; index < analysis.foods.length; index++) {
+      final food = analysis.foods[index];
+      if (food.mass <= 0) continue;
+
+      final normalizedName = food.name.toLowerCase().trim().replaceAll(
+        RegExp(r'\s+'),
+        '_',
+      );
+
+      items.add(
+        FavoriteMealItem(
+          name: food.name,
+          grams: food.mass,
+          caloriesPerGram: food.calories / food.mass,
+          proteinPerGram: food.protein / food.mass,
+          carbsPerGram: food.carbs / food.mass,
+          fatPerGram: food.fat / food.mass,
+          imageUrl: imageUrlForFavorites,
+          sourceId:
+              'analysis_${DateTime.now().millisecondsSinceEpoch}_$index\_$normalizedName',
+          servingLabel: '${food.mass.toStringAsFixed(0)} g',
+        ),
+      );
+    }
+
+    if (items.isEmpty) {
+      AppSnackBar.error(context, 'No valid meal items to save to favorites.');
+      return;
+    }
+
+    final totalMass = analysis.totalMass > 0 ? analysis.totalMass : 100.0;
+    final syntheticResult = FoodSearchResult(
+      id: 'meal_analysis_bundle_${DateTime.now().millisecondsSinceEpoch}',
+      name: 'Analyzed meal',
+      caloriesPerGram: analysis.totalCalories / totalMass,
+      proteinPerGram: analysis.totalProtein / totalMass,
+      carbsPerGram: analysis.totalCarbs / totalMass,
+      fatPerGram: analysis.totalFat / totalMass,
+      servingGrams: totalMass,
+      source: 'fatsecret',
+      imageUrl: imageUrlForFavorites,
+    );
+
+    final addedMealName = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) {
+        return AddToFavoritesSheet(
+          result: syntheticResult,
+          userId: userId,
+          initialItems: items,
+        );
+      },
+    );
+
+    if (!mounted || addedMealName == null) return;
+    AppSnackBar.success(context, 'Saved to favorites: $addedMealName.');
+  }
+
   void _updateItemName(int index, String newName) {
     final current = _analysisResult;
     if (current == null || index < 0 || index >= current.foods.length) return;
@@ -512,7 +599,10 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     final updatedFoods = List<AnalyzedFoodItem>.from(current.foods);
     final item = updatedFoods[index];
     if (item.mass <= 0) {
-      AppSnackBar.error(context, 'Original weight missing; cannot adjust macros.');
+      AppSnackBar.error(
+        context,
+        'Original weight missing; cannot adjust macros.',
+      );
       return;
     }
 
@@ -687,6 +777,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
           onCapture: _captureAndAnalyze,
           onEditName: _promptEditName,
           onEditWeight: _promptEditWeight,
+          onAddToFavorites: _addMealToFavorites,
           onAddToCalendar: _addMealToCalendar,
           isSavingToCalendar: _isSaving,
         ),
@@ -1406,6 +1497,7 @@ class MealAnalysisResultWidget extends StatelessWidget {
   final VoidCallback onCapture;
   final void Function(int) onEditName;
   final void Function(int) onEditWeight;
+  final VoidCallback onAddToFavorites;
   final Future<void> Function() onAddToCalendar;
   final bool isSavingToCalendar;
 
@@ -1416,6 +1508,7 @@ class MealAnalysisResultWidget extends StatelessWidget {
     required this.onCapture,
     required this.onEditName,
     required this.onEditWeight,
+    required this.onAddToFavorites,
     required this.onAddToCalendar,
     required this.isSavingToCalendar,
   });
@@ -1488,63 +1581,83 @@ class MealAnalysisResultWidget extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(_kAnalysisCardRadius),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Totals',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
-                Row(
+          child: Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: _TotalCard(
-                        label: 'Total Calories',
-                        value: analysis.totalCalories.toStringAsFixed(0),
-                        unit: 'Cal',
+                    const Text(
+                      'Totals',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _TotalCard(
-                        label: 'Total Weight',
-                        value: analysis.totalMass.toStringAsFixed(0),
-                        unit: 'g',
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _TotalCard(
+                            label: 'Total Calories',
+                            value: analysis.totalCalories.toStringAsFixed(0),
+                            unit: 'Cal',
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _TotalCard(
+                            label: 'Total Weight',
+                            value: analysis.totalMass.toStringAsFixed(0),
+                            unit: 'g',
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Macronutrient Breakdown',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
                       ),
+                    ),
+                    const SizedBox(height: 12),
+                    _MacroBar(
+                      label: 'Protein',
+                      grams: analysis.totalProtein,
+                      percentage: proteinPercent,
+                      color: AppColors.protein,
+                    ),
+                    const SizedBox(height: 8),
+                    _MacroBar(
+                      label: 'Carbs',
+                      grams: analysis.totalCarbs,
+                      percentage: carbsPercent,
+                      color: AppColors.carbs,
+                    ),
+                    const SizedBox(height: 8),
+                    _MacroBar(
+                      label: 'Fat',
+                      grams: analysis.totalFat,
+                      percentage: fatPercent,
+                      color: AppColors.fat,
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Macronutrient Breakdown',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: IconButton(
+                  tooltip: 'Add this meal to favorites',
+                  onPressed: onAddToFavorites,
+                  icon: const Icon(Icons.favorite_border),
+                  color: AppColors.brand,
                 ),
-                const SizedBox(height: 12),
-                _MacroBar(
-                  label: 'Protein',
-                  grams: analysis.totalProtein,
-                  percentage: proteinPercent,
-                  color: AppColors.protein,
-                ),
-                const SizedBox(height: 8),
-                _MacroBar(
-                  label: 'Carbs',
-                  grams: analysis.totalCarbs,
-                  percentage: carbsPercent,
-                  color: AppColors.carbs,
-                ),
-                const SizedBox(height: 8),
-                _MacroBar(
-                  label: 'Fat',
-                  grams: analysis.totalFat,
-                  percentage: fatPercent,
-                  color: AppColors.fat,
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 16),
@@ -1576,95 +1689,104 @@ class MealAnalysisResultWidget extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(_kAnalysisCardRadius),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ...analysis.foods.asMap().entries.map((entry) {
-                  final idx = entry.key;
-                  final food = entry.value;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
+          child: Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ...analysis.foods.asMap().entries.map((entry) {
+                      final idx = entry.key;
+                      final food = entry.value;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              child: Text(
-                                '${idx + 1}. ${food.name}',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    '${idx + 1}. ${food.name}',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
-                                overflow: TextOverflow.ellipsis,
+                                IconButton(
+                                  icon: const Icon(Icons.edit, size: 18),
+                                  tooltip: 'Edit name',
+                                  onPressed: () => onEditName(idx),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Align(
+                              alignment: Alignment.center,
+                              child: _EditableChip(
+                                label: 'Weight',
+                                value: '${food.mass.toStringAsFixed(0)} g',
+                                onTap: () => onEditWeight(idx),
                               ),
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.edit, size: 18),
-                              tooltip: 'Edit name',
-                              onPressed: () => onEditName(idx),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _NutrientChip(
+                                    label: 'Calories',
+                                    value:
+                                        '${food.calories.toStringAsFixed(0)} Cal',
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: _NutrientChip(
+                                    label: 'Protein',
+                                    value:
+                                        '${food.protein.toStringAsFixed(1)} g',
+                                    color: AppColors.protein.withValues(
+                                      alpha: 0.1,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: _NutrientChip(
+                                    label: 'Carbs',
+                                    value: '${food.carbs.toStringAsFixed(1)} g',
+                                    color: AppColors.carbs.withValues(
+                                      alpha: 0.1,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: _NutrientChip(
+                                    label: 'Fat',
+                                    value: '${food.fat.toStringAsFixed(1)} g',
+                                    color: AppColors.fat.withValues(alpha: 0.1),
+                                  ),
+                                ),
+                              ],
                             ),
+                            if (idx < analysis.foods.length - 1)
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 12),
+                                child: Divider(),
+                              ),
                           ],
                         ),
-                        const SizedBox(height: 8),
-                        Align(
-                          alignment: Alignment.center,
-                          child: _EditableChip(
-                            label: 'Weight',
-                            value: '${food.mass.toStringAsFixed(0)} g',
-                            onTap: () => onEditWeight(idx),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _NutrientChip(
-                                label: 'Calories',
-                                value:
-                                    '${food.calories.toStringAsFixed(0)} Cal',
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: _NutrientChip(
-                                label: 'Protein',
-                                value: '${food.protein.toStringAsFixed(1)} g',
-                                color: AppColors.protein.withValues(alpha: 0.1),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: _NutrientChip(
-                                label: 'Carbs',
-                                value: '${food.carbs.toStringAsFixed(1)} g',
-                                color: AppColors.carbs.withValues(alpha: 0.1),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: _NutrientChip(
-                                label: 'Fat',
-                                value: '${food.fat.toStringAsFixed(1)} g',
-                                color: AppColors.fat.withValues(alpha: 0.1),
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (idx < analysis.foods.length - 1)
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 12),
-                            child: Divider(),
-                          ),
-                      ],
-                    ),
-                  );
-                }),
-              ],
-            ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 16),

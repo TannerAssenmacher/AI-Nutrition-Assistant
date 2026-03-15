@@ -9,11 +9,13 @@ import '../widgets/app_snackbar.dart';
 class AddToFavoritesSheet extends ConsumerStatefulWidget {
   final FoodSearchResult result;
   final String userId;
+  final List<FavoriteMealItem>? initialItems;
 
   const AddToFavoritesSheet({
     super.key,
     required this.result,
     required this.userId,
+    this.initialItems,
   });
 
   @override
@@ -33,6 +35,9 @@ class _AddToFavoritesSheetState extends ConsumerState<AddToFavoritesSheet> {
 
   bool get _hasExplicitServingOptions =>
       widget.result.servingOptions.isNotEmpty;
+
+  bool get _isBatchAdd =>
+      widget.initialItems != null && widget.initialItems!.isNotEmpty;
 
   @override
   void initState() {
@@ -112,7 +117,7 @@ class _AddToFavoritesSheetState extends ConsumerState<AddToFavoritesSheet> {
         ? _selectedServing.grams * _quantity
         : double.tryParse(_gramsController.text.trim());
 
-    if (grams == null || grams <= 0) {
+    if (!_isBatchAdd && (grams == null || grams <= 0)) {
       AppSnackBar.error(context, 'Please enter a valid grams amount.');
       return;
     }
@@ -136,27 +141,33 @@ class _AddToFavoritesSheetState extends ConsumerState<AddToFavoritesSheet> {
       _isSaving = true;
     });
 
-    final item = FavoriteMealItem(
-      name: widget.result.name,
-      grams: grams,
-      caloriesPerGram: widget.result.caloriesPerGram,
-      proteinPerGram: widget.result.proteinPerGram,
-      carbsPerGram: widget.result.carbsPerGram,
-      fatPerGram: widget.result.fatPerGram,
-      imageUrl: widget.result.imageUrl?.trim(),
-      sourceId: widget.result.id,
-      servingLabel: _hasExplicitServingOptions
-          ? _servingLabel(_selectedServing)
-          : '${grams.toStringAsFixed(0)} g',
-      servings: _hasExplicitServingOptions ? _quantity.toDouble() : null,
-    );
+    final itemsToAdd = _isBatchAdd
+        ? widget.initialItems!
+        : [
+            FavoriteMealItem(
+              name: widget.result.name,
+              grams: grams!,
+              caloriesPerGram: widget.result.caloriesPerGram,
+              proteinPerGram: widget.result.proteinPerGram,
+              carbsPerGram: widget.result.carbsPerGram,
+              fatPerGram: widget.result.fatPerGram,
+              imageUrl: widget.result.imageUrl?.trim(),
+              sourceId: widget.result.id,
+              servingLabel: _hasExplicitServingOptions
+                  ? _servingLabel(_selectedServing)
+                  : '${grams.toStringAsFixed(0)} g',
+              servings: _hasExplicitServingOptions
+                  ? _quantity.toDouble()
+                  : null,
+            ),
+          ];
 
     final now = DateTime.now();
 
     try {
       if (selectedMeal != null && selectedMeal.id != null) {
         final updated = selectedMeal.copyWith(
-          items: [...selectedMeal.items, item],
+          items: [...selectedMeal.items, ...itemsToAdd],
           updatedAt: now,
         );
         await FirestoreFavoriteMealsRepository.updateFavoriteMeal(
@@ -173,7 +184,7 @@ class _AddToFavoritesSheetState extends ConsumerState<AddToFavoritesSheet> {
       final newMeal = FavoriteMeal(
         name: mealName,
         mealType: _mealType,
-        items: [item],
+        items: itemsToAdd,
         createdAt: now,
         updatedAt: now,
       );
@@ -197,14 +208,19 @@ class _AddToFavoritesSheetState extends ConsumerState<AddToFavoritesSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final favoritesAsync =
-        ref.watch(firestoreFavoriteMealsProvider(widget.userId));
+    final mediaQuery = MediaQuery.of(context);
+    final effectiveBottomInset = mediaQuery.viewInsets.bottom > 0
+        ? mediaQuery.viewInsets.bottom
+        : mediaQuery.viewPadding.bottom;
+    final favoritesAsync = ref.watch(
+      firestoreFavoriteMealsProvider(widget.userId),
+    );
 
     return Padding(
       padding: EdgeInsets.only(
         left: 16,
         right: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+        bottom: effectiveBottomInset + 16,
         top: 12,
       ),
       child: favoritesAsync.when(
@@ -212,184 +228,195 @@ class _AddToFavoritesSheetState extends ConsumerState<AddToFavoritesSheet> {
           final hasFavorites = meals.isNotEmpty;
           final selectedId = _selectedMeal?.id ?? 'new';
 
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Add to favorites',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-              ),
-              const SizedBox(height: 12),
-              if (hasFavorites)
-                DropdownButtonFormField<String>(
-                  value: selectedId,
-                  decoration: const InputDecoration(
-                    labelText: 'Favorite meal',
+          return SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Add to favorites',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
                   ),
-                  items: [
-                    const DropdownMenuItem(
-                      value: 'new',
-                      child: Text('Create new meal'),
-                    ),
-                    ...meals.map(
-                      (meal) => DropdownMenuItem(
-                        value: meal.id ?? meal.name,
-                        child: Text(meal.name),
-                      ),
-                    ),
-                  ],
-                  onChanged: (value) {
-                    if (value == null) return;
-                    setState(() {
-                      if (value == 'new') {
-                        _selectedMeal = null;
-                      } else {
-                        _selectedMeal = meals.firstWhere(
-                          (meal) => meal.id == value || meal.name == value,
-                          orElse: () => meals.first,
-                        );
-                        _mealType = _selectedMeal?.mealType ?? _mealType;
-                      }
-                    });
-                  },
-                ),
-              if (hasFavorites) const SizedBox(height: 12),
-              if (_selectedMeal == null) ...[
-                TextField(
-                  controller: _mealNameController,
-                  decoration: const InputDecoration(labelText: 'Meal name'),
-                  textInputAction: TextInputAction.next,
                 ),
                 const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: _mealType,
-                  decoration: const InputDecoration(labelText: 'Meal type'),
-                  items: const [
-                    DropdownMenuItem(value: 'breakfast', child: Text('Breakfast')),
-                    DropdownMenuItem(value: 'lunch', child: Text('Lunch')),
-                    DropdownMenuItem(value: 'dinner', child: Text('Dinner')),
-                    DropdownMenuItem(value: 'snack', child: Text('Snack')),
-                  ],
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() => _mealType = value);
-                    }
-                  },
-                ),
-              ] else
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    'Adding to ${_selectedMeal?.name} (${_selectedMeal?.mealType})',
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w500,
+                if (_isBatchAdd)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Text(
+                      'Adding ${widget.initialItems!.length} items from this meal.',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
-                ),
-              const SizedBox(height: 12),
-              if (_hasExplicitServingOptions) ...[
-                if (_availableServings.length > 1) ...[
-                  DropdownButtonFormField<FoodServingOption>(
-                    initialValue: _selectedServing,
-                    isExpanded: true,
+                if (hasFavorites)
+                  DropdownButtonFormField<String>(
+                    value: selectedId,
                     decoration: const InputDecoration(
-                      labelText: 'Serving size',
+                      labelText: 'Favorite meal',
                     ),
-                    selectedItemBuilder: (context) => _availableServings
-                        .map(
-                          (option) => Align(
-                            alignment: AlignmentDirectional.centerStart,
-                            child: Text(
-                              _servingLabel(option),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                            ),
-                          ),
-                        )
-                        .toList(),
-                    items: _availableServings
-                        .map(
-                          (option) => DropdownMenuItem<FoodServingOption>(
-                            value: option,
-                            child: Text(
-                              _servingLabel(option),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                            ),
-                          ),
-                        )
-                        .toList(),
+                    items: [
+                      const DropdownMenuItem(
+                        value: 'new',
+                        child: Text('Create new meal'),
+                      ),
+                      ...meals.map(
+                        (meal) => DropdownMenuItem(
+                          value: meal.id ?? meal.name,
+                          child: Text(meal.name),
+                        ),
+                      ),
+                    ],
                     onChanged: (value) {
                       if (value == null) return;
                       setState(() {
-                        _selectedServing = value;
+                        if (value == 'new') {
+                          _selectedMeal = null;
+                        } else {
+                          _selectedMeal = meals.firstWhere(
+                            (meal) => meal.id == value || meal.name == value,
+                            orElse: () => meals.first,
+                          );
+                          _mealType = _selectedMeal?.mealType ?? _mealType;
+                        }
                       });
                     },
                   ),
+                if (hasFavorites) const SizedBox(height: 12),
+                if (_selectedMeal == null) ...[
+                  TextField(
+                    controller: _mealNameController,
+                    decoration: const InputDecoration(labelText: 'Meal name'),
+                    textInputAction: TextInputAction.next,
+                  ),
                   const SizedBox(height: 12),
-                ],
-                DropdownButtonFormField<int>(
-                  initialValue: _quantity,
-                  decoration: const InputDecoration(labelText: 'Servings'),
-                  items: List.generate(
-                    10,
-                    (index) => DropdownMenuItem<int>(
-                      value: index + 1,
-                      child: Text('${index + 1}'),
+                  DropdownButtonFormField<String>(
+                    value: _mealType,
+                    decoration: const InputDecoration(labelText: 'Meal type'),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'breakfast',
+                        child: Text('Breakfast'),
+                      ),
+                      DropdownMenuItem(value: 'lunch', child: Text('Lunch')),
+                      DropdownMenuItem(value: 'dinner', child: Text('Dinner')),
+                      DropdownMenuItem(value: 'snack', child: Text('Snack')),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() => _mealType = value);
+                      }
+                    },
+                  ),
+                ] else
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text(
+                      'Adding to ${_selectedMeal?.name} (${_selectedMeal?.mealType})',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
-                  onChanged: (value) {
-                    if (value == null) return;
-                    setState(() {
-                      _quantity = value;
-                    });
-                  },
-                ),
-                const SizedBox(height: 6),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Total: ${(_selectedServing.grams * _quantity).toStringAsFixed(0)} g',
-                    style: TextStyle(
-                      color: AppColors.textHint,
-                      fontSize: 12,
+                const SizedBox(height: 12),
+                if (!_isBatchAdd && _hasExplicitServingOptions) ...[
+                  if (_availableServings.length > 1) ...[
+                    DropdownButtonFormField<FoodServingOption>(
+                      initialValue: _selectedServing,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Serving size',
+                      ),
+                      selectedItemBuilder: (context) => _availableServings
+                          .map(
+                            (option) => Align(
+                              alignment: AlignmentDirectional.centerStart,
+                              child: Text(
+                                _servingLabel(option),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      items: _availableServings
+                          .map(
+                            (option) => DropdownMenuItem<FoodServingOption>(
+                              value: option,
+                              child: Text(
+                                _servingLabel(option),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() {
+                          _selectedServing = value;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  DropdownButtonFormField<int>(
+                    initialValue: _quantity,
+                    decoration: const InputDecoration(labelText: 'Servings'),
+                    items: List.generate(
+                      10,
+                      (index) => DropdownMenuItem<int>(
+                        value: index + 1,
+                        child: Text('${index + 1}'),
+                      ),
+                    ),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() {
+                        _quantity = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 6),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Total: ${(_selectedServing.grams * _quantity).toStringAsFixed(0)} g',
+                      style: TextStyle(color: AppColors.textHint, fontSize: 12),
+                    ),
+                  ),
+                ] else if (!_isBatchAdd)
+                  TextField(
+                    controller: _gramsController,
+                    decoration: const InputDecoration(labelText: 'Weight (g)'),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    textInputAction: TextInputAction.done,
+                    onChanged: (_) => setState(() {}),
+                  ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _isSaving ? null : () => _handleAdd(meals),
+                    icon: Icon(
+                      _isSaving ? Icons.hourglass_top : Icons.favorite,
+                      size: 18,
+                    ),
+                    label: Text(_isSaving ? 'Saving...' : 'Add to favorites'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.brand,
+                      foregroundColor: AppColors.surface,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                   ),
                 ),
-              ] else
-                TextField(
-                  controller: _gramsController,
-                  decoration: const InputDecoration(
-                    labelText: 'Weight (g)',
-                  ),
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  textInputAction: TextInputAction.done,
-                  onChanged: (_) => setState(() {}),
-                ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _isSaving ? null : () => _handleAdd(meals),
-                  icon: Icon(
-                    _isSaving ? Icons.hourglass_top : Icons.favorite,
-                    size: 18,
-                  ),
-                  label: Text(_isSaving ? 'Saving...' : 'Add to favorites'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.brand,
-                    foregroundColor: AppColors.surface,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
           );
         },
         loading: () => const Padding(
