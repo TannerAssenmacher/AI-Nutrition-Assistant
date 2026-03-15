@@ -542,7 +542,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
           fatPerGram: food.fat / food.mass,
           imageUrl: imageUrlForFavorites,
           sourceId:
-              'analysis_${DateTime.now().millisecondsSinceEpoch}_$index\_$normalizedName',
+              'analysis_${DateTime.now().millisecondsSinceEpoch}_${index}_$normalizedName',
           servingLabel: '${food.mass.toStringAsFixed(0)} g',
         ),
       );
