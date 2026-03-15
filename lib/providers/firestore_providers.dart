@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../db/food.dart';
+import '../db/favorite_meal.dart';
 import '../db/user.dart';
 import '../db/planned_food.dart';
 
@@ -237,3 +238,56 @@ final recipeByIdProvider = FutureProvider.family<Map<String, dynamic>, String>((
 
   return doc.data()!;
 });
+
+final firestoreFavoriteMealsProvider = StreamProvider.family<List<FavoriteMeal>, String>((
+  ref,
+  userId,
+) {
+  return FirebaseFirestore.instance
+      .collection('Users')
+      .doc(userId)
+      .collection('favorite_meals')
+      .orderBy('updatedAt', descending: true)
+      .snapshots()
+      .map((snapshot) {
+        return snapshot.docs.map((doc) {
+          final data = doc.data();
+          return FavoriteMeal.fromJson(data, id: doc.id);
+        }).toList();
+      });
+});
+
+class FirestoreFavoriteMealsRepository {
+  static CollectionReference<Map<String, dynamic>> _collection(String userId) {
+    return FirebaseFirestore.instance
+        .collection('Users')
+        .doc(userId)
+        .collection('favorite_meals');
+  }
+
+  static Future<String> addFavoriteMeal(
+    String userId,
+    FavoriteMeal meal,
+  ) async {
+    final docRef = await _collection(userId).add(meal.toJson());
+    return docRef.id;
+  }
+
+  static Future<void> updateFavoriteMeal(
+    String userId,
+    String mealId,
+    FavoriteMeal meal,
+  ) async {
+    await _collection(userId).doc(mealId).set(
+          meal.toJson(),
+          SetOptions(merge: true),
+        );
+  }
+
+  static Future<void> removeFavoriteMeal(
+    String userId,
+    String mealId,
+  ) async {
+    await _collection(userId).doc(mealId).delete();
+  }
+}

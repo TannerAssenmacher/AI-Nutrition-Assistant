@@ -4,19 +4,17 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../services/gemini_chat_service.dart';
+import '../services/food_search_service.dart';
 import '../models/planned_food_input.dart';
 import '../db/food.dart';
+import '../db/favorite_meal.dart';
 import '../providers/auth_providers.dart';
 import '../providers/firestore_providers.dart';
 import '../theme/app_colors.dart';
-import 'package:table_calendar/table_calendar.dart';
 import 'package:nutrition_assistant/navigation/nav_helper.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
 import '../widgets/app_snackbar.dart';
-
-String _formatMonthShort(DateTime date, dynamic locale) {
-  return DateFormat('MMM yyyy').format(date);
-}
+import '../widgets/add_to_favorites_sheet.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final bool isInPageView;
@@ -135,6 +133,87 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
   }
 
+  FoodSearchResult _recipeAsFavoriteResult(Map<String, dynamic> recipe) {
+    double asDouble(dynamic value) {
+      if (value is num) return value.toDouble();
+      if (value is String) return double.tryParse(value) ?? 0;
+      return 0;
+    }
+
+    final recipeIdRaw = (recipe['id'] ?? '').toString().trim();
+    final recipeLabel = (recipe['label'] ?? 'Recipe').toString().trim();
+    final recipeImageUrl = (recipe['imageUrl'] ?? '').toString().trim();
+
+    final massG = asDouble(recipe['mass_g']);
+    final servingGrams = massG > 0 ? massG : 100.0;
+
+    final caloriesTotal = asDouble(recipe['calories']);
+    final proteinTotal = asDouble(recipe['protein']);
+    final carbsTotal = asDouble(recipe['carbs']);
+    final fatTotal = asDouble(recipe['fat']);
+
+    final caloriesPerGram = caloriesTotal / servingGrams;
+    final proteinPerGram = proteinTotal / servingGrams;
+    final carbsPerGram = carbsTotal / servingGrams;
+    final fatPerGram = fatTotal / servingGrams;
+
+    final normalizedId = recipeIdRaw.isNotEmpty
+        ? 'recipe_$recipeIdRaw'
+        : 'recipe_${recipeLabel.toLowerCase().replaceAll(RegExp(r'\s+'), '_')}';
+
+    return FoodSearchResult(
+      id: normalizedId,
+      name: recipeLabel.isEmpty ? 'Recipe' : recipeLabel,
+      caloriesPerGram: caloriesPerGram,
+      proteinPerGram: proteinPerGram,
+      carbsPerGram: carbsPerGram,
+      fatPerGram: fatPerGram,
+      servingGrams: servingGrams,
+      source: 'fatsecret',
+      imageUrl: recipeImageUrl.isEmpty ? null : recipeImageUrl,
+      servingOptions: [
+        FoodServingOption(
+          id: 'default',
+          description: 'Recipe serving',
+          grams: servingGrams,
+          caloriesPerGram: caloriesPerGram,
+          proteinPerGram: proteinPerGram,
+          carbsPerGram: carbsPerGram,
+          fatPerGram: fatPerGram,
+          isDefault: true,
+        ),
+      ],
+    );
+  }
+
+  Future<void> _addRecipeToFavorites(Map<String, dynamic> recipe) async {
+    final userId = ref.read(authServiceProvider)?.uid;
+    if (userId == null) {
+      if (mounted) {
+        AppSnackBar.error(context, 'Please sign in to add favorites.');
+      }
+      return;
+    }
+
+    final result = _recipeAsFavoriteResult(recipe);
+
+    final addedMealName = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.72,
+      ),
+      showDragHandle: true,
+      builder: (context) {
+        return AddToFavoritesSheet(result: result, userId: userId);
+      },
+    );
+
+    if (!mounted || addedMealName == null) return;
+    AppSnackBar.success(context, 'Saved to favorites: $addedMealName.');
+  }
+
   Widget _choiceBar() {
     List<String> options = [];
     void Function(String)? onTap;
@@ -213,6 +292,27 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget build(BuildContext context) {
     final chatMessages = ref.watch(geminiChatServiceProvider);
     final isLoading = ref.watch(chatLoadingProvider);
+    final authUser = ref.watch(authServiceProvider);
+    final userId = authUser?.uid;
+    final favoriteMealsAsync = userId != null
+        ? ref.watch(firestoreFavoriteMealsProvider(userId))
+        : const AsyncValue.data(<FavoriteMeal>[]);
+    final favoriteSourceIds = favoriteMealsAsync.maybeWhen(
+      data: (meals) => meals
+          .expand((meal) => meal.items)
+          .map((item) => (item.sourceId ?? '').trim())
+          .where((id) => id.isNotEmpty)
+          .toSet(),
+      orElse: () => <String>{},
+    );
+    final favoriteNames = favoriteMealsAsync.maybeWhen(
+      data: (meals) => meals
+          .expand((meal) => meal.items)
+          .map((item) => item.name.trim().toLowerCase())
+          .where((name) => name.isNotEmpty)
+          .toSet(),
+      orElse: () => <String>{},
+    );
     final mediaQuery = MediaQuery.of(context);
     final navVisualBottomSpacing = mediaQuery.size.height * 0.008;
     final navBottomInset =
@@ -230,8 +330,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
 
     ref.listen(chatLoadingProvider, (prev, next) {
-      if (next)
+      if (next) {
         WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+      }
     });
 
     return Listener(
@@ -279,15 +380,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           keyboardDismissBehavior:
                               ScrollViewKeyboardDismissBehavior.onDrag,
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 16),
-                          itemCount:
-                              chatMessages.length + (isLoading ? 1 : 0),
+                            horizontal: 20,
+                            vertical: 16,
+                          ),
+                          itemCount: chatMessages.length + (isLoading ? 1 : 0),
                           physics: const BouncingScrollPhysics(),
                           itemBuilder: (context, index) {
-                            if (index == chatMessages.length)
+                            if (index == chatMessages.length) {
                               return const _TypingIndicator();
+                            }
                             final message = chatMessages[index];
-                            return _buildMessageNode(message);
+                            return _buildMessageNode(
+                              message,
+                              favoriteSourceIds: favoriteSourceIds,
+                              favoriteNames: favoriteNames,
+                            );
                           },
                         ),
                 ),
@@ -336,18 +443,32 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
-  Widget _buildRecipeResults(List<Map<String, dynamic>> recipes) {
+  Widget _buildRecipeResults(
+    List<Map<String, dynamic>> recipes, {
+    required Set<String> favoriteSourceIds,
+    required Set<String> favoriteNames,
+  }) {
     return Column(
       children: [
-        ...recipes.map(
-          (r) => _RecipeCard(
+        ...recipes.map((r) {
+          final recipeId = (r['id'] ?? '').toString().trim();
+          final recipeName = (r['label'] ?? '').toString().trim().toLowerCase();
+          final recipeSourceId = recipeId.isNotEmpty ? 'recipe_$recipeId' : '';
+          final isFavorited =
+              (recipeSourceId.isNotEmpty &&
+                  favoriteSourceIds.contains(recipeSourceId)) ||
+              favoriteNames.contains(recipeName);
+
+          return _RecipeCard(
             recipe: r,
             brandColor: brandColor,
+            isFavorited: isFavorited,
+            onFavorite: () => _addRecipeToFavorites(r),
             onSchedule: (id, inputs, ingredientLines) => ref
                 .read(geminiChatServiceProvider.notifier)
                 .scheduleRecipe(id, inputs, ingredientLines),
-          ),
-        ),
+          );
+        }),
         Center(
           child: OutlinedButton.icon(
             onPressed: () => ref
@@ -368,7 +489,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
-  Widget _buildMessageNode(ChatMessage message) {
+  Widget _buildMessageNode(
+    ChatMessage message, {
+    required Set<String> favoriteSourceIds,
+    required Set<String> favoriteNames,
+  }) {
     // Try parsing the entire message as JSON first
     try {
       final parsed = jsonDecode(message.content);
@@ -381,7 +506,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         final recipes = List<Map<String, dynamic>>.from(
           parsed['recipes'] ?? const [],
         );
-        return _buildRecipeResults(recipes);
+        return _buildRecipeResults(
+          recipes,
+          favoriteSourceIds: favoriteSourceIds,
+          favoriteNames: favoriteNames,
+        );
       }
     } catch (_) {}
 
@@ -419,7 +548,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     message: ChatMessage(content: textBefore, isUser: false),
                     brandColor: brandColor,
                   ),
-                _buildRecipeResults(recipes),
+                _buildRecipeResults(
+                  recipes,
+                  favoriteSourceIds: favoriteSourceIds,
+                  favoriteNames: favoriteNames,
+                ),
                 if (textAfter.isNotEmpty)
                   _ChatBubble(
                     message: ChatMessage(content: textAfter, isUser: false),
@@ -453,8 +586,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 border: Border(
-                  bottom: BorderSide(
-                      color: AppColors.borderLight, width: 1),
+                  bottom: BorderSide(color: AppColors.borderLight, width: 1),
                 ),
               ),
               child: OutlinedButton.icon(
@@ -468,7 +600,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     borderRadius: BorderRadius.circular(24),
                   ),
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 24, vertical: 12),
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
                   textStyle: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
@@ -479,16 +613,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
             // Input Field
             Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
               child: TextField(
                 controller: _messageController,
                 decoration: InputDecoration(
                   hintText: 'Ask about nutrition...',
-                  hintStyle: TextStyle(
-                    color: AppColors.textHint,
-                    fontSize: 16,
-                  ),
+                  hintStyle: TextStyle(color: AppColors.textHint, fontSize: 16),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 20,
                     vertical: 16,
@@ -532,8 +662,9 @@ class _ChatBubble extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisAlignment:
-            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isUser
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         children: [
           if (!isUser) ...[
             Container(
@@ -553,8 +684,9 @@ class _ChatBubble extends StatelessWidget {
           ],
           Flexible(
             child: Column(
-              crossAxisAlignment:
-                  isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              crossAxisAlignment: isUser
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
               children: [
                 if (!isUser)
                   Padding(
@@ -572,8 +704,10 @@ class _ChatBubble extends StatelessWidget {
                   constraints: BoxConstraints(
                     maxWidth: MediaQuery.of(context).size.width * 0.75,
                   ),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: isUser ? brandColor : AppColors.surface,
                     borderRadius: BorderRadius.circular(20),
@@ -721,12 +855,15 @@ class MealProfileSummaryBubble extends StatelessWidget {
 class _RecipeCard extends StatefulWidget {
   final Map<String, dynamic> recipe;
   final Color brandColor;
+  final bool isFavorited;
+  final VoidCallback onFavorite;
   final Function(String, List<PlannedFoodInput>, List<String>) onSchedule;
 
   const _RecipeCard({
-    super.key,
     required this.recipe,
     required this.brandColor,
+    required this.isFavorited,
+    required this.onFavorite,
     required this.onSchedule,
   });
 
@@ -735,8 +872,6 @@ class _RecipeCard extends StatefulWidget {
 }
 
 class _RecipeCardState extends State<_RecipeCard> {
-  final Set<DateTime> _selectedDates = {};
-
   String getProxiedImageUrl(String url) {
     if (url.isEmpty) return '';
     final encodedUrl = Uri.encodeComponent(url);
@@ -747,66 +882,12 @@ class _RecipeCardState extends State<_RecipeCard> {
     Map<String, dynamic> recipe,
     List<String> ingredients,
   ) async {
-    _selectedDates.clear();
-    final Map<DateTime, String> plannedDates = {};
-    await showDialog(
+    final plannedDates = await showDialog<Map<DateTime, String>>(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text("Select Dates"),
-          content: SizedBox(
-            width: double.maxFinite,
-            height: 420,
-            child: SingleChildScrollView(
-              child: TableCalendar(
-                firstDay: DateTime.now(),
-                lastDay: DateTime.now().add(const Duration(days: 365)),
-                focusedDay: DateTime.now(),
-                calendarFormat: CalendarFormat.month,
-                headerStyle: const HeaderStyle(
-                  formatButtonVisible: false,
-                  titleCentered: true,
-                  titleTextFormatter: _formatMonthShort,
-                ),
-                selectedDayPredicate: (day) => _selectedDates.contains(day),
-                onDaySelected: (day, focusedDay) async {
-                  if (!_selectedDates.contains(day)) {
-                    final mealType = await showDialog<String>(
-                      context: ctx,
-                      builder: (ctx2) => SimpleDialog(
-                        title: Text("Meal for ${day.month}/${day.day}"),
-                        children: ['Breakfast', 'Lunch', 'Dinner', 'Snack']
-                            .map(
-                              (m) => SimpleDialogOption(
-                                child: Text(m),
-                                onPressed: () => Navigator.pop(ctx2, m),
-                              ),
-                            )
-                            .toList(),
-                      ),
-                    );
-                    if (mealType != null) {
-                      setDialogState(() {
-                        _selectedDates.add(day);
-                        plannedDates[day] = mealType;
-                      });
-                      Navigator.pop(ctx);
-                    }
-                  } else {
-                    setDialogState(() {
-                      _selectedDates.remove(day);
-                      plannedDates.remove(day);
-                    });
-                  }
-                },
-              ),
-            ),
-          ),
-        ),
-      ),
+      builder: (ctx) => const _RecipeScheduleCalendarPicker(),
     );
 
-    if (plannedDates.isEmpty) return;
+    if (plannedDates == null || plannedDates.isEmpty) return;
 
     final inputs = plannedDates.entries
         .map((e) => PlannedFoodInput(date: e.key, mealType: e.value))
@@ -830,7 +911,7 @@ class _RecipeCardState extends State<_RecipeCard> {
     final servings = r['servings'];
 
     return Padding(
-      padding: const EdgeInsets.only(left: 48, bottom: 12),
+      padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.surface,
@@ -843,193 +924,522 @@ class _RecipeCardState extends State<_RecipeCard> {
             ),
           ],
         ),
-        child: Theme(
-          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-          child: ExpansionTile(
-            tilePadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            leading: r['imageUrl'] != null && r['imageUrl'].isNotEmpty
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.network(
-                      getProxiedImageUrl(r['imageUrl']),
-                      width: 70,
-                      height: 70,
-                      fit: BoxFit.cover,
-                      errorBuilder: (c, e, s) => Container(
+        child: Stack(
+          children: [
+            Theme(
+              data: Theme.of(
+                context,
+              ).copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                tilePadding: const EdgeInsets.fromLTRB(16, 8, 12, 8),
+                leading: r['imageUrl'] != null && r['imageUrl'].isNotEmpty
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.network(
+                          getProxiedImageUrl(r['imageUrl']),
+                          width: 70,
+                          height: 70,
+                          fit: BoxFit.cover,
+                          errorBuilder: (c, e, s) => Container(
+                            width: 70,
+                            height: 70,
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceVariant,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              Icons.restaurant,
+                              color: widget.brandColor,
+                            ),
+                          ),
+                        ),
+                      )
+                    : Container(
                         width: 70,
                         height: 70,
                         decoration: BoxDecoration(
                           color: AppColors.surfaceVariant,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child:
-                            Icon(Icons.restaurant, color: widget.brandColor),
+                        child: Icon(Icons.restaurant, color: widget.brandColor),
                       ),
-                    ),
-                  )
-                : Container(
-                    width: 70,
-                    height: 70,
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceVariant,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(Icons.restaurant, color: widget.brandColor),
-                  ),
-            title: Text(
-              r['label'] ?? 'Recipe',
-              style: const TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 18,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 6),
-                Text(
-                  "${r['calories']} Cal \u00b7 P:${r['protein']}g C:${r['carbs']}g F:${r['fat']}g",
-                  style: TextStyle(
-                    color: widget.brandColor,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
+                title: Text(
+                  r['label'] ?? 'Recipe',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 18,
+                    color: AppColors.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: () => _openScheduleDialog(r, ingredients),
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Add Meal'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: widget.brandColor,
-                    side: BorderSide(color: widget.brandColor),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 6),
+                    Text(
+                      "${r['calories']} Cal \u00b7 P:${r['protein']}g C:${r['carbs']}g F:${r['fat']}g",
+                      style: TextStyle(
+                        color: widget.brandColor,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 8),
-                    textStyle: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () => _openScheduleDialog(r, ingredients),
+                        icon: const Icon(Icons.add, size: 20),
+                        label: const Text(
+                          'Add Meal',
+                          maxLines: 1,
+                          softWrap: false,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: widget.brandColor,
+                          side: BorderSide(color: widget.brandColor),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          minimumSize: const Size(double.infinity, 42),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          textStyle: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                children: [
+                  const Divider(height: 1),
+                  const SizedBox(height: 12),
+                  if (readyInMinutes != null || servings != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.timer_outlined,
+                            size: 16,
+                            color: AppColors.textHint,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            [
+                              if (readyInMinutes != null)
+                                'Ready in $readyInMinutes min',
+                              if (servings != null) 'Serves: $servings',
+                            ].join('  |  '),
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (r['imageUrl'] != null && r['imageUrl'].isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 15),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(15),
+                        child: Image.network(
+                          getProxiedImageUrl(r['imageUrl']),
+                          height: 180,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (c, e, s) => const SizedBox.shrink(),
+                        ),
+                      ),
+                    ),
+                  const Text(
+                    'Ingredients',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: ingredients
+                        .map(
+                          (i) => Chip(
+                            label: Text(
+                              i,
+                              style: const TextStyle(fontSize: 11),
+                            ),
+                            backgroundColor: widget.brandColor.withValues(
+                              alpha: 0.05,
+                            ),
+                            side: BorderSide.none,
+                            shape: const StadiumBorder(),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                  const SizedBox(height: 15),
+                  const Text(
+                    'Instructions',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    r['instructions'] ?? 'No instructions available.',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textPrimary,
+                      height: 1.5,
                     ),
                   ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: widget.brandColor,
+                        foregroundColor: AppColors.surface,
+                        iconColor: AppColors.surface,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        elevation: 0,
+                      ),
+                      onPressed: () async {
+                        await _openScheduleDialog(r, ingredients);
+                      },
+                      icon: const Icon(Icons.schedule),
+                      label: const Text(
+                        'Schedule',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Positioned(
+              top: 8,
+              right: 8,
+              child: IconButton(
+                onPressed: widget.onFavorite,
+                tooltip: widget.isFavorited
+                    ? 'Already in favorites'
+                    : 'Add to favorites',
+                icon: Icon(
+                  widget.isFavorited ? Icons.favorite : Icons.favorite_border,
+                  size: 22,
+                ),
+                color: widget.brandColor,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RecipeScheduleCalendarPicker extends StatefulWidget {
+  const _RecipeScheduleCalendarPicker();
+
+  @override
+  State<_RecipeScheduleCalendarPicker> createState() =>
+      _RecipeScheduleCalendarPickerState();
+}
+
+class _RecipeScheduleCalendarPickerState
+    extends State<_RecipeScheduleCalendarPicker> {
+  late DateTime _displayMonth;
+  final Map<DateTime, String> _plannedDates = {};
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    _displayMonth = DateTime(now.year, now.month);
+  }
+
+  DateTime _normalizeDate(DateTime date) {
+    return DateTime(date.year, date.month, date.day);
+  }
+
+  List<List<DateTime?>> _getWeeksInMonth(DateTime month) {
+    final firstDay = DateTime(month.year, month.month, 1);
+    final lastDay = DateTime(month.year, month.month + 1, 0);
+
+    final startDate = firstDay.subtract(Duration(days: firstDay.weekday - 1));
+
+    final weeks = <List<DateTime?>>[];
+    var currentDate = startDate;
+
+    while (currentDate.isBefore(lastDay) ||
+        currentDate.month == lastDay.month) {
+      final week = <DateTime?>[];
+      for (int i = 0; i < 7; i++) {
+        if (currentDate.month == month.month) {
+          week.add(currentDate);
+        } else {
+          week.add(null);
+        }
+        currentDate = currentDate.add(const Duration(days: 1));
+      }
+      weeks.add(week);
+
+      if (currentDate.month != month.month && currentDate.day > 7) {
+        break;
+      }
+    }
+
+    return weeks;
+  }
+
+  Future<String?> _pickMealType(BuildContext context, DateTime date) {
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: Text('Meal for ${date.month}/${date.day}'),
+        children: ['Breakfast', 'Lunch', 'Dinner', 'Snack']
+            .map(
+              (mealType) => SimpleDialogOption(
+                onPressed: () => Navigator.pop(ctx, mealType),
+                child: Text(mealType),
+              ),
+            )
+            .toList(),
+      ),
+    );
+  }
+
+  Future<void> _toggleDate(DateTime date) async {
+    final normalizedDate = _normalizeDate(date);
+
+    if (_plannedDates.containsKey(normalizedDate)) {
+      setState(() {
+        _plannedDates.remove(normalizedDate);
+      });
+      return;
+    }
+
+    final mealType = await _pickMealType(context, normalizedDate);
+    if (mealType == null) return;
+
+    setState(() {
+      _plannedDates[normalizedDate] = mealType;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final weeks = _getWeeksInMonth(_displayMonth);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    final plannedEntries = _plannedDates.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+
+    return Dialog(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.chevron_left),
+                  color: AppColors.navBar,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 40,
+                    height: 40,
+                  ),
+                  padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () {
+                    setState(() {
+                      _displayMonth = DateTime(
+                        _displayMonth.year,
+                        _displayMonth.month - 1,
+                      );
+                    });
+                  },
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Text(
+                      DateFormat('MMMM yyyy').format(_displayMonth),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.navBar,
+                      ),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.chevron_right),
+                  color: AppColors.navBar,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 40,
+                    height: 40,
+                  ),
+                  padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () {
+                    setState(() {
+                      _displayMonth = DateTime(
+                        _displayMonth.year,
+                        _displayMonth.month + 1,
+                      );
+                    });
+                  },
                 ),
               ],
             ),
-            childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            children: [
-              const Divider(height: 1),
-              const SizedBox(height: 12),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: const [
+                _ChatCalendarDayHeader('Mon'),
+                _ChatCalendarDayHeader('Tue'),
+                _ChatCalendarDayHeader('Wed'),
+                _ChatCalendarDayHeader('Thu'),
+                _ChatCalendarDayHeader('Fri'),
+                _ChatCalendarDayHeader('Sat'),
+                _ChatCalendarDayHeader('Sun'),
+              ],
+            ),
+            const SizedBox(height: 8),
+            ...weeks.map((week) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: week.map((date) {
+                    if (date == null) {
+                      return const SizedBox(width: 32, height: 32);
+                    }
 
-              if (readyInMinutes != null || servings != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.timer_outlined,
-                        size: 16,
-                        color: AppColors.textHint,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        [
-                          if (readyInMinutes != null)
-                            'Ready in $readyInMinutes min',
-                          if (servings != null) 'Serves: $servings',
-                        ].join('  |  '),
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
+                    final normalizedDate = _normalizeDate(date);
+                    final isToday = normalizedDate == today;
+                    final isSelected = _plannedDates.containsKey(
+                      normalizedDate,
+                    );
+
+                    return GestureDetector(
+                      onTap: () => _toggleDate(normalizedDate),
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? AppColors.selectionColor
+                              : isToday
+                              ? AppColors.selectionColor.withValues(alpha: 0.2)
+                              : Colors.transparent,
+                          shape: BoxShape.circle,
+                          border: isSelected
+                              ? Border.all(
+                                  color: AppColors.selectionColor,
+                                  width: 2,
+                                )
+                              : null,
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${date.day}',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                              color: isSelected
+                                  ? AppColors.surface
+                                  : isToday
+                                  ? AppColors.selectionColor
+                                  : AppColors.textPrimary,
+                            ),
+                          ),
                         ),
                       ),
-                    ],
-                  ),
+                    );
+                  }).toList(),
                 ),
-
-              if (r['imageUrl'] != null && r['imageUrl'].isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 15),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(15),
-                    child: Image.network(
-                      getProxiedImageUrl(r['imageUrl']),
-                      height: 180,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (c, e, s) => const SizedBox.shrink(),
-                    ),
-                  ),
-                ),
-
-              const Text(
-                "Ingredients",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-              ),
+              );
+            }),
+            if (plannedEntries.isNotEmpty) ...[
               const SizedBox(height: 8),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: ingredients
-                    .map(
-                      (i) => Chip(
-                        label: Text(i, style: const TextStyle(fontSize: 11)),
-                        backgroundColor: widget.brandColor.withValues(
-                          alpha: 0.05,
-                        ),
-                        side: BorderSide.none,
-                        shape: const StadiumBorder(),
-                      ),
-                    )
-                    .toList(),
-              ),
-
-              const SizedBox(height: 15),
-              const Text(
-                "Instructions",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                r['instructions'] ?? 'No instructions available.',
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textPrimary,
-                  height: 1.5,
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              //scheduling
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: widget.brandColor,
-                    foregroundColor: AppColors.surface,
-                    iconColor: AppColors.surface,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    elevation: 0,
-                  ),
-                  onPressed: () async {
-                    await _openScheduleDialog(r, ingredients);
-                  },
-                  icon: const Icon(Icons.schedule),
-                  label: const Text(
-                    "Schedule",
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: plannedEntries
+                      .map(
+                        (entry) => Chip(
+                          label: Text(
+                            '${DateFormat('MMM d').format(entry.key)} · ${entry.value}',
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                          visualDensity: VisualDensity.compact,
+                          backgroundColor: AppColors.selectionColor.withValues(
+                            alpha: 0.12,
+                          ),
+                          side: BorderSide.none,
+                        ),
+                      )
+                      .toList(),
                 ),
               ),
             ],
-          ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context, _plannedDates),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.navBar,
+                ),
+                child: const Text(
+                  'Done',
+                  style: TextStyle(color: AppColors.surface),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ChatCalendarDayHeader extends StatelessWidget {
+  final String label;
+
+  const _ChatCalendarDayHeader(this.label);
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 32,
+      child: Text(
+        label,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: AppColors.textHint,
         ),
       ),
     );
@@ -1064,7 +1474,9 @@ class _TypingIndicatorState extends State<_TypingIndicator>
 
   @override
   void dispose() {
-    for (var c in _controllers) c.dispose();
+    for (var c in _controllers) {
+      c.dispose();
+    }
     super.dispose();
   }
 
