@@ -315,6 +315,7 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
           CameraScreen(
             isInPageView: true,
             isActive: _currentIndex == navIndexCamera,
+            onNavigateHome: () => _onNavBarTap(navIndexHome),
           ),
         ],
       ),
