@@ -23,6 +23,11 @@ class _MacroSliderState extends State<MacroSlider> {
   late double _proteinPercent;
   late double _carbPercent;
   late double _fatPercent;
+  
+  //new colors
+  static const Color _proteinColor = AppColors.homeProtein;
+  static const Color _carbColor = AppColors.homeCarbs;
+  static const Color _fatColor = AppColors.homeFat;
 
   @override
   void initState() {
@@ -91,7 +96,7 @@ class _MacroSliderState extends State<MacroSlider> {
                     macroKey: 'protein',
                     label: 'Protein',
                     percentage: _proteinPercent,
-                    color: AppColors.protein,
+                    color: _proteinColor,
                   ),
                 ),
                 Expanded(
@@ -99,7 +104,7 @@ class _MacroSliderState extends State<MacroSlider> {
                     macroKey: 'carbs',
                     label: 'Carbs',
                     percentage: _carbPercent,
-                    color: AppColors.carbs,
+                    color: _carbColor,
                   ),
                 ),
                 Expanded(
@@ -107,7 +112,7 @@ class _MacroSliderState extends State<MacroSlider> {
                     macroKey: 'fats',
                     label: 'Fats',
                     percentage: _fatPercent,
-                    color: AppColors.fat,
+                    color: _fatColor,
                   ),
                 ),
               ],
@@ -148,7 +153,7 @@ class _MacroSliderState extends State<MacroSlider> {
                           height: 10,
                           width: handle1X,
                           decoration: BoxDecoration(
-                            color: AppColors.protein,
+                            color: _proteinColor,
                             borderRadius: const BorderRadius.horizontal(
                               left: Radius.circular(5),
                             ),
@@ -161,7 +166,7 @@ class _MacroSliderState extends State<MacroSlider> {
                         child: Container(
                           height: 10,
                           width: handle2X - handle1X,
-                          color: AppColors.carbs,
+                          color: _carbColor,
                         ),
                       ),
                       // Fats
@@ -171,7 +176,7 @@ class _MacroSliderState extends State<MacroSlider> {
                           height: 10,
                           width: _width - handle2X,
                           decoration: BoxDecoration(
-                            color: AppColors.fat,
+                            color: _fatColor,
                             borderRadius: const BorderRadius.horizontal(
                               right: Radius.circular(5),
                             ),

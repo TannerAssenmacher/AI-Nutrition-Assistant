@@ -31,9 +31,9 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _isEdited = false;
   bool _isShowingSaveDialog = false;
 
-  final Color bgColor = AppColors.background;
-  final Color brandColor = AppColors.brand;
   final Color deleteColor = AppColors.deleteRed;
+  static const Color _screenBackground = AppColors.homeBackground;
+  static const Color _brandGreen = AppColors.homeBrand;
 
   final _weightController = TextEditingController();
   final _dailyCaloriesController = TextEditingController();
@@ -60,12 +60,6 @@ class _ProfilePageState extends State<ProfilePage> {
   double _fats = 0;
   Map<String, dynamic> _savedProfileSnapshot = {};
 
-  /*final _activityLevels = [
-    'Sedentary',
-    'Lightly Active',
-    'Moderately Active',
-    'Very Active',
-  ];*/
   final _dietGoals = [
     'Large Weight Loss',
     'Weight Loss',
@@ -111,52 +105,15 @@ class _ProfilePageState extends State<ProfilePage> {
     super.dispose();
   }
 
-  Future<void> _logout() async {
-    if (_hasUnsavedChanges()) {
-      final shouldLeave = await _showSaveDialog();
-      if (!shouldLeave || !mounted) return;
-    }
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Sign Out'),
-        content: const Text('Are you sure you want to sign out?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: brandColor),
-            child: const Text(
-              'Sign Out',
-              style: TextStyle(color: AppColors.surface),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
-
-    try {
-      await FirebaseAuth.instance.signOut();
-      if (mounted) Navigator.pushReplacementNamed(context, '/login');
-    } catch (e) {
-      debugPrint("Logout error: $e");
-    }
-  }
-
   int _calculateDailyCalories() {
     final weight = double.tryParse(_weightController.text);
     if (_heightCm == null ||
         weight == null ||
         _sex == null ||
         _dob == null ||
-        _dob!.isEmpty)
+        _dob!.isEmpty) {
       return 0;
+    }
 
     try {
       final height = _heightCm!;
@@ -165,8 +122,9 @@ class _ProfilePageState extends State<ProfilePage> {
       final now = DateTime.now();
       int age = now.year - dobDate.year;
       if (now.month < dobDate.month ||
-          (now.month == dobDate.month && now.day < dobDate.day))
+          (now.month == dobDate.month && now.day < dobDate.day)) {
         age--;
+      }
 
       double bmr = (_sex == 'Male')
           ? (10 * weightKg) + (6.25 * height) - (5 * age) + 5
@@ -192,41 +150,6 @@ class _ProfilePageState extends State<ProfilePage> {
     double protein = 30;
     double carbs = 40;
     double fats = 30;
-
-    /*switch (_activityLevel) {
-      case 'Sedentary':
-        protein += 2;
-        carbs -= 5;
-        fats += 3;
-        break;
-      case 'Lightly Active':
-        break;
-      case 'Moderately Active':
-        protein += 2;
-        carbs += 5;
-        fats -= 7;
-        break;
-      case 'Very Active':
-        protein += 5;
-        carbs += 10;
-        fats -= 15;
-        break;
-    }*/
-
-    /*switch (_dietaryGoal) {
-      case 'Lose Weight':
-        protein += 10;
-        carbs -= 7;
-        fats -= 3;
-        break;
-      case 'Maintain Weight':
-        break;
-      case 'Gain Muscle':
-        protein += 8;
-        carbs += 8;
-        fats -= 16;
-        break;
-    }*/
 
     for (final habit in _dietaryHabits) {
       switch (habit) {
@@ -295,10 +218,12 @@ class _ProfilePageState extends State<ProfilePage> {
 
   String _getInitials() {
     String initials = "";
-    if (_firstname != null && _firstname!.isNotEmpty)
+    if (_firstname != null && _firstname!.isNotEmpty) {
       initials += _firstname![0].toUpperCase();
-    if (_lastname != null && _lastname!.isNotEmpty)
+    }
+    if (_lastname != null && _lastname!.isNotEmpty) {
       initials += _lastname![0].toUpperCase();
+    }
     return initials.isEmpty ? "?" : initials;
   }
 
@@ -399,6 +324,7 @@ class _ProfilePageState extends State<ProfilePage> {
     return _buildChangedProfileData().isNotEmpty;
   }
 
+  //stay with the profile data that user had prior
   void _discardUnsavedChanges() {
     final snapshot = _savedProfileSnapshot;
     if (snapshot.isEmpty) {
@@ -449,271 +375,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
   void _refreshEditedState() {
     _isEdited = _hasUnsavedChanges();
-  }
-
-  Future<void> _loadProfile() async {
-    if (user == null) return;
-    try {
-      final doc = await _firestore.collection('Users').doc(user!.uid).get();
-      if (!doc.exists) {
-        if (!mounted) return;
-        setState(() {
-          _savedProfileSnapshot = _buildProfileSnapshot();
-          _isEdited = false;
-        });
-        return;
-      }
-      final data = doc.data()!;
-      if (!mounted) return;
-      setState(() {
-        _firstname = data['firstname']?.toString();
-        _lastname = data['lastname']?.toString();
-        _email = user!.email;
-        final rawDob = data['dob']?.toString().trim();
-        if (rawDob != null && rawDob.isNotEmpty) {
-          _dob = rawDob.split('T')[0].split(' ')[0];
-          _canEditDob = false;
-        } else {
-          _dob = '';
-          _canEditDob = true;
-        }
-        _sex = data['sex']?.toString();
-        _heightCm = _toDouble(data['height']);
-
-        final weight = _toDouble(data['weight']);
-        if (weight != null) {
-          _weightController.text = weight % 1 == 0
-              ? weight.toInt().toString()
-              : weight.toString();
-        } else {
-          _weightController.clear();
-        }
-
-        _activityLevel = _toDouble(data['activityLevel']) ?? 1.0;
-        final mealProfile = _toMap(data['mealProfile']);
-        _dietaryGoal = _toDouble(mealProfile['dietaryGoal']) ?? 0.0;
-        _dailyCaloriesController.text =
-            _toInt(mealProfile['dailyCalorieGoal'])?.toString() ?? '';
-
-        final macroGoals = _toMap(mealProfile['macroGoals']);
-        _protein = _toDouble(macroGoals['protein']) ?? 0;
-        _carbs = _toDouble(macroGoals['carbs']) ?? 0;
-        _fats = _toDouble(macroGoals['fat'] ?? macroGoals['fats']) ?? 0;
-
-        _dietaryHabits = _toStringList(mealProfile['dietaryHabits']);
-        _health = _toStringList(mealProfile['healthRestrictions']);
-
-        final prefs = _toMap(mealProfile['preferences']);
-        _likesList = _toStringList(prefs['likes']);
-        _dislikesList = _toStringList(prefs['dislikes']);
-        _savedProfileSnapshot = _buildProfileSnapshot();
-        _isEdited = false;
-      });
-    } catch (e, stackTrace) {
-      debugPrint("Error loading profile: $e");
-      debugPrint("Stack trace: $stackTrace");
-      if (mounted) {
-        AppSnackBar.error(context, 'Failed to load profile: ${e.toString()}');
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _saveProfile() async {
-    if (user == null || !_formKey.currentState!.validate()) return;
-    final updateData = _buildChangedProfileData();
-    if (updateData.isEmpty) {
-      if (mounted) {
-        setState(() => _isEdited = false);
-        AppSnackBar.success(context, 'No changes to save.');
-      }
-      return;
-    }
-
-    setState(() => _isSaving = true);
-    try {
-      updateData['updatedAt'] = FieldValue.serverTimestamp();
-
-      await _firestore.collection('Users').doc(user!.uid).update(updateData);
-      if (mounted) {
-        setState(() {
-          if (_normalizedDob(_dob) != null) _canEditDob = false;
-          _savedProfileSnapshot = _buildProfileSnapshot();
-          _isEdited = false;
-        });
-        AppSnackBar.success(context, 'Profile updated successfully!');
-      }
-    } catch (e) {
-      if (mounted) AppSnackBar.error(context, 'Error: $e');
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
-    }
-  }
-
-  Future<bool> _showSaveDialog() async {
-    final hasUnsavedChanges = _hasUnsavedChanges();
-    if (!hasUnsavedChanges || _isShowingSaveDialog) return !hasUnsavedChanges;
-    _isShowingSaveDialog = true;
-
-    try {
-      final shouldLeave = await showDialog<bool>(
-        context: context,
-        barrierDismissible: false,
-        barrierColor: Colors.black.withValues(alpha: 0.2),
-        builder: (dialogContext) => BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-          child: AlertDialog(
-            title: const Text('Save Changes', textAlign: TextAlign.center),
-            content: const Text(
-              'Would you like to save your changes?',
-              textAlign: TextAlign.center,
-            ),
-            actionsAlignment: MainAxisAlignment.center,
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(false),
-                child: const Text(
-                  'Cancel',
-                  style: TextStyle(color: AppColors.textPrimary),
-                ),
-              ),
-              TextButton(
-                onPressed: () {
-                  if (mounted) {
-                    setState(_discardUnsavedChanges);
-                  }
-                  Navigator.of(dialogContext).pop(true);
-                },
-                child: const Text(
-                  'Discard',
-                  style: TextStyle(color: AppColors.textPrimary),
-                ),
-              ),
-              ElevatedButton(
-                onPressed: _isSaving
-                    ? null
-                    : () async {
-                        await _saveProfile();
-                        if (!dialogContext.mounted) return;
-                        if (!_isEdited) {
-                          Navigator.of(dialogContext).pop(true);
-                        }
-                      },
-                style: ElevatedButton.styleFrom(backgroundColor: brandColor),
-                child: const Text(
-                  'Confirm',
-                  style: TextStyle(color: AppColors.surface),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-
-      return shouldLeave ?? false;
-    } finally {
-      _isShowingSaveDialog = false;
-    }
-  }
-
-  Future<void> _confirmDeleteAccount() async {
-    final passwordController = TextEditingController();
-    String? passwordError;
-    bool isDeleting = false;
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          return AlertDialog(
-            title: const Text('Confirm Account Deletion'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'To permanently delete your account, please enter your password.',
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: passwordController,
-                  obscureText: true,
-                  onChanged: (_) {
-                    if (passwordError != null) {
-                      setDialogState(() => passwordError = null);
-                    }
-                  },
-                  decoration: InputDecoration(
-                    labelText: 'Password',
-                    border: const OutlineInputBorder(),
-                    errorText: passwordError,
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: isDeleting ? null : () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: deleteColor),
-                onPressed: isDeleting
-                    ? null
-                    : () async {
-                        if (passwordController.text.trim().isEmpty) {
-                          setDialogState(
-                            () => passwordError = 'Please enter your password',
-                          );
-                          return;
-                        }
-                        final nav = Navigator.of(context);
-                        setDialogState(() => isDeleting = true);
-                        try {
-                          final credential = EmailAuthProvider.credential(
-                            email: user!.email!,
-                            password: passwordController.text.trim(),
-                          );
-                          await user!.reauthenticateWithCredential(credential);
-                          await _firestore
-                              .collection('Users')
-                              .doc(user!.uid)
-                              .delete();
-                          await user!.delete();
-                          if (mounted) {
-                            nav.pop();
-                            nav.pushReplacementNamed(
-                              '/login',
-                              arguments: 'accountDeleted',
-                            );
-                          }
-                        } catch (e) {
-                          setDialogState(() {
-                            isDeleting = false;
-                            passwordError =
-                                'Incorrect password. Please try again.';
-                          });
-                        }
-                      },
-                child: isDeleting
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          color: AppColors.surface,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : const Text(
-                        'Delete Account',
-                        style: TextStyle(color: AppColors.surface),
-                      ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
   }
 
   void _showHeightPicker() {
@@ -792,7 +453,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       child: Text(
                         "Done",
                         style: TextStyle(
-                          color: brandColor,
+                          color: _brandGreen,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -815,13 +476,569 @@ class _ProfilePageState extends State<ProfilePage> {
     });
   }
 
+  //loads user's profile upon entering profile page
+  Future<void> _loadProfile() async {
+    if (user == null) return;
+    try {
+      final doc = await _firestore.collection('Users').doc(user!.uid).get();
+      if (!doc.exists) {
+        if (!mounted) return;
+        setState(() {
+          _savedProfileSnapshot = _buildProfileSnapshot();
+          _isEdited = false;
+        });
+        return;
+      }
+      final data = doc.data()!;
+      if (!mounted) return;
+      setState(() {
+        _firstname = data['firstname']?.toString();
+        _lastname = data['lastname']?.toString();
+        _email = user!.email;
+        final rawDob = data['dob']?.toString().trim();
+        if (rawDob != null && rawDob.isNotEmpty) {
+          _dob = rawDob.split('T')[0].split(' ')[0];
+          _canEditDob = false;
+        } else {
+          _dob = '';
+          _canEditDob = true;
+        }
+        _sex = data['sex']?.toString();
+        _heightCm = _toDouble(data['height']);
+
+        final weight = _toDouble(data['weight']);
+        if (weight != null) {
+          _weightController.text = weight % 1 == 0
+              ? weight.toInt().toString()
+              : weight.toString();
+        } else {
+          _weightController.clear();
+        }
+
+        _activityLevel = _toDouble(data['activityLevel']) ?? 1.0;
+        final mealProfile = _toMap(data['mealProfile']);
+        _dietaryGoal = _toDouble(mealProfile['dietaryGoal']) ?? 0.0;
+        _dailyCaloriesController.text =
+            _toInt(mealProfile['dailyCalorieGoal'])?.toString() ?? '';
+
+        final macroGoals = _toMap(mealProfile['macroGoals']);
+        _protein = _toDouble(macroGoals['protein']) ?? 0;
+        _carbs = _toDouble(macroGoals['carbs']) ?? 0;
+        _fats = _toDouble(macroGoals['fat'] ?? macroGoals['fats']) ?? 0;
+
+        _dietaryHabits = _toStringList(mealProfile['dietaryHabits']);
+        _health = _toStringList(mealProfile['healthRestrictions']);
+
+        final prefs = _toMap(mealProfile['preferences']);
+        _likesList = _toStringList(prefs['likes']);
+        _dislikesList = _toStringList(prefs['dislikes']);
+        _savedProfileSnapshot = _buildProfileSnapshot();
+        _isEdited = false;
+      });
+    } catch (e, stackTrace) {
+      debugPrint("Error loading profile: $e");
+      debugPrint("Stack trace: $stackTrace");
+      if (mounted) {
+        AppSnackBar.error(context, 'Failed to load profile: ${e.toString()}');
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  //saves profile based on changes made
+  Future<void> _saveProfile() async {
+    if (user == null || !_formKey.currentState!.validate()) return;
+    final updateData = _buildChangedProfileData();
+    if (updateData.isEmpty) {
+      if (mounted) {
+        setState(() => _isEdited = false);
+        AppSnackBar.success(context, 'No changes to save.');
+      }
+      return;
+    }
+
+    setState(() => _isSaving = true);
+    try {
+      updateData['updatedAt'] = FieldValue.serverTimestamp();
+
+      await _firestore.collection('Users').doc(user!.uid).update(updateData);
+      if (mounted) {
+        setState(() {
+          if (_normalizedDob(_dob) != null) _canEditDob = false;
+          _savedProfileSnapshot = _buildProfileSnapshot();
+          _isEdited = false;
+        });
+        AppSnackBar.success(context, 'Profile updated successfully!');
+      }
+    } catch (e) {
+      if (mounted) AppSnackBar.error(context, 'Error: $e');
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  //following 3 pop ups are all matching with color, style, and button widths
+
+  //pop up to decide whether or not to save unsaved changes when leaving profile page
+  Future<bool> _showSaveDialog() async {
+  final changedData = _buildChangedProfileData();
+  if (changedData.isEmpty || _isShowingSaveDialog) return true;
+  _isShowingSaveDialog = true;
+
+  //turns firestore keys into pretty labels to show
+  final labelMap = {
+    'sex': 'Sex',
+    'dob': 'Date of Birth',
+    'height': 'Height',
+    'weight': 'Weight',
+    'activityLevel': 'Activity Level',
+    'mealProfile.dietaryGoal': 'Dietary Goal',
+    'mealProfile.macroGoals': 'Macro Goals',
+    'mealProfile.dietaryHabits': 'Dietary Presets',
+    'mealProfile.healthRestrictions': 'Restrictions',
+    'mealProfile.preferences.likes': 'Likes',
+    'mealProfile.preferences.dislikes': 'Dislikes',
+    'mealProfile.dailyCalorieGoal': 'Daily Calorie Goal',
+  };
+
+  final changedLabels = changedData.keys
+      .map((key) => labelMap[key] ?? key)
+      .toList();
+
+  try {
+    final shouldLeave = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black.withValues(alpha: 0.2),
+      builder: (dialogContext) {
+        final buttonStyle = ElevatedButton.styleFrom(
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          minimumSize: const Size(double.infinity, 50),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        );
+
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: AlertDialog(
+            backgroundColor: AppColors.surface,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Text('Unsaved Changes', textAlign: TextAlign.center),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('You have unsaved changes in:', textAlign: TextAlign.center),
+                const SizedBox(height: 12),
+                //show user specific changes made
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.center,
+                  children: changedLabels.map((label) => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _brandGreen.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      label,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: _brandGreen,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  )).toList(),
+                ),
+                
+                const SizedBox(height: 16),
+                const Text('What would you like to do before leaving?', textAlign: TextAlign.center),
+              ],
+            ),
+            actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            actions: [
+              Column(
+                children: [
+                  ElevatedButton(
+                    onPressed: () async {
+                      await _saveProfile();
+                      if (!dialogContext.mounted) return;
+                      Navigator.of(dialogContext).pop(true);
+                    },
+                    style: buttonStyle.copyWith(backgroundColor: WidgetStatePropertyAll(_brandGreen)),
+                    child: const Text('Save Changes', style: TextStyle(color: AppColors.surface, fontWeight: FontWeight.bold)),
+                  ),
+                  const SizedBox(height: 10),
+                  ElevatedButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(false),
+                    style: buttonStyle.copyWith(backgroundColor: WidgetStatePropertyAll(AppColors.surfaceVariant)),
+                    child: const Text('Stay on this page', style: TextStyle(color: AppColors.textPrimary)),
+                  ),
+                  const SizedBox(height: 10),
+                  ElevatedButton(
+                    onPressed: () {
+                      if (mounted) setState(_discardUnsavedChanges);
+                      Navigator.of(dialogContext).pop(true);
+                    },
+                    style: buttonStyle.copyWith(backgroundColor: WidgetStatePropertyAll(AppColors.surfaceVariant)),
+                    child: const Text('Leave Without Saving', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w600)),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    return shouldLeave ?? false;
+  } finally {
+    _isShowingSaveDialog = false;
+  }
+}
+  /*Future<bool> _showSaveDialog() async {
+    final hasUnsavedChanges = _hasUnsavedChanges();
+    if (!hasUnsavedChanges || _isShowingSaveDialog) return !hasUnsavedChanges;
+    _isShowingSaveDialog = true;
+
+    try {
+      final shouldLeave = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        barrierColor: Colors.black.withValues(alpha: 0.2),
+        builder: (dialogContext) {
+          final buttonStyle = ElevatedButton.styleFrom(
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            minimumSize: const Size(double.infinity, 50),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          );
+
+          return BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+            child: AlertDialog(
+              backgroundColor: AppColors.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: const Text('Unsaved Changes', textAlign: TextAlign.center),
+              content: const Text(
+                'You have unsaved work. What would you like to do before leaving?',
+                textAlign: TextAlign.center,
+              ),
+              actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              actions: [
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ElevatedButton(
+                      onPressed: _isSaving
+                          ? null
+                          : () async {
+                              await _saveProfile();
+                              if (!dialogContext.mounted) return;
+                              Navigator.of(dialogContext).pop(true);
+                            },
+                      style: buttonStyle.copyWith(
+                        backgroundColor: WidgetStatePropertyAll(_brandGreen),
+                      ),
+                      child: const Text(
+                        'Save Changes',
+                        style: TextStyle(
+                          color: AppColors.surface,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    ElevatedButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(false),
+                      style: buttonStyle.copyWith(
+                        backgroundColor: WidgetStatePropertyAll(
+                          AppColors.surfaceVariant,
+                        ),
+                      ),
+                      child: const Text(
+                        'Stay on this page',
+                        style: TextStyle(color: AppColors.textPrimary),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    ElevatedButton(
+                      onPressed: () {
+                        if (mounted) setState(_discardUnsavedChanges);
+                        Navigator.of(dialogContext).pop(true);
+                      },
+                      style: buttonStyle.copyWith(
+                        backgroundColor: WidgetStatePropertyAll(
+                          AppColors.surfaceVariant,
+                        ),
+                      ),
+                      child: const Text(
+                        'Leave Without Saving',
+                        style: TextStyle(
+                          color: AppColors.error,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      );
+
+      return shouldLeave ?? false;
+    } finally {
+      _isShowingSaveDialog = false;
+    }
+  }*/
+
+
+  //logs out user upon confirmation
+  Future<void> _logout() async {
+    if (_hasUnsavedChanges()) {
+      final shouldLeave = await _showSaveDialog();
+      if (!shouldLeave || !mounted) return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black.withValues(alpha: 0.2),
+      builder: (context) {
+        final buttonStyle = ElevatedButton.styleFrom(
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          minimumSize: const Size(120, 50),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        );
+
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: AlertDialog(
+            backgroundColor: AppColors.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: const Text('Sign Out', textAlign: TextAlign.center),
+            content: const Text(
+              'Are you sure you want to sign out?',
+              textAlign: TextAlign.center,
+            ),
+            actionsAlignment: MainAxisAlignment.center,
+            actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            actions: [
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, false),
+                style: buttonStyle.copyWith(
+                  backgroundColor: WidgetStatePropertyAll(
+                    AppColors.surfaceVariant,
+                  ),
+                ),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(color: AppColors.textPrimary),
+                ),
+              ),
+
+              const SizedBox(width: 12),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: buttonStyle.copyWith(
+                  backgroundColor: WidgetStatePropertyAll(_brandGreen),
+                ),
+                child: const Text(
+                  'Sign Out',
+                  style: TextStyle(
+                    color: AppColors.surface,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await FirebaseAuth.instance.signOut();
+      if (mounted) Navigator.pushReplacementNamed(context, '/login');
+    } catch (e) {
+      debugPrint("Logout error: $e");
+    }
+  }
+
+  //pop up to confirm deletion of account
+  Future<void> _confirmDeleteAccount() async {
+    final passwordController = TextEditingController();
+    String? passwordError;
+    bool isDeleting = false;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black.withValues(alpha: 0.2),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final buttonStyle = ElevatedButton.styleFrom(
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            minimumSize: const Size(double.infinity, 50),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          );
+
+          return BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+            child: AlertDialog(
+              backgroundColor: AppColors.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: const Text(
+                'Confirm Account Deletion',
+                textAlign: TextAlign.center,
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'This action is permanent. Please enter your password to confirm.',
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: passwordController,
+                    obscureText: true,
+                    onChanged: (_) {
+                      if (passwordError != null) {
+                        setDialogState(() => passwordError = null);
+                      }
+                    },
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      filled: true,
+                      fillColor: AppColors.surfaceVariant,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      errorText: passwordError,
+                    ),
+                  ),
+                ],
+              ),
+              actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              actions: [
+                Column(
+                  children: [
+                    ElevatedButton(
+                      style: buttonStyle.copyWith(
+                        backgroundColor: WidgetStatePropertyAll(
+                          AppColors.error,
+                        ),
+                      ),
+                      onPressed: isDeleting
+                          ? null
+                          : () async {
+                              if (passwordController.text.trim().isEmpty) {
+                                setDialogState(
+                                  () => passwordError =
+                                      'Please enter your password',
+                                );
+                                return;
+                              }
+                              final nav = Navigator.of(context);
+                              setDialogState(() => isDeleting = true);
+                              try {
+                                final credential = EmailAuthProvider.credential(
+                                  email: user!.email!,
+                                  password: passwordController.text.trim(),
+                                );
+                                await user!.reauthenticateWithCredential(
+                                  credential,
+                                );
+                                await _firestore
+                                    .collection('Users')
+                                    .doc(user!.uid)
+                                    .delete();
+                                await user!.delete();
+                                if (mounted) {
+                                  nav.pop();
+                                  nav.pushReplacementNamed(
+                                    '/login',
+                                    arguments: 'accountDeleted',
+                                  );
+                                }
+                              } catch (e) {
+                                setDialogState(() {
+                                  isDeleting = false;
+                                  passwordError =
+                                      'Incorrect password. Please try again.';
+                                });
+                              }
+                            },
+                      child: isDeleting
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                color: AppColors.surface,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text(
+                              'Delete My Account',
+                              style: TextStyle(
+                                color: AppColors.surface,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                    ),
+                    const SizedBox(height: 10),
+                    ElevatedButton(
+                      onPressed: isDeleting
+                          ? null
+                          : () => Navigator.pop(context),
+                      style: buttonStyle.copyWith(
+                        backgroundColor: WidgetStatePropertyAll(
+                          AppColors.surfaceVariant,
+                        ),
+                      ),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(color: AppColors.textPrimary),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (_isLoading)
+    if (_isLoading) {
       return Scaffold(
-        backgroundColor: bgColor,
+        backgroundColor: _screenBackground,
         body: const Center(child: CircularProgressIndicator()),
       );
+    }
     final estimatedCals = _calculateDailyCalories();
     final suggestedMacros = _recommendedMacroGoals();
 
@@ -843,7 +1060,7 @@ class _ProfilePageState extends State<ProfilePage> {
         }
       },
       child: Scaffold(
-        backgroundColor: bgColor,
+        backgroundColor: _screenBackground,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
@@ -886,7 +1103,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   children: [
                     CircleAvatar(
                       radius: 50,
-                      backgroundColor: brandColor,
+                      backgroundColor: _brandGreen,
                       child: Text(
                         _getInitials(),
                         style: const TextStyle(
@@ -930,17 +1147,18 @@ class _ProfilePageState extends State<ProfilePage> {
                                   builder: (context, child) => Theme(
                                     data: Theme.of(context).copyWith(
                                       colorScheme: ColorScheme.light(
-                                        primary: brandColor,
+                                        primary: _brandGreen,
                                       ),
                                     ),
                                     child: child!,
                                   ),
                                 );
-                                if (pickedDate != null)
+                                if (pickedDate != null) {
                                   setState(() {
                                     _dob = pickedDate.toString().split(' ')[0];
                                     _refreshEditedState();
                                   });
+                                }
                               }
                             : null,
                       ),
@@ -960,35 +1178,6 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                       _buildActivitySlider(),
                       _buildDietaryGoalSlider(),
-
-                      /*_buildListTile(
-                      Icons.bolt,
-                      "Activity Level",
-                      _activityLevel ?? "Select",
-                      onTap: () => _showPicker(
-                        "Activity",
-                        _activityLevels,
-                        _activityLevel,
-                        (v) {
-                          setState(() => _activityLevel = v);
-                          _applyRecommendedMacroGoals(silent: true);
-                        },
-                      ),
-                    ),*/
-                      /*_buildListTile(
-                      Icons.track_changes,
-                      "Dietary Goal",
-                      _dietaryGoal ?? "Select",
-                      onTap: () => _showPicker(
-                        "Diet Goal",
-                        _dietGoals,
-                        _dietaryGoal,
-                        (v) {
-                          setState(() => _dietaryGoal = v);
-                          _applyRecommendedMacroGoals(silent: true);
-                        },
-                      ),
-                    ),*/
                     ]),
                     const SizedBox(height: 25),
                     _sectionHeader("Meal Profile"),
@@ -1028,21 +1217,6 @@ class _ProfilePageState extends State<ProfilePage> {
                               }),
                             ),
                             const SizedBox(height: 8),
-                            /*Text(
-                            'Suggested values:\nP ${suggestedMacros['protein']!.round()}% • C ${suggestedMacros['carbs']!.round()}% • F ${suggestedMacros['fat']!.round()}%',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.black54,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton(
-                              onPressed: _applyRecommendedMacroGoals,
-                              child: const Text('Use Suggested'),
-                            ),
-                          ),*/
                           ],
                         ),
                       ),
@@ -1078,7 +1252,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             ? _saveProfile
                             : null,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: brandColor,
+                          backgroundColor: _brandGreen,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(15),
                           ),
@@ -1184,7 +1358,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       borderSide: BorderSide.none,
                     ),
                     filled: true,
-                    fillColor: bgColor.withValues(alpha: 0.5),
+                    fillColor: _screenBackground.withValues(alpha: 0.5),
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -1218,7 +1392,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     style: TextStyle(fontWeight: FontWeight.w600),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: brandColor,
+                    backgroundColor: _brandGreen,
                     foregroundColor: AppColors.surface,
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     shape: RoundedRectangleBorder(
@@ -1236,7 +1410,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 .map(
                   (item) => Chip(
                     label: Text(item, style: const TextStyle(fontSize: 12)),
-                    backgroundColor: brandColor.withOpacity(0.1),
+                    backgroundColor: _brandGreen.withOpacity(0.1),
                     deleteIcon: const Icon(Icons.close, size: 14),
                     onDeleted: () => setState(() {
                       list.remove(item);
@@ -1317,7 +1491,7 @@ class _ProfilePageState extends State<ProfilePage> {
           height: boxHeight,
           width: double.infinity,
           decoration: BoxDecoration(
-            color: isPrimary ? brandColor : AppColors.surface,
+            color: isPrimary ? _brandGreen : AppColors.surface,
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
@@ -1442,6 +1616,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  //deals with spacing & wrapping of text to make everything uniform
   Widget _buildListTile(
     IconData icon,
     String title,
@@ -1452,105 +1627,47 @@ class _ProfilePageState extends State<ProfilePage> {
 
     return InkWell(
       onTap: onTap,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final textScale = MediaQuery.textScalerOf(context).scale(1.0);
-          final stackValue = textScale > 1.2 || constraints.maxWidth < 330;
-
-          if (stackValue) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: _brandGreen, size: 22),
+            const SizedBox(width: 12),
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Icon(icon, color: brandColor, size: 22),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          title,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                      if (onTap != null)
-                        const Icon(
-                          Icons.chevron_right,
-                          size: 18,
-                          color: AppColors.textHint,
-                        ),
-                    ],
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                   const SizedBox(height: 4),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 34),
-                    child: Text(
-                      displayValue,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.textHint,
-                        fontSize: 14,
-                      ),
+                  Text(
+                    displayValue,
+                    style: const TextStyle(
+                      color: AppColors.textHint,
+                      fontSize: 15,
                     ),
                   ),
-                ],
-              ),
-            );
-          }
-
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: SizedBox(
-              height: 50,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Icon(icon, color: brandColor, size: 22),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Flexible(
-                    child: Text(
-                      displayValue,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.end,
-                      style: const TextStyle(
-                        color: AppColors.textHint,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                  if (onTap != null)
-                    const Padding(
-                      padding: EdgeInsets.only(left: 6),
-                      child: Icon(
-                        Icons.chevron_right,
-                        size: 18,
-                        color: AppColors.textHint,
-                      ),
-                    ),
                 ],
               ),
             ),
-          );
-        },
+            if (onTap != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: const Icon(
+                  Icons.chevron_right,
+                  size: 18,
+                  color: AppColors.textHint,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -1564,7 +1681,7 @@ class _ProfilePageState extends State<ProfilePage> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Icon(Icons.track_changes, color: brandColor, size: 22),
+              Icon(Icons.track_changes, color: _brandGreen, size: 22),
               const Text(
                 "  Dietary Goal",
                 style: TextStyle(
@@ -1588,20 +1705,20 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
           SliderTheme(
             data: SliderThemeData(
-              activeTrackColor: brandColor,
-              inactiveTrackColor: brandColor,
+              activeTrackColor: _brandGreen,
+              inactiveTrackColor: _brandGreen,
               thumbColor: AppColors.surface,
-              overlayColor: brandColor.withOpacity(0.2),
+              overlayColor: _brandGreen.withOpacity(0.2),
               thumbShape: const RoundSliderThumbShape(
                 enabledThumbRadius: 12,
                 elevation: 0,
               ),
               overlayShape: const RoundSliderOverlayShape(overlayRadius: 20),
-              activeTickMarkColor: brandColor,
-              inactiveTickMarkColor: brandColor,
+              activeTickMarkColor: _brandGreen,
+              inactiveTickMarkColor: _brandGreen,
               tickMarkShape: const RoundSliderTickMarkShape(tickMarkRadius: 4),
               trackHeight: 4,
-              valueIndicatorColor: brandColor,
+              valueIndicatorColor: _brandGreen,
               valueIndicatorTextStyle: const TextStyle(
                 color: AppColors.surface,
                 fontSize: 12,
@@ -1658,7 +1775,7 @@ class _ProfilePageState extends State<ProfilePage> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Icon(Icons.bolt, color: brandColor, size: 22),
+              Icon(Icons.bolt, color: _brandGreen, size: 22),
               const Text(
                 "  Activity Level",
                 style: TextStyle(
@@ -1682,20 +1799,20 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
           SliderTheme(
             data: SliderThemeData(
-              activeTrackColor: brandColor,
-              inactiveTrackColor: brandColor,
+              activeTrackColor: _brandGreen,
+              inactiveTrackColor: _brandGreen,
               thumbColor: AppColors.surface,
-              overlayColor: brandColor.withOpacity(0.2),
+              overlayColor: _brandGreen.withOpacity(0.2),
               thumbShape: const RoundSliderThumbShape(
                 enabledThumbRadius: 12,
                 elevation: 0,
               ),
               overlayShape: const RoundSliderOverlayShape(overlayRadius: 20),
-              activeTickMarkColor: brandColor,
-              inactiveTickMarkColor: brandColor,
+              activeTickMarkColor: _brandGreen,
+              inactiveTickMarkColor: _brandGreen,
               tickMarkShape: const RoundSliderTickMarkShape(tickMarkRadius: 4),
               trackHeight: 4,
-              valueIndicatorColor: brandColor,
+              valueIndicatorColor: _brandGreen,
               valueIndicatorTextStyle: const TextStyle(
                 color: AppColors.surface,
                 fontSize: 12,
@@ -1770,8 +1887,8 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
               ),
               selected: isSel,
-              selectedColor: brandColor,
-              backgroundColor: bgColor.withOpacity(0.5),
+              selectedColor: _brandGreen,
+              backgroundColor: _screenBackground.withOpacity(0.5),
               showCheckmark: false,
               onSelected: (v) {
                 setState(() {
@@ -1793,9 +1910,9 @@ class _ProfilePageState extends State<ProfilePage> {
 
   //STRING FUNC FOR SHOWING THE ACTIVITY LEVEL IN THE SLIDER
   String activityLevelLabels(double value) {
-    if (value == 1.0)
+    if (value == 1.0) {
       return 'Completely Sedentary';
-    else if (value > 1.0 && value <= 1.25)
+    } else if (value > 1.0 && value <= 1.25)
       return 'Basic Daily Activity';
     else if (value > 1.25 && value <= 1.45)
       return 'Lightly Active';
