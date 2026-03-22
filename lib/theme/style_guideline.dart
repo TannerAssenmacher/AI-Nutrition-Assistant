@@ -17,6 +17,7 @@ class StyleGuideline {
   static const double cardBorderRadius = 18.0;
   static const double inputFieldBorderRadius = 8.0; 
   static const double cardPadding = 10;
+  static const double cardAlpha = 0.9;
 
 
 }

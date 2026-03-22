@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_snackbar.dart';
+import '../theme/style_guideline.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -68,7 +69,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     final linkFontSize = (screenHeight * 0.022).clamp(16.0, 22.0).toDouble();
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.homeBackground,
       body: Column(
         children: [
           // Back Arrow
@@ -101,7 +102,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     Icon(
                       Icons.lock_person_outlined,
                       size: (screenWidth * 0.28).clamp(80, 140),
-                      color: AppColors.brand,
+                      color: AppColors.homeBrand,
                     ),
 
                     SizedBox(height: screenHeight * 0.04),
@@ -158,6 +159,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                                 keyboardType: TextInputType.emailAddress,
                                 decoration: InputDecoration(
                                   hintText: 'Email address',
+                                  
                                   prefixIcon: const Icon(
                                     Icons.email_outlined,
                                     color: AppColors.textHint,
@@ -165,8 +167,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                                   filled: true,
                                   fillColor: AppColors.inputFill,
                                   border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(15),
-                                    borderSide: BorderSide.none,
+                                    borderRadius: BorderRadius.circular(StyleGuideline.inputFieldBorderRadius),
+                                    borderSide: const BorderSide(
+                                      color: AppColors.black,
+                                      width: 1.5,
+                                    ),
                                   ),
                                   contentPadding: const EdgeInsets.all(16),
                                 ),
@@ -191,13 +196,13 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                               const SizedBox(height: 24),
                               _isLoading
                                   ? const CircularProgressIndicator(
-                                      color: AppColors.brand,
+                                      color: AppColors.homeBrand,
                                     )
                                   : ElevatedButton(
                                       onPressed: _resetPassword,
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: AppColors.brand,
-                                        foregroundColor: Colors.white,
+                                        backgroundColor: AppColors.homeBrand,
+                                        foregroundColor: AppColors.homeCard,
                                         elevation: 0,
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(

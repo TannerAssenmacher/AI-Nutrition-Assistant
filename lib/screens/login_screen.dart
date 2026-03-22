@@ -173,7 +173,7 @@ class _LoginPageState extends State<LoginPage> {
     final linkFontSize = (screenHeight * 0.022).clamp(16.0, 22.0).toDouble();
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.homeBackground,
       resizeToAvoidBottomInset: false,
       body: Column(
         children: [
@@ -192,7 +192,7 @@ class _LoginPageState extends State<LoginPage> {
                       child: Image.asset(
                         'lib/assets/icons/WISERBITES.png',
                         fit: BoxFit.contain,
-                        color: AppColors.brand,
+                        color: AppColors.homeBrand,
                         colorBlendMode: BlendMode.srcIn,
                       ),
                     ),
@@ -211,7 +211,7 @@ class _LoginPageState extends State<LoginPage> {
                           24, 24, 24, 24
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.surface.withOpacity(0.95),
+                          color: AppColors.homeCard,
                           borderRadius: BorderRadius.circular(StyleGuideline.cardBorderRadius),
                           boxShadow: [
                             BoxShadow(
@@ -337,7 +337,7 @@ class _LoginPageState extends State<LoginPage> {
                                   : ElevatedButton(
                                       onPressed: _login,
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: AppColors.brand,
+                                        backgroundColor: AppColors.homeBrand,
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(StyleGuideline.inputFieldBorderRadius, ),
                                         ),
@@ -352,7 +352,7 @@ class _LoginPageState extends State<LoginPage> {
                                           fontSize: (screenHeight * 0.024)
                                               .clamp(18.0, 24.0)
                                               .toDouble(),
-                                          color: AppColors.surface,
+                                          color: AppColors.homeCard,
                                         ),
                                       ),
                                     ),
@@ -383,7 +383,7 @@ class _LoginPageState extends State<LoginPage> {
           Container(
             constraints: const BoxConstraints(minHeight: 100),
             width: double.infinity,
-            color: AppColors.background,
+            color: AppColors.homeBackground,
             padding: EdgeInsets.only(
               top: 25,
               bottom: 25 + mediaQuery.padding.bottom,

@@ -12,6 +12,7 @@ import 'package:intl/intl.dart';
 import 'package:email_validator/email_validator.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_snackbar.dart';
+import '../theme/style_guideline.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -457,7 +458,7 @@ class _RegisterPageState extends State<RegisterPage> {
         }
       },
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColors.homeBackground,
         body: SafeArea(
           child: Form(
             key: _formKey,
@@ -501,7 +502,7 @@ class _RegisterPageState extends State<RegisterPage> {
             child: Image.asset(
               'lib/assets/icons/WISERBITES.png',
               fit: BoxFit.contain,
-              color: AppColors.brand,
+              color: AppColors.homeBrand,
               colorBlendMode: BlendMode.srcIn,
             ),
           ),
@@ -550,7 +551,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   ElevatedButton(
                     onPressed: _validatePage1AndNext,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.brand,
+                      backgroundColor: AppColors.homeBrand,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -633,7 +634,7 @@ class _RegisterPageState extends State<RegisterPage> {
               child: Image.asset(
                 'lib/assets/icons/WISERBITES.png',
                 fit: BoxFit.contain,
-                color: AppColors.brand,
+                color: AppColors.homeBrand,
                 colorBlendMode: BlendMode.srcIn,
               ),
             ),
@@ -800,7 +801,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                 child: ElevatedButton(
                                   onPressed: _registerUser,
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.brand,
+                                    backgroundColor: AppColors.homeBrand,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),
@@ -856,9 +857,12 @@ class _RegisterPageState extends State<RegisterPage> {
           filled: true,
           fillColor: AppColors.inputFill,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
+                                    borderRadius: BorderRadius.circular(StyleGuideline.inputFieldBorderRadius),
+                                    borderSide: const BorderSide(
+                                      color: AppColors.black,
+                                      width: 1.5,
+                                    ),
+                                  ),
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 10,
             vertical: 10,
@@ -895,8 +899,11 @@ class _RegisterPageState extends State<RegisterPage> {
           filled: true,
           fillColor: AppColors.inputFill,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
+            borderRadius: BorderRadius.circular(StyleGuideline.inputFieldBorderRadius),
+            borderSide: const BorderSide(
+              color: AppColors.black,
+              width: 1.5,
+            ),
           ),
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 10,
@@ -955,8 +962,11 @@ class _RegisterPageState extends State<RegisterPage> {
           filled: true,
           fillColor: AppColors.inputFill,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
+            borderRadius: BorderRadius.circular(StyleGuideline.inputFieldBorderRadius),
+            borderSide: const BorderSide(
+              color: AppColors.black,
+              width: 1.5,
+            ),
           ),
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 10,
@@ -1068,8 +1078,11 @@ class _RegisterPageState extends State<RegisterPage> {
           fillColor: AppColors.inputFill,
           suffixText: suffixText,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
+            borderRadius: BorderRadius.circular(StyleGuideline.inputFieldBorderRadius),
+            borderSide: const BorderSide(
+              color: AppColors.black,
+              width: 1.5,
+            ),
           ),
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 10,
@@ -1208,7 +1221,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 onSelected: (_) => setState(() {
                   isSelected ? selected.remove(option) : selected.add(option);
                 }),
-                selectedColor: AppColors.brand.withValues(alpha: 0.4),
+                selectedColor: AppColors.homeBrand,
               );
             }).toList(),
           ),
