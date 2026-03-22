@@ -331,8 +331,7 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (_currentIndex == navIndexSearch ||
-              _currentIndex == navIndexCamera)
+          if (_currentIndex == navIndexCamera)
             Container(
               width: double.infinity,
               color: Colors.white,

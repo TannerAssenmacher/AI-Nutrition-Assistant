@@ -4434,10 +4434,10 @@ class _ScheduledMealDetailScreen extends StatelessWidget {
     final instructions = _parseInstructions(recipe['instructions']);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5EDE2),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.mealText,
-        foregroundColor: AppColors.warmLight,
+        backgroundColor: AppColors.topBar,
+        foregroundColor: AppColors.navIconActive,
         elevation: 0,
         title: const Text('Recipe Details'),
       ),
@@ -4448,7 +4448,7 @@ class _ScheduledMealDetailScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFFFFF),
+                color: AppColors.surface,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: AppColors.warmBorder),
               ),
@@ -4461,7 +4461,7 @@ class _ScheduledMealDetailScreen extends StatelessWidget {
                       fontSize: 40,
                       height: 1.1,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.black,
+                      color: AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -4472,7 +4472,7 @@ class _ScheduledMealDetailScreen extends StatelessWidget {
                       fontSize: 12,
                       letterSpacing: 1.2,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.black,
+                      color: AppColors.textSecondary,
                     ),
                   ),
                   if (recipeImageUrl.isNotEmpty) ...[
@@ -4503,7 +4503,7 @@ class _ScheduledMealDetailScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFFFFF),
+                color: AppColors.surface,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: AppColors.warmBorder),
               ),
@@ -4513,7 +4513,7 @@ class _ScheduledMealDetailScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFFFFF),
+                color: AppColors.surface,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: AppColors.warmBorder),
               ),
@@ -4581,7 +4581,7 @@ class _IngredientsSection extends StatelessWidget {
         if (ingredients.isEmpty)
           const Text(
             'No ingredients available.',
-            style: TextStyle(color: AppColors.black, fontSize: 18),
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 18),
           )
         else
           ...ingredients.map(
@@ -4592,7 +4592,7 @@ class _IngredientsSection extends StatelessWidget {
                 children: [
                   const Padding(
                     padding: EdgeInsets.only(top: 8),
-                    child: Icon(Icons.circle, size: 10, color: AppColors.black),
+                    child: Icon(Icons.circle, size: 10, color: AppColors.textPrimary),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -4601,7 +4601,7 @@ class _IngredientsSection extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 19,
                         height: 1.35,
-                        color: AppColors.black,
+                        color: AppColors.textPrimary,
                       ),
                     ),
                   ),
@@ -4629,7 +4629,7 @@ class _InstructionsSection extends StatelessWidget {
         if (instructions.isEmpty)
           const Text(
             'No instructions available.',
-            style: TextStyle(color: AppColors.black, fontSize: 18),
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 18),
           )
         else
           ...instructions.asMap().entries.map(
@@ -4644,12 +4644,12 @@ class _InstructionsSection extends StatelessWidget {
                     alignment: Alignment.center,
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppColors.black,
+                      color: AppColors.brand,
                     ),
                     child: Text(
                       '${entry.key + 1}',
                       style: const TextStyle(
-                        color: AppColors.warmLight,
+                        color: AppColors.navIconActive,
                         fontWeight: FontWeight.w700,
                         fontSize: 19,
                       ),
@@ -4662,7 +4662,7 @@ class _InstructionsSection extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 19,
                         height: 1.35,
-                        color: AppColors.black,
+                        color: AppColors.textPrimary,
                       ),
                     ),
                   ),
@@ -4688,7 +4688,7 @@ class _RecipeSectionTitle extends StatelessWidget {
         fontSize: 42,
         height: 1,
         fontWeight: FontWeight.w800,
-        color: AppColors.black,
+        color: AppColors.textPrimary,
       ),
     );
   }

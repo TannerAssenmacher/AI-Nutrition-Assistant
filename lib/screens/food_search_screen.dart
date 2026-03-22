@@ -666,118 +666,15 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
           .toSet(),
       orElse: () => <String>{},
     );
-    final userProfileAsync = userId != null
-        ? ref.watch(firestoreUserProfileProvider(userId))
-        : const AsyncValue.loading();
-    final name = userProfileAsync.valueOrNull?.firstname ?? 'User';
 
     final bodyContent = SafeArea(
       top: false,
+      bottom: false,
       child: Column(
         children: [
-          Container(
-            height: MediaQuery.of(context).size.height * 0.11,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: const BorderRadius.vertical(
-                bottom: Radius.circular(25),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.black.withValues(alpha: 0.12),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Padding(
-              padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top,
-                bottom: 12,
-              ),
-              child: Align(
-                alignment: Alignment.center,
-                child: Text(
-                  'Food Search',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.black,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          // Search bar
-          Padding(
-            padding: const EdgeInsets.only(
-              top: 20.0,
-            ), // Increase this number to push it further down
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'Search for Foods using FatSecret ... ',
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: _searchController.text.isEmpty
-                      ? null
-                      : IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () {
-                            _searchController.clear();
-                            _runSearch('');
-                            setState(() {});
-                          },
-                        ),
-                  filled: true,
-                  fillColor: AppColors.surface,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: AppColors.accentBrown.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: AppColors.accentBrown.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: AppColors.accentBrown,
-                      width: 2,
-                    ),
-                  ),
-                ),
-                onChanged: (value) {
-                  setState(() {});
-                  _onSearchQueryChanged(value);
-                },
-                onSubmitted: (value) {
-                  _debounce?.cancel();
-                  FocusScope.of(context).unfocus();
-                  _runSearch(value, includeSuggestions: false);
-                },
-                onTapOutside: (_) => FocusScope.of(context).unfocus(),
-              ),
-            ),
-          ),
           if (_suggestions.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Wrap(
@@ -826,7 +723,7 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                 ],
               ),
             ),
-          // Results
+          // Results / Empty state
           Expanded(
             child: _results.isEmpty
                 ? Center(
@@ -834,27 +731,28 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          Icons.restaurant_menu,
-                          size: 64,
-                          color: AppColors.divider,
+                          Icons.search,
+                          size: 80,
+                          color: AppColors.borderLight,
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 24),
                         Text(
                           _searchController.text.isEmpty
-                              ? 'What\'s on the menu today, $name?'
+                              ? 'Search for foods to add to your meal log!'
                               : 'No Results Found',
                           style: TextStyle(
                             fontSize: 16,
                             color: AppColors.textHint,
                           ),
+                          textAlign: TextAlign.center,
                         ),
                         if (_searchController.text.isEmpty) ...[
                           const SizedBox(height: 8),
                           Text(
-                            'Try: "Chobani", "Chicken", or any fast food!',
+                            'Powered by fatsecret',
                             style: TextStyle(
                               fontSize: 14,
-                              color: AppColors.statusNone,
+                              color: AppColors.borderLight,
                             ),
                           ),
                         ],
@@ -884,6 +782,92 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                     },
                   ),
           ),
+          // FatSecret attribution + Search bar
+          Container(
+            width: double.infinity,
+            color: Colors.white,
+            padding: const EdgeInsets.only(top: 8),
+            child: const FatSecretAttribution(),
+          ),
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.only(left: 16, right: 16, top: 4, bottom: 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Search foods...',
+                      hintStyle: TextStyle(color: AppColors.textHint),
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: AppColors.textHint,
+                      ),
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                _searchController.clear();
+                                _runSearch('');
+                                setState(() {});
+                              },
+                            )
+                          : null,
+                      filled: true,
+                      fillColor: AppColors.surface,
+                      contentPadding: const EdgeInsets.symmetric(
+                        vertical: 12,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                        borderSide: BorderSide(color: AppColors.borderLight),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                        borderSide: BorderSide(color: AppColors.borderLight),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                        borderSide: BorderSide(
+                          color: AppColors.brand,
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                    onChanged: (value) {
+                      setState(() {});
+                      _onSearchQueryChanged(value);
+                    },
+                    onSubmitted: (value) {
+                      _debounce?.cancel();
+                      FocusScope.of(context).unfocus();
+                      _runSearch(value, includeSuggestions: false);
+                    },
+                    onTapOutside: (_) => FocusScope.of(context).unfocus(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.brand,
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.arrow_forward, color: Colors.white),
+                    onPressed: () {
+                      _debounce?.cancel();
+                      FocusScope.of(context).unfocus();
+                      _runSearch(
+                        _searchController.text,
+                        includeSuggestions: false,
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -896,20 +880,9 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
       resizeToAvoidBottomInset: false,
       backgroundColor: AppColors.background,
       body: bodyContent,
-      bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: double.infinity,
-            color: Colors.white,
-            padding: const EdgeInsets.only(top: 2),
-            child: const FatSecretAttribution(),
-          ),
-          NavBar(
-            currentIndex: navIndexSearch,
-            onTap: (index) => handleNavTap(context, index),
-          ),
-        ],
+      bottomNavigationBar: NavBar(
+        currentIndex: navIndexSearch,
+        onTap: (index) => handleNavTap(context, index),
       ),
     );
   }
