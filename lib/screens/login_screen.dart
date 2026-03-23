@@ -87,8 +87,10 @@ class _LoginPageState extends State<LoginPage> {
 
       // Check if user's email is verified before signing in
       if (user != null && !user.emailVerified) {
-        await _showEmailVerificationDialog(user);
-        await FirebaseAuth.instance.signOut();
+        final verified = await _showEmailVerificationDialog(user);
+        if (!verified) {
+          await FirebaseAuth.instance.signOut();
+        }
         return;
       }
 
@@ -102,8 +104,9 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  // Show message for user email verification status
-  Future<void> _showEmailVerificationDialog(User user) async {
+  // Show message for user email verification status.
+  // Returns true if the user successfully verified their email.
+  Future<bool> _showEmailVerificationDialog(User user) async {
     bool isVerified = user.emailVerified;
     bool stopChecking = false;
 
@@ -159,6 +162,7 @@ class _LoginPageState extends State<LoginPage> {
       ),
     );
     stopChecking = true;
+    return isVerified;
   }
 
   @override
