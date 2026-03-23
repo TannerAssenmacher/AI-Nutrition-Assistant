@@ -318,9 +318,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final navBottomInset =
         mediaQuery.viewPadding.bottom + navVisualBottomSpacing;
     final navBarHeight = mediaQuery.size.height * 0.07;
+    const chatInputNavClearance = 24.0;
     final navTotalHeight = widget.isInPageView
         ? 0.0
-        : navBottomInset + navBarHeight;
+        : navBottomInset + navBarHeight + chatInputNavClearance;
+    final keyboardInset = mediaQuery.viewInsets.bottom;
+    final inputBottomPadding = keyboardInset > 0
+        ? keyboardInset + 12
+        : navTotalHeight;
 
     ref.listen<List<ChatMessage>>(geminiChatServiceProvider, (prev, next) {
       final prevLength = prev?.length ?? 0;
@@ -404,11 +409,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               _choiceBar(),
 
               // Bottom Section: Generate Recipes button + Input
-              _buildInputBar(extraBottomPadding: navTotalHeight),
+              _buildInputBar(extraBottomPadding: inputBottomPadding),
             ],
           ),
         ),
-        bottomNavigationBar: !widget.isInPageView
+        bottomNavigationBar: !widget.isInPageView && keyboardInset == 0
             ? NavBar(
                 currentIndex: navIndexChat,
                 onTap: (index) => handleNavTap(context, index),
@@ -571,8 +576,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget _buildInputBar({double extraBottomPadding = 0}) {
     return Container(
       color: AppColors.surface,
-      padding: EdgeInsets.fromLTRB(20, 16, 20, extraBottomPadding),
+      padding: EdgeInsets.fromLTRB(20, 16, 20, extraBottomPadding + 16),
       child: Container(
+        padding: const EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
           color: AppColors.surfaceVariant,
           borderRadius: BorderRadius.circular(24),

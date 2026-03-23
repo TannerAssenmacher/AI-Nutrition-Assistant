@@ -666,209 +666,225 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
           .toSet(),
       orElse: () => <String>{},
     );
+    final keyboardInset = MediaQuery.of(context).viewInsets.bottom;
+    final bottomSafeInset = MediaQuery.of(context).viewPadding.bottom;
+    final pageViewBottomNavHeight = 86.0 + bottomSafeInset;
+    final pageViewKeyboardLift =
+        (keyboardInset - pageViewBottomNavHeight).clamp(0.0, keyboardInset)
+            as double;
 
-    final bodyContent = SafeArea(
-      top: false,
-      bottom: false,
-      child: Column(
-        children: [
-          if (_suggestions.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: _suggestions
-                      .map(
-                        (suggestion) => ActionChip(
-                          label: Text(
-                            suggestion,
-                            style: const TextStyle(fontSize: 12),
+    final bodyContent = AnimatedPadding(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+      padding: EdgeInsets.only(
+        bottom: widget.isInPageView ? pageViewKeyboardLift : 0,
+      ),
+      child: SafeArea(
+        top: widget.isInPageView,
+        bottom: false,
+        minimum: EdgeInsets.only(top: widget.isInPageView ? 8 : 0),
+        child: Column(
+          children: [
+            if (_suggestions.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: _suggestions
+                        .map(
+                          (suggestion) => ActionChip(
+                            label: Text(
+                              suggestion,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            labelPadding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                            ),
+                            visualDensity: VisualDensity.compact,
+                            materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
+                            onPressed: () => _applySuggestion(suggestion),
                           ),
-                          labelPadding: const EdgeInsets.symmetric(
-                            horizontal: 4,
-                          ),
-                          visualDensity: VisualDensity.compact,
-                          materialTapTargetSize:
-                              MaterialTapTargetSize.shrinkWrap,
-                          onPressed: () => _applySuggestion(suggestion),
-                        ),
-                      )
-                      .toList(),
+                        )
+                        .toList(),
+                  ),
                 ),
               ),
+            // Loading indicator
+            if (_isLoading)
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: LinearProgressIndicator(minHeight: 2),
+              ),
+            // Error message
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      color: AppColors.warning,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _error!,
+                        style: TextStyle(
+                          color: AppColors.warning,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            // Results / Empty state
+            Expanded(
+              child: _results.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.search,
+                            size: 80,
+                            color: AppColors.borderLight,
+                          ),
+                          const SizedBox(height: 24),
+                          Text(
+                            _searchController.text.isEmpty
+                                ? 'Search for foods to add to your meal log!'
+                                : 'No Results Found',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: AppColors.textHint,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          if (_searchController.text.isEmpty) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              'Powered by fatsecret',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: AppColors.borderLight,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _results.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        final result = _results[index];
+                        final normalizedResultId = result.id.trim();
+                        final normalizedResultName = result.name
+                            .trim()
+                            .toLowerCase();
+                        final isFavorited =
+                            (normalizedResultId.isNotEmpty &&
+                                favoriteSourceIds.contains(
+                                  normalizedResultId,
+                                )) ||
+                            favoriteNames.contains(normalizedResultName);
+                        return _FoodSearchResultTile(
+                          result: result,
+                          onAdd: () => _addSearchResult(result),
+                          onFavorite: () => _addToFavorites(result),
+                          isFavorited: isFavorited,
+                        );
+                      },
+                    ),
             ),
-          // Loading indicator
-          if (_isLoading)
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: LinearProgressIndicator(minHeight: 2),
+            // FatSecret attribution + Search bar
+            Container(
+              width: double.infinity,
+              color: Colors.white,
+              padding: const EdgeInsets.only(top: 8),
+              child: const FatSecretAttribution(),
             ),
-          // Error message
-          if (_error != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            Container(
+              color: Colors.white,
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 4,
+                bottom: keyboardInset > 0 ? 8 : 16,
+              ),
               child: Row(
                 children: [
-                  Icon(Icons.info_outline, color: AppColors.warning, size: 20),
-                  const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      _error!,
-                      style: TextStyle(color: AppColors.warning, fontSize: 13),
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Search foods...',
+                        hintStyle: TextStyle(color: AppColors.textHint),
+                        prefixIcon: Icon(
+                          Icons.search,
+                          color: AppColors.textHint,
+                        ),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  _runSearch('');
+                                  setState(() {});
+                                },
+                              )
+                            : null,
+                        filled: true,
+                        fillColor: AppColors.surface,
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide: BorderSide(color: AppColors.borderLight),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide: BorderSide(color: AppColors.borderLight),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide: BorderSide(
+                            color: AppColors.brand,
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                      onChanged: (value) {
+                        setState(() {});
+                        _onSearchQueryChanged(value);
+                      },
+                      onSubmitted: (value) {
+                        _debounce?.cancel();
+                        FocusScope.of(context).unfocus();
+                        _runSearch(value, includeSuggestions: false);
+                      },
+                      onTapOutside: (_) => FocusScope.of(context).unfocus(),
                     ),
                   ),
                 ],
               ),
             ),
-          // Results / Empty state
-          Expanded(
-            child: _results.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.search,
-                          size: 80,
-                          color: AppColors.borderLight,
-                        ),
-                        const SizedBox(height: 24),
-                        Text(
-                          _searchController.text.isEmpty
-                              ? 'Search for foods to add to your meal log!'
-                              : 'No Results Found',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: AppColors.textHint,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        if (_searchController.text.isEmpty) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            'Powered by fatsecret',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: AppColors.borderLight,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _results.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      final result = _results[index];
-                      final normalizedResultId = result.id.trim();
-                      final normalizedResultName = result.name
-                          .trim()
-                          .toLowerCase();
-                      final isFavorited =
-                          (normalizedResultId.isNotEmpty &&
-                              favoriteSourceIds.contains(normalizedResultId)) ||
-                          favoriteNames.contains(normalizedResultName);
-                      return _FoodSearchResultTile(
-                        result: result,
-                        onAdd: () => _addSearchResult(result),
-                        onFavorite: () => _addToFavorites(result),
-                        isFavorited: isFavorited,
-                      );
-                    },
-                  ),
-          ),
-          // FatSecret attribution + Search bar
-          Container(
-            width: double.infinity,
-            color: Colors.white,
-            padding: const EdgeInsets.only(top: 8),
-            child: const FatSecretAttribution(),
-          ),
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.only(left: 16, right: 16, top: 4, bottom: 16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      hintText: 'Search foods...',
-                      hintStyle: TextStyle(color: AppColors.textHint),
-                      prefixIcon: Icon(
-                        Icons.search,
-                        color: AppColors.textHint,
-                      ),
-                      suffixIcon: _searchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear),
-                              onPressed: () {
-                                _searchController.clear();
-                                _runSearch('');
-                                setState(() {});
-                              },
-                            )
-                          : null,
-                      filled: true,
-                      fillColor: AppColors.surface,
-                      contentPadding: const EdgeInsets.symmetric(
-                        vertical: 12,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
-                        borderSide: BorderSide(color: AppColors.borderLight),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
-                        borderSide: BorderSide(color: AppColors.borderLight),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
-                        borderSide: BorderSide(
-                          color: AppColors.brand,
-                          width: 2,
-                        ),
-                      ),
-                    ),
-                    onChanged: (value) {
-                      setState(() {});
-                      _onSearchQueryChanged(value);
-                    },
-                    onSubmitted: (value) {
-                      _debounce?.cancel();
-                      FocusScope.of(context).unfocus();
-                      _runSearch(value, includeSuggestions: false);
-                    },
-                    onTapOutside: (_) => FocusScope.of(context).unfocus(),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.brand,
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.arrow_forward, color: Colors.white),
-                    onPressed: () {
-                      _debounce?.cancel();
-                      FocusScope.of(context).unfocus();
-                      _runSearch(
-                        _searchController.text,
-                        includeSuggestions: false,
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
 
@@ -877,13 +893,15 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
     }
 
     return Scaffold(
-      resizeToAvoidBottomInset: false,
+      resizeToAvoidBottomInset: true,
       backgroundColor: AppColors.background,
       body: bodyContent,
-      bottomNavigationBar: NavBar(
-        currentIndex: navIndexSearch,
-        onTap: (index) => handleNavTap(context, index),
-      ),
+      bottomNavigationBar: keyboardInset > 0
+          ? null
+          : NavBar(
+              currentIndex: navIndexSearch,
+              onTap: (index) => handleNavTap(context, index),
+            ),
     );
   }
 }
