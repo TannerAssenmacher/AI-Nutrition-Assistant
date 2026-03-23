@@ -62,6 +62,19 @@ class _DailyLogCalendarScreenState
     }
   }
 
+  String _goalRangeShortLabel(_GoalCompletionRange range) {
+    switch (range) {
+      case _GoalCompletionRange.lastWeek:
+        return '1w';
+      case _GoalCompletionRange.lastMonth:
+        return '1m';
+      case _GoalCompletionRange.lastYear:
+        return '1y';
+      case _GoalCompletionRange.lifetime:
+        return 'All';
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -1633,15 +1646,104 @@ class _DailyLogCalendarScreenState
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Center(
-                                child: Text(
-                                  'Goal Completion Rate',
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.textPrimary,
+                              Stack(
+                                children: [
+                                  const Align(
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      'Goal Completion Rate',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
                                   ),
-                                ),
+                                  Align(
+                                    alignment: Alignment.topRight,
+                                    child: Container(
+                                      width: 35,
+                                      height: 20,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 3,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.surfaceSubtle,
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(
+                                          color: AppColors.borderLight,
+                                        ),
+                                      ),
+                                      child: DropdownButtonHideUnderline(
+                                        child:
+                                            DropdownButton<
+                                              _GoalCompletionRange
+                                            >(
+                                              value: _goalCompletionRange,
+                                              isExpanded: true,
+                                              isDense: true,
+                                              iconSize: 10,
+                                              style: const TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w700,
+                                                color: AppColors.textPrimary,
+                                              ),
+                                              selectedItemBuilder: (context) {
+                                                return const [
+                                                  _GoalCompletionRange.lastWeek,
+                                                  _GoalCompletionRange
+                                                      .lastMonth,
+                                                  _GoalCompletionRange.lastYear,
+                                                ].map((range) {
+                                                  return Align(
+                                                    alignment:
+                                                        Alignment.centerLeft,
+                                                    child: Text(
+                                                      _goalRangeShortLabel(
+                                                        range,
+                                                      ),
+                                                      style: const TextStyle(
+                                                        fontSize: 11,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                        color: AppColors
+                                                            .textPrimary,
+                                                      ),
+                                                    ),
+                                                  );
+                                                }).toList();
+                                              },
+                                              items:
+                                                  const [
+                                                    _GoalCompletionRange
+                                                        .lastWeek,
+                                                    _GoalCompletionRange
+                                                        .lastMonth,
+                                                    _GoalCompletionRange
+                                                        .lastYear,
+                                                  ].map((range) {
+                                                    return DropdownMenuItem<
+                                                      _GoalCompletionRange
+                                                    >(
+                                                      value: range,
+                                                      child: Text(
+                                                        _goalRangeShortLabel(
+                                                          range,
+                                                        ),
+                                                      ),
+                                                    );
+                                                  }).toList(),
+                                              onChanged: (value) {
+                                                if (value == null) return;
+                                                setState(() {
+                                                  _goalCompletionRange = value;
+                                                });
+                                              },
+                                            ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                               const SizedBox(height: 10),
                               Text(
@@ -1725,107 +1827,6 @@ class _DailyLogCalendarScreenState
                                   ),
                                 ),
                               const SizedBox(height: 10),
-                              Align(
-                                alignment: Alignment.bottomRight,
-                                child: SizedBox(
-                                  width: 140,
-                                  height: 36,
-                                  child:
-                                      DropdownButtonFormField<
-                                        _GoalCompletionRange
-                                      >(
-                                        selectedItemBuilder: (context) {
-                                          final textStyle =
-                                              Theme.of(
-                                                context,
-                                              ).textTheme.labelMedium?.copyWith(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w600,
-                                                color: AppColors.textPrimary,
-                                              ) ??
-                                              const TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w600,
-                                                color: AppColors.textPrimary,
-                                              );
-                                          return _GoalCompletionRange.values
-                                              .map(
-                                                (range) => Text(
-                                                  _goalRangeLabel(range),
-                                                  style: textStyle,
-                                                ),
-                                              )
-                                              .toList();
-                                        },
-                                        value: _goalCompletionRange,
-                                        isExpanded: true,
-                                        decoration: InputDecoration(
-                                          isDense: true,
-                                          contentPadding:
-                                              const EdgeInsets.symmetric(
-                                                horizontal: 10,
-                                                vertical: 8,
-                                              ),
-                                          border: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                          ),
-                                        ),
-                                        style:
-                                            Theme.of(
-                                              context,
-                                            ).textTheme.labelMedium?.copyWith(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
-                                              color: AppColors.textPrimary,
-                                            ) ??
-                                            const TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
-                                              color: AppColors.textPrimary,
-                                            ),
-                                        items: _GoalCompletionRange.values
-                                            .map(
-                                              (range) =>
-                                                  DropdownMenuItem<
-                                                    _GoalCompletionRange
-                                                  >(
-                                                    value: range,
-                                                    child: Text(
-                                                      _goalRangeLabel(range),
-                                                      style:
-                                                          Theme.of(context)
-                                                              .textTheme
-                                                              .labelMedium
-                                                              ?.copyWith(
-                                                                fontSize: 12,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w600,
-                                                                color: AppColors
-                                                                    .textPrimary,
-                                                              ) ??
-                                                          const TextStyle(
-                                                            fontSize: 12,
-                                                            fontWeight:
-                                                                FontWeight.w600,
-                                                            color: AppColors
-                                                                .textPrimary,
-                                                          ),
-                                                    ),
-                                                  ),
-                                            )
-                                            .toList(),
-                                        onChanged: (value) {
-                                          if (value == null) return;
-                                          setState(() {
-                                            _goalCompletionRange = value;
-                                          });
-                                        },
-                                      ),
-                                ),
-                              ),
                             ],
                           ),
                         ),
@@ -3196,261 +3197,248 @@ class _FoodSearchResultTile extends StatelessWidget {
                     fontSize: 12,
                   ),
                 ),
-                        const SizedBox(height: 6),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 2,
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 2,
+                  children: [
+                    Text(
+                      'P ${(serving.proteinPerGram * serving.grams).toStringAsFixed(1)}g',
+                      style: TextStyle(color: AppColors.textHint, fontSize: 11),
+                    ),
+                    Text(
+                      'C ${(serving.carbsPerGram * serving.grams).toStringAsFixed(1)}g',
+                      style: TextStyle(color: AppColors.textHint, fontSize: 11),
+                    ),
+                    Text(
+                      'F ${(serving.fatPerGram * serving.grams).toStringAsFixed(1)}g',
+                      style: TextStyle(color: AppColors.textHint, fontSize: 11),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                onPressed: onFavorite,
+                tooltip: 'Add to favorites',
+                icon: const Icon(Icons.favorite_border),
+                color: AppColors.brand,
+              ),
+              ElevatedButton(
+                onPressed: onAdd,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.brand,
+                  foregroundColor: AppColors.surface,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: Text('Add', semanticsLabel: 'Add ${result.name}'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FavoriteMealsSheet extends ConsumerWidget {
+  final DateTime day;
+  final String userId;
+
+  const _FavoriteMealsSheet({required this.day, required this.userId});
+
+  String _itemSummary(FavoriteMeal meal) {
+    if (meal.items.isEmpty) return 'No items yet';
+    final names = meal.items.map((item) => item.name).toList();
+    if (names.length <= 3) return names.join(', ');
+    return '${names.take(3).join(', ')} +${names.length - 3} more';
+  }
+
+  Future<void> _logFavoriteMeal(
+    BuildContext context,
+    WidgetRef ref,
+    FavoriteMeal meal,
+  ) async {
+    if (meal.items.isEmpty) {
+      AppSnackBar.error(context, 'This favorite meal has no items yet.');
+      return;
+    }
+
+    final notifier = ref.read(firestoreFoodLogProvider(userId).notifier);
+    final now = DateTime.now();
+    final consumedAt = DateTime(
+      day.year,
+      day.month,
+      day.day,
+      now.hour,
+      now.minute,
+    );
+    int added = 0;
+
+    try {
+      for (final entry in meal.items) {
+        if (entry.grams <= 0) continue;
+        final imageUrl = entry.imageUrl?.trim() ?? '';
+        final imageUrlForLog =
+            imageUrl.isNotEmpty &&
+                FoodImageService.shouldShowImageForEntry(consumedAt)
+            ? imageUrl
+            : null;
+
+        final item = FoodItem(
+          id: 'favorite-${DateTime.now().microsecondsSinceEpoch}-$added',
+          name: entry.name,
+          mass_g: entry.grams,
+          calories_g: entry.caloriesPerGram,
+          protein_g: entry.proteinPerGram,
+          carbs_g: entry.carbsPerGram,
+          fat: entry.fatPerGram,
+          mealType: meal.mealType,
+          imageUrl: imageUrlForLog,
+          consumedAt: consumedAt,
+        );
+
+        await notifier.addFood(userId, item);
+        added++;
+      }
+    } catch (e) {
+      AppSnackBar.error(context, 'Failed to log favorite meal: $e');
+      return;
+    }
+
+    if (added == 0) {
+      AppSnackBar.error(context, 'No items were logged.');
+      return;
+    }
+
+    Navigator.of(context).pop(meal.name);
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final favoritesAsync = ref.watch(firestoreFavoriteMealsProvider(userId));
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+        top: 12,
+      ),
+      child: favoritesAsync.when(
+        data: (meals) {
+          if (meals.isEmpty) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(child: Text('No favorite meals yet.')),
+            );
+          }
+
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Favorite Meals',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 12),
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: meals.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 10),
+                itemBuilder: (context, index) {
+                  final meal = meals[index];
+                  return Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.borderLight),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
                           children: [
-                            Text(
-                              'P ${(serving.proteinPerGram * serving.grams).toStringAsFixed(1)}g',
-                              style: TextStyle(
-                                color: AppColors.textHint,
-                                fontSize: 11,
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    meal.name,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${meal.mealType} · ${meal.items.length} items',
+                                    style: TextStyle(
+                                      color: AppColors.textSecondary,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            Text(
-                              'C ${(serving.carbsPerGram * serving.grams).toStringAsFixed(1)}g',
-                              style: TextStyle(
-                                color: AppColors.textHint,
-                                fontSize: 11,
+                            ElevatedButton(
+                              onPressed: () =>
+                                  _logFavoriteMeal(context, ref, meal),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.brand,
+                                foregroundColor: AppColors.surface,
                               ),
-                            ),
-                            Text(
-                              'F ${(serving.fatPerGram * serving.grams).toStringAsFixed(1)}g',
-                              style: TextStyle(
-                                color: AppColors.textHint,
-                                fontSize: 11,
-                              ),
+                              child: const Text('Log meal'),
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        onPressed: onFavorite,
-                        tooltip: 'Add to favorites',
-                        icon: const Icon(Icons.favorite_border),
-                        color: AppColors.brand,
-                      ),
-                      ElevatedButton(
-                        onPressed: onAdd,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.brand,
-                          foregroundColor: AppColors.surface,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 10,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                        const SizedBox(height: 6),
+                        Text(
+                          _itemSummary(meal),
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
                           ),
                         ),
-                        child: Text('Add', semanticsLabel: 'Add ${result.name}'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            );
-          }
-        }
-
-        class _FavoriteMealsSheet extends ConsumerWidget {
-          final DateTime day;
-          final String userId;
-
-          const _FavoriteMealsSheet({required this.day, required this.userId});
-
-          String _itemSummary(FavoriteMeal meal) {
-            if (meal.items.isEmpty) return 'No items yet';
-            final names = meal.items.map((item) => item.name).toList();
-            if (names.length <= 3) return names.join(', ');
-            return '${names.take(3).join(', ')} +${names.length - 3} more';
-          }
-
-          Future<void> _logFavoriteMeal(
-            BuildContext context,
-            WidgetRef ref,
-            FavoriteMeal meal,
-          ) async {
-            if (meal.items.isEmpty) {
-              AppSnackBar.error(context, 'This favorite meal has no items yet.');
-              return;
-            }
-
-            final notifier = ref.read(firestoreFoodLogProvider(userId).notifier);
-            final now = DateTime.now();
-            final consumedAt = DateTime(
-              day.year,
-              day.month,
-              day.day,
-              now.hour,
-              now.minute,
-            );
-            int added = 0;
-
-            try {
-              for (final entry in meal.items) {
-                if (entry.grams <= 0) continue;
-                final imageUrl = entry.imageUrl?.trim() ?? '';
-                final imageUrlForLog = imageUrl.isNotEmpty &&
-                        FoodImageService.shouldShowImageForEntry(consumedAt)
-                    ? imageUrl
-                    : null;
-
-                final item = FoodItem(
-                  id: 'favorite-${DateTime.now().microsecondsSinceEpoch}-$added',
-                  name: entry.name,
-                  mass_g: entry.grams,
-                  calories_g: entry.caloriesPerGram,
-                  protein_g: entry.proteinPerGram,
-                  carbs_g: entry.carbsPerGram,
-                  fat: entry.fatPerGram,
-                  mealType: meal.mealType,
-                  imageUrl: imageUrlForLog,
-                  consumedAt: consumedAt,
-                );
-
-                await notifier.addFood(userId, item);
-                added++;
-              }
-            } catch (e) {
-              AppSnackBar.error(context, 'Failed to log favorite meal: $e');
-              return;
-            }
-
-            if (added == 0) {
-              AppSnackBar.error(context, 'No items were logged.');
-              return;
-            }
-
-            Navigator.of(context).pop(meal.name);
-          }
-
-          @override
-          Widget build(BuildContext context, WidgetRef ref) {
-            final favoritesAsync = ref.watch(firestoreFavoriteMealsProvider(userId));
-
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 16,
-                right: 16,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-                top: 12,
-              ),
-              child: favoritesAsync.when(
-                data: (meals) {
-                  if (meals.isEmpty) {
-                    return const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 24),
-                      child: Center(child: Text('No favorite meals yet.')),
-                    );
-                  }
-
-                  return Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Favorite Meals',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
-                      ),
-                      const SizedBox(height: 12),
-                      ListView.separated(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: meals.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 10),
-                        itemBuilder: (context, index) {
-                          final meal = meals[index];
-                          return Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: AppColors.surface,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: AppColors.borderLight,
-                              ),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            meal.name,
-                                            style: const TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            '${meal.mealType} · ${meal.items.length} items',
-                                            style: TextStyle(
-                                              color: AppColors.textSecondary,
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    ElevatedButton(
-                                      onPressed: () => _logFavoriteMeal(
-                                        context,
-                                        ref,
-                                        meal,
-                                      ),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: AppColors.brand,
-                                        foregroundColor: AppColors.surface,
-                                      ),
-                                      child: const Text('Log meal'),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  _itemSummary(meal),
-                                  style: TextStyle(
-                                    color: AppColors.textSecondary,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ],
+                      ],
+                    ),
                   );
                 },
-                loading: () => const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-                error: (error, _) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  child: Text(
-                    'Unable to load favorites: $error',
-                    style: TextStyle(color: AppColors.error),
-                  ),
-                ),
               ),
-            );
-          }
-        }
+            ],
+          );
+        },
+        loading: () => const Padding(
+          padding: EdgeInsets.symmetric(vertical: 24),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+        error: (error, _) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Text(
+            'Unable to load favorites: $error',
+            style: TextStyle(color: AppColors.error),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _MacroSummaryItem extends StatelessWidget {
   const _MacroSummaryItem({required this.label, required this.value});
@@ -4592,7 +4580,11 @@ class _IngredientsSection extends StatelessWidget {
                 children: [
                   const Padding(
                     padding: EdgeInsets.only(top: 8),
-                    child: Icon(Icons.circle, size: 10, color: AppColors.textPrimary),
+                    child: Icon(
+                      Icons.circle,
+                      size: 10,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(

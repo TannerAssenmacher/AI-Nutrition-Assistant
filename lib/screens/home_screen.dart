@@ -19,12 +19,6 @@ class HomeScreen extends ConsumerWidget {
 
   final bool isInPageView;
 
-  static const Color _screenBackground = AppColors.homeBackground;
-  static const Color _brandGreen = AppColors.homeBrand;
-  static const Color _proteinColor = AppColors.homeProtein;
-  static const Color _carbColor = AppColors.homeCarbs;
-  static const Color _fatColor = AppColors.homeFat;
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return _HomeScreenAnimated(isInPageView: isInPageView);
@@ -268,7 +262,7 @@ class _HomeScreenState extends ConsumerState<_HomeScreenAnimated>
 
     if (userId == null) {
       return Scaffold(
-        backgroundColor: HomeScreen._screenBackground,
+        backgroundColor: AppColors.homeBackground,
         body: const Center(child: CircularProgressIndicator()),
       );
     }
@@ -325,7 +319,7 @@ class _HomeScreenState extends ConsumerState<_HomeScreenAnimated>
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w700,
                   letterSpacing: -0.5,
-                  color: Colors.black,
+                  color: AppColors.homeTextPrimary,
                 ),
               ),
             ),
@@ -369,7 +363,7 @@ class _HomeScreenState extends ConsumerState<_HomeScreenAnimated>
     );
 
     return Scaffold(
-      backgroundColor: HomeScreen._screenBackground,
+      backgroundColor: AppColors.homeBackground,
       body: Stack(
         children: [
           Positioned.fill(child: bodyContent),
@@ -468,7 +462,7 @@ class _TopHeader extends StatelessWidget {
             fontSize: 20,
             fontWeight: FontWeight.w900,
             letterSpacing: 1.5,
-            color: HomeScreen._brandGreen,
+            color: AppColors.brand,
           ),
         ),
         Semantics(
@@ -512,9 +506,9 @@ class HomeMacroSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final chipColor = switch (metrics.calorieStatus) {
-      HomeCalorieStatus.over => const Color(0xFFFF3B30),
-      HomeCalorieStatus.nearGoal => const Color(0xFFFF9500),
-      HomeCalorieStatus.onTrack => HomeScreen._brandGreen,
+      HomeCalorieStatus.over => AppColors.protein,
+      HomeCalorieStatus.nearGoal => AppColors.carbs,
+      HomeCalorieStatus.onTrack => AppColors.brand,
     };
     final chipLabel = metrics.calorieDelta >= 0
         ? '${metrics.calorieDelta.round()} left'
@@ -627,7 +621,7 @@ class HomeMacroSummaryCard extends StatelessWidget {
                       semanticsLabel:
                           'Protein ${metrics.currentProtein.round()} of ${metrics.proteinGoal.round()} grams',
                       progress: metrics.proteinProgress,
-                      color: HomeScreen._proteinColor,
+                      color: AppColors.protein,
                       icon: Icons.fitness_center,
                     ),
                   ),
@@ -640,7 +634,7 @@ class HomeMacroSummaryCard extends StatelessWidget {
                       semanticsLabel:
                           'Carbs ${metrics.currentCarbs.round()} of ${metrics.carbsGoal.round()} grams',
                       progress: metrics.carbProgress,
-                      color: HomeScreen._carbColor,
+                      color: AppColors.carbs,
                       icon: Icons.grain,
                     ),
                   ),
@@ -653,7 +647,7 @@ class HomeMacroSummaryCard extends StatelessWidget {
                       semanticsLabel:
                           'Fat ${metrics.currentFat.round()} of ${metrics.fatGoal.round()} grams',
                       progress: metrics.fatProgress,
-                      color: HomeScreen._fatColor,
+                      color: AppColors.fat,
                       icon: Icons.opacity,
                     ),
                   ),
@@ -697,7 +691,7 @@ class _InsightCard extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: HomeScreen._brandGreen.withValues(alpha: 0.1),
+                  color: AppColors.brand.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Center(
@@ -730,12 +724,12 @@ class _InsightCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(7),
                   decoration: BoxDecoration(
-                    color: HomeScreen._brandGreen.withValues(alpha: 0.1),
+                    color: AppColors.brand.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
                     Icons.lightbulb,
-                    color: HomeScreen._brandGreen,
+                    color: AppColors.brand,
                     size: 20,
                   ),
                 ),
@@ -1032,7 +1026,7 @@ class _RecentMealCard extends StatelessWidget {
         title: Text(
           food.name,
           style: const TextStyle(
-            color: HomeScreen._brandGreen,
+            color: AppColors.brand,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -1093,18 +1087,18 @@ class _RecentMealCard extends StatelessWidget {
   static Color _mealAccentColor(FoodItem food) {
     final mealType = food.mealType.toLowerCase();
     if (mealType.contains('breakfast')) {
-      return const Color(0xFFFF9500);
+      return AppColors.carbs;
     }
     if (mealType.contains('lunch')) {
-      return HomeScreen._brandGreen;
+      return AppColors.brand;
     }
     if (mealType.contains('dinner')) {
-      return const Color(0xFF5856D6);
+      return AppColors.homeDinner;
     }
     if (mealType.contains('snack')) {
-      return const Color(0xFF007AFF);
+      return AppColors.fat;
     }
-    return const Color(0xFF9C27B0);
+    return AppColors.homeOtherMeal;
   }
 
   static String _emojiForFood(FoodItem food) {
@@ -1235,15 +1229,11 @@ class _FoodImagePreview extends StatelessWidget {
       return Container(
         height: height,
         decoration: BoxDecoration(
-          color: HomeScreen._brandGreen.withValues(alpha: 0.08),
+          color: AppColors.brand.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(10),
         ),
         alignment: Alignment.center,
-        child: const Icon(
-          Icons.restaurant,
-          color: HomeScreen._brandGreen,
-          size: 26,
-        ),
+        child: const Icon(Icons.restaurant, color: AppColors.brand, size: 26),
       );
     }
 
@@ -1326,12 +1316,12 @@ class _NoMealsPlaceholder extends StatelessWidget {
             width: 64,
             height: 64,
             decoration: BoxDecoration(
-              color: HomeScreen._brandGreen.withValues(alpha: 0.1),
+              color: AppColors.brand.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: const Icon(
               Icons.camera_alt_outlined,
-              color: HomeScreen._brandGreen,
+              color: AppColors.brand,
               size: 30,
             ),
           ),

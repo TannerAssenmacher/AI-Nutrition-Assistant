@@ -16,11 +16,11 @@ class NavItem extends StatelessWidget {
   final bool isActive;
   final VoidCallback onTap;
 
-  static const Color _activeColor = AppColors.homeBrand;
+  static const Color _activeColor = AppColors.navBar;
 
   @override
   Widget build(BuildContext context) {
-    final inactiveColor = Colors.grey.shade400;
+    const inactiveColor = AppColors.homeTextSecondary;
 
     return Semantics(
       label: label,

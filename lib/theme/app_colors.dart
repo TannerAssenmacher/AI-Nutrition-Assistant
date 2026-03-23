@@ -17,20 +17,19 @@ class AppColors {
   // static const Color caloriesCircle = Color(0xFF5F9735);
   // static const Color selectionColor = Color(0xFF6DCFF6);
 
-  // ── Shared app palette (WCAG AA compliant) ──
-  // These tokens are used across legacy/shared screens and must stay accessible
-  // for text, labels, and button foreground/background pairs.
-  static const Color brand = Color(0xFF256B2A);
-  static const Color background = Color(0xFFE9E7E4);
-  static const Color navBar = Color(0xFF1F5A24);
+  // ── Shared app palette (based on Home dashboard palette) ──
+  // These tokens are used across legacy/shared screens.
+  static const Color brand = Color(0xFF2B7030);
+  static const Color background = Color(0xFFF2F2F7);
+  static const Color navBar = Color(0xFF246A2A);
   static const Color topBar = Color(0xFF1F5A24);
   static const Color secondary = brand;
   static const Color accent = Color(0xFF8F4A1A);
-  static const Color protein = Color(0xFFC2482B);
-  static const Color carbs = Color(0xFF875C00);
-  static const Color fat = Color(0xFF3A6FB8);
+  static const Color protein = Color(0xFFFF3B30);
+  static const Color carbs = Color(0xFFA29500);
+  static const Color fat = Color(0xFF007AFF);
   static const Color accentBrown = Color(0xFF212121);
-  static const Color inputFill = Color(0xFFECEBEA);
+  static const Color inputFill = Color(0xFFF8F9FA);
   static const Color streakBackground = Color(0xFFFFF3E0);
   static const Color caloriesCircle = brand;
   static const Color selectionColor = Color(0xFF006E8C);
@@ -46,6 +45,8 @@ class AppColors {
   static const Color homeProtein = Color(0xFFFF3B30);
   static const Color homeCarbs = Color(0xFFFF9500);
   static const Color homeFat = Color(0xFF007AFF);
+  static const Color homeDinner = Color(0xFF5856D6);
+  static const Color homeOtherMeal = Color(0xFF9C27B0);
   static const Color homeCard = Color(0xFFFFFFFF);
   static const Color homeSubtleSurface = Color(0xFFF8F9FA);
   static const Color homeDivider = Color(0xFFE5E5EA);

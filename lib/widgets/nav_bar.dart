@@ -19,13 +19,13 @@ class NavBar extends StatelessWidget {
       // system navigation insets.
       height: 86 + bottomInset,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.95),
+        color: AppColors.surface.withValues(alpha: 0.95),
         border: Border(
-          top: BorderSide(color: Colors.grey.shade300, width: 0.5),
+          top: const BorderSide(color: AppColors.homeDivider, width: 0.5),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: AppColors.black.withValues(alpha: 0.03),
             blurRadius: 20,
             offset: const Offset(0, -5),
           ),
@@ -82,7 +82,7 @@ class _HomeButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fillColor = isSelected ? AppColors.homeBrand : Colors.black;
+    final fillColor = isSelected ? AppColors.homeBrand : AppColors.textPrimary;
 
     return Semantics(
       label: 'Home',
@@ -107,7 +107,11 @@ class _HomeButton extends StatelessWidget {
               ),
             ],
           ),
-          child: const Icon(Icons.home_filled, color: Colors.white, size: 25),
+          child: const Icon(
+            Icons.home_filled,
+            color: AppColors.surface,
+            size: 25,
+          ),
         ),
       ),
     );
