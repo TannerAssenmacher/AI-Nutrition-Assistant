@@ -91,7 +91,7 @@ class _MacroSliderState extends State<MacroSlider> {
                     macroKey: 'protein',
                     label: 'Protein',
                     percentage: _proteinPercent,
-                    color: AppColors.homeProtein,
+                    color: AppColors.protein,
                   ),
                 ),
                 Expanded(
@@ -99,7 +99,7 @@ class _MacroSliderState extends State<MacroSlider> {
                     macroKey: 'carbs',
                     label: 'Carbs',
                     percentage: _carbPercent,
-                    color: AppColors.homeCarbs,
+                    color: AppColors.carbs,
                   ),
                 ),
                 Expanded(
@@ -107,7 +107,7 @@ class _MacroSliderState extends State<MacroSlider> {
                     macroKey: 'fats',
                     label: 'Fats',
                     percentage: _fatPercent,
-                    color: AppColors.homeFat,
+                    color: AppColors.fat,
                   ),
                 ),
               ],
@@ -148,7 +148,7 @@ class _MacroSliderState extends State<MacroSlider> {
                           height: 10,
                           width: handle1X,
                           decoration: BoxDecoration(
-                            color: AppColors.homeProtein,
+                            color: AppColors.protein,
                             borderRadius: const BorderRadius.horizontal(
                               left: Radius.circular(5),
                             ),
@@ -161,7 +161,7 @@ class _MacroSliderState extends State<MacroSlider> {
                         child: Container(
                           height: 10,
                           width: handle2X - handle1X,
-                          color: AppColors.homeCarbs,
+                          color: AppColors.carbs,
                         ),
                       ),
                       // Fats
@@ -171,7 +171,7 @@ class _MacroSliderState extends State<MacroSlider> {
                           height: 10,
                           width: _width - handle2X,
                           decoration: BoxDecoration(
-                            color: AppColors.homeFat,
+                            color: AppColors.fat,
                             borderRadius: const BorderRadius.horizontal(
                               right: Radius.circular(5),
                             ),
