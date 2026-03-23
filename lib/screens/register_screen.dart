@@ -370,16 +370,26 @@ class _RegisterPageState extends State<RegisterPage> {
       // Send verification email
       await userAuth.sendEmailVerification();
 
-      // Fully sign out after registration so user must log in explicitly
-      await FirebaseAuth.instance.signOut();
-
-      // Done
+      // Show verification dialog that polls until the user clicks the link
       if (mounted) {
-        AppSnackBar.success(
-          context,
-          'Account created! Check your email for verification.',
-        );
-        Navigator.pushReplacementNamed(context, '/login');
+        final verified = await _showEmailVerificationDialog(userAuth);
+        if (verified) {
+          // User verified — go straight to home
+          if (mounted) {
+            Navigator.pushReplacementNamed(context, '/home');
+            AppSnackBar.success(context, 'Email verified! Welcome to WiserBites!');
+          }
+        } else {
+          // User cancelled — sign out and send to login
+          await FirebaseAuth.instance.signOut();
+          if (mounted) {
+            AppSnackBar.success(
+              context,
+              'Account created! Check your email for verification.',
+            );
+            Navigator.pushReplacementNamed(context, '/login');
+          }
+        }
       }
     } on FirebaseAuthException catch (e) {
       debugPrint('Firebase Auth error: ${e.code}');
@@ -409,6 +419,67 @@ class _RegisterPageState extends State<RegisterPage> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  // Show verification dialog that polls until the user verifies their email.
+  // Returns true if verified, false if the user cancelled.
+  Future<bool> _showEmailVerificationDialog(User user) async {
+    bool isVerified = false;
+    bool stopChecking = false;
+
+    Future<void> checkVerificationStatus() async {
+      while (!stopChecking && !isVerified) {
+        await Future.delayed(const Duration(seconds: 4));
+        try {
+          await user.reload();
+          final refreshed = FirebaseAuth.instance.currentUser;
+          if (refreshed != null && refreshed.emailVerified) {
+            isVerified = true;
+            stopChecking = true;
+            if (mounted) {
+              Navigator.pop(context); // close the dialog
+            }
+            break;
+          }
+        } catch (_) {
+          // Ignore reload errors and keep polling
+        }
+      }
+    }
+
+    checkVerificationStatus();
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Verify Your Email'),
+        content: const Text(
+          'We sent a verification email to your inbox. '
+          'Once you verify it, this screen will automatically continue.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await user.sendEmailVerification();
+              if (context.mounted) {
+                AppSnackBar.success(context, 'Verification email sent again!');
+              }
+            },
+            child: const Text('Resend Email'),
+          ),
+          TextButton(
+            onPressed: () {
+              stopChecking = true;
+              Navigator.pop(context);
+            },
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+    stopChecking = true;
+    return isVerified;
   }
 
   //update macros accordingly if text is too big
