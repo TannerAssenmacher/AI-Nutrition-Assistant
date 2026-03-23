@@ -82,6 +82,43 @@ RULES FOR MODIFIED RECIPES:
 - Include all required fields: id, label, cuisine, ingredients (as array), calories, protein, carbs, fat, fiber, sugar, sodium, servings, readyInMinutes, instructions, imageUrl
 - For questions or general responses (not presenting a recipe), use plain text as normal''';
 
+  /// Convert an activityLevel value (which may be a numeric multiplier stored
+  /// as a string like "1.375", or already a label like "Moderately Active")
+  /// into a human-readable label for the chat prompt.
+  static String _activityLevelLabel(String raw) {
+    final value = double.tryParse(raw);
+    if (value == null) {
+      // Already a label string (from register screen)
+      return raw.isEmpty ? 'unknown' : raw;
+    }
+    if (value <= 1.0) return 'Completely Sedentary';
+    if (value <= 1.25) return 'Basic Daily Activity';
+    if (value <= 1.45) return 'Lightly Active';
+    if (value <= 1.65) return 'Moderately Active';
+    if (value <= 1.8) return 'Very Active';
+    return 'Daily Athlete';
+  }
+
+  /// Convert a dietaryGoal value (which may be a slider index stored as a
+  /// string like "0.0", or already a label like "Weight Loss") into a label.
+  static const _dietGoals = [
+    'Large Weight Loss',
+    'Weight Loss',
+    'Weight Maintenance',
+    'Muscle Growth',
+    'Large Muscle Growth',
+  ];
+
+  static String _dietaryGoalLabel(String raw) {
+    final value = double.tryParse(raw);
+    if (value == null) {
+      return raw.isEmpty ? 'unknown' : raw;
+    }
+    final index = value.toInt();
+    if (index >= 0 && index < _dietGoals.length) return _dietGoals[index];
+    return 'unknown';
+  }
+
   //build() initial state
   @override
   List<ChatMessage> build() {
@@ -642,14 +679,32 @@ Return ONLY valid JSON like: {"meal_type": "dinner", "cuisine_type": "italian"}
               ? ((DateTime.now().difference(appUser.dob!).inDays) / 365.25)
                     .floor()
               : null;
+
+          // activityLevel may be a numeric multiplier stored as a string
+          // (e.g. "1.375") from the profile slider. Convert to a label.
+          final activityLabel = _activityLevelLabel(appUser.activityLevel);
+
+          // Height is stored in cm; convert to feet/inches for the prompt.
+          final heightCm = appUser.height;
+          final totalInches = heightCm / 2.54;
+          final feet = totalInches ~/ 12;
+          final inches = (totalInches % 12).round();
+          final heightStr = heightCm > 0
+              ? "$feet'$inches\""
+              : 'unknown';
+
+          final weightStr = appUser.weight > 0
+              ? '${appUser.weight} lbs'
+              : 'unknown';
+
           profileContext =
               '''
     User profile:
     - Sex: ${appUser.sex}, Age: ${age ?? 'unknown'}
-    - Activity level: ${appUser.activityLevel}
-    - Height: ${appUser.height} in, Weight: ${appUser.weight} lbs
+    - Activity level: $activityLabel
+    - Height: $heightStr, Weight: $weightStr
     - Daily calorie goal: ${mp.dailyCalorieGoal} calories
-    - Dietary goal: ${mp.dietaryGoal}
+    - Dietary goal: ${_dietaryGoalLabel(mp.dietaryGoal)}
     - Macro goals: Protein ${mp.macroGoals['protein']?.round() ?? 20}%, Carbs ${mp.macroGoals['carbs']?.round() ?? 50}%, Fat ${mp.macroGoals['fat']?.round() ?? 30}%
     - Dietary habits: ${mp.dietaryHabits.where((h) => h.trim().isNotEmpty && h.toLowerCase() != 'none').join(', ')}
     - Health restrictions: ${mp.healthRestrictions.where((r) => r.trim().isNotEmpty && r.toLowerCase() != 'none').join(', ')}

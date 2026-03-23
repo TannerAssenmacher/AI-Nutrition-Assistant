@@ -49,13 +49,18 @@ class FirestoreHelper {
       data['height'] = (data['height'] as num?)?.toDouble() ?? 0.0;
       data['weight'] = (data['weight'] as num?)?.toDouble() ?? 0.0;
       data['sex'] = data['sex'] as String? ?? '';
-      data['activityLevel'] = data['activityLevel'] as String? ?? '';
+      // activityLevel may be a double (profile slider) or String (register).
+      // Preserve the raw value as a String so AppUser can deserialise it.
+      final rawAL = data['activityLevel'];
+      data['activityLevel'] = rawAL?.toString() ?? '';
 
       final mp = data['mealProfile'];
       if (mp is Map<String, dynamic>) {
         mp['dailyCalorieGoal'] =
             (mp['dailyCalorieGoal'] as num?)?.toInt() ?? 0;
-        mp['dietaryGoal'] = mp['dietaryGoal'] as String? ?? '';
+        // dietaryGoal may be a double (profile slider) or String (register).
+        final rawDG = mp['dietaryGoal'];
+        mp['dietaryGoal'] = rawDG?.toString() ?? '';
         mp['dietaryHabits'] = mp['dietaryHabits'] ?? <String>[];
         mp['healthRestrictions'] = mp['healthRestrictions'] ?? <String>[];
         mp['macroGoals'] = mp['macroGoals'] ??
