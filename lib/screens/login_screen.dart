@@ -209,7 +209,7 @@ class _LoginPageState extends State<LoginPage> {
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: Container(
                         width: double.infinity,
-                        height: MediaQuery.of(context).size.height * 0.46,
+                        height: MediaQuery.of(context).size.height * 0.55,
                         constraints: const BoxConstraints(maxWidth: 520),
                         padding: EdgeInsets.fromLTRB(
                           24, 24, 24, 24
@@ -333,7 +333,7 @@ class _LoginPageState extends State<LoginPage> {
                                   ),
                                 ),
                               ],
-                               SizedBox(height: 24),
+                               SizedBox(height: 15),
                               _isLoading
                                   ? Center(
                                       child: CircularProgressIndicator(),
@@ -347,7 +347,7 @@ class _LoginPageState extends State<LoginPage> {
                                         ),
                                         minimumSize: Size(
                                           double.infinity,
-                                          70,
+                                          45,
                                         ),
                                       ),
                                       child: Text(
@@ -356,11 +356,11 @@ class _LoginPageState extends State<LoginPage> {
                                           fontSize: (screenHeight * 0.024)
                                               .clamp(18.0, 24.0)
                                               .toDouble(),
-                                          color: AppColors.homeCard,
+                                          color:  AppColors.homeCard,
                                         ),
                                       ),
                                     ),
-                              const SizedBox(height: 24),
+                              const SizedBox(height: 15),
                               TextButton(
                                 onPressed: () =>
                                     Navigator.pushNamed(context, '/forgot'),
