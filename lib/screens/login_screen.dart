@@ -176,6 +176,268 @@ class _LoginPageState extends State<LoginPage> {
     final titleFontSize = (screenHeight * 0.03).clamp(24.0, 30.0).toDouble();
     final linkFontSize = (screenHeight * 0.022).clamp(16.0, 22.0).toDouble();
 
+  return Scaffold(
+  backgroundColor: AppColors.homeBackground,
+  resizeToAvoidBottomInset: false,
+  body: SafeArea(
+    child: Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            keyboardDismissBehavior:
+                ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: const EdgeInsets.symmetric(
+              vertical: StyleGuideline.cardPadding,
+            ),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 520),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    children: [
+        
+                      SizedBox(
+                        height: logoHeight,
+                        child: Image.asset(
+                          'lib/assets/icons/WISERBITES.png',
+                          fit: BoxFit.contain,
+                          color: AppColors.homeBrand,
+                          colorBlendMode: BlendMode.srcIn,
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      /// CARD
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: AppColors.homeCard,
+                          borderRadius: BorderRadius.circular(
+                            StyleGuideline.cardBorderRadius,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color:
+                                  AppColors.black.withOpacity(0.08),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            crossAxisAlignment:
+                                CrossAxisAlignment.stretch,
+                            children: [
+                              /// TITLE
+                              Text(
+                                'Welcome to\nWiserBites',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: titleFontSize,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+
+                              const SizedBox(height: 24),
+
+                              /// EMAIL
+                              TextFormField(
+                                controller: _emailController,
+                                keyboardType:
+                                    TextInputType.emailAddress,
+                                textInputAction:
+                                    TextInputAction.next,
+                                onTap: _clearErrorOnType,
+                                decoration: InputDecoration(
+                                  hintText: 'Email',
+                                  prefixIcon: Icon(
+                                    Icons.email,
+                                    color: AppColors.textHint,
+                                  ),
+                                  filled: true,
+                                  fillColor: AppColors.inputFill,
+                                  border: OutlineInputBorder(
+                                    borderRadius:
+                                        BorderRadius.circular(
+                                      StyleGuideline
+                                          .inputFieldBorderRadius,
+                                    ),
+                                  ),
+                                ),
+                                validator: (value) =>
+                                    (value == null ||
+                                            value.isEmpty)
+                                        ? 'Please enter your email'
+                                        : null,
+                              ),
+
+                              const SizedBox(height: 16),
+
+                              /// PASSWORD
+                              TextFormField(
+                                controller: _passwordController,
+                                obscureText: true,
+                                textInputAction:
+                                    TextInputAction.done,
+                                onFieldSubmitted: (_) => _login(),
+                                decoration: InputDecoration(
+                                  hintText: 'Password',
+                                  prefixIcon: Icon(
+                                    Icons.lock,
+                                    color: AppColors.textHint,
+                                  ),
+                                  filled: true,
+                                  fillColor: AppColors.inputFill,
+                                  border: OutlineInputBorder(
+                                    borderRadius:
+                                        BorderRadius.circular(
+                                      StyleGuideline
+                                          .inputFieldBorderRadius,
+                                    ),
+                                  ),
+                                ),
+                                validator: (value) =>
+                                    (value == null ||
+                                            value.isEmpty)
+                                        ? 'Please enter your password'
+                                        : null,
+                              ),
+
+                              if (_error != null) ...[
+                                const SizedBox(height: 12),
+                                Text(
+                                  _error!,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: AppColors.error,
+                                  ),
+                                ),
+                              ],
+
+                              const SizedBox(height: 24),
+
+                              /// BUTTON
+                              _isLoading
+                                  ? const Center(
+                                      child:
+                                          CircularProgressIndicator(),
+                                    )
+                                  : ElevatedButton(
+                                      onPressed: _login,
+                                      style:
+                                          ElevatedButton.styleFrom(
+                                        backgroundColor:
+                                            AppColors.homeBrand,
+                                        minimumSize:
+                                            const Size(
+                                                double.infinity,
+                                                55),
+                                        shape:
+                                            RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(
+                                            StyleGuideline
+                                                .inputFieldBorderRadius,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        'Sign In',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          color:
+                                              AppColors.homeCard,
+                                        ),
+                                      ),
+                                    ),
+
+                              const SizedBox(height: 16),
+
+                              /// FORGOT
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.pushNamed(
+                                        context, '/forgot'),
+                                child: Text(
+                                  'Forgot Password?',
+                                  style: TextStyle(
+                                    fontSize: linkFontSize,
+                                    color:
+                                        AppColors.blueLink,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+
+        /// FOOTER (this part was already good 👍)
+        Divider(
+          color: AppColors.borderLight,
+          thickness: 1,
+          height: 1,
+        ),
+        Container(
+          constraints: const BoxConstraints(minHeight: 100),
+          width: double.infinity,
+          color: AppColors.homeBackground,
+          padding: EdgeInsets.only(
+            top: 25,
+            bottom: 25 + MediaQuery.of(context).padding.bottom,
+            left: 20,
+            right: 20,
+          ),
+          child: Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              Text(
+                "Don't have an account?",
+                style: TextStyle(
+                  fontSize: linkFontSize,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.accentBrown,
+                ),
+              ),
+              GestureDetector(
+                onTap: () =>
+                    Navigator.pushNamed(context, '/register'),
+                child: Text(
+                  "Sign Up.",
+                  style: TextStyle(
+                    fontSize: linkFontSize,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.blueLink,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const FatSecretAttribution(showBadge: true),
+            ],
+          ),
+        ),
+      ],
+    ),
+  ),
+);
+  }
+}
+/*
     return Scaffold(
       backgroundColor: AppColors.homeBackground,
       resizeToAvoidBottomInset: false,
@@ -209,7 +471,7 @@ class _LoginPageState extends State<LoginPage> {
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: Container(
                         width: double.infinity,
-                        height: MediaQuery.of(context).size.height * 0.55,
+                        height: MediaQuery.of(context).size.height * 0.46,
                         constraints: const BoxConstraints(maxWidth: 520),
                         padding: EdgeInsets.fromLTRB(
                           24, 24, 24, 24
@@ -333,7 +595,7 @@ class _LoginPageState extends State<LoginPage> {
                                   ),
                                 ),
                               ],
-                               SizedBox(height: 15),
+                               SizedBox(height: 24),
                               _isLoading
                                   ? Center(
                                       child: CircularProgressIndicator(),
@@ -347,7 +609,7 @@ class _LoginPageState extends State<LoginPage> {
                                         ),
                                         minimumSize: Size(
                                           double.infinity,
-                                          45,
+                                          70,
                                         ),
                                       ),
                                       child: Text(
@@ -356,11 +618,11 @@ class _LoginPageState extends State<LoginPage> {
                                           fontSize: (screenHeight * 0.024)
                                               .clamp(18.0, 24.0)
                                               .toDouble(),
-                                          color:  AppColors.homeCard,
+                                          color: AppColors.homeCard,
                                         ),
                                       ),
                                     ),
-                              const SizedBox(height: 15),
+                              const SizedBox(height: 24),
                               TextButton(
                                 onPressed: () =>
                                     Navigator.pushNamed(context, '/forgot'),
@@ -432,3 +694,4 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 }
+*/
