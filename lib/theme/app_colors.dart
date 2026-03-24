@@ -41,7 +41,7 @@ class AppColors {
   // These mirror the redesigned home screen so the rest of the team can reuse
   // the same visual language without relying on scattered hardcoded colors.
   static const Color homeBackground = Color(0xFFF2F2F7);
-  static const Color homeBrand = Color(0xFF34C759);
+  static const Color homeBrand = Color(0xFF2B7030); // used to be 0xFF34C759
   static const Color homeProtein = Color(0xFFFF3B30);
   static const Color homeCarbs = Color(0xFFFF9500);
   static const Color homeFat = Color(0xFF007AFF);
