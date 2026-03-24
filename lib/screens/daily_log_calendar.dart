@@ -218,6 +218,7 @@ class _DailyLogCalendarScreenState
             imageUrl: imageUrl,
             consumedAt: item.consumedAt,
             servings: item.servings,
+            ingredients: item.ingredients,
           ),
         );
       }
@@ -2007,6 +2008,7 @@ class _AddFoodModalState extends ConsumerState<_AddFoodModal> {
       if (!mounted) return;
       final messenger = ScaffoldMessenger.of(context);
       Navigator.pop(context);
+      FocusManager.instance.primaryFocus?.unfocus();
       AppSnackBar.successFrom(messenger, 'Added "$name"');
     } catch (e) {
       if (mounted) {
@@ -2041,6 +2043,7 @@ class _AddFoodModalState extends ConsumerState<_AddFoodModal> {
 
     final messenger = ScaffoldMessenger.of(rootContext);
     Navigator.pop(rootContext);
+    FocusManager.instance.primaryFocus?.unfocus();
     AppSnackBar.successFrom(messenger, 'Added "${result.name}"');
   }
 
@@ -3030,6 +3033,10 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
               ),
             ],
           ),
+          if (widget.row.ingredients != null &&
+              widget.row.ingredients!.isNotEmpty &&
+              !_isEditing)
+            _IngredientsList(ingredients: widget.row.ingredients!),
           if (_isEditing) ...[
             const SizedBox(height: 12),
             Row(
@@ -3063,6 +3070,92 @@ class _EditableFoodCardState extends State<_EditableFoodCard> {
           ],
         ],
       ),
+    );
+  }
+}
+
+class _IngredientsList extends StatefulWidget {
+  final List<Map<String, dynamic>> ingredients;
+  const _IngredientsList({required this.ingredients});
+
+  @override
+  State<_IngredientsList> createState() => _IngredientsListState();
+}
+
+class _IngredientsListState extends State<_IngredientsList> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 6),
+        GestureDetector(
+          onTap: () => setState(() => _expanded = !_expanded),
+          child: Row(
+            children: [
+              Icon(
+                _expanded ? Icons.expand_less : Icons.expand_more,
+                size: 18,
+                color: AppColors.warmDark,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                '${widget.ingredients.length} ingredients',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.warmDark,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (_expanded) ...[
+          const SizedBox(height: 6),
+          ...widget.ingredients.map((ing) {
+            final name = ing['name'] as String? ?? '';
+            final mass = (ing['mass_g'] as num?)?.toDouble() ?? 0;
+            final cal = (ing['calories'] as num?)?.toDouble() ?? 0;
+            return Padding(
+              padding: const EdgeInsets.only(left: 8, bottom: 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      name,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.mealText,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${mass.toStringAsFixed(0)}g',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.warmDark,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${cal.toStringAsFixed(0)} cal',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.caloriesCircle,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ],
     );
   }
 }
@@ -3617,6 +3710,7 @@ class _FoodRow {
   final String? imageUrl;
   final DateTime consumedAt;
   final double? servings;
+  final List<Map<String, dynamic>>? ingredients;
 
   const _FoodRow({
     required this.id,
@@ -3632,6 +3726,7 @@ class _FoodRow {
     this.imageUrl,
     required this.consumedAt,
     this.servings,
+    this.ingredients,
   });
 
   _FoodRow copyWith({

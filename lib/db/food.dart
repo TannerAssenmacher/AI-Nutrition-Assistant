@@ -31,6 +31,10 @@ class FoodItem {
 
   final double? servings;
 
+  /// Optional list of ingredient sub-items (for photo-analyzed meals).
+  /// Each map contains: name, mass_g, calories, protein, carbs, fat.
+  final List<Map<String, dynamic>>? ingredients;
+
   FoodItem({
     required this.id,
     required this.name,
@@ -43,6 +47,7 @@ class FoodItem {
     this.imageUrl,
     required this.consumedAt,
     this.servings,
+    this.ingredients,
   });
 
   factory FoodItem.fromJson(Map<String, dynamic> json) =>

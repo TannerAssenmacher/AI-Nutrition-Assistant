@@ -452,47 +452,57 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
               FoodImageService.shouldShowImageForEntry(now)
           ? cachedImageUrl
           : null;
-      int added = 0;
 
-      for (final food in analysis.foods) {
-        if (food.mass <= 0) {
-          continue;
+      // Filter out items with no mass.
+      final validFoods = analysis.foods.where((f) => f.mass > 0).toList();
+      if (validFoods.isEmpty) {
+        if (mounted) {
+          AppSnackBar.error(context, 'No items added (missing weights).');
         }
-
-        final mass = food.mass;
-        final caloriesPerGram = food.calories / mass;
-        final proteinPerGram = food.protein / mass;
-        final carbsPerGram = food.carbs / mass;
-        final fatPerGram = food.fat / mass;
-
-        final item = FoodItem(
-          id: '${now.microsecondsSinceEpoch}-$added',
-          name: food.name,
-          mass_g: mass,
-          calories_g: caloriesPerGram,
-          protein_g: proteinPerGram,
-          carbs_g: carbsPerGram,
-          fat: fatPerGram,
-          mealType: 'meal',
-          imageUrl: imageUrlForLog,
-          consumedAt: now,
-        );
-        notifier.addFoodItem(item);
-        await firestoreLog.addFood(userId, item);
-
-        added++;
+        return;
       }
+
+      // Combine all analyzed items into one meal entry.
+      final totalMass = validFoods.fold<double>(0, (s, f) => s + f.mass);
+      final totalCalories = validFoods.fold<double>(0, (s, f) => s + f.calories);
+      final totalProtein = validFoods.fold<double>(0, (s, f) => s + f.protein);
+      final totalCarbs = validFoods.fold<double>(0, (s, f) => s + f.carbs);
+      final totalFat = validFoods.fold<double>(0, (s, f) => s + f.fat);
+
+      // Build ingredient list for display in the daily log.
+      final ingredientsList = validFoods.map((f) => <String, dynamic>{
+        'name': f.name,
+        'mass_g': f.mass,
+        'calories': f.calories,
+        'protein': f.protein,
+        'carbs': f.carbs,
+        'fat': f.fat,
+      }).toList();
+
+      final mealName = analysis.displayTitle;
+
+      final item = FoodItem(
+        id: '${now.microsecondsSinceEpoch}-0',
+        name: mealName,
+        mass_g: totalMass,
+        calories_g: totalCalories / totalMass,
+        protein_g: totalProtein / totalMass,
+        carbs_g: totalCarbs / totalMass,
+        fat: totalFat / totalMass,
+        mealType: 'meal',
+        imageUrl: imageUrlForLog,
+        consumedAt: now,
+        ingredients: validFoods.length > 1 ? ingredientsList : null,
+      );
+      notifier.addFoodItem(item);
+      await firestoreLog.addFood(userId, item);
 
       if (!mounted) return;
 
-      final message = added > 0
-          ? 'Added $added item${added == 1 ? '' : 's'} to today.'
-          : 'No items added (missing weights).';
-
-      AppSnackBar.success(context, message);
+      AppSnackBar.success(context, 'Added "$mealName" to today.');
 
       // Navigate back to home after successfully adding to calendar.
-      if (added > 0 && widget.onNavigateHome != null) {
+      if (widget.onNavigateHome != null) {
         widget.onNavigateHome!();
       }
     } finally {

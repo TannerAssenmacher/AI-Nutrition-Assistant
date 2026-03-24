@@ -57,13 +57,15 @@ class AnalyzedFoodItem {
 
 /// Collection of analyzed foods with convenience totals.
 class MealAnalysis {
+  final String? title;
   final List<AnalyzedFoodItem> foods;
 
-  MealAnalysis({required this.foods});
+  MealAnalysis({this.title, required this.foods});
 
   factory MealAnalysis.fromJson(Map<String, dynamic> json) {
     final foodsList = json['f'] as List<dynamic>? ?? [];
     return MealAnalysis(
+      title: json['t'] as String?,
       foods: foodsList
           .map((item) =>
               AnalyzedFoodItem.fromJson((item as Map).cast<String, dynamic>()))
@@ -73,8 +75,19 @@ class MealAnalysis {
 
   Map<String, dynamic> toJson() {
     return {
+      if (title != null) 't': title,
       'f': foods.map((food) => food.toJson()).toList(),
     };
+  }
+
+  /// Returns the meal title, or generates one from ingredient names.
+  String get displayTitle {
+    if (title != null && title!.trim().isNotEmpty) return title!;
+    if (foods.isEmpty) return 'Meal';
+    if (foods.length == 1) return foods.first.name;
+    final names = foods.map((f) => f.name).toList();
+    if (names.length <= 2) return names.join(' & ');
+    return '${names.sublist(0, names.length - 1).join(', ')} & ${names.last}';
   }
 
   double get totalMass =>
@@ -207,7 +220,7 @@ class MealAnalysisService {
       );
     }).toList();
 
-    return MealAnalysis(foods: normalizedFoods);
+    return MealAnalysis(title: analysis.title, foods: normalizedFoods);
   }
 
   double _clampNonNegative(double value) {

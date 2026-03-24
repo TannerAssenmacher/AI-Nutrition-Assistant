@@ -588,6 +588,7 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
                       }
                       final messenger = ScaffoldMessenger.of(rootContext);
                       Navigator.pop(dialogContext);
+                      FocusManager.instance.primaryFocus?.unfocus();
                       final dateText =
                           selectedDate.day == DateTime.now().day &&
                               selectedDate.month == DateTime.now().month &&

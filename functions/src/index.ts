@@ -914,7 +914,8 @@ export const analyzeMealImage = onCall(
                     text: 'You are a nutrition expert. Analyze meal images and return ONLY valid JSON. '
                       + 'THINK STEP-BY-STEP (internally) BEFORE ANSWERING: identify foods → determine mass → derive per-gram macros → scale to mass → compute calories with 4/4/9 → sanity-check totals. '
                       + 'DO NOT return your reasoning, only the final JSON. '
-                      + 'OUTPUT FORMAT: {"f":[{"n":"food name","m":grams,"k":calories,"p":protein_g,"c":carbs_g,"a":fat_g}]} '
+                      + 'OUTPUT FORMAT: {"t":"short meal title","f":[{"n":"food name","m":grams,"k":calories,"p":protein_g,"c":carbs_g,"a":fat_g}]} '
+                      + '- "t" is a short, descriptive meal title (e.g. "Chicken Rice Bowl", "Grilled Salmon Plate", "BLT Sandwich"). If only one food item, use its name as the title. '
                       + 'RULES: '
                       + '- All numeric values must be numbers, not strings. '
                       + '- Use at least 1 decimal place for grams/calories when appropriate. '
@@ -2108,7 +2109,7 @@ function roundTo(value: number, decimals: number): number {
   return Math.round(value * factor) / factor;
 }
 
-function normalizeMealAnalysisPayload(payload: any): { f: Array<{ n: string; m: number; k: number; p: number; c: number; a: number }> } {
+function normalizeMealAnalysisPayload(payload: any): { t?: string; f: Array<{ n: string; m: number; k: number; p: number; c: number; a: number }> } {
   const foodsRaw = (
     Array.isArray(payload?.f)
       ? payload.f
@@ -2138,7 +2139,10 @@ function normalizeMealAnalysisPayload(payload: any): { f: Array<{ n: string; m: 
     };
   });
 
-  return { f: foods };
+  const titleRaw = (payload?.t ?? payload?.title ?? '').toString().trim();
+  const title = titleRaw.length > 0 && titleRaw.length <= 100 ? titleRaw : undefined;
+
+  return { ...(title ? { t: title } : {}), f: foods };
 }
 
 export const searchRecipes = onCall<SearchParams>(
