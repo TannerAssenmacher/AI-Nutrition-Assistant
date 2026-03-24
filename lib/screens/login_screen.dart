@@ -178,10 +178,10 @@ class _LoginPageState extends State<LoginPage> {
 
   return Scaffold(
   backgroundColor: AppColors.homeBackground,
+  resizeToAvoidBottomInset: false,
   body: SafeArea(
     child: Column(
       children: [
-        /// MAIN CONTENT
         Expanded(
           child: SingleChildScrollView(
             keyboardDismissBehavior:
@@ -196,7 +196,7 @@ class _LoginPageState extends State<LoginPage> {
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Column(
                     children: [
-                      /// LOGO
+        
                       SizedBox(
                         height: logoHeight,
                         child: Image.asset(
