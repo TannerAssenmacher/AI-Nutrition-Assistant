@@ -2214,6 +2214,26 @@ class _AddFoodModalState extends ConsumerState<_AddFoodModal> {
   }
 
   Widget _buildSearchMode() {
+    final favoriteMealsAsync = ref.watch(
+      firestoreFavoriteMealsProvider(widget.userId),
+    );
+    final favoriteSourceIds = favoriteMealsAsync.maybeWhen(
+      data: (meals) => meals
+          .expand((meal) => meal.items)
+          .map((item) => (item.sourceId ?? '').trim())
+          .where((id) => id.isNotEmpty)
+          .toSet(),
+      orElse: () => <String>{},
+    );
+    final favoriteNames = favoriteMealsAsync.maybeWhen(
+      data: (meals) => meals
+          .expand((meal) => meal.items)
+          .map((item) => item.name.trim().toLowerCase())
+          .where((name) => name.isNotEmpty)
+          .toSet(),
+      orElse: () => <String>{},
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2293,10 +2313,17 @@ class _AddFoodModalState extends ConsumerState<_AddFoodModal> {
               separatorBuilder: (_, __) => const SizedBox(height: 6),
               itemBuilder: (context, index) {
                 final result = _results[index];
+                final normalizedResultId = result.id.trim();
+                final normalizedResultName = result.name.trim().toLowerCase();
+                final isFavorited =
+                    (normalizedResultId.isNotEmpty &&
+                        favoriteSourceIds.contains(normalizedResultId)) ||
+                    favoriteNames.contains(normalizedResultName);
                 return _FoodSearchResultTile(
                   result: result,
                   onAdd: () => _addSearchResult(result),
                   onFavorite: () => _addToFavorites(result),
+                  isFavorited: isFavorited,
                 );
               },
             ),
@@ -3136,10 +3163,7 @@ class _IngredientsListState extends State<_IngredientsList> {
                   const SizedBox(width: 8),
                   Text(
                     '${mass.toStringAsFixed(0)}g',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.warmDark,
-                    ),
+                    style: TextStyle(fontSize: 11, color: AppColors.warmDark),
                   ),
                   const SizedBox(width: 8),
                   Text(
@@ -3219,11 +3243,13 @@ class _FoodSearchResultTile extends StatelessWidget {
     required this.result,
     required this.onAdd,
     required this.onFavorite,
+    required this.isFavorited,
   });
 
   final FoodSearchResult result;
   final VoidCallback onAdd;
   final VoidCallback onFavorite;
+  final bool isFavorited;
 
   @override
   Widget build(BuildContext context) {
@@ -3318,8 +3344,12 @@ class _FoodSearchResultTile extends StatelessWidget {
             children: [
               IconButton(
                 onPressed: onFavorite,
-                tooltip: 'Add to favorites',
-                icon: const Icon(Icons.favorite_border),
+                tooltip: isFavorited
+                    ? 'Already in favorites'
+                    : 'Add to favorites',
+                icon: Icon(
+                  isFavorited ? Icons.favorite : Icons.favorite_border,
+                ),
                 color: AppColors.brand,
               ),
               ElevatedButton(
@@ -3418,9 +3448,53 @@ class _FavoriteMealsSheet extends ConsumerWidget {
     Navigator.of(context).pop(meal.name);
   }
 
+  Future<void> _unfavoriteMeal(
+    BuildContext context,
+    WidgetRef ref,
+    FavoriteMeal meal,
+  ) async {
+    if (meal.id == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Remove Favorite'),
+        content: Text(
+          'Are you sure you want to remove "${meal.name}" from favorites?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    try {
+      await FirestoreFavoriteMealsRepository.removeFavoriteMeal(
+        userId,
+        meal.id!,
+      );
+      if (!context.mounted) return;
+      AppSnackBar.success(context, 'Removed "${meal.name}" from favorites.');
+    } catch (e) {
+      if (!context.mounted) return;
+      AppSnackBar.error(context, 'Failed to remove favorite: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final favoritesAsync = ref.watch(firestoreFavoriteMealsProvider(userId));
+    final maxSheetHeight = MediaQuery.sizeOf(context).height * 0.72;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -3438,83 +3512,109 @@ class _FavoriteMealsSheet extends ConsumerWidget {
             );
           }
 
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Favorite Meals',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 12),
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: meals.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
-                itemBuilder: (context, index) {
-                  final meal = meals[index];
-                  return Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.borderLight),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+          return SizedBox(
+            height: maxSheetHeight,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Favorite Meals',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: meals.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    itemBuilder: (context, index) {
+                      final meal = meals[index];
+                      return Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.borderLight),
+                        ),
+                        child: Stack(
+                          alignment: Alignment.topLeft,
                           children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    meal.name,
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w700,
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            meal.name,
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            '${meal.mealType} · ${meal.items.length} items',
+                                            style: TextStyle(
+                                              color: AppColors.textSecondary,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '${meal.mealType} · ${meal.items.length} items',
-                                    style: TextStyle(
-                                      color: AppColors.textSecondary,
-                                      fontSize: 12,
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 22),
+                                      child: ElevatedButton(
+                                        onPressed: () => _logFavoriteMeal(
+                                          context,
+                                          ref,
+                                          meal,
+                                        ),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: AppColors.brand,
+                                          foregroundColor: AppColors.surface,
+                                        ),
+                                        child: const Text('Log meal'),
+                                      ),
                                     ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  _itemSummary(meal),
+                                  style: TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 12,
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                            ElevatedButton(
-                              onPressed: () =>
-                                  _logFavoriteMeal(context, ref, meal),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.brand,
-                                foregroundColor: AppColors.surface,
+                            Positioned(
+                              top: -12,
+                              right: -12,
+                              child: IconButton(
+                                icon: const Icon(Icons.favorite),
+                                color: AppColors.error,
+                                onPressed: () =>
+                                    _unfavoriteMeal(context, ref, meal),
+                                tooltip: 'Remove from favorites',
                               ),
-                              child: const Text('Log meal'),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          _itemSummary(meal),
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ],
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           );
         },
         loading: () => const Padding(
