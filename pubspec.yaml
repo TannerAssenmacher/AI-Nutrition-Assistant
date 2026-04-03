@@ -50,6 +50,7 @@ dev_dependencies:
 
   # lints compatible with Dart 3.6
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.4
 
   # test dependencies
   fake_cloud_firestore: ^4.0.0
@@ -76,3 +77,9 @@ dependency_overrides:
   # Keep iOS stable: 2.6.0 introduces FFI native-asset objective_c.framework,
   # which is failing signature verification on this setup.
   path_provider_foundation: 2.5.1
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  image_path: lib/assets/icons/WISERBITES_img_only.png

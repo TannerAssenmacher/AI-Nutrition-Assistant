@@ -6,6 +6,16 @@ import 'firestore_providers.dart';
 
 part 'food_providers.g.dart';
 
+final mealAnalysisLogAnimationSignalProvider = StateProvider<int>((ref) => 0);
+
+// Holds the food count BEFORE the meal-analysis add happens (for animation baseline)
+final mealAnalysisBeforeSnapshotProvider = StateProvider<int?>((ref) => null);
+
+// Holds the exact food item added from meal-analysis so Home can compute a true pre-add baseline.
+final mealAnalysisAddedItemForAnimationProvider = StateProvider<FoodItem?>(
+  (ref) => null,
+);
+
 @Riverpod(keepAlive: true)
 class FoodLog extends _$FoodLog {
   @override
@@ -38,12 +48,16 @@ int totalDailyCalories(Ref ref) {
   final today = DateTime.now();
 
   return foodLog
-      .where((item) =>
-          item.consumedAt.year == today.year &&
-          item.consumedAt.month == today.month &&
-          item.consumedAt.day == today.day)
+      .where(
+        (item) =>
+            item.consumedAt.year == today.year &&
+            item.consumedAt.month == today.month &&
+            item.consumedAt.day == today.day,
+      )
       .fold(
-          0, (total, item) => total + (item.calories_g * item.mass_g).round());
+        0,
+        (total, item) => total + (item.calories_g * item.mass_g).round(),
+      );
 }
 
 @riverpod
@@ -55,20 +69,18 @@ Map<String, double> totalDailyMacros(Ref ref) {
   double carbs = 0;
   double fat = 0;
 
-  for (final item in foodLog.where((i) =>
-      i.consumedAt.year == today.year &&
-      i.consumedAt.month == today.month &&
-      i.consumedAt.day == today.day)) {
+  for (final item in foodLog.where(
+    (i) =>
+        i.consumedAt.year == today.year &&
+        i.consumedAt.month == today.month &&
+        i.consumedAt.day == today.day,
+  )) {
     protein += item.protein_g * item.mass_g;
     carbs += item.carbs_g * item.mass_g;
     fat += item.fat * item.mass_g;
   }
 
-  return {
-    'protein': protein,
-    'carbs': carbs,
-    'fat': fat,
-  };
+  return {'protein': protein, 'carbs': carbs, 'fat': fat};
 }
 
 @riverpod
@@ -101,8 +113,11 @@ Future<int> dailyStreak(Ref ref, String userId) async {
       final datesWithFood = <DateTime>{};
       for (final item in foodLog) {
         final localTime = item.consumedAt.toLocal();
-        final normalizedDate =
-            DateTime(localTime.year, localTime.month, localTime.day);
+        final normalizedDate = DateTime(
+          localTime.year,
+          localTime.month,
+          localTime.day,
+        );
         datesWithFood.add(normalizedDate);
       }
 
@@ -121,7 +136,8 @@ Future<int> dailyStreak(Ref ref, String userId) async {
       // Filter out future dates (food logged for future days shouldn't count for streak)
       final pastDates = sortedDates
           .where(
-              (date) => date.isBefore(todayDate.add(const Duration(days: 1))))
+            (date) => date.isBefore(todayDate.add(const Duration(days: 1))),
+          )
           .toList();
 
       if (pastDates.isEmpty) {

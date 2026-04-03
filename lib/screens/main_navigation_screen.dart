@@ -9,6 +9,7 @@ import 'package:nutrition_assistant/db/food.dart';
 import 'package:nutrition_assistant/db/user.dart';
 import 'package:nutrition_assistant/providers/auth_providers.dart';
 import 'package:nutrition_assistant/providers/firestore_providers.dart';
+import 'package:nutrition_assistant/providers/food_providers.dart';
 import 'package:nutrition_assistant/widgets/fatsecret_attribution.dart';
 import 'package:nutrition_assistant/widgets/nav_bar.dart';
 import 'package:nutrition_assistant/navigation/nav_helper.dart';
@@ -36,6 +37,8 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
   int _lastTodayCount = -1;
   bool _isMacroBaselinePrimed = false;
   bool _deferMacroPreviewUntilHome = false;
+  int _lastMealAnalysisSignal = 0;
+  bool _suppressNextMainNavPreview = false;
   String? _trackedUserId;
   OverlayEntry? _macroPreviewEntry;
 
@@ -100,8 +103,15 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
   void _showMacroPreviewOverlay() {
     final overlayState = Overlay.of(context, rootOverlay: true);
     if (_previewFrom == null || _previewTo == null) {
+      debugPrint(
+        '[MacroAnim][MainNav] overlay skipped: missing preview snapshots',
+      );
       return;
     }
+
+    debugPrint(
+      '[MacroAnim][MainNav] show overlay from kcal=${_previewFrom!.currentCalories.toStringAsFixed(0)} to kcal=${_previewTo!.currentCalories.toStringAsFixed(0)}',
+    );
 
     final inheritedTheme = Theme.of(context);
     final inheritedTextStyle = DefaultTextStyle.of(context).style;
@@ -194,11 +204,18 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
     required bool isDataReady,
   }) {
     if (!isDataReady) {
+      debugPrint('[MacroAnim][MainNav] skip maybeAnimate: data not ready');
       return;
     }
 
     final todayCount = snapshot.todayMealsCount;
+    debugPrint(
+      '[MacroAnim][MainNav] maybeAnimate currentIndex=$_currentIndex count=$todayCount last=$_lastTodayCount suppress=$_suppressNextMainNavPreview defer=$_deferMacroPreviewUntilHome',
+    );
     if (!_isMacroBaselinePrimed || _lastTodayCount < 0) {
+      debugPrint(
+        '[MacroAnim][MainNav] priming baseline with count=$todayCount',
+      );
       _isMacroBaselinePrimed = true;
       _lastTodayCount = todayCount;
       _lastSnapshot = _snapshot(snapshot);
@@ -210,6 +227,7 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
         _previewFrom != null &&
         _previewTo != null &&
         !_macroPreviewController.isAnimating) {
+      debugPrint('[MacroAnim][MainNav] playing deferred overlay on Home tab');
       _bindMacroPreviewControllerListeners();
       _showMacroPreviewOverlay();
       _macroPreviewController.forward(from: 0);
@@ -222,9 +240,17 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
       _previewFrom = from;
       _previewTo = to;
 
-      if (_currentIndex == navIndexCamera) {
+      if (_suppressNextMainNavPreview) {
+        debugPrint(
+          '[MacroAnim][MainNav] suppressing overlay due to meal-analysis signal',
+        );
+        _suppressNextMainNavPreview = false;
+        _deferMacroPreviewUntilHome = false;
+      } else if (_currentIndex == navIndexCamera) {
+        debugPrint('[MacroAnim][MainNav] deferring overlay until Home tab');
         _deferMacroPreviewUntilHome = true;
       } else {
+        debugPrint('[MacroAnim][MainNav] playing overlay immediately');
         _deferMacroPreviewUntilHome = false;
         _bindMacroPreviewControllerListeners();
         _showMacroPreviewOverlay();
@@ -263,6 +289,9 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
     // Keep active-tab state on the intended destination while animating,
     // so intermediate pages do not become active.
     _pendingNavTarget = navIndex;
+    debugPrint(
+      '[MacroAnim][MainNav] navigateToTab target=$navIndex animate=$animate from=$_currentIndex',
+    );
     setState(() {
       _currentIndex = navIndex;
     });
@@ -295,6 +324,17 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
 
   @override
   Widget build(BuildContext context) {
+    final mealAnalysisSignal = ref.watch(
+      mealAnalysisLogAnimationSignalProvider,
+    );
+    if (mealAnalysisSignal != _lastMealAnalysisSignal) {
+      debugPrint(
+        '[MacroAnim][MainNav] received signal change $_lastMealAnalysisSignal -> $mealAnalysisSignal; suppress next overlay',
+      );
+      _lastMealAnalysisSignal = mealAnalysisSignal;
+      _suppressNextMainNavPreview = true;
+    }
+
     final authUser = ref.watch(authServiceProvider);
     final userId = authUser?.uid;
     if (_trackedUserId != userId) {
@@ -338,7 +378,10 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
             isInPageView: true,
             isActive: _currentIndex == navIndexHistory,
           ),
-          HomeScreen(isInPageView: true),
+          HomeScreen(
+            isInPageView: true,
+            isActive: _currentIndex == navIndexHome,
+          ),
           FoodSearchScreen(isInPageView: true),
           CameraScreen(
             isInPageView: true,

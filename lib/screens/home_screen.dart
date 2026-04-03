@@ -15,13 +15,18 @@ import '../theme/app_colors.dart';
 import '../widgets/nav_bar.dart';
 
 class HomeScreen extends ConsumerWidget {
-  const HomeScreen({super.key, this.isInPageView = false});
+  const HomeScreen({
+    super.key,
+    this.isInPageView = false,
+    this.isActive = true,
+  });
 
   final bool isInPageView;
+  final bool isActive;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return _HomeScreenAnimated(isInPageView: isInPageView);
+    return _HomeScreenAnimated(isInPageView: isInPageView, isActive: isActive);
   }
 
   static String _displayName(AppUser? profile) {
@@ -168,9 +173,13 @@ class HomeMacroSnapshot {
 }
 
 class _HomeScreenAnimated extends ConsumerStatefulWidget {
-  const _HomeScreenAnimated({required this.isInPageView});
+  const _HomeScreenAnimated({
+    required this.isInPageView,
+    required this.isActive,
+  });
 
   final bool isInPageView;
+  final bool isActive;
 
   @override
   ConsumerState<_HomeScreenAnimated> createState() => _HomeScreenState();
@@ -182,8 +191,12 @@ class _HomeScreenState extends ConsumerState<_HomeScreenAnimated>
   _HomeMetrics? _previewFrom;
   _HomeMetrics? _previewTo;
   _HomeMetrics? _lastMetricsSnapshot;
+  _HomeMetrics? _snapshotWhenSignalArrived;
   int _lastTodayCount = -1;
   bool _showMacroPreview = false;
+  int _lastMealAnalysisSignal = 0;
+  bool _pendingMealAnalysisAnimation = false;
+  bool _deferAnimationUntilActive = false;
 
   @override
   void initState() {
@@ -196,6 +209,7 @@ class _HomeScreenState extends ConsumerState<_HomeScreenAnimated>
           if (status == AnimationStatus.completed && mounted) {
             setState(() {
               _showMacroPreview = false;
+              _snapshotWhenSignalArrived = null;
             });
           }
         });
@@ -226,23 +240,129 @@ class _HomeScreenState extends ConsumerState<_HomeScreenAnimated>
     );
   }
 
+  bool _isToday(DateTime date) {
+    final now = DateTime.now();
+    return date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day;
+  }
+
+  _HomeMetrics _subtractItemFromMetrics(_HomeMetrics current, FoodItem item) {
+    if (!_isToday(item.consumedAt)) {
+      return current;
+    }
+
+    final caloriesDelta = item.calories_g * item.mass_g;
+    final proteinDelta = item.protein_g * item.mass_g;
+    final carbsDelta = item.carbs_g * item.mass_g;
+    final fatDelta = item.fat * item.mass_g;
+
+    final truncatedMeals = current.todayMeals.isEmpty
+        ? const <FoodItem>[]
+        : current.todayMeals.sublist(0, current.todayMeals.length - 1);
+
+    return _HomeMetrics(
+      currentCalories: math.max(0, current.currentCalories - caloriesDelta),
+      calorieGoal: current.calorieGoal,
+      currentProtein: math.max(0, current.currentProtein - proteinDelta),
+      proteinGoal: current.proteinGoal,
+      currentCarbs: math.max(0, current.currentCarbs - carbsDelta),
+      carbsGoal: current.carbsGoal,
+      currentFat: math.max(0, current.currentFat - fatDelta),
+      fatGoal: current.fatGoal,
+      todayMeals: truncatedMeals,
+    );
+  }
+
+  void _startMacroPreviewAnimation() {
+    if (_previewFrom == null || _previewTo == null) {
+      debugPrint('[MacroAnim][Home] start skipped: missing preview snapshots');
+      return;
+    }
+    debugPrint(
+      '[MacroAnim][Home] start animation from kcal=${_previewFrom!.currentCalories.toStringAsFixed(0)} to kcal=${_previewTo!.currentCalories.toStringAsFixed(0)}',
+    );
+    setState(() {
+      _showMacroPreview = true;
+    });
+    _macroPreviewController.forward(from: 0);
+  }
+
   void _maybeAnimateMacroPreview(_HomeMetrics metrics) {
     final todayCount = metrics.todayMeals.length;
+    debugPrint(
+      '[MacroAnim][Home] maybeAnimate active=${widget.isActive} count=$todayCount last=$_lastTodayCount pending=$_pendingMealAnalysisAnimation defer=$_deferAnimationUntilActive',
+    );
+
+    if (_deferAnimationUntilActive &&
+        widget.isActive &&
+        !_macroPreviewController.isAnimating) {
+      debugPrint(
+        '[MacroAnim][Home] playing deferred animation now that Home is active',
+      );
+      _deferAnimationUntilActive = false;
+      _startMacroPreviewAnimation();
+    }
+
     if (_lastTodayCount < 0) {
-      _lastTodayCount = todayCount;
+      debugPrint(
+        '[MacroAnim][Home] first frame: last=$_lastTodayCount count=$todayCount pending=$_pendingMealAnalysisAnimation',
+      );
+      // If Home is opened after meal-analysis already added the item,
+      // animate immediately on first frame using the captured baseline.
+      if (_pendingMealAnalysisAnimation && _snapshotWhenSignalArrived != null) {
+        debugPrint(
+          '[MacroAnim][Home] first frame with pending signal + snapshot: animate immediately',
+        );
+        _previewFrom = _snapshotWhenSignalArrived;
+        _previewTo = _snapshot(metrics);
+        _snapshotWhenSignalArrived = null;
+        _pendingMealAnalysisAnimation = false;
+        _lastMetricsSnapshot = _snapshot(metrics);
+        _lastTodayCount = todayCount;
+
+        if (widget.isActive) {
+          _startMacroPreviewAnimation();
+        } else {
+          _deferAnimationUntilActive = true;
+        }
+        return;
+      }
+
+      // Prime baseline without animating on first frame
+      // Animation will happen on next rebuild if signal is still pending
       _lastMetricsSnapshot = _snapshot(metrics);
+      _lastTodayCount = todayCount;
       return;
     }
 
-    if (todayCount > _lastTodayCount) {
-      final from = _lastMetricsSnapshot ?? _snapshot(metrics);
-      final to = _snapshot(metrics);
-      setState(() {
-        _previewFrom = from;
-        _previewTo = to;
-        _showMacroPreview = true;
-      });
-      _macroPreviewController.forward(from: 0);
+    // If we have a pending signal and count increased, animate from captured state to current
+    if (_snapshotWhenSignalArrived != null &&
+        todayCount > _lastTodayCount &&
+        _pendingMealAnalysisAnimation) {
+      debugPrint(
+        '[MacroAnim][Home] count increased ($todayCount > $_lastTodayCount) with pending signal: animate from snapshot',
+      );
+      _previewFrom = _snapshotWhenSignalArrived;
+      _previewTo = _snapshot(metrics);
+      _snapshotWhenSignalArrived = null;
+      _pendingMealAnalysisAnimation = false;
+
+      if (widget.isActive) {
+        debugPrint('[MacroAnim][Home] animating now (active)');
+        _startMacroPreviewAnimation();
+      } else {
+        debugPrint('[MacroAnim][Home] deferring animation (not active)');
+        _deferAnimationUntilActive = true;
+      }
+    } else if (todayCount > _lastTodayCount && _pendingMealAnalysisAnimation) {
+      debugPrint(
+        '[MacroAnim][Home] count increased but no captured snapshot; skipping animation',
+      );
+    } else if (todayCount > _lastTodayCount) {
+      debugPrint(
+        '[MacroAnim][Home] count increased but no pending meal-analysis signal; skipping animation',
+      );
     }
 
     _lastTodayCount = todayCount;
@@ -257,6 +377,17 @@ class _HomeScreenState extends ConsumerState<_HomeScreenAnimated>
 
   @override
   Widget build(BuildContext context) {
+    final mealAnalysisSignal = ref.watch(
+      mealAnalysisLogAnimationSignalProvider,
+    );
+    if (mealAnalysisSignal != _lastMealAnalysisSignal) {
+      debugPrint(
+        '[MacroAnim][Home] received signal change $_lastMealAnalysisSignal -> $mealAnalysisSignal',
+      );
+      _lastMealAnalysisSignal = mealAnalysisSignal;
+      _pendingMealAnalysisAnimation = true;
+    }
+
     final authUser = ref.watch(authServiceProvider);
     final userId = authUser?.uid;
 
@@ -270,18 +401,53 @@ class _HomeScreenState extends ConsumerState<_HomeScreenAnimated>
     final userProfileAsync = ref.watch(firestoreUserProfileProvider(userId));
     final foodLogAsync = ref.watch(firestoreFoodLogProvider(userId));
     final streakAsync = ref.watch(dailyStreakProvider(userId));
+    final beforeCountSnapshot = ref.watch(mealAnalysisBeforeSnapshotProvider);
+    final addedItemForAnimation = ref.watch(
+      mealAnalysisAddedItemForAnimationProvider,
+    );
 
     final profile = userProfileAsync.valueOrNull;
     final foodLog = foodLogAsync.valueOrNull ?? const <FoodItem>[];
     final streak = streakAsync.valueOrNull ?? 0;
     final metrics = _HomeMetrics.fromData(profile: profile, foodLog: foodLog);
 
-    if (!widget.isInPageView) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        _maybeAnimateMacroPreview(metrics);
-      });
+    // Prefer exact added-item delta to reconstruct true "before" metrics.
+    if (_pendingMealAnalysisAnimation && _snapshotWhenSignalArrived == null) {
+      if (addedItemForAnimation != null) {
+        final beforeMetrics = _subtractItemFromMetrics(
+          metrics,
+          addedItemForAnimation,
+        );
+        debugPrint(
+          '[MacroAnim][Home] building baseline from added item delta: from kcal=${beforeMetrics.currentCalories.toStringAsFixed(0)} to kcal=${metrics.currentCalories.toStringAsFixed(0)}',
+        );
+        _snapshotWhenSignalArrived = _snapshot(beforeMetrics);
+      } else if (beforeCountSnapshot != null &&
+          beforeCountSnapshot <= metrics.todayMeals.length) {
+        debugPrint(
+          '[MacroAnim][Home] fallback baseline from today-count: before=$beforeCountSnapshot, todayNow=${metrics.todayMeals.length}',
+        );
+        final beforeTodayMeals = metrics.todayMeals
+            .take(beforeCountSnapshot)
+            .toList();
+        final beforeMetrics = _HomeMetrics.fromData(
+          profile: profile,
+          foodLog: beforeTodayMeals,
+        );
+        _snapshotWhenSignalArrived = _snapshot(beforeMetrics);
+      }
     }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _maybeAnimateMacroPreview(metrics);
+      // Clear temporary animation inputs after animation setup (outside build lifecycle).
+      if (_snapshotWhenSignalArrived != null) {
+        ref.read(mealAnalysisBeforeSnapshotProvider.notifier).state = null;
+        ref.read(mealAnalysisAddedItemForAnimationProvider.notifier).state =
+            null;
+      }
+    });
 
     final bodyContent = SafeArea(
       child: CustomScrollView(
@@ -299,7 +465,35 @@ class _HomeScreenState extends ConsumerState<_HomeScreenAnimated>
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-              child: HomeMacroSummaryCard(metrics: metrics.toSnapshot()),
+              child: AnimatedBuilder(
+                animation: _macroPreviewController,
+                builder: (context, _) {
+                  final displayMetrics =
+                      _showMacroPreview &&
+                          _previewFrom != null &&
+                          _previewTo != null
+                      ? () {
+                          final t = _macroPreviewController.value;
+                          final progressT = ((t - 0.2) / 0.6).clamp(0.0, 1.0);
+                          final easedT = Curves.easeOutCubic.transform(
+                            progressT,
+                          );
+                          return _lerpMetrics(
+                            _previewFrom!,
+                            _previewTo!,
+                            easedT,
+                          );
+                        }()
+                      : _HomeMetrics.fromData(
+                          profile: profile,
+                          foodLog: foodLog,
+                        );
+
+                  return HomeMacroSummaryCard(
+                    metrics: displayMetrics.toSnapshot(),
+                  );
+                },
+              ),
             ),
           ),
           SliverToBoxAdapter(
@@ -364,48 +558,7 @@ class _HomeScreenState extends ConsumerState<_HomeScreenAnimated>
 
     return Scaffold(
       backgroundColor: AppColors.homeBackground,
-      body: Stack(
-        children: [
-          Positioned.fill(child: bodyContent),
-          if (!widget.isInPageView &&
-              _showMacroPreview &&
-              _previewFrom != null &&
-              _previewTo != null)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: Align(
-                  alignment: Alignment.center,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: AnimatedBuilder(
-                      animation: _macroPreviewController,
-                      builder: (context, _) {
-                        final t = _macroPreviewController.value;
-                        final progressT = ((t - 0.2) / 0.6).clamp(0.0, 1.0);
-                        final easedT = Curves.easeOutCubic.transform(progressT);
-                        final animatedMetrics = _lerpMetrics(
-                          _previewFrom!,
-                          _previewTo!,
-                          easedT,
-                        );
-
-                        return Opacity(
-                          opacity: _previewOpacity(t),
-                          child: Transform.scale(
-                            scale: 0.98 + (0.02 * _previewOpacity(t)),
-                            child: HomeMacroSummaryCard(
-                              metrics: animatedMetrics.toSnapshot(),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
+      body: bodyContent,
       bottomNavigationBar: widget.isInPageView
           ? null
           : NavBar(

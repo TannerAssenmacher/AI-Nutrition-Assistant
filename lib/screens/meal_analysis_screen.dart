@@ -350,6 +350,17 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
               consumedAt: consumedAt,
             );
 
+            // Capture food count BEFORE adding (for animation baseline)
+            final beforeCount = ref.read(foodLogProvider).length;
+            ref.read(mealAnalysisBeforeSnapshotProvider.notifier).state =
+                beforeCount;
+            ref.read(mealAnalysisAddedItemForAnimationProvider.notifier).state =
+                item;
+
+            debugPrint(
+              '[MacroAnim][MealAnalysis] barcode add-log: captured before-count=$beforeCount, emitting signal for ${result.name}',
+            );
+            ref.read(mealAnalysisLogAnimationSignalProvider.notifier).state++;
             ref.read(foodLogProvider.notifier).addFoodItem(item);
             await ref
                 .read(firestoreFoodLogProvider(userId).notifier)
@@ -464,20 +475,27 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
 
       // Combine all analyzed items into one meal entry.
       final totalMass = validFoods.fold<double>(0, (s, f) => s + f.mass);
-      final totalCalories = validFoods.fold<double>(0, (s, f) => s + f.calories);
+      final totalCalories = validFoods.fold<double>(
+        0,
+        (s, f) => s + f.calories,
+      );
       final totalProtein = validFoods.fold<double>(0, (s, f) => s + f.protein);
       final totalCarbs = validFoods.fold<double>(0, (s, f) => s + f.carbs);
       final totalFat = validFoods.fold<double>(0, (s, f) => s + f.fat);
 
       // Build ingredient list for display in the daily log.
-      final ingredientsList = validFoods.map((f) => <String, dynamic>{
-        'name': f.name,
-        'mass_g': f.mass,
-        'calories': f.calories,
-        'protein': f.protein,
-        'carbs': f.carbs,
-        'fat': f.fat,
-      }).toList();
+      final ingredientsList = validFoods
+          .map(
+            (f) => <String, dynamic>{
+              'name': f.name,
+              'mass_g': f.mass,
+              'calories': f.calories,
+              'protein': f.protein,
+              'carbs': f.carbs,
+              'fat': f.fat,
+            },
+          )
+          .toList();
 
       final mealName = analysis.displayTitle;
 
@@ -494,6 +512,17 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
         consumedAt: now,
         ingredients: validFoods.length > 1 ? ingredientsList : null,
       );
+      // Capture food count BEFORE adding (for animation baseline)
+      final beforeCount = container.read(foodLogProvider).length;
+      container.read(mealAnalysisBeforeSnapshotProvider.notifier).state =
+          beforeCount;
+      container.read(mealAnalysisAddedItemForAnimationProvider.notifier).state =
+          item;
+
+      debugPrint(
+        '[MacroAnim][MealAnalysis] calendar add-log: captured before-count=$beforeCount, emitting signal for $mealName',
+      );
+      container.read(mealAnalysisLogAnimationSignalProvider.notifier).state++;
       notifier.addFoodItem(item);
       await firestoreLog.addFood(userId, item);
 
@@ -503,6 +532,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
 
       // Navigate back to home after successfully adding to calendar.
       if (widget.onNavigateHome != null) {
+        debugPrint(
+          '[MacroAnim][MealAnalysis] invoking onNavigateHome callback',
+        );
         widget.onNavigateHome!();
       }
     } finally {
@@ -1415,7 +1447,6 @@ class _AnalyzingState extends StatelessWidget {
     );
   }
 }
-
 
 class _EditableChip extends StatelessWidget {
   final String label;
