@@ -801,7 +801,6 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
           key: const ValueKey('analysis_result'),
           analysis: _analysisResult!,
           goalSnapshot: goalSnapshot,
-          onCapture: _captureAndAnalyze,
           onEditName: _promptEditName,
           onEditWeight: _promptEditWeight,
           onAddToFavorites: _addMealToFavorites,
@@ -1487,7 +1486,6 @@ class _EditableChip extends StatelessWidget {
 class MealAnalysisResultWidget extends StatelessWidget {
   final MealAnalysis analysis;
   final Map<String, double>? goalSnapshot;
-  final VoidCallback onCapture;
   final void Function(int) onEditName;
   final void Function(int) onEditWeight;
   final VoidCallback onAddToFavorites;
@@ -1498,7 +1496,6 @@ class MealAnalysisResultWidget extends StatelessWidget {
     super.key,
     required this.analysis,
     this.goalSnapshot,
-    required this.onCapture,
     required this.onEditName,
     required this.onEditWeight,
     required this.onAddToFavorites,
@@ -1780,19 +1777,6 @@ class MealAnalysisResultWidget extends StatelessWidget {
                 ),
               ),
             ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        Align(
-          alignment: Alignment.center,
-          child: FilledButton.icon(
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.brand,
-              foregroundColor: AppColors.surface,
-            ),
-            onPressed: onCapture,
-            icon: const Icon(Icons.camera_alt),
-            label: const Text('Capture another meal'),
           ),
         ),
       ],

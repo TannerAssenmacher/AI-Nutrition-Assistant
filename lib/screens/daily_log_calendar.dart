@@ -42,7 +42,6 @@ class DailyLogCalendarScreen extends ConsumerStatefulWidget {
 class _DailyLogCalendarScreenState
     extends ConsumerState<DailyLogCalendarScreen> {
   DateTime _focusedDay = DateTime.now();
-  DateTime? _selectedDay;
   _GoalCompletionRange _goalCompletionRange = _GoalCompletionRange.lastMonth;
   bool _notificationsChecked = false;
   bool _hasAutoScrolledToToday = false;
@@ -1448,11 +1447,6 @@ class _DailyLogCalendarScreenState
                           ),
                         ),
                         ...weekDays.map((day) {
-                          final isSelected =
-                              _selectedDay != null &&
-                              day.year == _selectedDay!.year &&
-                              day.month == _selectedDay!.month &&
-                              day.day == _selectedDay!.day;
                           final isToday =
                               day.year == DateTime.now().year &&
                               day.month == DateTime.now().month &&
@@ -1492,9 +1486,6 @@ class _DailyLogCalendarScreenState
 
                           return GestureDetector(
                             onTap: () {
-                              setState(() {
-                                _selectedDay = day;
-                              });
                               _showFoodsSheet(day, foods, dayTotals, userId);
                             },
                             child: Container(
@@ -1513,7 +1504,7 @@ class _DailyLogCalendarScreenState
                                 color: AppColors.surface,
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: (isToday || isSelected)
+                                  color: isToday
                                       ? AppColors.selectionColor
                                       : Colors.transparent,
                                   width: 2,
@@ -3692,7 +3683,7 @@ class _MacroProgressIndicator extends StatelessWidget {
       statusColor = AppColors.statusNear;
     } else if (percentage >= 90) {
       statusColor = AppColors.statusGood;
-    } else if (percentage >= 80) {
+    } else if (percentage >= 70) {
       statusColor = AppColors.statusUnder;
     } else {
       statusColor = AppColors.statusNone;

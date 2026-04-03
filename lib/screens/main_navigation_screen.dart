@@ -35,6 +35,7 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
   HomeMacroSnapshot? _lastSnapshot;
   int _lastTodayCount = -1;
   bool _isMacroBaselinePrimed = false;
+  bool _deferMacroPreviewUntilHome = false;
   String? _trackedUserId;
   OverlayEntry? _macroPreviewEntry;
 
@@ -87,6 +88,7 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
   void _resetMacroAnimationStateForUser(String? userId) {
     _trackedUserId = userId;
     _isMacroBaselinePrimed = false;
+    _deferMacroPreviewUntilHome = false;
     _lastTodayCount = -1;
     _lastSnapshot = null;
     _previewFrom = null;
@@ -203,14 +205,31 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
       return;
     }
 
+    if (_deferMacroPreviewUntilHome &&
+        _currentIndex == navIndexHome &&
+        _previewFrom != null &&
+        _previewTo != null &&
+        !_macroPreviewController.isAnimating) {
+      _bindMacroPreviewControllerListeners();
+      _showMacroPreviewOverlay();
+      _macroPreviewController.forward(from: 0);
+      _deferMacroPreviewUntilHome = false;
+    }
+
     if (todayCount > _lastTodayCount) {
       final from = _lastSnapshot ?? _snapshot(snapshot);
       final to = _snapshot(snapshot);
       _previewFrom = from;
       _previewTo = to;
-      _bindMacroPreviewControllerListeners();
-      _showMacroPreviewOverlay();
-      _macroPreviewController.forward(from: 0);
+
+      if (_currentIndex == navIndexCamera) {
+        _deferMacroPreviewUntilHome = true;
+      } else {
+        _deferMacroPreviewUntilHome = false;
+        _bindMacroPreviewControllerListeners();
+        _showMacroPreviewOverlay();
+        _macroPreviewController.forward(from: 0);
+      }
     }
 
     _lastTodayCount = todayCount;
