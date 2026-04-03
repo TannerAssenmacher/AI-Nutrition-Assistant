@@ -863,6 +863,8 @@ export const analyzeMealImage = onCall(
     memory: '512MiB',
   },
   async (request) => {
+    const requestStartMs = Date.now();
+
     if (!request.auth) {
       throw new HttpsError(
         'unauthenticated',
@@ -870,6 +872,7 @@ export const analyzeMealImage = onCall(
       );
     }
 
+    const userId = request.auth.uid;
     const data = toRequestData(request.data);
     const imageBase64Raw = (data.imageBase64 || '').toString();
     const imageBase64 = normalizeBase64Payload(imageBase64Raw);
@@ -892,6 +895,7 @@ export const analyzeMealImage = onCall(
         () => abortController.abort(),
         OPENAI_TIMEOUT_MS
       );
+      const openAiStartMs = Date.now();
       let response: Response;
       try {
         response = await fetch('https://api.openai.com/v1/responses', {
@@ -960,13 +964,43 @@ export const analyzeMealImage = onCall(
         );
       }
 
-      const data = await response.json() as any;
-      const rawText = extractOpenAiTextResponse(data);
+      const responseData = await response.json() as any;
+      const openAiDurationSec = +((Date.now() - openAiStartMs) / 1000).toFixed(2);
+      const rawText = extractOpenAiTextResponse(responseData);
       const parsed = JSON.parse(extractFirstJsonObject(rawText)) as any;
       const analysis = normalizeMealAnalysisPayload(parsed);
 
+      const totalDurationSec = +((Date.now() - requestStartMs) / 1000).toFixed(2);
+
+      // Log performance metrics (fire-and-forget)
+      db.collection('analysis_performance_logs').add({
+        userId,
+        requestTimestamp: new Date(requestStartMs).toISOString(),
+        openAiDurationSec,
+        totalDurationSec,
+        foodItemCount: analysis.f?.length ?? 0,
+        status: 'success',
+      }).catch((err) =>
+        console.error('Failed to write performance log:', err)
+      );
+
       return { analysis };
     } catch (error) {
+      const totalDurationSec = +((Date.now() - requestStartMs) / 1000).toFixed(2);
+
+      // Log failed requests too
+      db.collection('analysis_performance_logs').add({
+        userId,
+        requestTimestamp: new Date(requestStartMs).toISOString(),
+        totalDurationSec,
+        status: 'error',
+        errorType: error instanceof HttpsError
+          ? error.code
+          : (error instanceof Error ? error.name : 'unknown'),
+      }).catch((err) =>
+        console.error('Failed to write performance log:', err)
+      );
+
       if (error instanceof HttpsError) {
         throw error;
       }
