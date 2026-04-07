@@ -1448,71 +1448,6 @@ class _AnalyzingState extends StatelessWidget {
   }
 }
 
-class _EditableChip extends StatelessWidget {
-  final String label;
-  final String value;
-  final VoidCallback onTap;
-
-  const _EditableChip({
-    required this.label,
-    required this.value,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: AppColors.brand,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.brand),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppColors.surface,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.borderLight),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    value,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  const Icon(Icons.edit, size: 14, color: AppColors.brand),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 // Widget to display the meal analysis results.
 class MealAnalysisResultWidget extends StatelessWidget {
   final MealAnalysis analysis;
@@ -1596,220 +1531,324 @@ class MealAnalysisResultWidget extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 16),
       children: [
+        // ── Main Analysis Card ──
         Card(
-          margin: const EdgeInsets.symmetric(horizontal: 0),
-          color: AppColors.surface.withValues(alpha: _kAnalysisCardOpacity),
+          margin: EdgeInsets.zero,
+          color: AppColors.surface,
+          elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(_kAnalysisCardRadius),
+            borderRadius: BorderRadius.circular(20),
           ),
-          child: Stack(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Food name + favorite ──
+                Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Totals',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                    Expanded(
+                      child: Text(
+                        analysis.displayTitle,
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                          height: 1.3,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _TotalCard(
-                            label: 'Total Calories',
-                            value: analysis.totalCalories.toStringAsFixed(0),
-                            unit: 'Cal',
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _TotalCard(
-                            label: 'Total Weight',
-                            value: analysis.totalMass.toStringAsFixed(0),
-                            unit: 'g',
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Macronutrient Breakdown',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    _MacroBar(
-                      label: 'Protein',
-                      grams: analysis.totalProtein,
-                      percentage: proteinPercent,
-                      color: AppColors.protein,
-                    ),
-                    const SizedBox(height: 8),
-                    _MacroBar(
-                      label: 'Carbs',
-                      grams: analysis.totalCarbs,
-                      percentage: carbsPercent,
-                      color: AppColors.carbs,
-                    ),
-                    const SizedBox(height: 8),
-                    _MacroBar(
-                      label: 'Fat',
-                      grams: analysis.totalFat,
-                      percentage: fatPercent,
-                      color: AppColors.fat,
+                    IconButton(
+                      tooltip: 'Add to favorites',
+                      onPressed: onAddToFavorites,
+                      icon: const Icon(Icons.favorite_border),
+                      color: AppColors.textHint,
+                      iconSize: 24,
                     ),
                   ],
                 ),
-              ),
-              Positioned(
-                top: 8,
-                right: 8,
-                child: IconButton(
-                  tooltip: 'Add this meal to favorites',
-                  onPressed: onAddToFavorites,
-                  icon: const Icon(Icons.favorite_border),
-                  color: AppColors.brand,
+                const SizedBox(height: 16),
+                // ── Serving weight pill ──
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Serving',
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: AppColors.textHint,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        '${analysis.totalMass.toStringAsFixed(0)} g',
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.brand,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 24),
+                // ── Macro circles ──
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _MacroCircle(
+                      label: 'Calories',
+                      value: analysis.totalCalories.toStringAsFixed(0),
+                      unit: 'Cal',
+                      backgroundColor:
+                          AppColors.brand.withValues(alpha: 0.12),
+                      textColor: AppColors.brand,
+                    ),
+                    _MacroCircle(
+                      label: 'Protein',
+                      value:
+                          _formatCompactNumber(analysis.totalProtein),
+                      unit: 'g',
+                      backgroundColor:
+                          AppColors.protein.withValues(alpha: 0.12),
+                      textColor: AppColors.protein,
+                    ),
+                    _MacroCircle(
+                      label: 'Carbs',
+                      value:
+                          _formatCompactNumber(analysis.totalCarbs),
+                      unit: 'g',
+                      backgroundColor:
+                          AppColors.carbs.withValues(alpha: 0.15),
+                      textColor: AppColors.carbs,
+                    ),
+                    _MacroCircle(
+                      label: 'Fat',
+                      value: _formatCompactNumber(analysis.totalFat),
+                      unit: 'g',
+                      backgroundColor:
+                          AppColors.fat.withValues(alpha: 0.12),
+                      textColor: AppColors.fat,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                // ── Macronutrient Breakdown ──
+                Text(
+                  'MACRONUTRIENT BREAKDOWN',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textHint,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _MacroProgressRow(
+                  label: 'Protein',
+                  grams: analysis.totalProtein,
+                  percentage: proteinPercent,
+                  color: AppColors.protein,
+                ),
+                const SizedBox(height: 16),
+                _MacroProgressRow(
+                  label: 'Carbs',
+                  grams: analysis.totalCarbs,
+                  percentage: carbsPercent,
+                  color: AppColors.carbs,
+                ),
+                const SizedBox(height: 16),
+                _MacroProgressRow(
+                  label: 'Fat',
+                  grams: analysis.totalFat,
+                  percentage: fatPercent,
+                  color: AppColors.fat,
+                ),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            FilledButton.icon(
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.brand,
-                foregroundColor: AppColors.surface,
+        // ── Action button ──
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.brand,
+              foregroundColor: Colors.white,
+              padding:
+                  const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
               ),
-              onPressed: isSavingToCalendar ? null : onAddToCalendar,
-              icon: isSavingToCalendar
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.calendar_month),
-              label: Text(
-                isSavingToCalendar ? 'Adding...' : 'Add to today\'s calendar',
+              textStyle: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
               ),
             ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Card(
-          color: AppColors.surface.withValues(alpha: _kAnalysisCardOpacity),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(_kAnalysisCardRadius),
+            onPressed: isSavingToCalendar ? null : onAddToCalendar,
+            icon: isSavingToCalendar
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.calendar_month, size: 20),
+            label: Text(
+              isSavingToCalendar ? 'Adding...' : 'Add to today\'s log',
+            ),
           ),
-          child: Stack(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ...analysis.foods.asMap().entries.map((entry) {
-                      final idx = entry.key;
-                      final food = entry.value;
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+        ),
+        // ── Items card ──
+        if (analysis.foods.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Card(
+            margin: EdgeInsets.zero,
+            color: AppColors.surface,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'ITEMS',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textHint,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ...analysis.foods.asMap().entries.map((entry) {
+                    final idx = entry.key;
+                    final food = entry.value;
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    '${idx + 1}. ${food.name}',
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
+                            Expanded(
+                              child: Text(
+                                '${idx + 1}. ${food.name}',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimary,
                                 ),
-                                IconButton(
-                                  icon: const Icon(Icons.edit, size: 18),
-                                  tooltip: 'Edit name',
-                                  onPressed: () => onEditName(idx),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Align(
-                              alignment: Alignment.center,
-                              child: _EditableChip(
-                                label: 'Weight',
-                                value: '${food.mass.toStringAsFixed(0)} g',
-                                onTap: () => onEditWeight(idx),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _NutrientChip(
-                                    label: 'Calories',
-                                    value:
-                                        '${food.calories.toStringAsFixed(0)} Cal',
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: _NutrientChip(
-                                    label: 'Protein',
-                                    value:
-                                        '${food.protein.toStringAsFixed(1)} g',
-                                    color: AppColors.protein.withValues(
-                                      alpha: 0.1,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: _NutrientChip(
-                                    label: 'Carbs',
-                                    value: '${food.carbs.toStringAsFixed(1)} g',
-                                    color: AppColors.carbs.withValues(
-                                      alpha: 0.1,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: _NutrientChip(
-                                    label: 'Fat',
-                                    value: '${food.fat.toStringAsFixed(1)} g',
-                                    color: AppColors.fat.withValues(alpha: 0.1),
-                                  ),
-                                ),
-                              ],
+                            IconButton(
+                              icon: const Icon(Icons.edit, size: 18),
+                              tooltip: 'Edit name',
+                              color: AppColors.textHint,
+                              onPressed: () => onEditName(idx),
                             ),
-                            if (idx < analysis.foods.length - 1)
-                              const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 12),
-                                child: Divider(),
-                              ),
                           ],
                         ),
-                      );
-                    }),
-                  ],
-                ),
+                        const SizedBox(height: 4),
+                        GestureDetector(
+                          onTap: () => onEditWeight(idx),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.background,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  '${food.mass.toStringAsFixed(0)} g',
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.brand,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Icon(
+                                  Icons.edit,
+                                  size: 14,
+                                  color: AppColors.brand,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            _NutrientChip(
+                              label: 'Cal',
+                              value: food.calories.toStringAsFixed(0),
+                              color:
+                                  AppColors.brand.withValues(alpha: 0.12),
+                              textColor: AppColors.brand,
+                            ),
+                            const SizedBox(width: 8),
+                            _NutrientChip(
+                              label: 'Protein',
+                              value:
+                                  '${food.protein.toStringAsFixed(1)}g',
+                              color: AppColors.protein
+                                  .withValues(alpha: 0.12),
+                              textColor: AppColors.protein,
+                            ),
+                            const SizedBox(width: 8),
+                            _NutrientChip(
+                              label: 'Carbs',
+                              value:
+                                  '${food.carbs.toStringAsFixed(1)}g',
+                              color:
+                                  AppColors.carbs.withValues(alpha: 0.15),
+                              textColor: AppColors.carbs,
+                            ),
+                            const SizedBox(width: 8),
+                            _NutrientChip(
+                              label: 'Fat',
+                              value: '${food.fat.toStringAsFixed(1)}g',
+                              color:
+                                  AppColors.fat.withValues(alpha: 0.12),
+                              textColor: AppColors.fat,
+                            ),
+                          ],
+                        ),
+                        if (idx < analysis.foods.length - 1)
+                          Padding(
+                            padding:
+                                const EdgeInsets.symmetric(vertical: 12),
+                            child: Divider(color: AppColors.homeDivider),
+                          ),
+                      ],
+                    );
+                  }),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
@@ -1818,117 +1857,129 @@ class MealAnalysisResultWidget extends StatelessWidget {
 class _NutrientChip extends StatelessWidget {
   final String label;
   final String value;
-  final Color? color;
+  final Color color;
+  final Color textColor;
 
-  const _NutrientChip({required this.label, required this.value, this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    final isCalories = label.toLowerCase() == 'calories';
-    final chipColor = isCalories
-        ? AppColors.brand
-        : (color ?? AppColors.surfaceVariant);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: chipColor.withValues(alpha: _kAnalysisCardOpacity),
-        borderRadius: BorderRadius.circular(_kAnalysisCardRadius),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(fontSize: 11, color: AppColors.surface),
-          ),
-          const SizedBox(height: 2),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              value,
-              maxLines: 1,
-              softWrap: false,
-              overflow: TextOverflow.visible,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.surface,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TotalCard extends StatelessWidget {
-  final String label;
-  final String value;
-  final String unit;
-
-  const _TotalCard({
+  const _NutrientChip({
     required this.label,
     required this.value,
-    required this.unit,
+    required this.color,
+    required this.textColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.brand.withValues(alpha: _kAnalysisCardOpacity),
-        borderRadius: BorderRadius.circular(_kAnalysisCardRadius),
-      ),
-      child: Column(
-        children: [
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12, color: AppColors.surface),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          children: [
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
                 value,
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.surface,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: textColor,
                 ),
               ),
-              const SizedBox(width: 4),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 3),
-                child: Text(
-                  unit,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppColors.surface,
-                  ),
-                ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                color: textColor.withValues(alpha: 0.7),
+                fontWeight: FontWeight.w500,
               ),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _MacroBar extends StatelessWidget {
+class _MacroCircle extends StatelessWidget {
+  final String label;
+  final String value;
+  final String unit;
+  final Color backgroundColor;
+  final Color textColor;
+
+  const _MacroCircle({
+    required this.label,
+    required this.value,
+    required this.unit,
+    required this.backgroundColor,
+    required this.textColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          width: 70,
+          height: 70,
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            shape: BoxShape.circle,
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  child: Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: textColor,
+                    ),
+                  ),
+                ),
+              ),
+              Text(
+                unit,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: textColor.withValues(alpha: 0.8),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            color: AppColors.textHint,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MacroProgressRow extends StatelessWidget {
   final String label;
   final double grams;
   final double percentage;
   final Color color;
 
-  const _MacroBar({
+  const _MacroProgressRow({
     required this.label,
     required this.grams,
     required this.percentage,
@@ -1937,48 +1988,41 @@ class _MacroBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.surface,
-                ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: color,
               ),
-              Text(
-                '${grams.toStringAsFixed(1)}g (${percentage.toStringAsFixed(1)}%)',
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.surface,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: (percentage / 100).clamp(0.0, 1.0),
-              backgroundColor: AppColors.surface.withValues(alpha: 0.35),
-              valueColor: AlwaysStoppedAnimation<Color>(AppColors.surface),
-              minHeight: 8,
             ),
+            Text(
+              '${grams.toStringAsFixed(1)}g (${percentage.toStringAsFixed(0)}%)',
+              style: TextStyle(
+                fontSize: 15,
+                color: AppColors.textHint,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: (percentage / 100).clamp(0.0, 1.0),
+            backgroundColor: AppColors.progressTrack,
+            valueColor: AlwaysStoppedAnimation<Color>(color),
+            minHeight: 8,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
