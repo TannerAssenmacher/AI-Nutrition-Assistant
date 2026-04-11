@@ -38,14 +38,13 @@ class DailyLog {
       date: DateTime.parse(map['date']),
       foods: (map['foods'] as List? ?? [])
           .map((item) => FoodItem.fromJson(item as Map<String, dynamic>))
-          .map((item) => FoodItem.fromJson(item as Map<String, dynamic>))
           .toList(),
-      mealIds: (map['mealIds'] as List? ?? []).cast<String>(), // add this
-      totalCalories: map['totalCalories'] ?? 0.0,
-      totalProtein: map['totalProtein'] ?? 0.0,
-      totalFat: map['totalFat'] ?? 0.0,
-      totalCarbs: map['totalCarbs'] ?? 0.0,
-      totalFiber: map['totalFiber'] ?? 0.0,
+      mealIds: (map['mealIds'] as List? ?? []).cast<String>(),
+      totalCalories: (map['totalCalories'] as num?)?.toDouble() ?? 0.0,
+      totalProtein: (map['totalProtein'] as num?)?.toDouble() ?? 0.0,
+      totalFat: (map['totalFat'] as num?)?.toDouble() ?? 0.0,
+      totalCarbs: (map['totalCarbs'] as num?)?.toDouble() ?? 0.0,
+      totalFiber: (map['totalFiber'] as num?)?.toDouble() ?? 0.0,
     );
   }
 

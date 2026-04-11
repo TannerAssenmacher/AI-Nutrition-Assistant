@@ -63,8 +63,14 @@ class FirestoreHelper {
         mp['dietaryGoal'] = rawDG?.toString() ?? '';
         mp['dietaryHabits'] = mp['dietaryHabits'] ?? <String>[];
         mp['healthRestrictions'] = mp['healthRestrictions'] ?? <String>[];
-        mp['macroGoals'] = mp['macroGoals'] ??
-            {'protein': 30.0, 'carbs': 40.0, 'fat': 30.0};
+        final rawGoals = mp['macroGoals'];
+        if (rawGoals is Map) {
+          mp['macroGoals'] = rawGoals.map<String, dynamic>(
+            (k, v) => MapEntry(k.toString(), (v is num) ? v.toDouble() : 0.0),
+          );
+        } else {
+          mp['macroGoals'] = {'protein': 30.0, 'carbs': 40.0, 'fat': 30.0};
+        }
         final prefs = mp['preferences'];
         if (prefs is Map<String, dynamic>) {
           prefs['likes'] = prefs['likes'] ?? <String>[];
