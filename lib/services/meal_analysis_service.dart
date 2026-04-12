@@ -2,8 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:http/http.dart' as http;
 
 enum AnalysisStage { uploading, analyzing, cleaning }
 
@@ -118,12 +119,16 @@ class MealAnalysis {
 
 /// Service for uploading a meal photo and getting a nutrition estimate via OpenAI.
 class MealAnalysisService {
-  MealAnalysisService({FirebaseFunctions? functions}) : _functions = functions;
+  MealAnalysisService({String region = 'us-central1'}) : _region = region;
 
-  FirebaseFunctions? _functions;
+  final String _region;
 
-  FirebaseFunctions get _functionsInstance =>
-      _functions ??= FirebaseFunctions.instanceFor(region: 'us-central1');
+  Uri _callableUri(String functionName) {
+    final projectId = Firebase.app().options.projectId;
+    return Uri.parse(
+      'https://$_region-$projectId.cloudfunctions.net/$functionName',
+    );
+  }
 
   Future<MealAnalysis> analyzeMealImage(
     File imageFile, {
@@ -144,24 +149,53 @@ class MealAnalysisService {
 
       onStageChanged?.call(AnalysisStage.analyzing);
       final user = await _ensureSignedInUser();
-      await user.getIdToken(true);
+      final idToken = await user.getIdToken(true);
 
-      final callable = _functionsInstance.httpsCallable('analyzeMealImage');
-      final response = await callable.call({
+      final payload = <String, dynamic>{
         'imageBase64': imageBase64,
         'mimeType': 'image/jpeg',
         if (contextSnippet != null && contextSnippet.isNotEmpty)
           'userContext': contextSnippet,
-      }).timeout(timeout);
+      };
 
-      final rawData = response.data;
-      if (rawData is! Map) {
+      final httpResponse = await http
+          .post(
+            _callableUri('analyzeMealImage'),
+            headers: {
+              'Content-Type': 'application/json',
+              if (idToken != null) 'Authorization': 'Bearer $idToken',
+            },
+            body: jsonEncode({'data': payload}),
+          )
+          .timeout(timeout);
+
+      if (httpResponse.statusCode < 200 || httpResponse.statusCode >= 300) {
         throw StateError(
-          'Unexpected Cloud Function response type: ${rawData.runtimeType}',
+          'Cloud Function call failed (${httpResponse.statusCode}): ${httpResponse.body}',
         );
       }
 
-      final data = Map<String, dynamic>.from(rawData);
+      final decoded = jsonDecode(httpResponse.body);
+      if (decoded is! Map) {
+        throw StateError(
+          'Unexpected Cloud Function response type: ${decoded.runtimeType}',
+        );
+      }
+
+      final errorRaw = decoded['error'];
+      if (errorRaw is Map) {
+        final message = errorRaw['message'] ?? 'Unknown error';
+        throw StateError('Cloud Function error: $message');
+      }
+
+      final resultRaw = decoded['result'];
+      if (resultRaw is! Map) {
+        throw StateError(
+          'Missing or invalid "result" in Cloud Function response.',
+        );
+      }
+
+      final data = Map<String, dynamic>.from(resultRaw);
       final analysisRaw = data['analysis'];
       if (analysisRaw is! Map) {
         throw StateError(
