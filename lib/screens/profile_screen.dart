@@ -421,6 +421,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               onSelectedItemChanged: (index) {
                                 currentFt = index + 1;
                                 _updateHeight(currentFt, currentIn);
+                                _dailyCaloriesController.text = _calculateDailyCalories().toString();
                               },
                               children: List.generate(
                                 8,
@@ -438,6 +439,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               onSelectedItemChanged: (index) {
                                 currentIn = index;
                                 _updateHeight(currentFt, currentIn);
+                                _dailyCaloriesController.text = _calculateDailyCalories().toString();
                               },
                               children: List.generate(
                                 12,
@@ -1173,6 +1175,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           (v) => setState(() {
                             _sex = v;
                             _refreshEditedState();
+                            _dailyCaloriesController.text = _calculateDailyCalories().toString();
                           }),
                         ),
                       ),
@@ -1519,7 +1522,13 @@ class _ProfilePageState extends State<ProfilePage> {
                               ),
                             ]
                           : [FilteringTextInputFormatter.digitsOnly],
-                      onChanged: (_) => setState(_refreshEditedState),
+                      onChanged: (_) {
+                        setState(_refreshEditedState);
+                        
+                          _dailyCaloriesController.text =
+                              _calculateDailyCalories().toString();
+                        
+                      },
                       decoration: InputDecoration(
                         border: InputBorder.none,
                         isDense: true,
@@ -1561,7 +1570,7 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ),
         // FIXED: This SizedBox keeps the boxes aligned even when no helper text is present
-        SizedBox(
+        /*SizedBox(
           height: helperHeight,
           child: helperText != null
               ? Padding(
@@ -1578,7 +1587,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                 )
               : const SizedBox.shrink(),
-        ),
+        ),*/
       ],
     );
   }
@@ -1743,6 +1752,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         _refreshEditedState();
                       });
                       _applyRecommendedMacroGoals(silent: true);
+                      _dailyCaloriesController.text = _calculateDailyCalories().toString();
                     },
                   ),
                   Positioned.fill(
@@ -1834,8 +1844,11 @@ class _ProfilePageState extends State<ProfilePage> {
                     onChanged: (value) {
                       setState(() {
                         _activityLevel = value;
+                        
                         _refreshEditedState();
                       });
+                      _dailyCaloriesController.text = _calculateDailyCalories().toString();
+                      
                       _applyRecommendedMacroGoals(silent: true);
                     },
                   ),

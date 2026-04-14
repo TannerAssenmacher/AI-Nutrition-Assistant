@@ -706,7 +706,7 @@ class HomeMacroSummaryCard extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'of ${metrics.calorieGoal.round()} kcal',
+                            'of ${metrics.calorieGoal.round()} cal',
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w500,
